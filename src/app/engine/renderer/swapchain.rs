@@ -44,13 +44,15 @@ impl Swapchain {
             },
         );
 
+        let mut handle = vk::SwapchainKHR::default();
+
         Ok(Self {
             desired_image_count,
             format,
             extent,
             views: Vec::new(),
             images: Vec::new(),
-            handle: Default::default(),
+            handle,
             surface,
             window,
             context,

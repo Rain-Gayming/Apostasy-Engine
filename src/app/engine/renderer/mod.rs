@@ -116,7 +116,7 @@ impl Renderer {
         unsafe {
             self.context
                 .device
-                .wait_for_fences(&[frame.in_flight_fence], true, std::u64::MAX)?;
+                .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
 
             self.context.device.reset_fences(&[frame.in_flight_fence])?;
 
@@ -176,7 +176,7 @@ impl Renderer {
                 frame.command_buffer,
                 self.swapchain.views[image_index as usize],
                 ClearColorValue {
-                    float32: [0.0, 0.0, 1.0, 1.0],
+                    float32: [0.01, 0.01, 0.01, 1.0],
                 },
                 vk::Rect2D::default().extent(self.swapchain.extent),
             );
@@ -202,7 +202,7 @@ impl Renderer {
             // causes a segfault
             self.context
                 .device
-                .cmd_draw(frame.command_buffer, 3, 1, 0, 0);
+                .cmd_draw(frame.command_buffer, 6, 1, 0, 0);
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
