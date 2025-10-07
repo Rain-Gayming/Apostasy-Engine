@@ -70,7 +70,7 @@ impl Renderer {
                 &ash::vk::CommandBufferAllocateInfo::default()
                     .command_pool(command_pool)
                     .level(ash::vk::CommandBufferLevel::PRIMARY)
-                    .command_buffer_count(in_flight_frames_count as u32),
+                    .command_buffer_count(in_flight_frames_count),
             )?;
 
             let mut frames = Vec::with_capacity(command_buffers.len());
@@ -194,6 +194,11 @@ impl Renderer {
                 0,
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
+
+            // causes a segfault
+            self.context
+                .device
+                .cmd_draw(frame.command_buffer, 3, 1, 0, 0);
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
