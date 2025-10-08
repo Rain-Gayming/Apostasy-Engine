@@ -158,15 +158,25 @@ impl Swapchain {
 impl Drop for Swapchain {
     fn drop(&mut self) {
         unsafe {
+            // ensure all GPU work is finished before destroying resources
+            let _ = self.context.device.device_wait_idle();
+
+            // destroy image views
             self.views.drain(..).for_each(|view| {
                 self.context.device.destroy_image_view(view, None);
             });
+
+            // destroy swapchain first (if it exists)
+            if self.handle != vk::SwapchainKHR::null() {
+                self.context
+                    .swapchain_extension
+                    .destroy_swapchain(self.handle, None);
+            }
+
+            // then destroy the surface
             self.context
                 .surface_extension
                 .destroy_surface(self.surface.handle, None);
-            self.context
-                .swapchain_extension
-                .destroy_swapchain(self.handle, None);
         }
     }
 }

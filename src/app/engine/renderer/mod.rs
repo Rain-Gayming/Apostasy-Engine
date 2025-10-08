@@ -48,9 +48,17 @@ impl Renderer {
         let fragment_shader = load_shader_module(&context, "frag.spv")?;
 
         unsafe {
-            let pipeline_layout = context
-                .device
-                .create_pipeline_layout(&ash::vk::PipelineLayoutCreateInfo::default(), None)?;
+            let push_constant_range = vk::PushConstantRange {
+                stage_flags: vk::ShaderStageFlags::VERTEX,
+                offset: 0,
+                size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32,
+            };
+
+            let pipeline_layout = context.device.create_pipeline_layout(
+                &ash::vk::PipelineLayoutCreateInfo::default()
+                    .push_constant_ranges(&[push_constant_range]),
+                None,
+            )?;
 
             let pipeline = context.create_graphics_pipeline(
                 vertex_shader,
@@ -202,11 +210,11 @@ impl Renderer {
                 0,
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
-            self.context.device.cmd_bind_pipeline(
-                frame.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline,
-            );
+            let push_constant_range = vk::PushConstantRange {
+                stage_flags: vk::ShaderStageFlags::VERTEX,
+                offset: 0,
+                size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32,
+            };
 
             let view: [[f32; 4]; 4] = get_view_matrix(self.camera.clone()).into();
             let view_bytes = std::slice::from_raw_parts(
@@ -215,7 +223,6 @@ impl Renderer {
             );
 
             let aspect = self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
-
             let projection: [[f32; 4]; 4] =
                 get_perspective_projection(self.camera.clone(), aspect).into();
             let projection_bytes = std::slice::from_raw_parts(
@@ -223,37 +230,21 @@ impl Renderer {
                 std::mem::size_of::<[[f32; 4]; 4]>(),
             );
 
-            let push_constant_range = vk::PushConstantRange {
-                stage_flags: vk::ShaderStageFlags::VERTEX,
-                offset: 0,
-                size: std::mem::size_of::<[[f32; 4]; 4]>() as u32,
-            };
-            let pipeline_layout = self.context.device.create_pipeline_layout(
-                &vk::PipelineLayoutCreateInfo::default()
-                    .push_constant_ranges(&[push_constant_range]),
-                None,
-            )?;
+            let mut push_data = Vec::with_capacity(std::mem::size_of::<[[f32; 4]; 4]>() * 2);
+            push_data.extend_from_slice(view_bytes);
+            push_data.extend_from_slice(projection_bytes);
 
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
-                pipeline_layout,
+                self.pipeline_layout,
                 vk::ShaderStageFlags::VERTEX,
                 0,
-                view_bytes,
+                &push_data,
             );
-            self.context.device.cmd_push_constants(
+            self.context.device.cmd_bind_pipeline(
                 frame.command_buffer,
-                pipeline_layout,
-                vk::ShaderStageFlags::VERTEX,
-                0,
-                projection_bytes,
-            );
-            self.context.device.cmd_push_constants(
-                frame.command_buffer,
-                pipeline_layout,
-                vk::ShaderStageFlags::VERTEX,
-                0,
-                view_bytes,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline,
             );
 
             self.context

@@ -9,7 +9,7 @@ use std::{
 
 use crate::app::engine::{
     input_manager::{
-        is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
+        process_keyboard_input, update_mouse_delta, InputManager,
     },
     renderer::{
         camera::{handle_camera_input, update_camera, Camera},

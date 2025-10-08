@@ -1,6 +1,6 @@
 mod engine;
 
-use crate::app::engine::{input_manager::InputManager, Engine};
+use crate::app::engine::Engine;
 use winit::application::ApplicationHandler;
 
 #[derive(Default)]
