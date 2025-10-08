@@ -121,8 +121,7 @@ impl RenderingContext {
                     let properties = instance.get_physical_device_properties(handle);
                     let features = instance
                         .get_physical_device_features(handle)
-                        .depth_clamp(false)
-                        .depth_bias_clamp(false);
+                        .depth_clamp(true);
                     let memory_properties = instance.get_physical_device_memory_properties(handle);
                     let queue_family_properties =
                         instance.get_physical_device_queue_family_properties(handle);
@@ -182,6 +181,22 @@ impl RenderingContext {
                     .push_next(
                         &mut vk::PhysicalDeviceDynamicRenderingFeatures::default()
                             .dynamic_rendering(true),
+                    )
+                    .push_next(
+                        &mut vk::PhysicalDeviceDepthClipEnableFeaturesEXT::default()
+                            .depth_clip_enable(true),
+                    )
+                    .push_next(
+                        &mut vk::PhysicalDeviceDepthBiasControlFeaturesEXT::default()
+                            .depth_bias_control(true),
+                    )
+                    .push_next(
+                        &mut vk::PhysicalDeviceDepthClipControlFeaturesEXT::default()
+                            .depth_clip_control(true),
+                    )
+                    .push_next(
+                        &mut vk::PhysicalDeviceDepthClampZeroOneFeaturesEXT::default()
+                            .depth_clamp_zero_one(true),
                     )
                     .push_next(
                         &mut vk::PhysicalDeviceBufferDeviceAddressFeatures::default()
@@ -321,11 +336,11 @@ impl RenderingContext {
             .scissors(&scissors);
 
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo::default()
-            .depth_clamp_enable(true)
             .rasterizer_discard_enable(false)
             .polygon_mode(vk::PolygonMode::FILL)
             .cull_mode(vk::CullModeFlags::NONE)
             .front_face(vk::FrontFace::CLOCKWISE)
+            .depth_clamp_enable(true)
             .depth_bias_enable(true)
             .line_width(1.0);
 
