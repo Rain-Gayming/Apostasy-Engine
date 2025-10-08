@@ -357,17 +357,8 @@ impl Renderer {
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                undefined_image_state,
-                renderable_state,
-                vk::ImageAspectFlags::COLOR,
-            );
-
-            // transition image layout to be presented for rendering
-            self.context.transition_image_layout(
-                frame.command_buffer,
-                self.swapchain.images[image_index as usize],
-                renderable_state,
                 present_image_state,
+                renderable_state,
                 vk::ImageAspectFlags::COLOR,
             );
 
@@ -398,11 +389,6 @@ impl Renderer {
                 0,
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
-            let push_constant_range = vk::PushConstantRange {
-                stage_flags: vk::ShaderStageFlags::VERTEX,
-                offset: 0,
-                size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32,
-            };
 
             let view: [[f32; 4]; 4] = get_view_matrix(self.camera.clone()).into();
             let view_bytes = std::slice::from_raw_parts(
@@ -440,6 +426,15 @@ impl Renderer {
                 .cmd_draw(frame.command_buffer, 36, 1, 0, 0);
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
+
+            // transition image layout to be presented for rendering
+            self.context.transition_image_layout(
+                frame.command_buffer,
+                self.swapchain.images[image_index as usize],
+                renderable_state,
+                present_image_state,
+                vk::ImageAspectFlags::COLOR,
+            );
 
             self.context
                 .device

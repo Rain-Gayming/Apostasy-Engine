@@ -315,10 +315,10 @@ impl RenderingContext {
             .scissors(&scissors);
 
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo::default()
-            .depth_clamp_enable(false)
+            .depth_clamp_enable(true)
             .rasterizer_discard_enable(false)
             .polygon_mode(vk::PolygonMode::FILL)
-            .cull_mode(vk::CullModeFlags::BACK)
+            .cull_mode(vk::CullModeFlags::NONE)
             .front_face(vk::FrontFace::CLOCKWISE)
             .depth_bias_enable(false)
             .line_width(1.0);
@@ -378,11 +378,12 @@ impl RenderingContext {
             let pipelines = self
                 .device
                 .create_graphics_pipelines(pipeline_chache, &[pipeline_create_info], None)
-                .map_err(|(e, _)| anyhow::anyhow!("create_graphics_pipelines failed: {:?}", e))?;
+                .map_err(|(e, _)| anyhow::anyhow!("failed to create graphics pipeline: {e:?}"))?;
 
-            let pipeline = pipelines.into_iter().next().ok_or_else(|| {
-                anyhow::anyhow!("create_graphics_pipelines returned no pipelines")
-            })?;
+            let pipeline = pipelines
+                .into_iter()
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("failed to get a pipeline"))?;
 
             Ok(pipeline)
         }
