@@ -178,25 +178,14 @@ impl RenderingContext {
                 &vk::DeviceCreateInfo::default()
                     .queue_create_infos(&queue_create_infos)
                     .enabled_extension_names(&[ash::khr::swapchain::NAME.as_ptr()])
+                    .enabled_features(
+                        &vk::PhysicalDeviceFeatures::default()
+                            .depth_bias_clamp(true)
+                            .depth_clamp(true),
+                    )
                     .push_next(
                         &mut vk::PhysicalDeviceDynamicRenderingFeatures::default()
                             .dynamic_rendering(true),
-                    )
-                    .push_next(
-                        &mut vk::PhysicalDeviceDepthClipEnableFeaturesEXT::default()
-                            .depth_clip_enable(true),
-                    )
-                    .push_next(
-                        &mut vk::PhysicalDeviceDepthBiasControlFeaturesEXT::default()
-                            .depth_bias_control(true),
-                    )
-                    .push_next(
-                        &mut vk::PhysicalDeviceDepthClipControlFeaturesEXT::default()
-                            .depth_clip_control(true),
-                    )
-                    .push_next(
-                        &mut vk::PhysicalDeviceDepthClampZeroOneFeaturesEXT::default()
-                            .depth_clamp_zero_one(true),
                     )
                     .push_next(
                         &mut vk::PhysicalDeviceBufferDeviceAddressFeatures::default()
