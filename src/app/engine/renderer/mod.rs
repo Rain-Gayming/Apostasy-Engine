@@ -1,12 +1,13 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-mod camera;
+pub mod camera;
 mod swapchain;
 
 use anyhow::Result;
 use ash::vk::{self, ClearColorValue};
 use winit::window::Window;
 
+use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::swapchain::Swapchain;
 use crate::app::engine::rendering_context;
 use crate::app::engine::{
@@ -29,12 +30,17 @@ pub struct Renderer {
     pipeline_layout: ash::vk::PipelineLayout,
     swapchain: Swapchain,
     context: Arc<RenderingContext>,
+    camera: Arc<Mutex<Camera>>,
 }
 use std::fs::{self};
 
 const SHADER_DIR: &str = "res/shaders/";
 impl Renderer {
-    pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
+    pub fn new(
+        context: Arc<RenderingContext>,
+        window: Arc<Window>,
+        camera: Arc<Mutex<Camera>>,
+    ) -> Result<Self> {
         let mut swapchain = Swapchain::new(Arc::clone(&context), window)?;
         swapchain.resize()?;
 
@@ -104,6 +110,7 @@ impl Renderer {
                 pipeline_layout,
                 context,
                 swapchain,
+                camera,
             })
         }
     }
@@ -200,7 +207,55 @@ impl Renderer {
                 vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline,
             );
-            // causes a segfault
+
+            let view: [[f32; 4]; 4] = get_view_matrix(self.camera.clone()).into();
+            let view_bytes = std::slice::from_raw_parts(
+                &view as *const [[f32; 4]; 4] as *const u8,
+                std::mem::size_of::<[[f32; 4]; 4]>(),
+            );
+
+            let aspect = self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
+
+            let projection: [[f32; 4]; 4] =
+                get_perspective_projection(self.camera.clone(), aspect).into();
+            let projection_bytes = std::slice::from_raw_parts(
+                &projection as *const [[f32; 4]; 4] as *const u8,
+                std::mem::size_of::<[[f32; 4]; 4]>(),
+            );
+
+            let push_constant_range = vk::PushConstantRange {
+                stage_flags: vk::ShaderStageFlags::VERTEX,
+                offset: 0,
+                size: std::mem::size_of::<[[f32; 4]; 4]>() as u32,
+            };
+            let pipeline_layout = self.context.device.create_pipeline_layout(
+                &vk::PipelineLayoutCreateInfo::default()
+                    .push_constant_ranges(&[push_constant_range]),
+                None,
+            )?;
+
+            self.context.device.cmd_push_constants(
+                frame.command_buffer,
+                pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                view_bytes,
+            );
+            self.context.device.cmd_push_constants(
+                frame.command_buffer,
+                pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                projection_bytes,
+            );
+            self.context.device.cmd_push_constants(
+                frame.command_buffer,
+                pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                view_bytes,
+            );
+
             self.context
                 .device
                 .cmd_draw(frame.command_buffer, 6, 1, 0, 0);

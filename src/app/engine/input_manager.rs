@@ -1,5 +1,5 @@
 use winit::event::KeyEvent;
-use winit::keyboard::{Key, PhysicalKey};
+use winit::keyboard::PhysicalKey;
 #[derive(Clone, Copy)]
 pub enum KeybindInputType {
     Pressed,
@@ -17,23 +17,59 @@ pub struct Keybind {
 pub struct InputManager {
     pub keys_held: Vec<PhysicalKey>,
     pub keybinds: Vec<Keybind>,
+    pub mouse_delta: [f64; 2],
 }
 
 impl InputManager {
     pub fn new() -> Self {
         let forward = Keybind {
-            key: PhysicalKey::Code(winit::keyboard::KeyCode::KeyA),
+            key: PhysicalKey::Code(winit::keyboard::KeyCode::KeyW),
             input_type: KeybindInputType::Held,
             name: "move_forwards".to_string(),
         };
 
-        let keybinds: Vec<Keybind> = vec![forward];
+        let backwards = Keybind {
+            key: PhysicalKey::Code(winit::keyboard::KeyCode::KeyS),
+            input_type: KeybindInputType::Held,
+            name: "move_backwards".to_string(),
+        };
+
+        let left = Keybind {
+            key: PhysicalKey::Code(winit::keyboard::KeyCode::KeyA),
+            input_type: KeybindInputType::Held,
+            name: "move_left".to_string(),
+        };
+
+        let right = Keybind {
+            key: PhysicalKey::Code(winit::keyboard::KeyCode::KeyD),
+            input_type: KeybindInputType::Held,
+            name: "move_right".to_string(),
+        };
+
+        let jump = Keybind {
+            key: PhysicalKey::Code(winit::keyboard::KeyCode::Space),
+            input_type: KeybindInputType::Held,
+            name: "move_jump".to_string(),
+        };
+
+        let crouch = Keybind {
+            key: PhysicalKey::Code(winit::keyboard::KeyCode::ControlLeft),
+            input_type: KeybindInputType::Held,
+            name: "move_crouch".to_string(),
+        };
+
+        let keybinds: Vec<Keybind> = vec![forward, backwards, left, right, jump, crouch];
 
         Self {
             keys_held: Vec::new(),
             keybinds,
+            mouse_delta: [0.0, 0.0],
         }
     }
+}
+
+pub fn update_mouse_delta(input_manager: &mut InputManager, delta: [f64; 2]) {
+    input_manager.mouse_delta = delta;
 }
 
 pub fn update_or_add_keybind(input_manager: &mut InputManager, keybind: Keybind) {
@@ -81,6 +117,10 @@ pub fn is_keybind_name_triggered(input_manager: &InputManager, keybind_name: Str
         .keybinds
         .iter()
         .position(|x| x.name == *keybind_name);
+
+    if keybind_name.is_empty() {
+        return false;
+    }
 
     if keybind_index.is_none() {
         println!("key doesnt align with a keybind");

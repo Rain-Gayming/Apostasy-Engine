@@ -2,21 +2,26 @@ pub mod input_manager;
 mod renderer;
 mod rendering_context;
 
-use std::{collections::HashMap, process, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use crate::app::engine::{
     input_manager::{
-        is_keybind_name_triggered, process_keyboard_input, update_or_add_keybind, InputManager,
-        Keybind, KeybindInputType,
+        is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
     },
-    renderer::Renderer,
+    renderer::{
+        camera::{handle_camera_input, update_camera, Camera},
+        Renderer,
+    },
     rendering_context::*,
 };
 use anyhow::Result;
+use nalgebra::Vector3;
 use winit::{
     event::{DeviceEvent, WindowEvent},
     event_loop::ActiveEventLoop,
-    keyboard::KeyCode,
     window::{Window, WindowAttributes, WindowId},
 };
 
@@ -26,6 +31,7 @@ pub struct Engine {
     primary_window_id: WindowId,
     rendering_context: Arc<RenderingContext>,
     input_manager: InputManager,
+    engine_camera: Arc<Mutex<Camera>>,
 }
 
 impl Engine {
@@ -39,10 +45,17 @@ impl Engine {
             queue_family_picker: queue_family_picker::single_queue_family,
         })?);
 
+        let position: Vector3<f32> = Vector3::new(0.0, 1.0, 0.0);
+        let engine_camera = Arc::new(Mutex::new(Camera::new(position)));
         let renderers = windows
             .iter()
             .map(|(id, window)| {
-                let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
+                let renderer = Renderer::new(
+                    rendering_context.clone(),
+                    window.clone(),
+                    engine_camera.clone(),
+                )
+                .unwrap();
                 (*id, renderer)
             })
             .collect::<HashMap<_, _>>();
@@ -55,6 +68,7 @@ impl Engine {
             primary_window_id,
             rendering_context,
             input_manager,
+            engine_camera,
         })
     }
 
@@ -88,14 +102,12 @@ impl Engine {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     renderer.render().unwrap();
                 }
+
+                update_camera(self.engine_camera.clone());
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 process_keyboard_input(&mut self.input_manager, &event);
-
-                println!(
-                    "{}",
-                    is_keybind_name_triggered(&self.input_manager, "move_forwards".to_string())
-                );
+                handle_camera_input(&self.input_manager, &mut self.engine_camera)
             }
             _ => {}
         }
@@ -110,7 +122,11 @@ impl Engine {
         let window_id = window.id();
         self.windows.insert(window_id, window.clone());
 
-        let renderer = Renderer::new(self.rendering_context.clone(), window)?;
+        let renderer = Renderer::new(
+            self.rendering_context.clone(),
+            window,
+            self.engine_camera.clone(),
+        )?;
         self.renderers.insert(window_id, renderer);
 
         Ok(window_id)
@@ -128,7 +144,9 @@ impl Engine {
         device_id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
-        if let DeviceEvent::MouseMotion { delta: _ } = event {
+        if let DeviceEvent::MouseMotion { delta, .. } = event {
+            update_mouse_delta(&mut self.input_manager, delta.into());
+            handle_camera_input(&self.input_manager, &mut self.engine_camera)
             // store mouse movement in somewhere lol
         }
     }

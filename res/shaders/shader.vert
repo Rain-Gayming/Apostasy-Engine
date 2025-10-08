@@ -20,7 +20,21 @@ vec3 colors[6] = vec3[](
         vec3(1.0, 0.0, 0.0)
     );
 
+mat4 model = mat4(
+        1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    );
+
+layout(push_constant) uniform Push {
+    mat4 view;
+    mat4 projection;
+} pc;
+
+layout(location = 0) in vec3 inPosition;
+
 void main() {
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+    gl_Position = pc.projection * pc.view * vec4(positions[gl_VertexIndex], 0.0, 1.0);
     fragColor = colors[gl_VertexIndex];
 }

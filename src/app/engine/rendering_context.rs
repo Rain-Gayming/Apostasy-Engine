@@ -281,7 +281,6 @@ impl RenderingContext {
         pipeline_chache: vk::PipelineCache,
     ) -> Result<vk::Pipeline> {
         let entry_point = std::ffi::CString::new("main").unwrap();
-
         unsafe {
             Ok(self
                 .device
