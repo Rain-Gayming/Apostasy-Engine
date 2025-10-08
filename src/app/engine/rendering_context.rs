@@ -279,85 +279,112 @@ impl RenderingContext {
         image_format: vk::Format,
         pipeline_layout: vk::PipelineLayout,
         pipeline_chache: vk::PipelineCache,
+        depth_format: Option<vk::Format>,
     ) -> Result<vk::Pipeline> {
         let entry_point = std::ffi::CString::new("main").unwrap();
+
+        // keep all objects alive as locals so pointers passed to Vulkan are valid
+        let shader_stages = vec![
+            vk::PipelineShaderStageCreateInfo::default()
+                .stage(vk::ShaderStageFlags::VERTEX)
+                .module(vertex_shader)
+                .name(&entry_point),
+            vk::PipelineShaderStageCreateInfo::default()
+                .stage(vk::ShaderStageFlags::FRAGMENT)
+                .module(fragment_shader)
+                .name(&entry_point),
+        ];
+
+        let viewport = vk::Viewport {
+            x: 0.0,
+            y: 0.0,
+            width: image_extent.width as f32,
+            height: image_extent.height as f32,
+            min_depth: 0.0,
+            max_depth: 1.0,
+        };
+        let scissor = vk::Rect2D {
+            offset: vk::Offset2D { x: 0, y: 0 },
+            extent: image_extent,
+        };
+        let viewports = [viewport];
+        let scissors = [scissor];
+
+        let viewport_state = vk::PipelineViewportStateCreateInfo::default()
+            .viewports(&viewports)
+            .scissors(&scissors);
+
+        let rasterization_state = vk::PipelineRasterizationStateCreateInfo::default()
+            .depth_clamp_enable(false)
+            .rasterizer_discard_enable(false)
+            .polygon_mode(vk::PolygonMode::FILL)
+            .cull_mode(vk::CullModeFlags::BACK)
+            .front_face(vk::FrontFace::CLOCKWISE)
+            .depth_bias_enable(false)
+            .line_width(1.0);
+
+        let multisample_state = vk::PipelineMultisampleStateCreateInfo::default()
+            .rasterization_samples(vk::SampleCountFlags::TYPE_1)
+            .sample_shading_enable(false);
+
+        let color_attachment = vk::PipelineColorBlendAttachmentState::default()
+            .color_write_mask(vk::ColorComponentFlags::RGBA)
+            .blend_enable(false);
+        let binding = [color_attachment];
+        let color_blend_state =
+            vk::PipelineColorBlendStateCreateInfo::default().attachments(&binding);
+
+        let dynamic_states = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
+        let dynamic_state =
+            vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&dynamic_states);
+
+        let color_attachment_formats = [image_format];
+        let mut pipeline_rendering = vk::PipelineRenderingCreateInfo::default()
+            .color_attachment_formats(&color_attachment_formats);
+
+        // if depth format provided, set it in the PipelineRenderingCreateInfo
+        if let Some(df) = depth_format {
+            pipeline_rendering = pipeline_rendering.depth_attachment_format(df);
+        }
+
+        let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::default();
+        let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo::default()
+            .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
+            .primitive_restart_enable(false);
+
+        // enable depth test/write in pipeline's depth/stencil state
+        let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::default()
+            .depth_test_enable(depth_format.is_some())
+            .depth_write_enable(depth_format.is_some())
+            .depth_compare_op(vk::CompareOp::LESS)
+            .depth_bounds_test_enable(false)
+            .stencil_test_enable(false);
+
+        let pipeline_create_info = vk::GraphicsPipelineCreateInfo::default()
+            .stages(&shader_stages)
+            .vertex_input_state(&vertex_input_state)
+            .input_assembly_state(&input_assembly_state)
+            .viewport_state(&viewport_state)
+            .rasterization_state(&rasterization_state)
+            .multisample_state(&multisample_state)
+            .color_blend_state(&color_blend_state)
+            .dynamic_state(&dynamic_state)
+            .layout(pipeline_layout)
+            .render_pass(vk::RenderPass::null())
+            .depth_stencil_state(&depth_stencil_state)
+            .push_next(&mut pipeline_rendering);
+
         unsafe {
-            Ok(self
+            let pipelines = self
                 .device
-                .create_graphics_pipelines(
-                    vk::PipelineCache::null(),
-                    &[vk::GraphicsPipelineCreateInfo::default()
-                        .stages(&[
-                            vk::PipelineShaderStageCreateInfo::default()
-                                .stage(vk::ShaderStageFlags::VERTEX)
-                                .module(vertex_shader)
-                                .name(&entry_point),
-                            vk::PipelineShaderStageCreateInfo::default()
-                                .stage(vk::ShaderStageFlags::FRAGMENT)
-                                .module(fragment_shader)
-                                .name(&entry_point),
-                        ])
-                        .vertex_input_state(&vk::PipelineVertexInputStateCreateInfo::default())
-                        .input_assembly_state(
-                            &vk::PipelineInputAssemblyStateCreateInfo::default()
-                                .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
-                                .primitive_restart_enable(false),
-                        )
-                        .viewport_state(
-                            &vk::PipelineViewportStateCreateInfo::default()
-                                .viewports(&[vk::Viewport {
-                                    x: 0.0,
-                                    y: 0.0,
-                                    width: image_extent.width as f32,
-                                    height: image_extent.height as f32,
-                                    min_depth: 0.0,
-                                    max_depth: 1.0,
-                                }])
-                                .scissors(&[vk::Rect2D {
-                                    offset: vk::Offset2D { x: 0, y: 0 },
-                                    extent: image_extent,
-                                }]),
-                        )
-                        .rasterization_state(
-                            &vk::PipelineRasterizationStateCreateInfo::default()
-                                .depth_clamp_enable(false)
-                                .rasterizer_discard_enable(false)
-                                .polygon_mode(vk::PolygonMode::FILL)
-                                .cull_mode(vk::CullModeFlags::NONE)
-                                .front_face(vk::FrontFace::CLOCKWISE)
-                                .depth_bias_enable(false)
-                                .line_width(1.0),
-                        )
-                        .multisample_state(
-                            &vk::PipelineMultisampleStateCreateInfo::default()
-                                .rasterization_samples(vk::SampleCountFlags::TYPE_1)
-                                .sample_shading_enable(false),
-                        )
-                        .color_blend_state(
-                            &vk::PipelineColorBlendStateCreateInfo::default().attachments(&[
-                                vk::PipelineColorBlendAttachmentState::default()
-                                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-                                    .blend_enable(false),
-                            ]),
-                        )
-                        .dynamic_state(
-                            &vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&[
-                                vk::DynamicState::VIEWPORT,
-                                vk::DynamicState::SCISSOR,
-                            ]),
-                        )
-                        .layout(pipeline_layout)
-                        .render_pass(vk::RenderPass::null())
-                        .push_next(
-                            &mut vk::PipelineRenderingCreateInfo::default()
-                                .color_attachment_formats(&[image_format]),
-                        )],
-                    None,
-                )
-                .unwrap()
-                .into_iter()
-                .next()
-                .unwrap())
+                .create_graphics_pipelines(pipeline_chache, &[pipeline_create_info], None)
+                .map_err(|(e, _)| anyhow::anyhow!("create_graphics_pipelines failed: {:?}", e))?;
+
+            let pipeline = pipelines.into_iter().next().ok_or_else(|| {
+                anyhow::anyhow!("create_graphics_pipelines returned no pipelines")
+            })?;
+
+            Ok(pipeline)
         }
     }
 
@@ -403,20 +430,48 @@ impl RenderingContext {
         view: vk::ImageView,
         clear_color: vk::ClearColorValue,
         render_area: vk::Rect2D,
+        depth_view: Option<vk::ImageView>,
+        depth_clear: Option<vk::ClearDepthStencilValue>,
     ) {
         unsafe {
-            self.device.cmd_begin_rendering(
-                command_buffer,
-                &vk::RenderingInfo::default()
-                    .layer_count(1)
-                    .color_attachments(&[vk::RenderingAttachmentInfo::default()
-                        .image_view(view)
-                        .image_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                        .clear_value(vk::ClearValue { color: clear_color })
+            let color_attachment = vk::RenderingAttachmentInfo::default()
+                .image_view(view)
+                .image_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .clear_value(vk::ClearValue { color: clear_color })
+                .load_op(vk::AttachmentLoadOp::CLEAR)
+                .store_op(vk::AttachmentStoreOp::STORE);
+
+            // keep the array alive so the reference passed to Vulkan is valid
+            let color_attachments = [color_attachment];
+
+            let mut rendering_info = vk::RenderingInfo::default()
+                .layer_count(1)
+                .color_attachments(&color_attachments)
+                .render_area(render_area);
+
+            // keep an owned depth attachment alive until after cmd_begin_rendering
+            let mut depth_attachment_storage: Option<vk::RenderingAttachmentInfo> = None;
+            if let Some(dv) = depth_view {
+                depth_attachment_storage = Some(
+                    vk::RenderingAttachmentInfo::default()
+                        .image_view(dv)
+                        .image_layout(vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
+                        .clear_value(vk::ClearValue {
+                            depth_stencil: depth_clear.unwrap_or(vk::ClearDepthStencilValue {
+                                depth: 1.0,
+                                stencil: 0,
+                            }),
+                        })
                         .load_op(vk::AttachmentLoadOp::CLEAR)
-                        .store_op(vk::AttachmentStoreOp::STORE)])
-                    .render_area(render_area),
-            );
+                        .store_op(vk::AttachmentStoreOp::STORE),
+                );
+
+                rendering_info =
+                    rendering_info.depth_attachment(depth_attachment_storage.as_ref().unwrap());
+            }
+
+            self.device
+                .cmd_begin_rendering(command_buffer, &rendering_info);
         }
     }
 }

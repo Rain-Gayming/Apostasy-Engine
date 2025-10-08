@@ -32,9 +32,9 @@
 
 | Language | files | lines |
 | -------- | ----- | ----- |
-| Rust     | 8     | 1215  |
+| Rust     | 8     | 1425  |
 | GLSL     | 2     | 39    |
-| Total:   | 10    | 1254  |
+| Total:   | 10    | 1523  |
 
 ## Changelog:
 
@@ -44,6 +44,7 @@
 
 - added a perspective class
 - square []
+- half functional depth buffer
 
 #### Handlers:
 

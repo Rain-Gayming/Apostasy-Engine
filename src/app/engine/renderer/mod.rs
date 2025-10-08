@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 pub mod camera;
 mod swapchain;
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use ash::vk::{self, ClearColorValue};
 use winit::window::Window;
 
@@ -31,6 +31,10 @@ pub struct Renderer {
     swapchain: Swapchain,
     context: Arc<RenderingContext>,
     camera: Arc<Mutex<Camera>>,
+    depth_format: vk::Format,
+    depth_image: vk::Image,
+    depth_image_memory: vk::DeviceMemory,
+    depth_image_view: vk::ImageView,
 }
 use std::fs::{self};
 
@@ -44,10 +48,64 @@ impl Renderer {
         let mut swapchain = Swapchain::new(Arc::clone(&context), window)?;
         swapchain.resize()?;
 
+        let depth_format = vk::Format::D32_SFLOAT;
+
+        let depth_image_create_info = vk::ImageCreateInfo::default()
+            .image_type(vk::ImageType::TYPE_2D)
+            .format(depth_format)
+            .extent(vk::Extent3D {
+                width: swapchain.extent.width,
+                height: swapchain.extent.height,
+                depth: 1,
+            })
+            .mip_levels(1)
+            .array_layers(1)
+            .samples(vk::SampleCountFlags::TYPE_1)
+            .tiling(vk::ImageTiling::OPTIMAL)
+            .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
+            .initial_layout(vk::ImageLayout::UNDEFINED);
+
         let vertex_shader = load_shader_module(&context, "vert.spv")?;
         let fragment_shader = load_shader_module(&context, "frag.spv")?;
 
         unsafe {
+            let depth_image = context
+                .device
+                .create_image(&depth_image_create_info, None)?;
+            let mem_req = context.device.get_image_memory_requirements(depth_image);
+            fn find_memory_type(
+                type_bits: u32,
+                props: vk::MemoryPropertyFlags,
+                mem_props: &vk::PhysicalDeviceMemoryProperties,
+            ) -> Option<u32> {
+                for (i, mt) in mem_props.memory_types.iter().enumerate() {
+                    if (type_bits & (1 << i)) != 0 && mt.property_flags.contains(props) {
+                        return Some(i as u32);
+                    }
+                }
+                None
+            }
+            let memory_type = find_memory_type(
+                mem_req.memory_type_bits,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                &context.physical_device.memory_properties,
+            )
+            .ok_or_else(|| anyhow::anyhow!("No suitable memory type for depth image"))?;
+
+            let depth_alloc_info = vk::MemoryAllocateInfo::default()
+                .allocation_size(mem_req.size)
+                .memory_type_index(memory_type);
+            let depth_image_memory = context.device.allocate_memory(&depth_alloc_info, None)?;
+            context
+                .device
+                .bind_image_memory(depth_image, depth_image_memory, 0)?;
+
+            let depth_image_view = context.create_image_view(
+                depth_image,
+                depth_format,
+                vk::ImageAspectFlags::DEPTH,
+            )?;
+
             let push_constant_range = vk::PushConstantRange {
                 stage_flags: vk::ShaderStageFlags::VERTEX,
                 offset: 0,
@@ -67,6 +125,7 @@ impl Renderer {
                 swapchain.format,
                 pipeline_layout,
                 Default::default(),
+                Some(depth_format),
             )?;
 
             context.device.destroy_shader_module(vertex_shader, None);
@@ -119,12 +178,114 @@ impl Renderer {
                 context,
                 swapchain,
                 camera,
+                depth_format,
+                depth_image,
+                depth_image_memory,
+                depth_image_view,
             })
         }
     }
 
+    pub fn update_depth_buffer(&mut self) -> Result<()> {
+        let depth_format = vk::Format::D32_SFLOAT;
+
+        let vertex_shader = load_shader_module(&self.context, "vert.spv")?;
+        let fragment_shader = load_shader_module(&self.context, "frag.spv")?;
+        let depth_image_create_info = vk::ImageCreateInfo::default()
+            .image_type(vk::ImageType::TYPE_2D)
+            .format(depth_format)
+            .extent(vk::Extent3D {
+                width: self.swapchain.extent.width,
+                height: self.swapchain.extent.height,
+                depth: 1,
+            })
+            .mip_levels(1)
+            .array_layers(1)
+            .samples(vk::SampleCountFlags::TYPE_1)
+            .tiling(vk::ImageTiling::OPTIMAL)
+            .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
+            .initial_layout(vk::ImageLayout::UNDEFINED);
+        unsafe {
+            let depth_image = self
+                .context
+                .device
+                .create_image(&depth_image_create_info, None)?;
+            let mem_req = self
+                .context
+                .device
+                .get_image_memory_requirements(depth_image);
+            fn find_memory_type(
+                type_bits: u32,
+                props: vk::MemoryPropertyFlags,
+                mem_props: &vk::PhysicalDeviceMemoryProperties,
+            ) -> Option<u32> {
+                for (i, mt) in mem_props.memory_types.iter().enumerate() {
+                    if (type_bits & (1 << i)) != 0 && mt.property_flags.contains(props) {
+                        return Some(i as u32);
+                    }
+                }
+                None
+            }
+            let memory_type = find_memory_type(
+                mem_req.memory_type_bits,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                &self.context.physical_device.memory_properties,
+            )
+            .ok_or_else(|| anyhow::anyhow!("No suitable memory type for depth image"))?;
+
+            let depth_alloc_info = vk::MemoryAllocateInfo::default()
+                .allocation_size(mem_req.size)
+                .memory_type_index(memory_type);
+            let depth_image_memory = self
+                .context
+                .device
+                .allocate_memory(&depth_alloc_info, None)?;
+            self.context
+                .device
+                .bind_image_memory(depth_image, depth_image_memory, 0)?;
+
+            let depth_image_view = self.context.create_image_view(
+                depth_image,
+                self.depth_format,
+                vk::ImageAspectFlags::DEPTH,
+            )?;
+
+            let push_constant_range = vk::PushConstantRange {
+                stage_flags: vk::ShaderStageFlags::VERTEX,
+                offset: 0,
+                size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32,
+            };
+
+            let pipeline_layout = self.context.device.create_pipeline_layout(
+                &ash::vk::PipelineLayoutCreateInfo::default()
+                    .push_constant_ranges(&[push_constant_range]),
+                None,
+            )?;
+
+            let pipeline = self.context.create_graphics_pipeline(
+                vertex_shader,
+                fragment_shader,
+                self.swapchain.extent,
+                self.swapchain.format,
+                pipeline_layout,
+                Default::default(),
+                Some(depth_format),
+            );
+
+            self.depth_format = depth_format;
+            self.depth_image = depth_image;
+            self.depth_image_memory = depth_image_memory;
+            self.depth_image_view = depth_image_view;
+            self.pipeline = pipeline?;
+            self.pipeline_layout = pipeline_layout;
+
+            Ok(())
+        }
+    }
     pub fn resize(&mut self) -> Result<()> {
-        self.swapchain.resize()
+        let result = self.swapchain.resize();
+        let _ = self.update_depth_buffer();
+        result
     }
 
     pub fn render(&mut self) -> Result<()> {
@@ -170,6 +331,28 @@ impl Renderer {
                 queue_family_index: vk::QUEUE_FAMILY_IGNORED,
             };
 
+            let undefined_depth_state = ImageLayoutState {
+                layout: vk::ImageLayout::UNDEFINED,
+                access_mask: vk::AccessFlags::empty(),
+                stage_mask: vk::PipelineStageFlags::TOP_OF_PIPE,
+                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+            };
+            let depth_attach_state = ImageLayoutState {
+                layout: vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
+                access_mask: vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+                stage_mask: vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
+                    | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
+                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+            };
+
+            self.context.transition_image_layout(
+                frame.command_buffer,
+                self.depth_image,
+                undefined_depth_state,
+                depth_attach_state,
+                vk::ImageAspectFlags::DEPTH,
+            );
+
             // transition image layout to be used for color attachmant
             self.context.transition_image_layout(
                 frame.command_buffer,
@@ -195,6 +378,11 @@ impl Renderer {
                     float32: [0.01, 0.01, 0.01, 1.0],
                 },
                 vk::Rect2D::default().extent(self.swapchain.extent),
+                Some(self.depth_image_view), // pass depth view
+                Some(vk::ClearDepthStencilValue {
+                    depth: 1.0,
+                    stencil: 0,
+                }), // depth clear
             );
 
             self.context.device.cmd_set_viewport(
@@ -249,7 +437,7 @@ impl Renderer {
 
             self.context
                 .device
-                .cmd_draw(frame.command_buffer, 6, 1, 0, 0);
+                .cmd_draw(frame.command_buffer, 36, 1, 0, 0);
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
@@ -282,6 +470,13 @@ impl Drop for Renderer {
             self.context
                 .device
                 .destroy_pipeline_layout(self.pipeline_layout, None);
+            self.context
+                .device
+                .destroy_image_view(self.depth_image_view, None);
+            self.context
+                .device
+                .free_memory(self.depth_image_memory, None);
+            self.context.device.destroy_image(self.depth_image, None);
         }
     }
 }
