@@ -56,6 +56,7 @@ pub fn get_view_matrix(camera: Arc<Mutex<Camera>>) -> nalgebra::Matrix4<f32> {
         -camera.position.y,
         -camera.position.z,
     ));
+
     Matrix4::from(rotation * translation_matrix)
 }
 

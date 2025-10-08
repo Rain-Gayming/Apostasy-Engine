@@ -357,7 +357,7 @@ impl Renderer {
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                present_image_state,
+                undefined_image_state,
                 renderable_state,
                 vk::ImageAspectFlags::COLOR,
             );

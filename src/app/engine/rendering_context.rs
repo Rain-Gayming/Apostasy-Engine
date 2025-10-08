@@ -2,7 +2,10 @@
 use std::{collections::HashSet, io};
 
 use anyhow::Result;
-use ash::{vk, Entry};
+use ash::{
+    vk::{self},
+    Entry,
+};
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -320,7 +323,7 @@ impl RenderingContext {
             .polygon_mode(vk::PolygonMode::FILL)
             .cull_mode(vk::CullModeFlags::NONE)
             .front_face(vk::FrontFace::CLOCKWISE)
-            .depth_bias_enable(false)
+            .depth_bias_enable(true)
             .line_width(1.0);
 
         let multisample_state = vk::PipelineMultisampleStateCreateInfo::default()
@@ -342,7 +345,6 @@ impl RenderingContext {
         let mut pipeline_rendering = vk::PipelineRenderingCreateInfo::default()
             .color_attachment_formats(&color_attachment_formats);
 
-        // if depth format provided, set it in the PipelineRenderingCreateInfo
         if let Some(df) = depth_format {
             pipeline_rendering = pipeline_rendering.depth_attachment_format(df);
         }
@@ -352,13 +354,14 @@ impl RenderingContext {
             .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
             .primitive_restart_enable(false);
 
-        // enable depth test/write in pipeline's depth/stencil state
         let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::default()
-            .depth_test_enable(depth_format.is_some())
-            .depth_write_enable(depth_format.is_some())
+            .depth_test_enable(true)
+            .depth_write_enable(true)
             .depth_compare_op(vk::CompareOp::LESS)
             .depth_bounds_test_enable(false)
-            .stencil_test_enable(false);
+            .stencil_test_enable(false)
+            .min_depth_bounds(0.0)
+            .max_depth_bounds(1.0);
 
         let pipeline_create_info = vk::GraphicsPipelineCreateInfo::default()
             .stages(&shader_stages)
@@ -442,15 +445,8 @@ impl RenderingContext {
                 .load_op(vk::AttachmentLoadOp::CLEAR)
                 .store_op(vk::AttachmentStoreOp::STORE);
 
-            // keep the array alive so the reference passed to Vulkan is valid
             let color_attachments = [color_attachment];
 
-            let mut rendering_info = vk::RenderingInfo::default()
-                .layer_count(1)
-                .color_attachments(&color_attachments)
-                .render_area(render_area);
-
-            // keep an owned depth attachment alive until after cmd_begin_rendering
             let mut depth_attachment_storage: Option<vk::RenderingAttachmentInfo> = None;
             if let Some(dv) = depth_view {
                 depth_attachment_storage = Some(
@@ -466,10 +462,13 @@ impl RenderingContext {
                         .load_op(vk::AttachmentLoadOp::CLEAR)
                         .store_op(vk::AttachmentStoreOp::STORE),
                 );
-
-                rendering_info =
-                    rendering_info.depth_attachment(depth_attachment_storage.as_ref().unwrap());
             }
+
+            let rendering_info = vk::RenderingInfo::default()
+                .layer_count(1)
+                .color_attachments(&color_attachments)
+                .render_area(render_area)
+                .depth_attachment(depth_attachment_storage.as_ref().unwrap());
 
             self.device
                 .cmd_begin_rendering(command_buffer, &rendering_info);

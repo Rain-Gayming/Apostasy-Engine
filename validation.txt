@@ -1,0 +1,154 @@
+Validation Error: [ VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782 ] | MessageID = 0xed1c6528
+vkCreateGraphicsPipelines(): pCreateInfos[0].pRasterizationState->depthClampEnable is VK_TRUE, but the depthClamp feature was not enabled.
+The Vulkan spec states: If the depthClamp feature is not enabled, depthClampEnable must be VK_FALSE (https://docs.vulkan.org/spec/latest/chapters/primsrast.html#VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782)
+
+Validation Error: [ VUID-VkGraphicsPipelineCreateInfo-Input-07904 ] | MessageID = 0xcc9c32be
+vkCreateGraphicsPipelines(): pCreateInfos[0].pVertexInputState->pVertexAttributeDescriptions does not have a Location 0 but vertex shader has an input variable at that Location. (This can be valid if either the vertexAttributeRobustness or maintenance9 feature is enabled).
+The Vulkan spec states: If the vertexAttributeRobustness feature is not enabled, and the maintenance9 feature is not enabled, and the pipeline is being created with vertex input state and pVertexInputState is not dynamic, then all variables with the Input storage class decorated with Location in the Vertex Execution Model OpEntryPoint must contain a location in VkVertexInputAttributeDescription::location (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-VkGraphicsPipelineCreateInfo-Input-07904)
+Objects: 1
+    [0] VkShaderModule 0xa000000000a
+
+Validation Error: [ VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782 ] | MessageID = 0xed1c6528
+vkCreateGraphicsPipelines(): pCreateInfos[0].pRasterizationState->depthClampEnable is VK_TRUE, but the depthClamp feature was not enabled.
+The Vulkan spec states: If the depthClamp feature is not enabled, depthClampEnable must be VK_FALSE (https://docs.vulkan.org/spec/latest/chapters/primsrast.html#VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782)
+
+Validation Error: [ VUID-VkGraphicsPipelineCreateInfo-Input-07904 ] | MessageID = 0xcc9c32be
+vkCreateGraphicsPipelines(): pCreateInfos[0].pVertexInputState->pVertexAttributeDescriptions does not have a Location 0 but vertex shader has an input variable at that Location. (This can be valid if either the vertexAttributeRobustness or maintenance9 feature is enabled).
+The Vulkan spec states: If the vertexAttributeRobustness feature is not enabled, and the maintenance9 feature is not enabled, and the pipeline is being created with vertex input state and pVertexInputState is not dynamic, then all variables with the Input storage class decorated with Location in the Vertex Execution Model OpEntryPoint must contain a location in VkVertexInputAttributeDescription::location (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-VkGraphicsPipelineCreateInfo-Input-07904)
+Objects: 1
+    [0] VkShaderModule 0x1c000000001c
+
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x130000000013) is being signaled by VkQueue 0x5636b02661e0, but it may still be in use by VkSwapchainKHR 0x150000000015.
+Here are the most recently acquired image indices: [0], 1.
+(brackets mark the last use of VkSemaphore 0x130000000013 in a presentation operation)
+Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x130000000013 may still be in use and cannot be safely reused with image index 1.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
+Objects: 2
+    [0] VkSemaphore 0x130000000013
+    [1] VkQueue 0x5636b02661e0
+
+Validation Error: [ VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782 ] | MessageID = 0xed1c6528
+vkCreateGraphicsPipelines(): pCreateInfos[0].pRasterizationState->depthClampEnable is VK_TRUE, but the depthClamp feature was not enabled.
+The Vulkan spec states: If the depthClamp feature is not enabled, depthClampEnable must be VK_FALSE (https://docs.vulkan.org/spec/latest/chapters/primsrast.html#VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782)
+
+Validation Error: [ VUID-VkGraphicsPipelineCreateInfo-Input-07904 ] | MessageID = 0xcc9c32be
+vkCreateGraphicsPipelines(): pCreateInfos[0].pVertexInputState->pVertexAttributeDescriptions does not have a Location 0 but vertex shader has an input variable at that Location. (This can be valid if either the vertexAttributeRobustness or maintenance9 feature is enabled).
+The Vulkan spec states: If the vertexAttributeRobustness feature is not enabled, and the maintenance9 feature is not enabled, and the pipeline is being created with vertex input state and pVertexInputState is not dynamic, then all variables with the Input storage class decorated with Location in the Vertex Execution Model OpEntryPoint must contain a location in VkVertexInputAttributeDescription::location (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-VkGraphicsPipelineCreateInfo-Input-07904)
+Objects: 1
+    [0] VkShaderModule 0x2a000000002a
+
+Validation Error: [ VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782 ] | MessageID = 0xed1c6528
+vkCreateGraphicsPipelines(): pCreateInfos[0].pRasterizationState->depthClampEnable is VK_TRUE, but the depthClamp feature was not enabled.
+The Vulkan spec states: If the depthClamp feature is not enabled, depthClampEnable must be VK_FALSE (https://docs.vulkan.org/spec/latest/chapters/primsrast.html#VUID-VkPipelineRasterizationStateCreateInfo-depthClampEnable-00782)
+
+Validation Error: [ VUID-VkGraphicsPipelineCreateInfo-Input-07904 ] | MessageID = 0xcc9c32be
+vkCreateGraphicsPipelines(): pCreateInfos[0].pVertexInputState->pVertexAttributeDescriptions does not have a Location 0 but vertex shader has an input variable at that Location. (This can be valid if either the vertexAttributeRobustness or maintenance9 feature is enabled).
+The Vulkan spec states: If the vertexAttributeRobustness feature is not enabled, and the maintenance9 feature is not enabled, and the pipeline is being created with vertex input state and pVertexInputState is not dynamic, then all variables with the Input storage class decorated with Location in the Vertex Execution Model OpEntryPoint must contain a location in VkVertexInputAttributeDescription::location (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-VkGraphicsPipelineCreateInfo-Input-07904)
+Objects: 1
+    [0] VkShaderModule 0x380000000038
+
+Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
+vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x170000000017 is in VK_IMAGE_LAYOUT_UNDEFINED.
+The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
+Objects: 1
+    [0] VkImage 0x170000000017
+
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x130000000013) is being signaled by VkQueue 0x5636b02661e0, but it may still be in use by VkSwapchainKHR 0x310000000031.
+Here are the most recently acquired image indices: [0], 1.
+(brackets mark the last use of VkSemaphore 0x130000000013 in a presentation operation)
+Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x130000000013 may still be in use and cannot be safely reused with image index 1.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
+Objects: 2
+    [0] VkSemaphore 0x130000000013
+    [1] VkQueue 0x5636b02661e0
+
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x130000000013) is being signaled by VkQueue 0x5636b02661e0, but it may still be in use by VkSwapchainKHR 0x310000000031.
+Here are the most recently acquired image indices: 0, [1], 2.
+(brackets mark the last use of VkSemaphore 0x130000000013 in a presentation operation)
+Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x130000000013 may still be in use and cannot be safely reused with image index 2.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
+Objects: 2
+    [0] VkSemaphore 0x130000000013
+    [1] VkQueue 0x5636b02661e0
+
+Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
+vkDestroyPipeline(): can't be called on VkPipeline 0x3e000000003e that is currently in use by VkCommandBuffer 0x5636b0427540.
+The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
+
+Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
+vkFreeMemory(): can't be called on VkDeviceMemory 0x3b000000003b that is currently in use by VkImage 0x3a000000003a.
+The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkCommandBuffer 0x5636b0427540 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkCommandBuffer 0x5636b0427540
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkImage 0x2c000000002c has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkImage 0x2c000000002c
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkImage 0x1e000000001e has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkImage 0x1e000000001e
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkImage 0xc000000000c has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkImage 0xc000000000c
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkSemaphore 0x120000000012 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x120000000012
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkSemaphore 0x130000000013 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x130000000013
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkFence 0x140000000014 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkFence 0x140000000014
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkDeviceMemory 0x2d000000002d has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkDeviceMemory 0x2d000000002d
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkDeviceMemory 0x1f000000001f has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkDeviceMemory 0x1f000000001f
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5636af33ccb0, VkDeviceMemory 0xd000000000d has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkDeviceMemory 0xd000000000d
+
