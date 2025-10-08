@@ -44,7 +44,7 @@ impl Swapchain {
             },
         );
 
-        let mut handle = vk::SwapchainKHR::default();
+        let handle = vk::SwapchainKHR::default();
 
         Ok(Self {
             desired_image_count,

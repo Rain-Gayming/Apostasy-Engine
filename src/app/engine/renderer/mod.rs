@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+mod camera;
 mod swapchain;
 
 use anyhow::Result;

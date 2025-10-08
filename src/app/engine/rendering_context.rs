@@ -1,5 +1,5 @@
 #![allow(unsafe_op_in_unsafe_fn)]
-use std::{collections::HashSet, io, sync::Arc};
+use std::{collections::HashSet, io};
 
 use anyhow::Result;
 use ash::{vk, Entry};

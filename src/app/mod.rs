@@ -1,6 +1,6 @@
 mod engine;
 
-use crate::app::engine::Engine;
+use crate::app::engine::{input_manager::InputManager, Engine};
 use winit::application::ApplicationHandler;
 
 #[derive(Default)]
@@ -30,6 +30,17 @@ impl ApplicationHandler for App {
     fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         if let Some(engine) = &mut self.engine {
             engine.request_redraw(event_loop);
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
+        if let Some(engine) = &mut self.engine {
+            engine.device_event(event_loop, device_id, event);
         }
     }
 }

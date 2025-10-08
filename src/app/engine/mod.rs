@@ -1,13 +1,22 @@
+pub mod input_manager;
 mod renderer;
 mod rendering_context;
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, process, sync::Arc};
 
-use crate::app::engine::{renderer::Renderer, rendering_context::*};
+use crate::app::engine::{
+    input_manager::{
+        is_keybind_name_triggered, process_keyboard_input, update_or_add_keybind, InputManager,
+        Keybind, KeybindInputType,
+    },
+    renderer::Renderer,
+    rendering_context::*,
+};
 use anyhow::Result;
 use winit::{
-    event::WindowEvent,
+    event::{DeviceEvent, WindowEvent},
     event_loop::ActiveEventLoop,
+    keyboard::KeyCode,
     window::{Window, WindowAttributes, WindowId},
 };
 
@@ -16,6 +25,7 @@ pub struct Engine {
     windows: HashMap<WindowId, Arc<Window>>,
     primary_window_id: WindowId,
     rendering_context: Arc<RenderingContext>,
+    input_manager: InputManager,
 }
 
 impl Engine {
@@ -37,11 +47,14 @@ impl Engine {
             })
             .collect::<HashMap<_, _>>();
 
+        let input_manager = InputManager::new();
+
         Ok(Self {
             renderers,
             windows,
             primary_window_id,
             rendering_context,
+            input_manager,
         })
     }
 
@@ -71,10 +84,18 @@ impl Engine {
                     renderer.resize().unwrap();
                 }
             }
-            redraw_event @ WindowEvent::RedrawRequested => {
+            WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     renderer.render().unwrap();
                 }
+            }
+            WindowEvent::KeyboardInput { event, .. } => {
+                process_keyboard_input(&mut self.input_manager, &event);
+
+                println!(
+                    "{}",
+                    is_keybind_name_triggered(&self.input_manager, "move_forwards".to_string())
+                );
             }
             _ => {}
         }
@@ -98,6 +119,17 @@ impl Engine {
     pub fn request_redraw(&self, event_loop: &ActiveEventLoop) {
         for window in self.windows.values() {
             window.request_redraw();
+        }
+    }
+
+    pub fn device_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
+        if let DeviceEvent::MouseMotion { delta: _ } = event {
+            // store mouse movement in somewhere lol
         }
     }
 }
