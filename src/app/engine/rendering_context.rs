@@ -94,14 +94,14 @@ impl RenderingContext {
             let raw_display_handle = attributes.compatability_window.display_handle()?.as_raw();
             let raw_window_handle = attributes.compatability_window.window_handle()?.as_raw();
 
+            let extensions = ash_window::enumerate_required_extensions(raw_display_handle)?;
+
             let instance = entry.create_instance(
                 &vk::InstanceCreateInfo::default()
                     .application_info(
                         &vk::ApplicationInfo::default().api_version(vk::API_VERSION_1_3),
                     )
-                    .enabled_extension_names(ash_window::enumerate_required_extensions(
-                        raw_display_handle,
-                    )?),
+                    .enabled_extension_names(extensions),
                 None,
             )?;
 
@@ -119,7 +119,10 @@ impl RenderingContext {
                 .into_iter()
                 .map(|handle| {
                     let properties = instance.get_physical_device_properties(handle);
-                    let features = instance.get_physical_device_features(handle);
+                    let features = instance
+                        .get_physical_device_features(handle)
+                        .depth_clamp(false)
+                        .depth_bias_clamp(false);
                     let memory_properties = instance.get_physical_device_memory_properties(handle);
                     let queue_family_properties =
                         instance.get_physical_device_queue_family_properties(handle);
