@@ -3,7 +3,7 @@ use std::{collections::HashSet, io};
 
 use anyhow::Result;
 use ash::{
-    vk::{self},
+    vk::{self, VertexInputBindingDescription},
     Entry,
 };
 use winit::{
@@ -356,7 +356,9 @@ impl RenderingContext {
             pipeline_rendering = pipeline_rendering.depth_attachment_format(df);
         }
 
-        let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::default();
+        let binding = &[VertexInputBindingDescription::default()];
+        let vertex_input_state =
+            vk::PipelineVertexInputStateCreateInfo::default().vertex_binding_descriptions(binding);
         let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo::default()
             .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
             .primitive_restart_enable(false);
