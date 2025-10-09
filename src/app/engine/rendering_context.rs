@@ -331,10 +331,8 @@ impl RenderingContext {
             .rasterizer_discard_enable(false)
             .polygon_mode(vk::PolygonMode::FILL)
             .cull_mode(vk::CullModeFlags::NONE)
-            .front_face(vk::FrontFace::CLOCKWISE)
-            .depth_clamp_enable(true)
-            .depth_bias_enable(true)
-            .line_width(1.0);
+            .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
+            .line_width(5.0);
 
         let multisample_state = vk::PipelineMultisampleStateCreateInfo::default()
             .rasterization_samples(vk::SampleCountFlags::TYPE_1)
