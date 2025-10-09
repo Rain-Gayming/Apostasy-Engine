@@ -1,11 +1,8 @@
 use std::sync::{Arc, Mutex};
 
-use nalgebra::{Matrix4, Perspective3, Quaternion, Rotation3, Vector3, Vector4};
+use nalgebra::{Matrix4, Perspective3, Rotation3, Vector3, Vector4};
 
-use crate::app::engine::{
-    input_manager::{is_keybind_name_triggered, InputManager},
-    renderer::camera,
-};
+use crate::app::engine::input_manager::{is_keybind_name_triggered, InputManager};
 
 #[derive(Clone, Copy)]
 pub struct Camera {

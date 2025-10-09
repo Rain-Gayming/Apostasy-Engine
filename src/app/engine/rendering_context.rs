@@ -6,6 +6,7 @@ use ash::{
     vk::{self, VertexInputBindingDescription},
     Entry,
 };
+use nalgebra::Vector3;
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -356,9 +357,26 @@ impl RenderingContext {
             pipeline_rendering = pipeline_rendering.depth_attachment_format(df);
         }
 
-        let binding = &[VertexInputBindingDescription::default()];
-        let vertex_input_state =
-            vk::PipelineVertexInputStateCreateInfo::default().vertex_binding_descriptions(binding);
+        let binding = &[ash::vk::VertexInputBindingDescription {
+            binding: 0,
+            stride: std::mem::size_of::<Vector3<f32>>() as u32,
+            input_rate: ash::vk::VertexInputRate::VERTEX,
+        }];
+        let vertex_input_attribute_descriptions = [ash::vk::VertexInputAttributeDescription {
+            location: 0, // Ensure this matches the shader location
+            binding: 0,
+            format: ash::vk::Format::R32G32B32_SFLOAT,
+            offset: 0,
+        }];
+
+        let vertex_input_state = ash::vk::PipelineVertexInputStateCreateInfo {
+            vertex_binding_description_count: 1,
+            p_vertex_binding_descriptions: binding.as_ptr(),
+            vertex_attribute_description_count: vertex_input_attribute_descriptions.len() as u32,
+            p_vertex_attribute_descriptions: vertex_input_attribute_descriptions.as_ptr(),
+            ..Default::default()
+        };
+
         let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo::default()
             .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
             .primitive_restart_enable(false);

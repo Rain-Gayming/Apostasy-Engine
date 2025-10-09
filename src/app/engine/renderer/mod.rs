@@ -2,13 +2,15 @@ use std::sync::{Arc, Mutex};
 
 pub mod camera;
 mod swapchain;
+pub mod voxel_vertex;
 
 use anyhow::{Ok, Result};
-use ash::vk::{self, ClearColorValue};
+use ash::vk::{self, Buffer, ClearColorValue, MemoryPropertyFlags, PhysicalDeviceMemoryProperties};
 use winit::window::Window;
 
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::swapchain::Swapchain;
+use crate::app::engine::renderer::voxel_vertex::{VoxelVertex, CUBEMESH};
 use crate::app::engine::rendering_context;
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
@@ -35,6 +37,8 @@ pub struct Renderer {
     depth_image: vk::Image,
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
+    vertex_buffers: Vec<Buffer>,
+    vertex_data: Vec<VoxelVertex>,
 }
 use std::fs::{self};
 
@@ -73,24 +77,11 @@ impl Renderer {
                 .device
                 .create_image(&depth_image_create_info, None)?;
             let mem_req = context.device.get_image_memory_requirements(depth_image);
-            fn find_memory_type(
-                type_bits: u32,
-                props: vk::MemoryPropertyFlags,
-                mem_props: &vk::PhysicalDeviceMemoryProperties,
-            ) -> Option<u32> {
-                for (i, mt) in mem_props.memory_types.iter().enumerate() {
-                    if (type_bits & (1 << i)) != 0 && mt.property_flags.contains(props) {
-                        return Some(i as u32);
-                    }
-                }
-                None
-            }
+
             let memory_type = find_memory_type(
                 mem_req.memory_type_bits,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
                 &context.physical_device.memory_properties,
-            )
-            .ok_or_else(|| anyhow::anyhow!("No suitable memory type for depth image"))?;
+            );
 
             let depth_alloc_info = vk::MemoryAllocateInfo::default()
                 .allocation_size(mem_req.size)
@@ -148,7 +139,7 @@ impl Renderer {
             )?;
 
             let mut frames = Vec::with_capacity(command_buffers.len());
-            for (_index, &command_buffer) in command_buffers.iter().enumerate() {
+            for command_buffer in command_buffers.into_iter() {
                 let image_available_semaphore = context
                     .device
                     .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)?;
@@ -167,6 +158,44 @@ impl Renderer {
                     in_flight_fence,
                 });
             }
+            let mut vertex_data: Vec<VoxelVertex> = vec![];
+
+            for vertex in CUBEMESH.iter() {
+                vertex_data.push(VoxelVertex {
+                    position: [vertex[0], vertex[1], vertex[2]],
+                });
+            }
+
+            let vertex_buffer_info = ash::vk::BufferCreateInfo {
+                size: (std::mem::size_of::<VoxelVertex>() * vertex_data.len()) as u64,
+                usage: ash::vk::BufferUsageFlags::VERTEX_BUFFER,
+                sharing_mode: ash::vk::SharingMode::EXCLUSIVE,
+                ..Default::default()
+            };
+            let vertex_buffer: ash::vk::Buffer = context
+                .device
+                .create_buffer(&vertex_buffer_info, None)
+                .expect("Create vertex buffer failed!");
+            let memory_requirements = context.device.get_buffer_memory_requirements(vertex_buffer);
+            let alloc_info = ash::vk::MemoryAllocateInfo {
+                allocation_size: memory_requirements.size,
+                memory_type_index: find_memory_type(
+                    memory_requirements.memory_type_bits,
+                    &context.physical_device.memory_properties,
+                ),
+                ..Default::default()
+            };
+
+            let vertex_buffer_memory: ash::vk::DeviceMemory = context
+                .device
+                .allocate_memory(&alloc_info, None)
+                .expect("Allocate vertex buffer memory failed!");
+
+            // Bind the vertex buffer memory
+            context
+                .device
+                .bind_buffer_memory(vertex_buffer, vertex_buffer_memory, 0)
+                .expect("Bind vertex buffer memory failed!");
 
             Ok(Self {
                 in_flight_frames_count,
@@ -182,6 +211,8 @@ impl Renderer {
                 depth_image,
                 depth_image_memory,
                 depth_image_view,
+                vertex_buffers: vec![vertex_buffer],
+                vertex_data,
             })
         }
     }
@@ -407,6 +438,12 @@ impl Renderer {
             let mut push_data = Vec::with_capacity(std::mem::size_of::<[[f32; 4]; 4]>() * 2);
             push_data.extend_from_slice(view_bytes);
             push_data.extend_from_slice(projection_bytes);
+            self.context.device.cmd_bind_vertex_buffers(
+                frame.command_buffer,
+                0,
+                &[self.vertex_buffers[0]],
+                &[0],
+            );
 
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
@@ -421,13 +458,16 @@ impl Renderer {
                 self.pipeline,
             );
 
-            self.context
-                .device
-                .cmd_draw(frame.command_buffer, 36, 1, 0, 0);
+            self.context.device.cmd_draw(
+                frame.command_buffer,
+                self.vertex_data.len() as u32,
+                1,
+                0,
+                0,
+            );
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
-            // transition image layout to be presented for rendering
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
@@ -440,18 +480,29 @@ impl Renderer {
                 .device
                 .end_command_buffer(frame.command_buffer)?;
 
+            let render_finished_semaphore = self
+                .context
+                .device
+                .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
+                .expect("Create semaphore failed!");
+
+            let image_available_semaphore = &[frame.image_available_semaphore];
+            let render_finished_semaphore_holder = &[render_finished_semaphore];
+            let command_buffer = &[frame.command_buffer];
+            let submit_info = vk::SubmitInfo::default()
+                .wait_semaphores(image_available_semaphore)
+                .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT])
+                .command_buffers(command_buffer)
+                .signal_semaphores(render_finished_semaphore_holder);
+
             self.context.device.queue_submit(
                 self.context.queues[self.context.queue_families.graphics as usize],
-                &[ash::vk::SubmitInfo::default()
-                    .wait_semaphores(&[frame.image_available_semaphore])
-                    .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT])
-                    .command_buffers(&[frame.command_buffer])
-                    .signal_semaphores(&[frame.render_finished_semaphore])],
+                &[submit_info],
                 frame.in_flight_fence,
             )?;
 
             self.swapchain
-                .present(image_index, &frame.render_finished_semaphore)?;
+                .present(image_index, &render_finished_semaphore)?;
 
             Ok(())
         }
@@ -461,10 +512,6 @@ impl Renderer {
 impl Drop for Renderer {
     fn drop(&mut self) {
         unsafe {
-            self.context.device.destroy_pipeline(self.pipeline, None);
-            self.context
-                .device
-                .destroy_pipeline_layout(self.pipeline_layout, None);
             self.context
                 .device
                 .destroy_image_view(self.depth_image_view, None);
@@ -472,6 +519,14 @@ impl Drop for Renderer {
                 .device
                 .free_memory(self.depth_image_memory, None);
             self.context.device.destroy_image(self.depth_image, None);
+
+            for buffer in self.vertex_buffers.iter() {
+                self.context.device.destroy_buffer(*buffer, None);
+            }
+            self.context
+                .device
+                .destroy_pipeline_layout(self.pipeline_layout, None);
+            self.context.device.destroy_pipeline(self.pipeline, None);
         }
     }
 }
@@ -482,4 +537,17 @@ fn load_shader_module(
 ) -> Result<ash::vk::ShaderModule> {
     let code = fs::read(format!("{SHADER_DIR}{path}"))?;
     Ok(context.create_shader_module(&code)?)
+}
+
+pub fn find_memory_type(type_filter: u32, properties: &PhysicalDeviceMemoryProperties) -> u32 {
+    for index in 0..properties.memory_type_count {
+        if (type_filter & (1 << index)) != 0
+            && properties.memory_types[index as usize]
+                .property_flags
+                .contains(MemoryPropertyFlags::HOST_VISIBLE)
+        {
+            return index;
+        }
+    }
+    panic!("Failed to find suitable memory type!");
 }
