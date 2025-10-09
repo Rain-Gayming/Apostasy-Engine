@@ -343,7 +343,7 @@ impl RenderingContext {
 
         let color_attachment = vk::PipelineColorBlendAttachmentState::default()
             .color_write_mask(vk::ColorComponentFlags::RGBA)
-            .blend_enable(true);
+            .blend_enable(false);
 
         let binding = [color_attachment];
         let color_blend_state =
@@ -388,11 +388,7 @@ impl RenderingContext {
         let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfo::default()
             .depth_test_enable(true)
             .depth_write_enable(true)
-            .depth_compare_op(vk::CompareOp::LESS)
-            .depth_bounds_test_enable(false)
-            .stencil_test_enable(false)
-            .min_depth_bounds(0.0)
-            .max_depth_bounds(1.0);
+            .depth_compare_op(vk::CompareOp::LESS);
 
         unsafe {
             let pipeline_create_info = vk::GraphicsPipelineCreateInfo::default()
@@ -403,7 +399,6 @@ impl RenderingContext {
                 .rasterization_state(&rasterization_state)
                 .multisample_state(&multisample_state)
                 .color_blend_state(&color_blend_state)
-                .subpass(0)
                 .render_pass(RenderPass::null())
                 .dynamic_state(&dynamic_state)
                 .layout(pipeline_layout)
@@ -479,25 +474,20 @@ impl RenderingContext {
 
             let color_attachments = [color_attachment];
 
-            let mut depth_attachment_storage: Option<vk::RenderingAttachmentInfo> = None;
-            if let Some(dv) = depth_view {
-                depth_attachment_storage = Some(
-                    vk::RenderingAttachmentInfo::default()
-                        .image_view(dv)
-                        .image_layout(vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
-                        .clear_value(vk::ClearValue {
-                            depth_stencil: depth_clear.unwrap(),
-                        })
-                        .load_op(vk::AttachmentLoadOp::CLEAR)
-                        .store_op(vk::AttachmentStoreOp::STORE),
-                );
-            }
+            let depth_attachment_storage = vk::RenderingAttachmentInfo::default()
+                .image_view(depth_view.unwrap())
+                .image_layout(vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
+                .clear_value(vk::ClearValue {
+                    depth_stencil: depth_clear.unwrap(),
+                })
+                .load_op(vk::AttachmentLoadOp::CLEAR)
+                .store_op(vk::AttachmentStoreOp::STORE);
 
             let rendering_info = vk::RenderingInfo::default()
                 .layer_count(1)
                 .color_attachments(&color_attachments)
                 .render_area(render_area)
-                .depth_attachment(depth_attachment_storage.as_ref().unwrap());
+                .depth_attachment(&depth_attachment_storage);
 
             self.device
                 .cmd_begin_rendering(command_buffer, &rendering_info);
