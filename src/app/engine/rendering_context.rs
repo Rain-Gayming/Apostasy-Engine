@@ -123,9 +123,8 @@ impl RenderingContext {
                 .into_iter()
                 .map(|handle| {
                     let properties = instance.get_physical_device_properties(handle);
-                    let features = instance
-                        .get_physical_device_features(handle)
-                        .depth_clamp(true);
+                    let features = instance.get_physical_device_features(handle);
+
                     let memory_properties = instance.get_physical_device_memory_properties(handle);
                     let queue_family_properties =
                         instance.get_physical_device_queue_family_properties(handle);
@@ -461,8 +460,8 @@ impl RenderingContext {
         view: vk::ImageView,
         clear_color: vk::ClearColorValue,
         render_area: vk::Rect2D,
-        depth_view: Option<vk::ImageView>,
-        depth_clear: Option<vk::ClearDepthStencilValue>,
+        depth_view: vk::ImageView,
+        depth_clear: vk::ClearDepthStencilValue,
     ) {
         unsafe {
             let color_attachment = vk::RenderingAttachmentInfo::default()
@@ -475,10 +474,10 @@ impl RenderingContext {
             let color_attachments = [color_attachment];
 
             let depth_attachment_storage = vk::RenderingAttachmentInfo::default()
-                .image_view(depth_view.unwrap())
+                .image_view(depth_view)
                 .image_layout(vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
                 .clear_value(vk::ClearValue {
-                    depth_stencil: depth_clear.unwrap(),
+                    depth_stencil: depth_clear,
                 })
                 .load_op(vk::AttachmentLoadOp::CLEAR)
                 .store_op(vk::AttachmentStoreOp::STORE);

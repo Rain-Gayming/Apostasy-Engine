@@ -400,11 +400,11 @@ impl Renderer {
                     float32: [0.01, 0.01, 0.01, 1.0],
                 },
                 vk::Rect2D::default().extent(self.swapchain.extent),
-                Some(self.depth_image_view),
-                Some(vk::ClearDepthStencilValue {
+                self.depth_image_view,
+                vk::ClearDepthStencilValue {
                     depth: 1.0,
                     stencil: 0,
-                }), // depth clear
+                }, // depth clear
             );
 
             self.context.device.cmd_set_viewport(

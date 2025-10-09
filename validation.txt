@@ -3,71 +3,71 @@ vkFreeMemory(): can't be called on VkDeviceMemory 0x410000000041 that is current
 The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x150000000015 that is currently in use by VkCommandBuffer 0x5596fa844a50.
+vkDestroyBuffer(): can't be called on VkBuffer 0x150000000015 that is currently in use by VkCommandBuffer 0x55ad247e52f0.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
-vkDestroyPipeline(): can't be called on VkPipeline 0x440000000044 that is currently in use by VkCommandBuffer 0x5596fa844a50.
+vkDestroyPipeline(): can't be called on VkPipeline 0x440000000044 that is currently in use by VkCommandBuffer 0x55ad247e52f0.
 The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkCommandBuffer 0x5596fa844a50 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkCommandBuffer 0x55ad247e52f0 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x5596fa844a50
+    [0] VkCommandBuffer 0x55ad247e52f0
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkImage 0x200000000020 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkImage 0x200000000020 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0x200000000020
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkImage 0x320000000032 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkImage 0x320000000032 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0x320000000032
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkImage 0xc000000000c has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkImage 0xc000000000c has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0xc000000000c
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkSemaphore 0x7e000000007e has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkSemaphore 0x7e000000007e has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0x7e000000007e
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkSemaphore 0xfc00000000fc has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkSemaphore 0xfc00000000fc has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0xfc00000000fc
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkSemaphore 0x17a000000017a has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkSemaphore 0x17a000000017a has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0x17a000000017a
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkSemaphore 0x1d200000001d2 has not been destroyed.
-The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-Objects: 1
-    [0] VkSemaphore 0x1d200000001d2
-
-Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkSemaphore 0xd600000000d6 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkSemaphore 0xd600000000d6 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0xd600000000d6
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyDevice(): Object Tracking - For VkDevice 0x5596fa82fcb0, VkSemaphore 0x2080000000208 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkSemaphore 0x12e000000012e has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x2080000000208
+    [0] VkSemaphore 0x12e000000012e
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ad24809cb0, VkSemaphore 0x540000000054 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x540000000054
 
