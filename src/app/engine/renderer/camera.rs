@@ -83,7 +83,7 @@ pub fn update_camera(camera: Arc<Mutex<Camera>>) {
 }
 
 pub fn get_camera_forward(camera: Arc<Mutex<Camera>>) -> Matrix4<f32> {
-    let mut camera = camera.lock().unwrap();
+    let camera = camera.lock().unwrap();
 
     let forward =
         camera.rotation.try_inverse().unwrap() * Matrix4::new_translation(&-Vector3::z_axis());

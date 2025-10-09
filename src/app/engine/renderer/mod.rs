@@ -400,7 +400,7 @@ impl Renderer {
                     float32: [0.01, 0.01, 0.01, 1.0],
                 },
                 vk::Rect2D::default().extent(self.swapchain.extent),
-                Some(self.depth_image_view), // pass depth view
+                Some(self.depth_image_view),
                 Some(vk::ClearDepthStencilValue {
                     depth: 1.0,
                     stencil: 0,
@@ -438,6 +438,7 @@ impl Renderer {
             let mut push_data = Vec::with_capacity(std::mem::size_of::<[[f32; 4]; 4]>() * 2);
             push_data.extend_from_slice(view_bytes);
             push_data.extend_from_slice(projection_bytes);
+
             self.context.device.cmd_bind_vertex_buffers(
                 frame.command_buffer,
                 0,

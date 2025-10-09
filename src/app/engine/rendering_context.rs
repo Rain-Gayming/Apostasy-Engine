@@ -3,7 +3,10 @@ use std::{collections::HashSet, io};
 
 use anyhow::Result;
 use ash::{
-    vk::{self, VertexInputBindingDescription},
+    vk::{
+        self, AttachmentDescription, PipelineBindPoint, RenderPassCreateInfo,
+        VertexInputBindingDescription,
+    },
     Entry,
 };
 use nalgebra::Vector3;
@@ -390,21 +393,41 @@ impl RenderingContext {
             .min_depth_bounds(0.0)
             .max_depth_bounds(1.0);
 
-        let pipeline_create_info = vk::GraphicsPipelineCreateInfo::default()
-            .stages(&shader_stages)
-            .vertex_input_state(&vertex_input_state)
-            .input_assembly_state(&input_assembly_state)
-            .viewport_state(&viewport_state)
-            .rasterization_state(&rasterization_state)
-            .multisample_state(&multisample_state)
-            .color_blend_state(&color_blend_state)
-            .dynamic_state(&dynamic_state)
-            .layout(pipeline_layout)
-            .render_pass(vk::RenderPass::null())
-            .depth_stencil_state(&depth_stencil_state)
-            .push_next(&mut pipeline_rendering);
-
         unsafe {
+            let render_pass_attachments = &[AttachmentDescription::default()];
+
+            let subpass_description = &[
+                vk::SubpassDescription::default()
+                    .pipeline_bind_point(PipelineBindPoint::GRAPHICS)
+                    .color_attachments(&[vk::AttachmentReference {
+                        attachment: 0, // Index of your color attachment
+                        layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                    }]), //
+            ];
+
+            let render_pass_create_info = RenderPassCreateInfo::default()
+                .subpasses(subpass_description)
+                .attachments(render_pass_attachments);
+
+            let render_pass = self
+                .device
+                .create_render_pass(&render_pass_create_info, None)?;
+
+            let pipeline_create_info = vk::GraphicsPipelineCreateInfo::default()
+                .stages(&shader_stages)
+                .vertex_input_state(&vertex_input_state)
+                .input_assembly_state(&input_assembly_state)
+                .viewport_state(&viewport_state)
+                .rasterization_state(&rasterization_state)
+                .multisample_state(&multisample_state)
+                .color_blend_state(&color_blend_state)
+                .subpass(0)
+                .render_pass(render_pass)
+                .dynamic_state(&dynamic_state)
+                .layout(pipeline_layout)
+                .depth_stencil_state(&depth_stencil_state)
+                .push_next(&mut pipeline_rendering);
+
             let pipelines = self
                 .device
                 .create_graphics_pipelines(pipeline_chache, &[pipeline_create_info], None)
@@ -481,10 +504,7 @@ impl RenderingContext {
                         .image_view(dv)
                         .image_layout(vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
                         .clear_value(vk::ClearValue {
-                            depth_stencil: depth_clear.unwrap_or(vk::ClearDepthStencilValue {
-                                depth: 1.0,
-                                stencil: 0,
-                            }),
+                            depth_stencil: depth_clear.unwrap(),
                         })
                         .load_op(vk::AttachmentLoadOp::CLEAR)
                         .store_op(vk::AttachmentStoreOp::STORE),
