@@ -10,11 +10,17 @@ Validation Error: [ VUID-VkAttachmentDescription-finalLayout-00843 ] | MessageID
 vkCreateRenderPass(): pCreateInfo->pAttachments[0].finalLayout is VK_IMAGE_LAYOUT_UNDEFINED.
 The Vulkan spec states: finalLayout must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT or VK_IMAGE_LAYOUT_PREINITIALIZED (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-finalLayout-00843)
 
-Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed ] | MessageID = 0x9805298c
-vkCreateGraphicsPipelines(): pCreateInfos[0] Inside the fragment shader, it writes to output Location 0 but there is no VkSubpassDescription::pColorAttachments[0] and this write is unused.
-Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
-Objects: 1
-    [0] VkShaderModule 0xb000000000b
+Validation Error: [ VUID-VkAttachmentDescription-samples-parameter ] | MessageID = 0xac53eb38
+vkCreateRenderPass(): pCreateInfo->pAttachments[0].samples is zero.
+The Vulkan spec states: samples must be a valid VkSampleCountFlagBits value (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-samples-parameter)
+
+Validation Error: [ VUID-VkAttachmentDescription-format-06698 ] | MessageID = 0x9245fea0
+vkCreateRenderPass(): pCreateInfo->pAttachments[0].format is VK_FORMAT_UNDEFINED.
+The Vulkan spec states: format must not be VK_FORMAT_UNDEFINED (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-format-06698)
+
+Validation Error: [ VUID-VkAttachmentDescription-finalLayout-00843 ] | MessageID = 0xe5d3919f
+vkCreateRenderPass(): pCreateInfo->pAttachments[0].finalLayout is VK_IMAGE_LAYOUT_UNDEFINED.
+The Vulkan spec states: finalLayout must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT or VK_IMAGE_LAYOUT_PREINITIALIZED (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-finalLayout-00843)
 
 Validation Error: [ VUID-VkAttachmentDescription-samples-parameter ] | MessageID = 0xac53eb38
 vkCreateRenderPass(): pCreateInfo->pAttachments[0].samples is zero.
@@ -28,44 +34,6 @@ Validation Error: [ VUID-VkAttachmentDescription-finalLayout-00843 ] | MessageID
 vkCreateRenderPass(): pCreateInfo->pAttachments[0].finalLayout is VK_IMAGE_LAYOUT_UNDEFINED.
 The Vulkan spec states: finalLayout must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT or VK_IMAGE_LAYOUT_PREINITIALIZED (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-finalLayout-00843)
 
-Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed ] | MessageID = 0x9805298c
-vkCreateGraphicsPipelines(): pCreateInfos[0] Inside the fragment shader, it writes to output Location 0 but there is no VkSubpassDescription::pColorAttachments[0] and this write is unused.
-Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
-Objects: 1
-    [0] VkShaderModule 0x200000000020
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x260000000026 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x260000000026
-    [2] VkRenderPass 0x250000000025
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x260000000026 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x260000000026
-    [2] VkRenderPass 0x250000000025
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x260000000026 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x260000000026
-    [2] VkRenderPass 0x250000000025
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x260000000026 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x260000000026
-    [2] VkRenderPass 0x250000000025
-
 Validation Error: [ VUID-VkAttachmentDescription-samples-parameter ] | MessageID = 0xac53eb38
 vkCreateRenderPass(): pCreateInfo->pAttachments[0].samples is zero.
 The Vulkan spec states: samples must be a valid VkSampleCountFlagBits value (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-samples-parameter)
@@ -77,150 +45,77 @@ The Vulkan spec states: format must not be VK_FORMAT_UNDEFINED (https://docs.vul
 Validation Error: [ VUID-VkAttachmentDescription-finalLayout-00843 ] | MessageID = 0xe5d3919f
 vkCreateRenderPass(): pCreateInfo->pAttachments[0].finalLayout is VK_IMAGE_LAYOUT_UNDEFINED.
 The Vulkan spec states: finalLayout must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT or VK_IMAGE_LAYOUT_PREINITIALIZED (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-finalLayout-00843)
-
-Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed ] | MessageID = 0x9805298c
-vkCreateGraphicsPipelines(): pCreateInfos[0] Inside the fragment shader, it writes to output Location 0 but there is no VkSubpassDescription::pColorAttachments[0] and this write is unused.
-Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
-Objects: 1
-    [0] VkShaderModule 0x330000000033
-
-Validation Error: [ VUID-VkAttachmentDescription-samples-parameter ] | MessageID = 0xac53eb38
-vkCreateRenderPass(): pCreateInfo->pAttachments[0].samples is zero.
-The Vulkan spec states: samples must be a valid VkSampleCountFlagBits value (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-samples-parameter)
-
-Validation Error: [ VUID-VkAttachmentDescription-format-06698 ] | MessageID = 0x9245fea0
-vkCreateRenderPass(): pCreateInfo->pAttachments[0].format is VK_FORMAT_UNDEFINED.
-The Vulkan spec states: format must not be VK_FORMAT_UNDEFINED (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-format-06698)
-
-Validation Error: [ VUID-VkAttachmentDescription-finalLayout-00843 ] | MessageID = 0xe5d3919f
-vkCreateRenderPass(): pCreateInfo->pAttachments[0].finalLayout is VK_IMAGE_LAYOUT_UNDEFINED.
-The Vulkan spec states: finalLayout must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_ZERO_INITIALIZED_EXT or VK_IMAGE_LAYOUT_PREINITIALIZED (https://docs.vulkan.org/spec/latest/chapters/renderpass.html#VUID-VkAttachmentDescription-finalLayout-00843)
-
-Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed ] | MessageID = 0x9805298c
-vkCreateGraphicsPipelines(): pCreateInfos[0] Inside the fragment shader, it writes to output Location 0 but there is no VkSubpassDescription::pColorAttachments[0] and this write is unused.
-Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
-Objects: 1
-    [0] VkShaderModule 0x420000000042
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x480000000048 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x480000000048
-    [2] VkRenderPass 0x470000000047
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x480000000048 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x480000000048
-    [2] VkRenderPass 0x470000000047
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x480000000048 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x480000000048
-    [2] VkRenderPass 0x470000000047
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x480000000048 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x480000000048
-    [2] VkRenderPass 0x470000000047
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x480000000048 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x480000000048
-    [2] VkRenderPass 0x470000000047
-
-Validation Error: [ VUID-vkCmdDraw-renderPass-06198 ] | MessageID = 0xe5d264ee
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkCmdDraw(): Currently bound pipeline VkPipeline 0x480000000048 must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE.
-The Vulkan spec states: If the current render pass instance was begun with vkCmdBeginRendering, the bound pipeline must have been created with a VkGraphicsPipelineCreateInfo::renderPass equal to VK_NULL_HANDLE (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDraw-renderPass-06198)
-Objects: 3
-    [0] VkCommandBuffer 0x563f5833da50
-    [1] VkPipeline 0x480000000048
-    [2] VkRenderPass 0x470000000047
 
 Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
 vkFreeMemory(): can't be called on VkDeviceMemory 0x440000000044 that is currently in use by VkImage 0x430000000043.
 The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x160000000016 that is currently in use by VkCommandBuffer 0x563f5833da50.
+vkDestroyBuffer(): can't be called on VkBuffer 0x160000000016 that is currently in use by VkCommandBuffer 0x558f5124d240.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
-vkDestroyPipeline(): can't be called on VkPipeline 0x480000000048 that is currently in use by VkCommandBuffer 0x563f5833da50.
+vkDestroyPipeline(): can't be called on VkPipeline 0x480000000048 that is currently in use by VkCommandBuffer 0x558f5124d240.
 The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkCommandBuffer 0x563f5833da50 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkCommandBuffer 0x558f5124d240 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x563f5833da50
+    [0] VkCommandBuffer 0x558f5124d240
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkImage 0x340000000034 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkImage 0x340000000034 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0x340000000034
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkImage 0x210000000021 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkImage 0x210000000021 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0x210000000021
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkImage 0xc000000000c has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkImage 0xc000000000c has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0xc000000000c
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkSemaphore 0x7e000000007e has not been destroyed.
-The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-Objects: 1
-    [0] VkSemaphore 0x7e000000007e
-
-Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkSemaphore 0xfc00000000fc has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkSemaphore 0xfc00000000fc has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0xfc00000000fc
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkSemaphore 0x17a000000017a has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkSemaphore 0x1f800000001f8 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x17a000000017a
+    [0] VkSemaphore 0x1f800000001f8
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkSemaphore 0xd600000000d6 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkSemaphore 0x21d000000021d has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0xd600000000d6
+    [0] VkSemaphore 0x21d000000021d
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkSemaphore 0x12e000000012e has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkSemaphore 0x5330000000533 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x12e000000012e
+    [0] VkSemaphore 0x5330000000533
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkSemaphore 0x3a400000003a4 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x3a400000003a4
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
 (Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyDevice(): Object Tracking - For VkDevice 0x563f58328cb0, VkSemaphore 0x540000000054 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x558f50249cb0, VkSemaphore 0x1ac00000001ac has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x540000000054
+    [0] VkSemaphore 0x1ac00000001ac
 

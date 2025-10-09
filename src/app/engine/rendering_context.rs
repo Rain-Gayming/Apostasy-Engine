@@ -4,7 +4,7 @@ use std::{collections::HashSet, io};
 use anyhow::Result;
 use ash::{
     vk::{
-        self, AttachmentDescription, PipelineBindPoint, RenderPassCreateInfo,
+        self, AttachmentDescription, PipelineBindPoint, RenderPass, RenderPassCreateInfo,
         VertexInputBindingDescription,
     },
     Entry,
@@ -343,7 +343,8 @@ impl RenderingContext {
 
         let color_attachment = vk::PipelineColorBlendAttachmentState::default()
             .color_write_mask(vk::ColorComponentFlags::RGBA)
-            .blend_enable(false);
+            .blend_enable(true);
+
         let binding = [color_attachment];
         let color_blend_state =
             vk::PipelineColorBlendStateCreateInfo::default().attachments(&binding);
@@ -394,25 +395,6 @@ impl RenderingContext {
             .max_depth_bounds(1.0);
 
         unsafe {
-            let render_pass_attachments = &[AttachmentDescription::default()];
-
-            let subpass_description = &[
-                vk::SubpassDescription::default()
-                    .pipeline_bind_point(PipelineBindPoint::GRAPHICS)
-                    .color_attachments(&[vk::AttachmentReference {
-                        attachment: 0, // Index of your color attachment
-                        layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-                    }]), //
-            ];
-
-            let render_pass_create_info = RenderPassCreateInfo::default()
-                .subpasses(subpass_description)
-                .attachments(render_pass_attachments);
-
-            let render_pass = self
-                .device
-                .create_render_pass(&render_pass_create_info, None)?;
-
             let pipeline_create_info = vk::GraphicsPipelineCreateInfo::default()
                 .stages(&shader_stages)
                 .vertex_input_state(&vertex_input_state)
@@ -422,7 +404,7 @@ impl RenderingContext {
                 .multisample_state(&multisample_state)
                 .color_blend_state(&color_blend_state)
                 .subpass(0)
-                .render_pass(render_pass)
+                .render_pass(RenderPass::null())
                 .dynamic_state(&dynamic_state)
                 .layout(pipeline_layout)
                 .depth_stencil_state(&depth_stencil_state)
