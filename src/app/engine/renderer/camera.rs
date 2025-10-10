@@ -122,8 +122,8 @@ pub fn handle_camera_input(input_manager: &InputManager, camera: &mut Arc<Mutex<
         camera.velocity.y = 0.0;
     }
 
-    camera.yaw -= input_manager.mouse_delta[0] as f32 / 10.0;
-    camera.pitch -= -input_manager.mouse_delta[1] as f32 / 10.0;
+    camera.yaw += input_manager.mouse_delta[0] as f32 / 10.0;
+    camera.pitch += -input_manager.mouse_delta[1] as f32 / 10.0;
     camera.pitch = camera.pitch.clamp(-80.0, 80.0);
     rotate_camera(&mut camera);
     drop(camera);

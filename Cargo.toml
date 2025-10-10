@@ -12,6 +12,7 @@ cgmath = "0.18.0"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 winit = "0.30.5"
+cargo-mommy = "0.3.1"
 
 [profile.dev]
 opt-level = 1
