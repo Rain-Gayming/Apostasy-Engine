@@ -1,0 +1,7 @@
+initialize_game
+i am being worled
+I am made
+generating test chunk
+creating vertex buffer
+0x5622079c2a00
+36

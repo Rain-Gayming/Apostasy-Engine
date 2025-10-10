@@ -1,46 +1,57 @@
-mod engine;
+pub mod engine;
 
-use crate::app::engine::Engine;
+use crate::{
+    app::engine::Engine,
+    game::{initialize_game, world::chunk_renderer::render_test_chunk, Game},
+};
+use cgmath::Zero;
 use winit::application::ApplicationHandler;
 
 #[derive(Default)]
 pub struct App {
-    engine: Option<Engine>,
+    pub engine: Option<Engine>,
+    pub game: Option<Game>,
 }
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         self.engine = Some(Engine::new(event_loop).unwrap());
+        self.game = Some(initialize_game());
+        render_test_chunk(
+            cgmath::Vector3::zero(),
+            &mut self.engine.as_mut().unwrap().renderer,
+        );
     }
 
-    fn suspended(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+    fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
         self.engine = None;
+        self.game = None
     }
 
     fn window_event(
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
-        window_id: winit::window::WindowId,
+        _window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
         if let Some(engine) = &mut self.engine {
-            engine.window_event(event_loop, window_id, event);
+            engine.window_event(event_loop, event);
         }
     }
 
-    fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+    fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
         if let Some(engine) = &mut self.engine {
-            engine.request_redraw(event_loop);
+            engine.request_redraw();
         }
     }
 
     fn device_event(
         &mut self,
-        event_loop: &winit::event_loop::ActiveEventLoop,
-        device_id: winit::event::DeviceId,
+        _event_loop: &winit::event_loop::ActiveEventLoop,
+        _device_id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
         if let Some(engine) = &mut self.engine {
-            engine.device_event(event_loop, device_id, event);
+            engine.device_event(event);
         }
     }
 }

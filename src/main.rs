@@ -1,9 +1,10 @@
 use anyhow::Result;
 use winit::event_loop::EventLoop;
 
-use crate::app::App;
+use crate::{app::App, game::initialize_game};
 
-mod app;
+pub mod app;
+pub mod game;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();

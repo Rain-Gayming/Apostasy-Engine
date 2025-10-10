@@ -62,6 +62,7 @@ layout(location = 0) in vec3 inPosition;
 
 void main() {
     // apply model, view, then projection
-    gl_Position = pc.proj * pc.view * model * vec4(positions[gl_VertexIndex], 1.0);
+    gl_Position = pc.proj * pc.view * model * vec4(inPosition, 0.0);
+
     fragColor = colors[gl_VertexIndex];
 }

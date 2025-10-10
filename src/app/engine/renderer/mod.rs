@@ -10,8 +10,7 @@ use winit::window::Window;
 
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::swapchain::Swapchain;
-use crate::app::engine::renderer::voxel_vertex::{VoxelVertex, CUBEMESH};
-use crate::app::engine::rendering_context;
+use crate::app::engine::{renderer, rendering_context};
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
 };
@@ -31,18 +30,20 @@ pub struct Renderer {
     pipeline: ash::vk::Pipeline,
     pipeline_layout: ash::vk::PipelineLayout,
     swapchain: Swapchain,
-    context: Arc<RenderingContext>,
+    pub context: Arc<RenderingContext>,
     camera: Arc<Mutex<Camera>>,
     depth_format: vk::Format,
     depth_image: vk::Image,
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
     vertex_buffers: Vec<Buffer>,
-    vertex_data: Vec<VoxelVertex>,
+    vertex_data: u32,
 }
+
 use std::fs::{self};
 
 const SHADER_DIR: &str = "res/shaders/";
+
 impl Renderer {
     pub fn new(
         context: Arc<RenderingContext>,
@@ -158,45 +159,8 @@ impl Renderer {
                     in_flight_fence,
                 });
             }
-            let mut vertex_data: Vec<VoxelVertex> = vec![];
-
-            for vertex in CUBEMESH.iter() {
-                vertex_data.push(VoxelVertex {
-                    position: [vertex[0], vertex[1], vertex[2]],
-                });
-            }
-
-            let vertex_buffer_info = ash::vk::BufferCreateInfo {
-                size: (std::mem::size_of::<VoxelVertex>() * vertex_data.len()) as u64,
-                usage: ash::vk::BufferUsageFlags::VERTEX_BUFFER,
-                sharing_mode: ash::vk::SharingMode::EXCLUSIVE,
-                ..Default::default()
-            };
-            let vertex_buffer: ash::vk::Buffer = context
-                .device
-                .create_buffer(&vertex_buffer_info, None)
-                .expect("Create vertex buffer failed!");
-            let memory_requirements = context.device.get_buffer_memory_requirements(vertex_buffer);
-            let alloc_info = ash::vk::MemoryAllocateInfo {
-                allocation_size: memory_requirements.size,
-                memory_type_index: find_memory_type(
-                    memory_requirements.memory_type_bits,
-                    &context.physical_device.memory_properties,
-                ),
-                ..Default::default()
-            };
-
-            let vertex_buffer_memory: ash::vk::DeviceMemory = context
-                .device
-                .allocate_memory(&alloc_info, None)
-                .expect("Allocate vertex buffer memory failed!");
 
             // Bind the vertex buffer memory
-            context
-                .device
-                .bind_buffer_memory(vertex_buffer, vertex_buffer_memory, 0)
-                .expect("Bind vertex buffer memory failed!");
-
             Ok(Self {
                 in_flight_frames_count,
                 current_frame: 0,
@@ -211,8 +175,8 @@ impl Renderer {
                 depth_image,
                 depth_image_memory,
                 depth_image_view,
-                vertex_buffers: vec![vertex_buffer],
-                vertex_data,
+                vertex_buffers: Vec::new(),
+                vertex_data: 0,
             })
         }
     }
@@ -444,10 +408,9 @@ impl Renderer {
             self.context.device.cmd_bind_vertex_buffers(
                 frame.command_buffer,
                 0,
-                &[self.vertex_buffers[0]],
+                &self.vertex_buffers,
                 &[0],
             );
-
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
                 self.pipeline_layout,
@@ -461,13 +424,9 @@ impl Renderer {
                 self.pipeline,
             );
 
-            self.context.device.cmd_draw(
-                frame.command_buffer,
-                self.vertex_data.len() as u32,
-                1,
-                0,
-                0,
-            );
+            self.context
+                .device
+                .cmd_draw(frame.command_buffer, self.vertex_data, 1, 0, 0);
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
@@ -553,4 +512,40 @@ pub fn find_memory_type(type_filter: u32, properties: &PhysicalDeviceMemoryPrope
         }
     }
     panic!("Failed to find suitable memory type!");
+}
+
+pub fn create_vertex_buffer_from_data(
+    vertex_buffer_info: vk::BufferCreateInfo,
+    renderer: &mut Renderer,
+    vertex_count: usize,
+) {
+    let context = renderer.context.clone();
+    unsafe {
+        let vertex_buffer: ash::vk::Buffer = context
+            .device
+            .create_buffer(&vertex_buffer_info, None)
+            .expect("Create vertex buffer failed!");
+        let memory_requirements = context.device.get_buffer_memory_requirements(vertex_buffer);
+        let alloc_info = ash::vk::MemoryAllocateInfo {
+            allocation_size: memory_requirements.size,
+            memory_type_index: find_memory_type(
+                memory_requirements.memory_type_bits,
+                &context.physical_device.memory_properties,
+            ),
+            ..Default::default()
+        };
+
+        let vertex_buffer_memory: ash::vk::DeviceMemory = context
+            .device
+            .allocate_memory(&alloc_info, None)
+            .expect("Allocate vertex buffer memory failed!");
+
+        context
+            .device
+            .bind_buffer_memory(vertex_buffer, vertex_buffer_memory, 0)
+            .expect("Bind vertex buffer memory failed!");
+
+        renderer.vertex_buffers.push(vertex_buffer);
+        renderer.vertex_data += vertex_count as u32;
+    }
 }

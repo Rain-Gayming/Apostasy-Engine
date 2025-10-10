@@ -3,10 +3,7 @@ use std::{collections::HashSet, io};
 
 use anyhow::Result;
 use ash::{
-    vk::{
-        self, AttachmentDescription, PipelineBindPoint, RenderPass, RenderPassCreateInfo,
-        VertexInputBindingDescription,
-    },
+    vk::{self, RenderPass},
     Entry,
 };
 use cgmath::Vector3;
