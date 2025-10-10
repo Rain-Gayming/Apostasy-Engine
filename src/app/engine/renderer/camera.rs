@@ -1,13 +1,16 @@
 use std::sync::{Arc, Mutex};
 
-use nalgebra::{Matrix4, Perspective3, Rotation3, Vector3, Vector4};
+use cgmath::{
+    Deg, Euler, Matrix4, One, PerspectiveFov, Quaternion, Rotation, Rotation3, Vector3, Vector4,
+    Zero,
+};
 
 use crate::app::engine::input_manager::{is_keybind_name_triggered, InputManager};
 
 #[derive(Clone, Copy)]
 pub struct Camera {
     pub position: Vector3<f32>,
-    pub rotation: Matrix4<f32>,
+    pub rotation: Quaternion<f32>,
     pub velocity: Vector3<f32>,
     pub pitch: f32,
     pub yaw: f32,
@@ -21,14 +24,14 @@ impl Camera {
     pub fn new(position: Vector3<f32>) -> Self {
         Self {
             position,
-            rotation: Matrix4::zeros(),
+            rotation: Quaternion::one(),
             velocity: Vector3::new(0.0, 0.0, 0.0),
             pitch: 0.0,
             yaw: 0.0,
             far: 10000.0,
             near: 0.001,
             fovy: 90.0,
-            projection_matrix: Matrix4::<f32>::zeros(),
+            projection_matrix: Matrix4::<f32>::zero(),
         }
     }
 }
@@ -36,7 +39,14 @@ impl Camera {
 pub fn get_perspective_projection(camera: Arc<Mutex<Camera>>, aspect: f32) -> Matrix4<f32> {
     let mut camera = camera.lock().unwrap();
 
-    let perspective = Perspective3::new(aspect, camera.fovy, camera.near, camera.far).into();
+    let perspective = PerspectiveFov::to_perspective(&PerspectiveFov {
+        fovy: cgmath::Deg(camera.fovy).into(),
+        aspect,
+        near: camera.near,
+        far: camera.far,
+    })
+    .into();
+
     camera.projection_matrix = perspective;
 
     drop(camera);
@@ -44,54 +54,45 @@ pub fn get_perspective_projection(camera: Arc<Mutex<Camera>>, aspect: f32) -> Ma
     perspective
 }
 
-pub fn get_view_matrix(camera: Arc<Mutex<Camera>>) -> nalgebra::Matrix4<f32> {
-    let rotation = get_rotation_matrix(camera.clone());
+pub fn get_view_matrix(camera: Arc<Mutex<Camera>>) -> Matrix4<f32> {
     let camera = camera.lock().unwrap();
-
-    let translation_matrix = &Matrix4::new_translation(&Vector3::new(
+    let view = Matrix4::from(Quaternion::from_sv(
+        camera.rotation.s,
+        Vector3::new(
+            camera.rotation.v.x,
+            camera.rotation.v.y,
+            camera.rotation.v.z,
+        ),
+    )) * Matrix4::from_translation(Vector3::new(
         -camera.position.x,
         -camera.position.y,
         -camera.position.z,
     ));
-
-    Matrix4::from(rotation * translation_matrix)
+    drop(camera);
+    view
 }
 
-pub fn get_rotation_matrix(camera: Arc<Mutex<Camera>>) -> nalgebra::Matrix4<f32> {
-    let mut camera = camera.lock().unwrap();
-    let pitch_rotation = Rotation3::from_axis_angle(&Vector3::x_axis(), camera.pitch);
-    let yaw_rotation = Rotation3::from_axis_angle(&-Vector3::y_axis(), camera.yaw);
-    camera.rotation = Matrix4::from(yaw_rotation) * Matrix4::from(pitch_rotation);
-    drop(camera);
+pub fn rotate_camera(camera: &mut Camera) {
+    camera.rotation = Quaternion::from(Euler {
+        x: Deg(camera.pitch),
+        y: Deg(camera.yaw),
 
-    Matrix4::from(yaw_rotation) * Matrix4::from(pitch_rotation)
+        z: Deg(0.0),
+    });
 }
 
 pub fn update_camera(camera: Arc<Mutex<Camera>>) {
-    // let camera_rotation = get_rotation_matrix(camera.clone());
-
-    let forward = get_camera_forward(camera.clone());
     let mut camera = camera.lock().unwrap();
 
-    let movement_matrix =
-        forward * Vector4::new(camera.velocity.x * 0.2, 0.0, camera.velocity.z * 0.2, 0.0);
+    let header = [camera.pitch, camera.yaw];
+
+    let movement_matrix = Quaternion::from_angle_y(Deg(-header[1]))
+        * Vector3::new(camera.velocity.x, camera.velocity.y, camera.velocity.z);
     let movement_vector = Vector3::new(movement_matrix.x, movement_matrix.y, movement_matrix.z);
 
     camera.position += movement_vector;
-    // println!("{}", camera_rotation);
     drop(camera);
 }
-
-pub fn get_camera_forward(camera: Arc<Mutex<Camera>>) -> Matrix4<f32> {
-    let camera = camera.lock().unwrap();
-
-    let forward =
-        camera.rotation.try_inverse().unwrap() * Matrix4::new_translation(&-Vector3::z_axis());
-
-    drop(camera);
-    forward
-}
-
 pub fn handle_camera_input(input_manager: &InputManager, camera: &mut Arc<Mutex<Camera>>) {
     let mut camera = camera.lock().unwrap();
     //forwards backwards movement
@@ -121,7 +122,9 @@ pub fn handle_camera_input(input_manager: &InputManager, camera: &mut Arc<Mutex<
         camera.velocity.y = 0.0;
     }
 
-    camera.yaw -= input_manager.mouse_delta[0] as f32 / 200.0;
-    camera.pitch -= input_manager.mouse_delta[1] as f32 / 200.0;
+    camera.yaw -= input_manager.mouse_delta[0] as f32 / 10.0;
+    camera.pitch -= -input_manager.mouse_delta[1] as f32 / 10.0;
+    camera.pitch = camera.pitch.clamp(-80.0, 80.0);
+    rotate_camera(&mut camera);
     drop(camera);
 }

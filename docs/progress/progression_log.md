@@ -49,3 +49,27 @@
 #### Handlers:
 
 - added input manager
+
+---
+
+# 9th octover 2025:
+
+**Finished with the depth buffer finally, I missed a variable in the viewport ;~;**
+**Time worked on: 3 hours**
+
+## Project Size:
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 9     | 1535  |
+| GLSL     | 2     | 1     |
+| Total:   | 10    | 1596  |
+
+## Changelog:
+
+### Engine:
+
+#### Renderer:
+
+- added depth buffer fully
+- added vertex buffers

@@ -8,9 +8,7 @@ use std::{
 };
 
 use crate::app::engine::{
-    input_manager::{
-        process_keyboard_input, update_mouse_delta, InputManager,
-    },
+    input_manager::{process_keyboard_input, update_mouse_delta, InputManager},
     renderer::{
         camera::{handle_camera_input, update_camera, Camera},
         Renderer,
@@ -18,7 +16,7 @@ use crate::app::engine::{
     rendering_context::*,
 };
 use anyhow::Result;
-use nalgebra::Vector3;
+use cgmath::Vector3;
 use winit::{
     event::{DeviceEvent, WindowEvent},
     event_loop::ActiveEventLoop,

@@ -9,7 +9,7 @@ use ash::{
     },
     Entry,
 };
-use nalgebra::Vector3;
+use cgmath::Vector3;
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
