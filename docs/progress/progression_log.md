@@ -73,3 +73,33 @@
 
 - added depth buffer fully
 - added vertex buffers
+
+---
+
+# 11th october 2025:
+
+**Finally added an index buffer and fully implimented a seperation of engine and game along with the creation of uniform buffers**
+**Time worked on: 5 hours**
+
+## Project Size:
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 16    | 1785  |
+| GLSL     | 2     | 24    |
+| Total:   | 18    | 1809  |
+
+## Change Log:
+
+### Engine:
+
+#### Renderer:
+
+- added index buffers
+- added uniform buffers
+
+### Game:
+
+#### World:
+
+- added test chunks for world generation
