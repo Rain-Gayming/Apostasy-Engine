@@ -76,7 +76,6 @@ pub fn rotate_camera(camera: &mut Camera) {
     camera.rotation = Quaternion::from(Euler {
         x: Deg(camera.pitch),
         y: Deg(camera.yaw),
-
         z: Deg(0.0),
     });
 }
@@ -90,7 +89,7 @@ pub fn update_camera(camera: Arc<Mutex<Camera>>) {
         * Vector3::new(camera.velocity.x, camera.velocity.y, camera.velocity.z);
     let movement_vector = Vector3::new(movement_matrix.x, movement_matrix.y, movement_matrix.z);
 
-    camera.position += movement_vector;
+    camera.position += movement_vector / 50.0;
     drop(camera);
 }
 pub fn handle_camera_input(input_manager: &InputManager, camera: &mut Arc<Mutex<Camera>>) {

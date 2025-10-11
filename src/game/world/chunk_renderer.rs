@@ -1,11 +1,8 @@
-use std::{os::raw::c_void, ptr::copy_nonoverlapping, slice::from_raw_parts};
-
-use ash::vk::{self, BufferCreateInfo, BufferUsageFlags, MemoryAllocateInfo, SharingMode};
 use cgmath::Vector3;
 
 use crate::{
     app::engine::renderer::{
-        self, create_vertex_buffer_from_data, find_memory_type,
+        create_vertex_buffer_from_data,
         voxel_vertex::{VoxelVertex, CUBEMESH},
         Renderer,
     },

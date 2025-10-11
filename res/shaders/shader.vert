@@ -3,7 +3,7 @@
 
 layout(location = 0) in uvec3 inPosition; // Change to uvec3 for u8 data
 
-layout(location = 1) out vec3 fragColor;
+layout(location = 0) out vec3 fragColor;
 
 mat4 model = mat4(
         1.0, 0.0, 0.0, 0.0,
