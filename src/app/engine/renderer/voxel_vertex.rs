@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct VoxelVertex {
     pub position: [u8; 3],
 }

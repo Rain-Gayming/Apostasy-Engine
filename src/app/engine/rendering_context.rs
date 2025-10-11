@@ -181,7 +181,8 @@ impl RenderingContext {
                     .enabled_features(
                         &vk::PhysicalDeviceFeatures::default()
                             .depth_bias_clamp(true)
-                            .depth_clamp(true),
+                            .depth_clamp(true)
+                            .fill_mode_non_solid(true),
                     )
                     .push_next(
                         &mut vk::PhysicalDeviceDynamicRenderingFeatures::default()
@@ -326,10 +327,10 @@ impl RenderingContext {
 
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo::default()
             .rasterizer_discard_enable(false)
-            .polygon_mode(vk::PolygonMode::FILL)
+            .polygon_mode(vk::PolygonMode::LINE)
             .cull_mode(vk::CullModeFlags::NONE)
             .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
-            .line_width(5.0);
+            .line_width(1.0);
 
         let multisample_state = vk::PipelineMultisampleStateCreateInfo::default()
             .rasterization_samples(vk::SampleCountFlags::TYPE_1)
@@ -361,9 +362,9 @@ impl RenderingContext {
             input_rate: ash::vk::VertexInputRate::VERTEX,
         }];
         let vertex_input_attribute_descriptions = [ash::vk::VertexInputAttributeDescription {
-            location: 0, // Ensure this matches the shader location
+            location: 0,
             binding: 0,
-            format: ash::vk::Format::R32G32B32_SFLOAT,
+            format: ash::vk::Format::R8G8B8_UINT,
             offset: 0,
         }];
 

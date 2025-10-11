@@ -1,9 +1,11 @@
-use ash::vk::BufferCreateInfo;
+use std::{os::raw::c_void, ptr::copy_nonoverlapping, slice::from_raw_parts};
+
+use ash::vk::{self, BufferCreateInfo, BufferUsageFlags, MemoryAllocateInfo, SharingMode};
 use cgmath::Vector3;
 
 use crate::{
     app::engine::renderer::{
-        self, create_vertex_buffer_from_data,
+        self, create_vertex_buffer_from_data, find_memory_type,
         voxel_vertex::{VoxelVertex, CUBEMESH},
         Renderer,
     },
@@ -24,11 +26,5 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
         }
     }
 
-    let vertex_buffer_info = BufferCreateInfo {
-        size: (std::mem::size_of::<VoxelVertex>() * vertex_data.len()) as u64,
-        usage: ash::vk::BufferUsageFlags::VERTEX_BUFFER,
-        sharing_mode: ash::vk::SharingMode::EXCLUSIVE,
-        ..Default::default()
-    };
-    create_vertex_buffer_from_data(vertex_buffer_info, renderer, vertex_data.len());
+    create_vertex_buffer_from_data(renderer, vertex_data);
 }

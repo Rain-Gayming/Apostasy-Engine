@@ -1,7 +1,221 @@
-initialize_game
-i am being worled
-I am made
-generating test chunk
-creating vertex buffer
-0x5622079c2a00
-36
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x280000000028
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x290000000029
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x280000000028
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x290000000029
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
+vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x1e000000001e is in VK_IMAGE_LAYOUT_UNDEFINED.
+The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
+Objects: 1
+    [0] VkImage 0x1e000000001e
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-vkCmdBindDescriptorSets-firstSet-00360 ] | MessageID = 0x1893ae29
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkCmdBindDescriptorSets(): firstSet (0) plus descriptorSetCount (1) is greater than VkPipelineLayoutCreateInfo::setLayoutCount (0) when pipeline layout was created.
+The Vulkan spec states: The sum of firstSet and descriptorSetCount must be less than or equal to VkPipelineLayoutCreateInfo::setLayoutCount provided when layout was created (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-firstSet-00360)
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipelineLayout 0x460000000046
+
+Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed-DynamicRendering ] | MessageID = 0x46877e3e
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkCmdDraw(): Inside the fragment shader, it writes to output Location 1 but there is no VkRenderingInfo::pColorAttachments[1] and this write is unused.
+Spec information at https://docs.vulkan.org/spec/latest/chapters/interfaces.html#interfaces-fragmentoutput
+Objects: 2
+    [0] VkCommandBuffer 0x5574d80022a0
+    [1] VkPipeline 0x470000000047
+
+Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
+vkFreeMemory(): can't be called on VkDeviceMemory 0x440000000044 that is currently in use by VkImage 0x430000000043.
+The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x150000000015 that is currently in use by VkCommandBuffer 0x5574d80022a0.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
+vkDestroyPipeline(): can't be called on VkPipeline 0x470000000047 that is currently in use by VkCommandBuffer 0x5574d80022a0.
+The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkCommandBuffer 0x5574d80022a0 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkCommandBuffer 0x5574d80022a0
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkBuffer 0x170000000017 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkBuffer 0x170000000017
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkImage 0x350000000035 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkImage 0x350000000035
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkImage 0x250000000025 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkImage 0x250000000025
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkImage 0xc000000000c has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkImage 0xc000000000c
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkSemaphore 0xfc00000000fc has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0xfc00000000fc
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkSemaphore 0x1f800000001f8 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x1f800000001f8
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkSemaphore 0x21d000000021d has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x21d000000021d
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkSemaphore 0x5330000000533 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x5330000000533
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5574d8026c60, VkSemaphore 0x7c700000007c7 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x7c700000007c7
+

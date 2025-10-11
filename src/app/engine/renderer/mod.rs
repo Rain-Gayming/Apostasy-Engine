@@ -1,3 +1,5 @@
+use std::os::raw::c_void;
+use std::slice::from_raw_parts;
 use std::sync::{Arc, Mutex};
 
 pub mod camera;
@@ -5,11 +7,15 @@ mod swapchain;
 pub mod voxel_vertex;
 
 use anyhow::{Ok, Result};
-use ash::vk::{self, Buffer, ClearColorValue, MemoryPropertyFlags, PhysicalDeviceMemoryProperties};
+use ash::vk::{
+    self, Buffer, BufferCreateInfo, BufferUsageFlags, ClearColorValue, MemoryAllocateInfo,
+    MemoryPropertyFlags, PhysicalDeviceMemoryProperties, SharingMode,
+};
 use winit::window::Window;
 
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::swapchain::Swapchain;
+use crate::app::engine::renderer::voxel_vertex::VoxelVertex;
 use crate::app::engine::{renderer, rendering_context};
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
@@ -38,6 +44,10 @@ pub struct Renderer {
     depth_image_view: vk::ImageView,
     vertex_buffers: Vec<Buffer>,
     vertex_data: u32,
+    uniform_buffers: Vec<Buffer>,
+    descriptor_sets: Vec<vk::DescriptorSet>,
+    descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
+    descriptor_pools: Vec<vk::DescriptorPool>,
 }
 
 use std::fs::{self};
@@ -177,6 +187,10 @@ impl Renderer {
                 depth_image_view,
                 vertex_buffers: Vec::new(),
                 vertex_data: 0,
+                uniform_buffers: Vec::new(),
+                descriptor_sets: Vec::new(),
+                descriptor_pools: Vec::new(),
+                descriptor_set_layouts: Vec::new(),
             })
         }
     }
@@ -404,7 +418,6 @@ impl Renderer {
             let mut push_data = Vec::with_capacity(std::mem::size_of::<[[f32; 4]; 4]>() * 2);
             push_data.extend_from_slice(view_bytes);
             push_data.extend_from_slice(projection_bytes);
-
             self.context.device.cmd_bind_vertex_buffers(
                 frame.command_buffer,
                 0,
@@ -418,6 +431,18 @@ impl Renderer {
                 0,
                 &push_data,
             );
+
+            for set in self.descriptor_sets.iter() {
+                self.context.device.cmd_bind_descriptor_sets(
+                    frame.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.pipeline_layout,
+                    0,
+                    &[*set],
+                    &[0],
+                );
+            }
+
             self.context.device.cmd_bind_pipeline(
                 frame.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -485,6 +510,7 @@ impl Drop for Renderer {
             for buffer in self.vertex_buffers.iter() {
                 self.context.device.destroy_buffer(*buffer, None);
             }
+
             self.context
                 .device
                 .destroy_pipeline_layout(self.pipeline_layout, None);
@@ -513,20 +539,28 @@ pub fn find_memory_type(type_filter: u32, properties: &PhysicalDeviceMemoryPrope
     }
     panic!("Failed to find suitable memory type!");
 }
-
-pub fn create_vertex_buffer_from_data(
-    vertex_buffer_info: vk::BufferCreateInfo,
-    renderer: &mut Renderer,
-    vertex_count: usize,
-) {
+pub fn create_vertex_buffer_from_data(renderer: &mut Renderer, vertex_data: Vec<VoxelVertex>) {
+    let vertex_count = vertex_data.len();
     let context = renderer.context.clone();
+
     unsafe {
-        let vertex_buffer: ash::vk::Buffer = context
+        let buffer_size = (size_of::<VoxelVertex>() * vertex_data.len()) as u64;
+
+        let vertex_buffer_info = BufferCreateInfo {
+            size: buffer_size,
+            usage: BufferUsageFlags::VERTEX_BUFFER,
+            sharing_mode: SharingMode::EXCLUSIVE,
+            ..Default::default()
+        };
+
+        let vertex_buffer = context
             .device
             .create_buffer(&vertex_buffer_info, None)
             .expect("Create vertex buffer failed!");
+
         let memory_requirements = context.device.get_buffer_memory_requirements(vertex_buffer);
-        let alloc_info = ash::vk::MemoryAllocateInfo {
+
+        let alloc_info = MemoryAllocateInfo {
             allocation_size: memory_requirements.size,
             memory_type_index: find_memory_type(
                 memory_requirements.memory_type_bits,
@@ -535,7 +569,7 @@ pub fn create_vertex_buffer_from_data(
             ..Default::default()
         };
 
-        let vertex_buffer_memory: ash::vk::DeviceMemory = context
+        let vertex_buffer_memory = context
             .device
             .allocate_memory(&alloc_info, None)
             .expect("Allocate vertex buffer memory failed!");
@@ -545,7 +579,160 @@ pub fn create_vertex_buffer_from_data(
             .bind_buffer_memory(vertex_buffer, vertex_buffer_memory, 0)
             .expect("Bind vertex buffer memory failed!");
 
+        let data_ptr = context
+            .device
+            .map_memory(
+                vertex_buffer_memory,
+                0,
+                buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )
+            .expect("Map memory failed!");
+
+        std::ptr::copy_nonoverlapping(
+            vertex_data.as_ptr() as *const c_void,
+            data_ptr,
+            buffer_size as usize,
+        );
+
+        context.device.unmap_memory(vertex_buffer_memory);
+
+        // === UNIFORM BUFFERS === //
+
+        let positions: Vec<[u8; 3]> = vertex_data.iter().map(|v| v.position).collect();
+        let uniform_buffer_size = (size_of::<[u8; 3]>() * positions.len()) as u64;
+
+        let uniform_buffer_info = vk::BufferCreateInfo {
+            size: uniform_buffer_size,
+            usage: BufferUsageFlags::UNIFORM_BUFFER,
+            sharing_mode: SharingMode::EXCLUSIVE,
+            ..Default::default()
+        };
+
+        let uniform_buffer = context
+            .device
+            .create_buffer(&uniform_buffer_info, None)
+            .expect("Create uniform buffer failed");
+
+        let uniform_memory_requirements = context
+            .device
+            .get_buffer_memory_requirements(uniform_buffer);
+
+        let uniform_allocation_info = MemoryAllocateInfo {
+            allocation_size: uniform_memory_requirements.size,
+            memory_type_index: find_memory_type(
+                uniform_memory_requirements.memory_type_bits,
+                &context.physical_device.memory_properties,
+            ),
+            ..Default::default()
+        };
+
+        let uniform_memory = context
+            .device
+            .allocate_memory(&uniform_allocation_info, None)
+            .expect("Allocate uniform memory failed");
+
+        context
+            .device
+            .bind_buffer_memory(uniform_buffer, uniform_memory, 0)
+            .expect("Bind uniform buffer memory failed");
+
+        let uniform_data_ptr = context
+            .device
+            .map_memory(
+                uniform_memory,
+                0,
+                uniform_buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )
+            .expect("Map uniform memory failed");
+
+        std::ptr::copy_nonoverlapping(
+            positions.as_ptr() as *const c_void,
+            uniform_data_ptr,
+            uniform_buffer_size as usize,
+        );
+
+        context.device.unmap_memory(uniform_memory);
+
+        let pool_size = vk::DescriptorPoolSize {
+            ty: vk::DescriptorType::UNIFORM_BUFFER,
+            descriptor_count: 1,
+        };
+
+        let descriptor_pool_info = vk::DescriptorPoolCreateInfo {
+            max_sets: 1,
+            pool_size_count: 1,
+            p_pool_sizes: &pool_size,
+            ..Default::default()
+        };
+
+        let descriptor_pool = context
+            .device
+            .create_descriptor_pool(&descriptor_pool_info, None)
+            .expect("Create descriptor pool failed");
+
+        let ubo_binding = vk::DescriptorSetLayoutBinding {
+            binding: 0,
+            descriptor_type: vk::DescriptorType::UNIFORM_BUFFER,
+            descriptor_count: 1,
+            stage_flags: vk::ShaderStageFlags::VERTEX,
+            ..Default::default()
+        };
+
+        let layout_info = vk::DescriptorSetLayoutCreateInfo {
+            binding_count: 1,
+            p_bindings: &ubo_binding,
+            ..Default::default()
+        };
+
+        let descriptor_set_layout = context
+            .device
+            .create_descriptor_set_layout(&layout_info, None)
+            .expect("Create descriptor set layout failed");
+
+        let alloc_info = vk::DescriptorSetAllocateInfo {
+            descriptor_pool,
+            descriptor_set_count: 1,
+            p_set_layouts: &descriptor_set_layout,
+            ..Default::default()
+        };
+
+        let ubo_descriptor_set = context
+            .device
+            .allocate_descriptor_sets(&alloc_info)
+            .expect("Allocate descriptor sets failed")[0];
+
+        let buffer_info = vk::DescriptorBufferInfo {
+            buffer: uniform_buffer,
+            offset: 0,
+            range: uniform_buffer_size,
+        };
+
+        let write_descriptor_set = vk::WriteDescriptorSet {
+            dst_set: ubo_descriptor_set,
+            dst_binding: 0,
+            dst_array_element: 0,
+            descriptor_count: 1,
+            descriptor_type: vk::DescriptorType::UNIFORM_BUFFER,
+            p_buffer_info: &buffer_info,
+            ..Default::default()
+        };
+
+        context
+            .device
+            .update_descriptor_sets(&[write_descriptor_set], &[]);
+
+        renderer
+            .context
+            .device
+            .update_descriptor_sets(&[write_descriptor_set], &[]);
+
         renderer.vertex_buffers.push(vertex_buffer);
+        renderer.uniform_buffers.push(uniform_buffer);
+        renderer.descriptor_sets.push(ubo_descriptor_set);
+        renderer.descriptor_set_layouts.push(descriptor_set_layout);
+        renderer.descriptor_pools.push(descriptor_pool);
         renderer.vertex_data += vertex_count as u32;
     }
 }
