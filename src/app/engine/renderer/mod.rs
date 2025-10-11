@@ -1,5 +1,4 @@
 use std::os::raw::c_void;
-use std::slice::from_raw_parts;
 use std::sync::{Arc, Mutex};
 
 pub mod camera;
@@ -17,7 +16,7 @@ use winit::window::Window;
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::swapchain::Swapchain;
 use crate::app::engine::renderer::voxel_vertex::VoxelVertex;
-use crate::app::engine::{renderer, rendering_context};
+use crate::app::engine::rendering_context;
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
 };
@@ -120,6 +119,7 @@ impl Renderer {
                 .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
                 .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::VERTEX);
+
             let ubo_layout_output = &[ubo_layout_binding];
             let ubo_layout_create_info =
                 DescriptorSetLayoutCreateInfo::default().bindings(ubo_layout_output);
@@ -430,7 +430,7 @@ impl Renderer {
                     self.pipeline_layout,
                     0,
                     &[*set],
-                    &[0],
+                    &[],
                 );
             }
 

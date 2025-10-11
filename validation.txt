@@ -1,140 +1,79 @@
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
 Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
 vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x1f000000001f is in VK_IMAGE_LAYOUT_UNDEFINED.
 The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
 Objects: 1
     [0] VkImage 0x1f000000001f
 
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
-Validation Error: [ VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359 ] | MessageID = 0x82756c54
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkCmdBindDescriptorSets(): Attempting to bind 1 descriptorSets with 0 dynamic descriptors, but dynamicOffsetCount is 1. It should exactly match the number of dynamic descriptors.
-The Vulkan spec states: dynamicOffsetCount must be equal to the total number of dynamic descriptors in pDescriptorSets (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdBindDescriptorSets-dynamicOffsetCount-00359)
-Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
-
 Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
-vkFreeMemory(): can't be called on VkDeviceMemory 0x16b000000016b that is currently in use by VkImage 0x16a000000016a.
+vkFreeMemory(): can't be called on VkDeviceMemory 0x410000000041 that is currently in use by VkImage 0x400000000040.
 The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x160000000016 that is currently in use by VkCommandBuffer 0x55e27ac4c2a0.
+vkDestroyBuffer(): can't be called on VkBuffer 0x160000000016 that is currently in use by VkCommandBuffer 0x557495d9a2a0.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
-vkDestroyPipeline(): can't be called on VkPipeline 0x110000000011 that is currently in use by VkCommandBuffer 0x55e27ac4c2a0.
+vkDestroyPipeline(): can't be called on VkPipeline 0x110000000011 that is currently in use by VkCommandBuffer 0x557495d9a2a0.
 The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkCommandBuffer 0x55e27ac4c2a0 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkCommandBuffer 0x557495d9a2a0 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x55e27ac4c2a0
+    [0] VkCommandBuffer 0x557495d9a2a0
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkBuffer 0x180000000018 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkBuffer 0x180000000018 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkBuffer 0x180000000018
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkImage 0x400000000040 has not been destroyed.
-The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-Objects: 1
-    [0] VkImage 0x400000000040
-
-Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkImage 0x340000000034 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkImage 0x340000000034 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0x340000000034
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkImage 0xc000000000c has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkImage 0xc000000000c has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0xc000000000c
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkImage 0x260000000026 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkImage 0x260000000026 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0x260000000026
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkSemaphore 0x21d000000021d has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0x7e000000007e has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x21d000000021d
+    [0] VkSemaphore 0x7e000000007e
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkSemaphore 0xa660000000a66 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0xfc00000000fc has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0xa660000000a66
+    [0] VkSemaphore 0xfc00000000fc
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkSemaphore 0x7c700000007c7 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0x17a000000017a has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x7c700000007c7
+    [0] VkSemaphore 0x17a000000017a
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0x1d200000001d2 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkSemaphore 0x1d200000001d2
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
 (Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55e27ac70c60, VkSemaphore 0x7450000000745 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0xd600000000d6 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x7450000000745
+    [0] VkSemaphore 0xd600000000d6
 
