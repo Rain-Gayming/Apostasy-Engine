@@ -8,14 +8,14 @@ pub mod voxel_vertex;
 use anyhow::{Ok, Result};
 use ash::vk::{
     self, Buffer, BufferCreateInfo, BufferUsageFlags, ClearColorValue, DescriptorSetLayoutBinding,
-    DescriptorSetLayoutCreateInfo, MemoryAllocateInfo, MemoryPropertyFlags,
+    DescriptorSetLayoutCreateInfo, DeviceMemory, MemoryAllocateInfo, MemoryPropertyFlags,
     PhysicalDeviceMemoryProperties, SharingMode,
 };
 use winit::window::Window;
 
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::swapchain::Swapchain;
-use crate::app::engine::renderer::voxel_vertex::VoxelVertex;
+use crate::app::engine::renderer::voxel_vertex::{VoxelVertex, CUBE_INDICES};
 use crate::app::engine::rendering_context;
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
@@ -48,6 +48,7 @@ pub struct Renderer {
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
     descriptor_pools: Vec<vk::DescriptorPool>,
+    index_buffers: Vec<Buffer>,
 }
 
 use std::fs::{self};
@@ -205,6 +206,7 @@ impl Renderer {
                 descriptor_sets: Vec::new(),
                 descriptor_pools: Vec::new(),
                 descriptor_set_layouts: Vec::new(),
+                index_buffers: Vec::new(),
             })
         }
     }
@@ -212,8 +214,6 @@ impl Renderer {
     pub fn update_depth_buffer(&mut self) -> Result<()> {
         let depth_format = vk::Format::D32_SFLOAT;
 
-        let vertex_shader = load_shader_module(&self.context, "vert.spv")?;
-        let fragment_shader = load_shader_module(&self.context, "frag.spv")?;
         let depth_image_create_info = vk::ImageCreateInfo::default()
             .image_type(vk::ImageType::TYPE_2D)
             .format(depth_format)
@@ -415,6 +415,12 @@ impl Renderer {
                 &self.vertex_buffers,
                 &[0],
             );
+            self.context.device.cmd_bind_index_buffer(
+                frame.command_buffer,
+                self.index_buffers[0],
+                0,
+                vk::IndexType::UINT8_EXT,
+            );
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
                 self.pipeline_layout,
@@ -530,7 +536,11 @@ pub fn find_memory_type(type_filter: u32, properties: &PhysicalDeviceMemoryPrope
     }
     panic!("Failed to find suitable memory type!");
 }
-pub fn create_vertex_buffer_from_data(renderer: &mut Renderer, vertex_data: Vec<VoxelVertex>) {
+pub fn create_vertex_buffer_from_data(
+    renderer: &mut Renderer,
+    vertex_data: Vec<VoxelVertex>,
+    index_data: Vec<u8>,
+) {
     let vertex_count = vertex_data.len();
     let context = renderer.context.clone();
 
@@ -710,6 +720,61 @@ pub fn create_vertex_buffer_from_data(renderer: &mut Renderer, vertex_data: Vec<
             ..Default::default()
         };
 
+        // === INDEX BUFFER === //
+
+        let index_buffer_size = (size_of::<u8>() * index_data.len()) as u64;
+
+        let index_buffer_info = BufferCreateInfo {
+            size: index_buffer_size,
+            usage: BufferUsageFlags::VERTEX_BUFFER,
+            sharing_mode: SharingMode::EXCLUSIVE,
+            ..Default::default()
+        };
+
+        let index_buffer = context
+            .device
+            .create_buffer(&index_buffer_info, None)
+            .expect("Create vertex buffer failed!");
+
+        let index_memory_requirements = context.device.get_buffer_memory_requirements(index_buffer);
+
+        let index_alloc_info = MemoryAllocateInfo {
+            allocation_size: index_memory_requirements.size,
+            memory_type_index: find_memory_type(
+                index_memory_requirements.memory_type_bits,
+                &context.physical_device.memory_properties,
+            ),
+            ..Default::default()
+        };
+
+        let index_buffer_memory = context
+            .device
+            .allocate_memory(&index_alloc_info, None)
+            .expect("Allocate vertex buffer memory failed!");
+
+        context
+            .device
+            .bind_buffer_memory(index_buffer, index_buffer_memory, 0)
+            .expect("Bind index buffer memory failed!");
+
+        let data_ptr = context
+            .device
+            .map_memory(
+                index_buffer_memory,
+                0,
+                index_buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )
+            .expect("Map memory failed!");
+
+        std::ptr::copy_nonoverlapping(
+            index_data.as_ptr() as *const c_void,
+            data_ptr,
+            index_buffer_size as usize,
+        );
+
+        context.device.unmap_memory(index_buffer_memory);
+
         context
             .device
             .update_descriptor_sets(&[write_descriptor_set], &[]);
@@ -721,6 +786,7 @@ pub fn create_vertex_buffer_from_data(renderer: &mut Renderer, vertex_data: Vec<
 
         renderer.vertex_buffers.push(vertex_buffer);
         renderer.uniform_buffers.push(uniform_buffer);
+        renderer.index_buffers.push(index_buffer);
         renderer.descriptor_sets.push(ubo_descriptor_set);
         renderer.descriptor_set_layouts.push(descriptor_set_layout);
         renderer.descriptor_pools.push(descriptor_pool);

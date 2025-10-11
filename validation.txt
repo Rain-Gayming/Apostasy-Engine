@@ -1,79 +1,272 @@
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
 Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
-vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x1f000000001f is in VK_IMAGE_LAYOUT_UNDEFINED.
+vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x220000000022 is in VK_IMAGE_LAYOUT_UNDEFINED.
 The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
 Objects: 1
-    [0] VkImage 0x1f000000001f
+    [0] VkImage 0x220000000022
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-parameter ] | MessageID = 0xaa56ad16
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkCmdBindIndexBuffer(): indexType (VK_INDEX_TYPE_UINT8) requires the extensions VK_KHR_index_type_uint8 or VK_EXT_index_type_uint8.
+The Vulkan spec states: indexType must be a valid VkIndexType value (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-parameter)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-indexType-08787 ] | MessageID = 0x3c94030e
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkCmdBindIndexBuffer(): indexType is VK_INDEX_TYPE_UINT8 but indexTypeUint8 feature was not enabled.
+The Vulkan spec states: If indexType is VK_INDEX_TYPE_UINT8, the indexTypeUint8 feature must be enabled (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-indexType-08787)
+Objects: 1
+    [0] VkCommandBuffer 0x563147fe62a0
+
+Validation Error: [ VUID-vkCmdBindIndexBuffer-buffer-08784 ] | MessageID = 0xa736eee3
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkCmdBindIndexBuffer(): buffer (VkBuffer 0x1d000000001d) was created with VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT but requires VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT.
+The Vulkan spec states: buffer must have been created with the VK_BUFFER_USAGE_INDEX_BUFFER_BIT flag (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdBindIndexBuffer-buffer-08784)
+Objects: 2
+    [0] VkCommandBuffer 0x563147fe62a0
+    [1] VkBuffer 0x1d000000001d
 
 Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
-vkFreeMemory(): can't be called on VkDeviceMemory 0x410000000041 that is currently in use by VkImage 0x400000000040.
+vkFreeMemory(): can't be called on VkDeviceMemory 0x3e000000003e that is currently in use by VkImage 0x3d000000003d.
 The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x160000000016 that is currently in use by VkCommandBuffer 0x557495d9a2a0.
+vkDestroyBuffer(): can't be called on VkBuffer 0x160000000016 that is currently in use by VkCommandBuffer 0x563147fe62a0.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
-vkDestroyPipeline(): can't be called on VkPipeline 0x110000000011 that is currently in use by VkCommandBuffer 0x557495d9a2a0.
+vkDestroyPipeline(): can't be called on VkPipeline 0x110000000011 that is currently in use by VkCommandBuffer 0x563147fe62a0.
 The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkCommandBuffer 0x557495d9a2a0 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkCommandBuffer 0x563147fe62a0 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x557495d9a2a0
+    [0] VkCommandBuffer 0x563147fe62a0
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkBuffer 0x180000000018 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkBuffer 0x1d000000001d has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkBuffer 0x1d000000001d
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkBuffer 0x180000000018 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkBuffer 0x180000000018
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkImage 0x340000000034 has not been destroyed.
-The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-Objects: 1
-    [0] VkImage 0x340000000034
-
-Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkImage 0xc000000000c has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkImage 0xc000000000c has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0xc000000000c
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkImage 0x260000000026 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkImage 0x330000000033 has not been destroyed.
+The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
+Objects: 1
+    [0] VkImage 0x330000000033
+
+Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkImage 0x260000000026 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkImage 0x260000000026
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0x7e000000007e has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkSemaphore 0x7e000000007e has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0x7e000000007e
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0xfc00000000fc has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkSemaphore 0xfc00000000fc has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0xfc00000000fc
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0x17a000000017a has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkSemaphore 0x17a000000017a has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0x17a000000017a
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0x1d200000001d2 has not been destroyed.
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkDestroyDevice(): Object Tracking - For VkDevice 0x56314800ac60, VkSemaphore 0x1d200000001d2 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
     [0] VkSemaphore 0x1d200000001d2
-
-Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyDevice(): Object Tracking - For VkDevice 0x557495dbec60, VkSemaphore 0xd600000000d6 has not been destroyed.
-The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-Objects: 1
-    [0] VkSemaphore 0xd600000000d6
 
