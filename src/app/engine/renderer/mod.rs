@@ -8,8 +8,9 @@ pub mod voxel_vertex;
 
 use anyhow::{Ok, Result};
 use ash::vk::{
-    self, Buffer, BufferCreateInfo, BufferUsageFlags, ClearColorValue, MemoryAllocateInfo,
-    MemoryPropertyFlags, PhysicalDeviceMemoryProperties, SharingMode,
+    self, Buffer, BufferCreateInfo, BufferUsageFlags, ClearColorValue, DescriptorSetLayoutBinding,
+    DescriptorSetLayoutCreateInfo, MemoryAllocateInfo, MemoryPropertyFlags,
+    PhysicalDeviceMemoryProperties, SharingMode,
 };
 use winit::window::Window;
 
@@ -114,9 +115,22 @@ impl Renderer {
                 size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32,
             };
 
+            let ubo_layout_binding = DescriptorSetLayoutBinding::default()
+                .binding(0)
+                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::VERTEX);
+            let ubo_layout_output = &[ubo_layout_binding];
+            let ubo_layout_create_info =
+                DescriptorSetLayoutCreateInfo::default().bindings(ubo_layout_output);
+            let ubo_layout = context
+                .device
+                .create_descriptor_set_layout(&ubo_layout_create_info, None)?;
+
             let pipeline_layout = context.device.create_pipeline_layout(
                 &ash::vk::PipelineLayoutCreateInfo::default()
-                    .push_constant_ranges(&[push_constant_range]),
+                    .push_constant_ranges(&[push_constant_range])
+                    .set_layouts(&[ubo_layout]),
                 None,
             )?;
 
@@ -258,35 +272,12 @@ impl Renderer {
                 self.depth_format,
                 vk::ImageAspectFlags::DEPTH,
             )?;
-
-            let push_constant_range = vk::PushConstantRange {
-                stage_flags: vk::ShaderStageFlags::VERTEX,
-                offset: 0,
-                size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32,
-            };
-
-            let pipeline_layout = self.context.device.create_pipeline_layout(
-                &ash::vk::PipelineLayoutCreateInfo::default()
-                    .push_constant_ranges(&[push_constant_range]),
-                None,
-            )?;
-
-            let pipeline = self.context.create_graphics_pipeline(
-                vertex_shader,
-                fragment_shader,
-                self.swapchain.extent,
-                self.swapchain.format,
-                pipeline_layout,
-                Default::default(),
-                Some(depth_format),
-            );
-
             self.depth_format = depth_format;
             self.depth_image = depth_image;
             self.depth_image_memory = depth_image_memory;
             self.depth_image_view = depth_image_view;
-            self.pipeline = pipeline?;
-            self.pipeline_layout = pipeline_layout;
+            // self.pipeline = pipeline?;
+            // self.pipeline_layout = pipeline_layout;
 
             Ok(())
         }

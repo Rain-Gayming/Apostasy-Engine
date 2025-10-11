@@ -3,7 +3,7 @@ use std::{collections::HashSet, io};
 
 use anyhow::Result;
 use ash::{
-    vk::{self, RenderPass},
+    vk::{self, DescriptorSetLayout, DescriptorSetLayoutBinding, RenderPass},
     Entry,
 };
 use cgmath::Vector3;
@@ -396,9 +396,9 @@ impl RenderingContext {
                 .color_blend_state(&color_blend_state)
                 .render_pass(RenderPass::null())
                 .dynamic_state(&dynamic_state)
-                .layout(pipeline_layout)
                 .depth_stencil_state(&depth_stencil_state)
-                .push_next(&mut pipeline_rendering);
+                .push_next(&mut pipeline_rendering)
+                .layout(pipeline_layout);
 
             let pipelines = self
                 .device
