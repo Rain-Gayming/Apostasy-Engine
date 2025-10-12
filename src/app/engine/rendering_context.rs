@@ -327,9 +327,9 @@ impl RenderingContext {
 
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo::default()
             .rasterizer_discard_enable(false)
-            .polygon_mode(vk::PolygonMode::FILL)
-            .cull_mode(vk::CullModeFlags::NONE)
-            .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
+            .polygon_mode(vk::PolygonMode::LINE)
+            .cull_mode(vk::CullModeFlags::BACK)
+            .front_face(vk::FrontFace::CLOCKWISE)
             .line_width(1.0);
 
         let multisample_state = vk::PipelineMultisampleStateCreateInfo::default()
@@ -358,7 +358,7 @@ impl RenderingContext {
 
         let binding = &[ash::vk::VertexInputBindingDescription {
             binding: 0,
-            stride: std::mem::size_of::<Vector3<f32>>() as u32,
+            stride: std::mem::size_of::<[u8; 3]>() as u32,
             input_rate: ash::vk::VertexInputRate::VERTEX,
         }];
         let vertex_input_attribute_descriptions = [ash::vk::VertexInputAttributeDescription {

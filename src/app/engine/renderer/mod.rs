@@ -43,7 +43,7 @@ pub struct Renderer {
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
     vertex_buffers: Vec<Buffer>,
-    vertex_data: u32,
+    index_count: u32,
     uniform_buffers: Vec<Buffer>,
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
@@ -201,7 +201,7 @@ impl Renderer {
                 depth_image_memory,
                 depth_image_view,
                 vertex_buffers: Vec::new(),
-                vertex_data: 0,
+                index_count: 0,
                 uniform_buffers: Vec::new(),
                 descriptor_sets: Vec::new(),
                 descriptor_pools: Vec::new(),
@@ -415,12 +415,14 @@ impl Renderer {
                 &self.vertex_buffers,
                 &[0],
             );
-            self.context.device.cmd_bind_index_buffer(
-                frame.command_buffer,
-                self.index_buffers[0],
-                0,
-                vk::IndexType::UINT8_EXT,
-            );
+            for buffer in self.index_buffers.iter() {
+                self.context.device.cmd_bind_index_buffer(
+                    frame.command_buffer,
+                    *buffer,
+                    0,
+                    vk::IndexType::UINT16,
+                );
+            }
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
                 self.pipeline_layout,
@@ -446,10 +448,14 @@ impl Renderer {
                 self.pipeline,
             );
 
-            self.context
-                .device
-                .cmd_draw(frame.command_buffer, self.vertex_data, 1, 0, 0);
-
+            self.context.device.cmd_draw_indexed(
+                frame.command_buffer,
+                self.index_count,
+                1,
+                0,
+                0,
+                0,
+            );
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             self.context.transition_image_layout(
@@ -539,12 +545,13 @@ pub fn find_memory_type(type_filter: u32, properties: &PhysicalDeviceMemoryPrope
 pub fn create_vertex_buffer_from_data(
     renderer: &mut Renderer,
     vertex_data: Vec<VoxelVertex>,
-    index_data: Vec<u8>,
+    index_data: Vec<u16>,
 ) {
-    let vertex_count = vertex_data.len();
-    let context = renderer.context.clone();
+    let context = &renderer.context;
 
     unsafe {
+        // === VERTEX BUFFER === //
+
         let buffer_size = (size_of::<VoxelVertex>() * vertex_data.len()) as u64;
 
         let vertex_buffer_info = BufferCreateInfo {
@@ -684,6 +691,7 @@ pub fn create_vertex_buffer_from_data(
         let layout_info = vk::DescriptorSetLayoutCreateInfo {
             binding_count: 1,
             p_bindings: &ubo_binding,
+
             ..Default::default()
         };
 
@@ -722,11 +730,11 @@ pub fn create_vertex_buffer_from_data(
 
         // === INDEX BUFFER === //
 
-        let index_buffer_size = (size_of::<u8>() * index_data.len()) as u64;
+        let index_buffer_size = (size_of::<u16>() * index_data.len()) as u64;
 
         let index_buffer_info = BufferCreateInfo {
             size: index_buffer_size,
-            usage: BufferUsageFlags::VERTEX_BUFFER,
+            usage: BufferUsageFlags::INDEX_BUFFER,
             sharing_mode: SharingMode::EXCLUSIVE,
             ..Default::default()
         };
@@ -779,17 +787,13 @@ pub fn create_vertex_buffer_from_data(
             .device
             .update_descriptor_sets(&[write_descriptor_set], &[]);
 
-        renderer
-            .context
-            .device
-            .update_descriptor_sets(&[write_descriptor_set], &[]);
-
         renderer.vertex_buffers.push(vertex_buffer);
         renderer.uniform_buffers.push(uniform_buffer);
         renderer.index_buffers.push(index_buffer);
         renderer.descriptor_sets.push(ubo_descriptor_set);
         renderer.descriptor_set_layouts.push(descriptor_set_layout);
         renderer.descriptor_pools.push(descriptor_pool);
-        renderer.vertex_data += vertex_count as u32;
+        renderer.index_count += index_data.len() as u32;
+        println!("index count: {}", renderer.index_count);
     }
 }

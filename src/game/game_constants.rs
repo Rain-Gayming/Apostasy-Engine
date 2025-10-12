@@ -1,1 +1,2 @@
-pub const CHUNK_SIZE: u8 = 32;
+pub const CHUNK_SIZE: usize = 32;
+pub const CHUNK_SIZE_MINUS_ONE: usize = 31;

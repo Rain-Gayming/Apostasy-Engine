@@ -103,3 +103,17 @@
 #### World:
 
 - added test chunks for world generation
+
+# 12th october 2025:
+
+**Added the index buffer fully by replacing `cmd_draw` with `cmd_draw_indexed`, added face culling**
+
+## Change Log:
+
+### Engine:
+
+#### Renderer:
+
+- fixed uniform buffer rendering
+- added back face fulling
+- removed hidden faces of voxels

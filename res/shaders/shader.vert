@@ -21,5 +21,5 @@ void main() {
     vec3 position = vec3(inPosition);
 
     gl_Position = pc.proj * pc.view * model * vec4(position, 1.0);
-    fragColor = vec3(1.0, 1.0, 1.0);
+    fragColor = vec3(0.1, 0.1, 0.1);
 }

@@ -35,7 +35,7 @@ pub const CUBEMESH: [[u8; 3]; 24] = [
     [0, 1, 0], // 22
     [0, 1, 1], // 23
 ];
-pub const CUBE_INDICES: [u8; 36] = [
+pub const CUBE_INDICES: [u16; 36] = [
     0, 1, 2, 2, 3, 0, // front
     4, 5, 6, 6, 7, 4, // back
     8, 9, 10, 10, 11, 8, // left
