@@ -3,10 +3,9 @@ use std::{collections::HashSet, io};
 
 use anyhow::Result;
 use ash::{
-    vk::{self, DescriptorSetLayout, DescriptorSetLayoutBinding, RenderPass},
+    vk::{self, RenderPass},
     Entry,
 };
-use cgmath::Vector3;
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -216,7 +215,6 @@ impl RenderingContext {
         }
     }
 
-    // unsafe because the window should outlive the surface
     pub unsafe fn create_surface(&self, window: &Window) -> Result<Surface> {
         let raw_display_handle = window.display_handle()?.as_raw();
         let raw_window_handle = window.window_handle()?.as_raw();

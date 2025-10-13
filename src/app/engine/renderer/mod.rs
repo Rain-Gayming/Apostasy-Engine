@@ -790,6 +790,5 @@ pub fn create_vertex_buffer_from_data(
         renderer.descriptor_set_layouts.push(descriptor_set_layout);
         renderer.descriptor_pools.push(descriptor_pool);
         renderer.index_count += index_data.len() as u32;
-        println!("index count: {}", renderer.index_count);
     }
 }
