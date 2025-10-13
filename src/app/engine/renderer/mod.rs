@@ -156,7 +156,7 @@ impl Renderer {
                 None,
             )?;
 
-            let in_flight_frames_count = 1;
+            let in_flight_frames_count = 2;
 
             let command_buffers = context.device.allocate_command_buffers(
                 &ash::vk::CommandBufferAllocateInfo::default()
@@ -187,6 +187,7 @@ impl Renderer {
             }
 
             // Bind the vertex buffer memory
+
             Ok(Self {
                 in_flight_frames_count,
                 current_frame: 0,
@@ -277,8 +278,6 @@ impl Renderer {
             self.depth_image = depth_image;
             self.depth_image_memory = depth_image_memory;
             self.depth_image_view = depth_image_view;
-            // self.pipeline = pipeline?;
-            // self.pipeline_layout = pipeline_layout;
 
             Ok(())
         }
@@ -296,16 +295,16 @@ impl Renderer {
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
 
+            let image_index = self
+                .swapchain
+                .aquire_next_image(frame.image_available_semaphore)?;
+
             self.context.device.reset_fences(&[frame.in_flight_fence])?;
 
             self.context.device.reset_command_buffer(
                 frame.command_buffer,
                 ash::vk::CommandBufferResetFlags::empty(),
             )?;
-
-            let image_index = self
-                .swapchain
-                .aquire_next_image(frame.image_available_semaphore)?;
 
             self.context.device.begin_command_buffer(
                 frame.command_buffer,
@@ -354,7 +353,6 @@ impl Renderer {
                 vk::ImageAspectFlags::DEPTH,
             );
 
-            // transition image layout to be used for color attachmant
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
@@ -374,7 +372,7 @@ impl Renderer {
                 vk::ClearDepthStencilValue {
                     depth: 1.0,
                     stencil: 0,
-                }, // depth clear
+                },
             );
 
             self.context.device.cmd_set_viewport(
@@ -474,6 +472,7 @@ impl Renderer {
             let image_available_semaphore_slice = &[frame.image_available_semaphore];
             let render_semaphore_slice = &[frame.render_finished_semaphore];
             let command_buffer = &[frame.command_buffer];
+
             let submit_info = vk::SubmitInfo::default()
                 .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT])
                 .command_buffers(command_buffer)
@@ -489,6 +488,7 @@ impl Renderer {
             self.swapchain
                 .present(image_index, &frame.render_finished_semaphore)?;
 
+            self.current_frame = (self.current_frame + 1) % self.frames.len();
             Ok(())
         }
     }
