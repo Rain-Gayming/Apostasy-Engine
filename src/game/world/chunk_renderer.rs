@@ -32,11 +32,10 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
         for y in 0..CHUNK_SIZE {
             for z in 0..CHUNK_SIZE {
                 for _ in 0..6 {
-                    if z != 0
-                        && !voxels[x + y * CHUNK_SIZE + (z - 1) * CHUNK_SIZE * CHUNK_SIZE]
+                    if !(z != 0
+                        && voxels[x + y * CHUNK_SIZE + (z - 1) * CHUNK_SIZE * CHUNK_SIZE]
                             .voxel_type
-                            .is_solid()
-                        || z == 0
+                            .is_solid())
                     {
                         generate_voxel_face(
                             &mut vertex_data,
@@ -45,12 +44,10 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
                             [x as u8, y as u8, z as u8],
                         );
                     }
-
-                    if z != CHUNK_SIZE_MINUS_ONE
-                        && !voxels[x + y * CHUNK_SIZE + (z + 1) * CHUNK_SIZE * CHUNK_SIZE]
+                    if !(z != CHUNK_SIZE_MINUS_ONE
+                        && voxels[x + y * CHUNK_SIZE + (z + 1) * CHUNK_SIZE * CHUNK_SIZE]
                             .voxel_type
-                            .is_solid()
-                        || z == CHUNK_SIZE_MINUS_ONE
+                            .is_solid())
                     {
                         generate_voxel_face(
                             &mut vertex_data,
@@ -59,11 +56,10 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
                             [x as u8, y as u8, z as u8],
                         );
                     }
-                    if x != CHUNK_SIZE_MINUS_ONE
-                        && !voxels[(x + 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                    if !(x != CHUNK_SIZE_MINUS_ONE
+                        && voxels[(x + 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
                             .voxel_type
-                            .is_solid()
-                        || x == CHUNK_SIZE_MINUS_ONE
+                            .is_solid())
                     {
                         generate_voxel_face(
                             &mut vertex_data,
@@ -72,11 +68,10 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
                             [x as u8, y as u8, z as u8],
                         );
                     }
-                    if x != 0
-                        && !voxels[(x - 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                    if !(x != 0
+                        && voxels[(x - 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
                             .voxel_type
-                            .is_solid()
-                        || x == 0
+                            .is_solid())
                     {
                         generate_voxel_face(
                             &mut vertex_data,
@@ -85,11 +80,10 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
                             [x as u8, y as u8, z as u8],
                         );
                     }
-                    if y != 0
-                        && !voxels[x + (y - 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                    if !(y != 0
+                        && voxels[x + (y - 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
                             .voxel_type
-                            .is_solid()
-                        || y == 0
+                            .is_solid())
                     {
                         generate_voxel_face(
                             &mut vertex_data,
@@ -98,11 +92,10 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
                             [x as u8, y as u8, z as u8],
                         );
                     }
-                    if y != CHUNK_SIZE_MINUS_ONE
-                        && !voxels[x + (y + 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                    if !(y != CHUNK_SIZE_MINUS_ONE
+                        && voxels[x + (y + 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
                             .voxel_type
-                            .is_solid()
-                        || y == CHUNK_SIZE_MINUS_ONE
+                            .is_solid())
                     {
                         generate_voxel_face(
                             &mut vertex_data,
