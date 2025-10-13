@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use ash::vk;
+use ash::vk::{self, SemaphoreSignalInfo};
 use winit::window::Window;
 
 use crate::app::engine::rendering_context::{RenderingContext, Surface};
@@ -84,7 +84,7 @@ impl Swapchain {
                     .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                     .pre_transform(self.surface.capabilities.current_transform)
                     .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-                    .present_mode(vk::PresentModeKHR::FIFO_RELAXED)
+                    .present_mode(vk::PresentModeKHR::IMMEDIATE)
                     .clipped(true)
                     .old_swapchain(self.handle),
                 None,
@@ -120,7 +120,7 @@ impl Swapchain {
     }
 
     pub fn aquire_next_image(&mut self, semaphore: vk::Semaphore) -> Result<u32> {
-        let (image_index, _is_suboptimal) = unsafe {
+        let (image_index, is_suboptimal) = unsafe {
             self.context.swapchain_extension.acquire_next_image(
                 self.handle,
                 u64::MAX,
@@ -129,11 +129,12 @@ impl Swapchain {
             )?
         };
 
-        if _is_suboptimal {
+        if is_suboptimal {
             self.is_dirty = true;
         }
         Ok(image_index)
     }
+
     pub fn present(
         &mut self,
         image_index: u32,
@@ -143,7 +144,7 @@ impl Swapchain {
             self.context.swapchain_extension.queue_present(
                 self.context.queues[self.context.queue_families.present as usize],
                 &vk::PresentInfoKHR::default()
-                    .wait_semaphores(std::slice::from_ref(render_finished_semaphore))
+                    .wait_semaphores(&[*render_finished_semaphore])
                     .swapchains(std::slice::from_ref(&self.handle))
                     .image_indices(std::slice::from_ref(&image_index)),
             )?

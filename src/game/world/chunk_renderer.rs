@@ -121,7 +121,7 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
     println!("voxel count: {}", voxels.len());
 
     if !vertex_data.is_empty() && !index_data.is_empty() {
-        create_vertex_buffer_from_data(renderer, vertex_data, index_data);
+        create_vertex_buffer_from_data(renderer, vertex_data, index_data, position);
     } else {
         println!("vertex and index buffers are empty");
     }

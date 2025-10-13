@@ -8,14 +8,15 @@ pub mod voxel_vertex;
 use anyhow::{Ok, Result};
 use ash::vk::{
     self, Buffer, BufferCreateInfo, BufferUsageFlags, ClearColorValue, DescriptorSetLayoutBinding,
-    DescriptorSetLayoutCreateInfo, DeviceMemory, MemoryAllocateInfo, MemoryPropertyFlags,
+    DescriptorSetLayoutCreateInfo, MemoryAllocateInfo, MemoryPropertyFlags,
     PhysicalDeviceMemoryProperties, SharingMode,
 };
+use cgmath::Vector3;
 use winit::window::Window;
 
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::swapchain::Swapchain;
-use crate::app::engine::renderer::voxel_vertex::{VoxelVertex, CUBE_INDICES};
+use crate::app::engine::renderer::voxel_vertex::VoxelVertex;
 use crate::app::engine::rendering_context;
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
@@ -470,20 +471,14 @@ impl Renderer {
                 .device
                 .end_command_buffer(frame.command_buffer)?;
 
-            let render_finished_semaphore = self
-                .context
-                .device
-                .create_semaphore(&vk::SemaphoreCreateInfo::default(), None)
-                .expect("Create semaphore failed!");
-
-            let image_available_semaphore = &[frame.image_available_semaphore];
-            let render_finished_semaphore_holder = &[render_finished_semaphore];
+            let image_available_semaphore_slice = &[frame.image_available_semaphore];
+            let render_semaphore_slice = &[frame.render_finished_semaphore];
             let command_buffer = &[frame.command_buffer];
             let submit_info = vk::SubmitInfo::default()
-                .wait_semaphores(image_available_semaphore)
                 .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT])
                 .command_buffers(command_buffer)
-                .signal_semaphores(render_finished_semaphore_holder);
+                .wait_semaphores(image_available_semaphore_slice)
+                .signal_semaphores(render_semaphore_slice);
 
             self.context.device.queue_submit(
                 self.context.queues[self.context.queue_families.graphics as usize],
@@ -492,7 +487,7 @@ impl Renderer {
             )?;
 
             self.swapchain
-                .present(image_index, &render_finished_semaphore)?;
+                .present(image_index, &frame.render_finished_semaphore)?;
 
             Ok(())
         }
@@ -546,6 +541,7 @@ pub fn create_vertex_buffer_from_data(
     renderer: &mut Renderer,
     vertex_data: Vec<VoxelVertex>,
     index_data: Vec<u16>,
+    chunk_position: Vector3<i32>,
 ) {
     let context = &renderer.context;
 
