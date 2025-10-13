@@ -31,79 +31,77 @@ pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
     for x in 0..CHUNK_SIZE {
         for y in 0..CHUNK_SIZE {
             for z in 0..CHUNK_SIZE {
-                for _ in 0..6 {
-                    if !(z != 0
-                        && voxels[x + y * CHUNK_SIZE + (z - 1) * CHUNK_SIZE * CHUNK_SIZE]
-                            .voxel_type
-                            .is_solid())
-                    {
-                        generate_voxel_face(
-                            &mut vertex_data,
-                            &mut index_data,
-                            0,
-                            [x as u8, y as u8, z as u8],
-                        );
-                    }
-                    if !(z != CHUNK_SIZE_MINUS_ONE
-                        && voxels[x + y * CHUNK_SIZE + (z + 1) * CHUNK_SIZE * CHUNK_SIZE]
-                            .voxel_type
-                            .is_solid())
-                    {
-                        generate_voxel_face(
-                            &mut vertex_data,
-                            &mut index_data,
-                            1,
-                            [x as u8, y as u8, z as u8],
-                        );
-                    }
-                    if !(x != CHUNK_SIZE_MINUS_ONE
-                        && voxels[(x + 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
-                            .voxel_type
-                            .is_solid())
-                    {
-                        generate_voxel_face(
-                            &mut vertex_data,
-                            &mut index_data,
-                            2,
-                            [x as u8, y as u8, z as u8],
-                        );
-                    }
-                    if !(x != 0
-                        && voxels[(x - 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
-                            .voxel_type
-                            .is_solid())
-                    {
-                        generate_voxel_face(
-                            &mut vertex_data,
-                            &mut index_data,
-                            3,
-                            [x as u8, y as u8, z as u8],
-                        );
-                    }
-                    if !(y != 0
-                        && voxels[x + (y - 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
-                            .voxel_type
-                            .is_solid())
-                    {
-                        generate_voxel_face(
-                            &mut vertex_data,
-                            &mut index_data,
-                            4,
-                            [x as u8, y as u8, z as u8],
-                        );
-                    }
-                    if !(y != CHUNK_SIZE_MINUS_ONE
-                        && voxels[x + (y + 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
-                            .voxel_type
-                            .is_solid())
-                    {
-                        generate_voxel_face(
-                            &mut vertex_data,
-                            &mut index_data,
-                            5,
-                            [x as u8, y as u8, z as u8],
-                        );
-                    }
+                if !(z != 0
+                    && voxels[x + y * CHUNK_SIZE + (z - 1) * CHUNK_SIZE * CHUNK_SIZE]
+                        .voxel_type
+                        .is_solid())
+                {
+                    generate_voxel_face(
+                        &mut vertex_data,
+                        &mut index_data,
+                        0,
+                        [x as u8, y as u8, z as u8],
+                    );
+                }
+                if !(z != CHUNK_SIZE_MINUS_ONE
+                    && voxels[x + y * CHUNK_SIZE + (z + 1) * CHUNK_SIZE * CHUNK_SIZE]
+                        .voxel_type
+                        .is_solid())
+                {
+                    generate_voxel_face(
+                        &mut vertex_data,
+                        &mut index_data,
+                        1,
+                        [x as u8, y as u8, z as u8],
+                    );
+                }
+                if !(x != CHUNK_SIZE_MINUS_ONE
+                    && voxels[(x + 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                        .voxel_type
+                        .is_solid())
+                {
+                    generate_voxel_face(
+                        &mut vertex_data,
+                        &mut index_data,
+                        2,
+                        [x as u8, y as u8, z as u8],
+                    );
+                }
+                if !(x != 0
+                    && voxels[(x - 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                        .voxel_type
+                        .is_solid())
+                {
+                    generate_voxel_face(
+                        &mut vertex_data,
+                        &mut index_data,
+                        3,
+                        [x as u8, y as u8, z as u8],
+                    );
+                }
+                if !(y != 0
+                    && voxels[x + (y - 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                        .voxel_type
+                        .is_solid())
+                {
+                    generate_voxel_face(
+                        &mut vertex_data,
+                        &mut index_data,
+                        4,
+                        [x as u8, y as u8, z as u8],
+                    );
+                }
+                if !(y != CHUNK_SIZE_MINUS_ONE
+                    && voxels[x + (y + 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
+                        .voxel_type
+                        .is_solid())
+                {
+                    generate_voxel_face(
+                        &mut vertex_data,
+                        &mut index_data,
+                        5,
+                        [x as u8, y as u8, z as u8],
+                    );
                 }
             }
         }
