@@ -117,3 +117,37 @@
 - fixed uniform buffer rendering
 - added back face fulling
 - removed hidden faces of voxels
+
+# 13th octover 2025:
+
+**Fixed an issue with faces rendering 6 times as often as they should. Index buffer and vertex buffer now hold enough information for a chunk**
+**Time worked on: 5 hours**
+
+## Project Size:
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 16    | 1901  |
+| GLSL     | 2     | 24    |
+| Total:   | 18    | 1925  |
+
+## Change Log:
+
+### Engine:
+
+#### Renderer:
+
+- fixed buffers being given 6x the information they needed
+
+# 14th october 2025:
+
+**Added release and pressed keybinds to the input manager, meaning keys dont have to be just held constantly**
+
+## Changelog:
+
+### Engine:
+
+#### Input Manager:
+
+- added release buttons
+- added pressed keys

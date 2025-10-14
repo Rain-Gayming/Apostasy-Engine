@@ -603,8 +603,16 @@ pub fn create_vertex_buffer_from_data(
 
         // === UNIFORM BUFFERS === //
 
-        let positions: Vec<[u8; 3]> = vertex_data.iter().map(|v| v.position).collect();
-        let uniform_buffer_size = (size_of::<[u8; 3]>() * positions.len()) as u64;
+        let vertex_start_positions: Vec<[u8; 3]> = vertex_data.iter().map(|v| v.position).collect();
+        let mut positions: Vec<Vector3<i32>> = Vec::new();
+        for pos in vertex_start_positions.iter() {
+            positions.push(Vector3::new(
+                pos[0] as i32 * chunk_position.x,
+                pos[1] as i32 * chunk_position.y,
+                pos[2] as i32 * chunk_position.z,
+            ));
+        }
+        let uniform_buffer_size = (size_of::<Vector3<i32>>() * positions.len()) as u64;
 
         let uniform_buffer_info = vk::BufferCreateInfo {
             size: uniform_buffer_size,

@@ -2,7 +2,7 @@ pub mod engine;
 
 use crate::{
     app::engine::Engine,
-    game::{initialize_game, world::chunk_renderer::render_test_chunk, Game},
+    game::{initialize_game, Game},
 };
 use cgmath::Zero;
 use winit::application::ApplicationHandler;
@@ -16,10 +16,6 @@ impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         self.engine = Some(Engine::new(event_loop).unwrap());
         self.game = Some(initialize_game());
-        render_test_chunk(
-            cgmath::Vector3::zero(),
-            &mut self.engine.as_mut().unwrap().renderer,
-        );
     }
 
     fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {

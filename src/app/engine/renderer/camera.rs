@@ -5,7 +5,10 @@ use cgmath::{
     Zero,
 };
 
-use crate::app::engine::input_manager::{is_keybind_name_triggered, InputManager};
+use crate::{
+    app::engine::input_manager::{is_keybind_name_triggered, InputManager},
+    game::world::chunker::Chunker,
+};
 
 #[derive(Clone, Copy)]
 pub struct Camera {
@@ -80,7 +83,8 @@ pub fn rotate_camera(camera: &mut Camera) {
     });
 }
 
-pub fn update_camera(camera: Arc<Mutex<Camera>>) {
+// returns has_moved
+pub fn update_camera_position(camera: Arc<Mutex<Camera>>) -> bool {
     let mut camera = camera.lock().unwrap();
 
     let header = [camera.pitch, camera.yaw];
@@ -90,9 +94,11 @@ pub fn update_camera(camera: Arc<Mutex<Camera>>) {
     let movement_vector = Vector3::new(movement_matrix.x, movement_matrix.y, movement_matrix.z);
 
     camera.position += movement_vector / 50.0;
+
     drop(camera);
+    movement_vector != Vector3::zero()
 }
-pub fn handle_camera_input(input_manager: &InputManager, camera: &mut Arc<Mutex<Camera>>) {
+pub fn handle_camera_input(input_manager: &mut InputManager, camera: &mut Arc<Mutex<Camera>>) {
     let mut camera = camera.lock().unwrap();
     //forwards backwards movement
     if is_keybind_name_triggered(input_manager, "move_forwards".to_string()) {
