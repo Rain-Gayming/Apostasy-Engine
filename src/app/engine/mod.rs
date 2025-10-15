@@ -7,7 +7,9 @@ use std::sync::{Arc, Mutex};
 
 use crate::app::engine::{
     cursor_manager::{toggle_cursor_hidden, CursorManager},
-    input_manager::{process_keyboard_input, update_mouse_delta, InputManager},
+    input_manager::{
+        is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
+    },
     renderer::{
         camera::{handle_camera_input, update_camera, Camera},
         Renderer,
@@ -16,10 +18,11 @@ use crate::app::engine::{
 };
 use anyhow::Result;
 use cgmath::Vector3;
+use tracing::Instrument;
 use winit::{
     event::{DeviceEvent, WindowEvent},
     event_loop::ActiveEventLoop,
-    window::{Window, WindowAttributes, WindowId},
+    window::{CursorIconParseError, Window, WindowAttributes, WindowId},
 };
 
 pub struct Engine {
@@ -88,6 +91,11 @@ impl Engine {
             WindowEvent::KeyboardInput { event, .. } => {
                 process_keyboard_input(&mut self.input_manager, &event);
                 handle_camera_input(&mut self.input_manager, &mut self.engine_camera);
+
+                if is_keybind_name_triggered(&mut self.input_manager, "game_pause".to_string()) {
+                    let is_hidden = self.cursor_manager.is_hidden;
+                    toggle_cursor_hidden(&mut self.cursor_manager, &self.window, !is_hidden);
+                }
             }
             _ => {}
         }
