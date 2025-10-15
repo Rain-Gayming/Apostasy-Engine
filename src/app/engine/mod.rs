@@ -1,3 +1,4 @@
+pub mod cursor_manager;
 pub mod input_manager;
 pub mod renderer;
 pub mod rendering_context;
@@ -5,6 +6,7 @@ pub mod rendering_context;
 use std::sync::{Arc, Mutex};
 
 use crate::app::engine::{
+    cursor_manager::{toggle_cursor_hidden, CursorManager},
     input_manager::{process_keyboard_input, update_mouse_delta, InputManager},
     renderer::{
         camera::{handle_camera_input, update_camera, Camera},
@@ -27,6 +29,8 @@ pub struct Engine {
     rendering_context: Arc<RenderingContext>,
     input_manager: InputManager,
     engine_camera: Arc<Mutex<Camera>>,
+
+    cursor_manager: CursorManager,
 }
 
 impl Engine {
@@ -49,7 +53,10 @@ impl Engine {
         )
         .unwrap();
 
-        let input_manager = InputManager::new();
+        let input_manager = InputManager::default();
+
+        let mut cursor_manager = CursorManager { is_hidden: false };
+        toggle_cursor_hidden(&mut cursor_manager, &window, true);
 
         Ok(Self {
             renderer,
@@ -58,6 +65,7 @@ impl Engine {
             rendering_context,
             input_manager,
             engine_camera,
+            cursor_manager,
         })
     }
 
@@ -79,7 +87,7 @@ impl Engine {
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 process_keyboard_input(&mut self.input_manager, &event);
-                handle_camera_input(&self.input_manager, &mut self.engine_camera);
+                handle_camera_input(&mut self.input_manager, &mut self.engine_camera);
             }
             _ => {}
         }
@@ -112,7 +120,7 @@ impl Engine {
     pub fn device_event(&mut self, event: winit::event::DeviceEvent) {
         if let DeviceEvent::MouseMotion { delta, .. } = event {
             update_mouse_delta(&mut self.input_manager, delta.into());
-            handle_camera_input(&self.input_manager, &mut self.engine_camera)
+            handle_camera_input(&mut self.input_manager, &mut self.engine_camera)
         }
     }
 }

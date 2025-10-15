@@ -92,7 +92,7 @@ pub fn update_camera(camera: Arc<Mutex<Camera>>) {
     camera.position += movement_vector / 50.0;
     drop(camera);
 }
-pub fn handle_camera_input(input_manager: &InputManager, camera: &mut Arc<Mutex<Camera>>) {
+pub fn handle_camera_input(input_manager: &mut InputManager, camera: &mut Arc<Mutex<Camera>>) {
     let mut camera = camera.lock().unwrap();
     //forwards backwards movement
     if is_keybind_name_triggered(input_manager, "move_forwards".to_string()) {
