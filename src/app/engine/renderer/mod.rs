@@ -43,13 +43,13 @@ pub struct Renderer {
     depth_image: vk::Image,
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
-    vertex_buffers: Vec<Buffer>,
-    index_count: u32,
-    uniform_buffers: Vec<Buffer>,
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
     descriptor_pools: Vec<vk::DescriptorPool>,
+    vertex_buffers: Vec<Buffer>,
     index_buffers: Vec<Buffer>,
+    index_counts: Vec<u32>,
+    uniform_buffers: Vec<Buffer>,
 }
 
 use std::fs::{self};
@@ -202,12 +202,12 @@ impl Renderer {
                 depth_image,
                 depth_image_memory,
                 depth_image_view,
-                vertex_buffers: Vec::new(),
-                index_count: 0,
-                uniform_buffers: Vec::new(),
                 descriptor_sets: Vec::new(),
                 descriptor_pools: Vec::new(),
                 descriptor_set_layouts: Vec::new(),
+                vertex_buffers: Vec::new(),
+                index_counts: Vec::new(),
+                uniform_buffers: Vec::new(),
                 index_buffers: Vec::new(),
             })
         }
@@ -408,20 +408,7 @@ impl Renderer {
             let mut push_data = Vec::with_capacity(std::mem::size_of::<[[f32; 4]; 4]>() * 2);
             push_data.extend_from_slice(view_bytes);
             push_data.extend_from_slice(projection_bytes);
-            self.context.device.cmd_bind_vertex_buffers(
-                frame.command_buffer,
-                0,
-                &self.vertex_buffers,
-                &[0],
-            );
-            for buffer in self.index_buffers.iter() {
-                self.context.device.cmd_bind_index_buffer(
-                    frame.command_buffer,
-                    *buffer,
-                    0,
-                    vk::IndexType::UINT16,
-                );
-            }
+
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
                 self.pipeline_layout,
@@ -447,14 +434,28 @@ impl Renderer {
                 self.pipeline,
             );
 
-            self.context.device.cmd_draw_indexed(
-                frame.command_buffer,
-                self.index_count,
-                1,
-                0,
-                0,
-                0,
-            );
+            for index in 0..self.index_counts.len() {
+                self.context.device.cmd_bind_vertex_buffers(
+                    frame.command_buffer,
+                    0,
+                    &[self.vertex_buffers[index]],
+                    &[0],
+                );
+                self.context.device.cmd_bind_index_buffer(
+                    frame.command_buffer,
+                    self.index_buffers[index],
+                    0,
+                    vk::IndexType::UINT16,
+                );
+                self.context.device.cmd_draw_indexed(
+                    frame.command_buffer,
+                    self.index_counts[index],
+                    1,
+                    0,
+                    0,
+                    0,
+                );
+            }
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             self.context.transition_image_layout(
@@ -789,6 +790,6 @@ pub fn create_vertex_buffer_from_data(
         renderer.descriptor_sets.push(ubo_descriptor_set);
         renderer.descriptor_set_layouts.push(descriptor_set_layout);
         renderer.descriptor_pools.push(descriptor_pool);
-        renderer.index_count += index_data.len() as u32;
+        renderer.index_counts.push(index_data.len() as u32);
     }
 }
