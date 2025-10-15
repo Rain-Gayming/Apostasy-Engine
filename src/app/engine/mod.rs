@@ -1,27 +1,16 @@
-pub mod cusor_manager;
 pub mod input_manager;
 pub mod renderer;
 pub mod rendering_context;
 
 use std::sync::{Arc, Mutex};
 
-use crate::{
-    app::engine::{
-        cusor_manager::{toggle_cursor_hidden, CursorManager},
-        input_manager::{
-            is_key_held, is_keybind_name_triggered, process_keyboard_input, update_mouse_delta,
-            InputManager,
-        },
-        renderer::{
-            camera::{handle_camera_input, update_camera_position, Camera},
-            Renderer,
-        },
-        rendering_context::*,
+use crate::app::engine::{
+    input_manager::{process_keyboard_input, update_mouse_delta, InputManager},
+    renderer::{
+        camera::{handle_camera_input, update_camera, Camera},
+        Renderer,
     },
-    game::world::{
-        chunk::generate_chunk,
-        chunker::{create_new_chunk, is_in_new_chunk, Chunker},
-    },
+    rendering_context::*,
 };
 use anyhow::Result;
 use cgmath::Vector3;
@@ -38,9 +27,6 @@ pub struct Engine {
     rendering_context: Arc<RenderingContext>,
     input_manager: InputManager,
     engine_camera: Arc<Mutex<Camera>>,
-    cursor_manager: CursorManager,
-    // TODO: MOVE THIS SOMEWHERE ELSE
-    pub chunker: Chunker,
 }
 
 impl Engine {
@@ -56,19 +42,15 @@ impl Engine {
         let position: Vector3<f32> = Vector3::new(0.0, 1.0, 0.0);
         let engine_camera = Arc::new(Mutex::new(Camera::new(position)));
 
-        let mut renderer = Renderer::new(
+        let renderer = Renderer::new(
             rendering_context.clone(),
             window.clone(),
             engine_camera.clone(),
         )
         .unwrap();
 
-        let input_manager = InputManager::default();
+        let input_manager = InputManager::new();
 
-        let chunker = Chunker::default();
-        let mut cursor_manager = CursorManager { is_hidden: false };
-        create_new_chunk(Vector3::new(0, 0, 0), &mut renderer);
-        toggle_cursor_hidden(&mut cursor_manager, &window, true);
         Ok(Self {
             renderer,
             window,
@@ -76,8 +58,6 @@ impl Engine {
             rendering_context,
             input_manager,
             engine_camera,
-            cursor_manager,
-            chunker,
         })
     }
 
@@ -95,29 +75,11 @@ impl Engine {
             WindowEvent::RedrawRequested => {
                 self.renderer.render().unwrap();
 
-                self.input_manager.keys_released.clear();
-                if update_camera_position(self.engine_camera.clone()) {
-                    let camera = self.engine_camera.lock().unwrap();
-                    if is_in_new_chunk(
-                        &mut self.chunker,
-                        Vector3::new(
-                            camera.position.x as i32,
-                            camera.position.y as i32,
-                            camera.position.z as i32,
-                        ),
-                    ) {
-                        create_new_chunk(self.chunker.last_chunk_position, &mut self.renderer);
-                    }
-                }
+                update_camera(self.engine_camera.clone());
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 process_keyboard_input(&mut self.input_manager, &event);
-                handle_camera_input(&mut self.input_manager, &mut self.engine_camera);
-
-                if is_keybind_name_triggered(&mut self.input_manager, "game_pause".to_string()) {
-                    let is_hidden = self.cursor_manager.is_hidden;
-                    toggle_cursor_hidden(&mut self.cursor_manager, &self.window, !is_hidden);
-                }
+                handle_camera_input(&self.input_manager, &mut self.engine_camera);
             }
             _ => {}
         }
@@ -150,7 +112,7 @@ impl Engine {
     pub fn device_event(&mut self, event: winit::event::DeviceEvent) {
         if let DeviceEvent::MouseMotion { delta, .. } = event {
             update_mouse_delta(&mut self.input_manager, delta.into());
-            handle_camera_input(&mut self.input_manager, &mut self.engine_camera)
+            handle_camera_input(&self.input_manager, &mut self.engine_camera)
         }
     }
 }

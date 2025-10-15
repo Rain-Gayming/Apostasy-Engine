@@ -1,282 +1,207 @@
-generating new chunk at: Vector3 [0, 0, 0]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x140000000014) is being signaled by VkQueue 0x55d97aca4de0, but it may still be in use by VkSwapchainKHR 0x220000000022.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x630000000063) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x3d000000003d.
+Here are the most recently acquired image indices: [0], 1.
+(brackets mark the last use of VkSemaphore 0x630000000063 in a presentation operation)
+Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x630000000063 may still be in use and cannot be safely reused with image index 1.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
+Objects: 2
+    [0] VkSemaphore 0x630000000063
+    [1] VkQueue 0x5627aecb4780
+
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0xba00000000ba) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x940000000094.
+Here are the most recently acquired image indices: [0], 1, 2, 3.
+(brackets mark the last use of VkSemaphore 0xba00000000ba in a presentation operation)
+Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0xba00000000ba may still be in use and cannot be safely reused with image index 3.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
+Objects: 2
+    [0] VkSemaphore 0xba00000000ba
+    [1] VkQueue 0x5627aecb4780
+
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0xc300000000c3) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x940000000094.
+Here are the most recently acquired image indices: 0, [1], 2, 3, 4.
+(brackets mark the last use of VkSemaphore 0xc300000000c3 in a presentation operation)
+Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0xc300000000c3 may still be in use and cannot be safely reused with image index 4.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
+Objects: 2
+    [0] VkSemaphore 0xc300000000c3
+    [1] VkQueue 0x5627aecb4780
+
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0xca00000000ca) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x940000000094.
+Here are the most recently acquired image indices: 0, 1, [2], 3, 4, 0.
+(brackets mark the last use of VkSemaphore 0xca00000000ca in a presentation operation)
+Swapchain image 2 was presented but was not re-acquired, so VkSemaphore 0xca00000000ca may still be in use and cannot be safely reused with image index 0.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
+Objects: 2
+    [0] VkSemaphore 0xca00000000ca
+    [1] VkQueue 0x5627aecb4780
+
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x3680000000368) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x3420000000342.
 Here are the most recently acquired image indices: [0], 1, 2.
-(brackets mark the last use of VkSemaphore 0x140000000014 in a presentation operation)
-Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x140000000014 may still be in use and cannot be safely reused with image index 2.
+(brackets mark the last use of VkSemaphore 0x3680000000368 in a presentation operation)
+Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x3680000000368 may still be in use and cannot be safely reused with image index 2.
 Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
 	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
 	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
-    [0] VkSemaphore 0x140000000014
-    [1] VkQueue 0x55d97aca4de0
-
-Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
-vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x240000000024 is in VK_IMAGE_LAYOUT_UNDEFINED.
-The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
-Objects: 1
-    [0] VkImage 0x240000000024
-
-Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
-vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x250000000025 is in VK_IMAGE_LAYOUT_UNDEFINED.
-The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
-Objects: 1
-    [0] VkImage 0x250000000025
+    [0] VkSemaphore 0x3680000000368
+    [1] VkQueue 0x5627aecb4780
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x170000000017) is being signaled by VkQueue 0x55d97aca4de0, but it may still be in use by VkSwapchainKHR 0x360000000036.
-Here are the most recently acquired image indices: [0], 1, 2.
-(brackets mark the last use of VkSemaphore 0x170000000017 in a presentation operation)
-Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x170000000017 may still be in use and cannot be safely reused with image index 2.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x3710000000371) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x3420000000342.
+Here are the most recently acquired image indices: 0, [1], 2, 3.
+(brackets mark the last use of VkSemaphore 0x3710000000371 in a presentation operation)
+Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x3710000000371 may still be in use and cannot be safely reused with image index 3.
 Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
 	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
 	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
-    [0] VkSemaphore 0x170000000017
-    [1] VkQueue 0x55d97aca4de0
+    [0] VkSemaphore 0x3710000000371
+    [1] VkQueue 0x5627aecb4780
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x140000000014) is being signaled by VkQueue 0x55d97aca4de0, but it may still be in use by VkSwapchainKHR 0x360000000036.
-Here are the most recently acquired image indices: 0, [1], 2, 0.
-(brackets mark the last use of VkSemaphore 0x140000000014 in a presentation operation)
-Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x140000000014 may still be in use and cannot be safely reused with image index 0.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x3680000000368) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x3420000000342.
+Here are the most recently acquired image indices: 0, 1, [2], 3, 4.
+(brackets mark the last use of VkSemaphore 0x3680000000368 in a presentation operation)
+Swapchain image 2 was presented but was not re-acquired, so VkSemaphore 0x3680000000368 may still be in use and cannot be safely reused with image index 4.
 Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
 	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
 	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
-    [0] VkSemaphore 0x140000000014
-    [1] VkQueue 0x55d97aca4de0
+    [0] VkSemaphore 0x3680000000368
+    [1] VkQueue 0x5627aecb4780
 
-generating new chunk at: Vector3 [0, 0, 0]
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x3710000000371) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x3420000000342.
+Here are the most recently acquired image indices: 4, 1, 2, 3, 4, [1], 2, 4.
+(brackets mark the last use of VkSemaphore 0x3710000000371 in a presentation operation)
+Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x3710000000371 may still be in use and cannot be safely reused with image index 4.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkBuffer 0x400000000040
+    [0] VkSemaphore 0x3710000000371
+    [1] VkQueue 0x5627aecb4780
 
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x3710000000371) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x3420000000342.
+Here are the most recently acquired image indices: 2, 4, 1, 2, 4, [0], 1, 4.
+(brackets mark the last use of VkSemaphore 0x3710000000371 in a presentation operation)
+Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x3710000000371 may still be in use and cannot be safely reused with image index 4.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkBuffer 0x400000000040
+    [0] VkSemaphore 0x3710000000371
+    [1] VkQueue 0x5627aecb4780
 
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
-Objects: 2
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
-Objects: 2
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
-Objects: 2
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
-Objects: 2
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
-Objects: 2
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
-Objects: 2
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
-Objects: 2
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d979ea5d30
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
-
-Validation Error: [ VUID-vkCmdBindVertexBuffers-pOffsets-00626 ] | MessageID = 0x4080ede
+Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
 (Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkCmdBindVertexBuffers(): pOffsets[1] (8245935277855241550) is larger than the buffer size (73728).
-The Vulkan spec states: All elements of pOffsets must be less than the size of the corresponding element in pBuffers (https://docs.vulkan.org/spec/latest/chapters/fxvertex.html#VUID-vkCmdBindVertexBuffers-pOffsets-00626)
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x3680000000368) is being signaled by VkQueue 0x5627aecb4780, but it may still be in use by VkSwapchainKHR 0x3420000000342.
+Here are the most recently acquired image indices: 4, 0, 1, 4, 0, [3], 1, 0.
+(brackets mark the last use of VkSemaphore 0x3680000000368 in a presentation operation)
+Swapchain image 3 was presented but was not re-acquired, so VkSemaphore 0x3680000000368 may still be in use and cannot be safely reused with image index 0.
+Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
+	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
+	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
+The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkBuffer 0x400000000040
-
-Validation Error: [ VUID-vkCmdDrawIndexed-robustBufferAccess2-08798 ] | MessageID = 0x22df62bf
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkCmdDrawIndexed(): index size (2) * (firstIndex (0) + indexCount (73728)) + binding offset (0) = an ending offset of 147456 bytes, which is greater than the index buffer size (73728).
-The Vulkan spec states: If the robustBufferAccess2 feature is not enabled, (indexSize x (firstIndex + indexCount) + offset) must be less than or equal to the size of the bound index buffer, with indexSize being based on the type specified by indexType, where the index buffer, indexType, and offset are specified via vkCmdBindIndexBuffer or vkCmdBindIndexBuffer2. If vkCmdBindIndexBuffer2 is used to bind the index buffer, the size of the bound index buffer is vkCmdBindIndexBuffer2::size (https://docs.vulkan.org/spec/latest/chapters/drawing.html#VUID-vkCmdDrawIndexed-robustBufferAccess2-08798)
-Objects: 3
-    [0] VkCommandBuffer 0x55d97abcdab0
-    [1] VkPipeline 0x110000000011
-    [2] VkBuffer 0x470000000047
+    [0] VkSemaphore 0x3680000000368
+    [1] VkQueue 0x5627aecb4780
 
 Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
-vkFreeMemory(): can't be called on VkDeviceMemory 0x3e000000003e that is currently in use by VkImage 0x3d000000003d.
+vkFreeMemory(): can't be called on VkDeviceMemory 0x3650000000365 that is currently in use by VkImage 0x3640000000364.
 The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x190000000019 that is currently in use by VkCommandBuffer 0x55d97abcdab0.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x400000000040 that is currently in use by VkCommandBuffer 0x55d97abcdab0.
+vkDestroyBuffer(): can't be called on VkBuffer 0x340000000034 that is currently in use by VkCommandBuffer 0x5627aedb9790.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
-vkDestroyPipeline(): can't be called on VkPipeline 0x110000000011 that is currently in use by VkCommandBuffer 0x55d97abcdab0.
+vkDestroyPipeline(): can't be called on VkPipeline 0x2c000000002c that is currently in use by VkCommandBuffer 0x5627aedb9790.
 The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkCommandBuffer 0x55d97abcdab0 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkCommandBuffer 0x5627aee21480 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x55d97abcdab0
+    [0] VkCommandBuffer 0x5627aee21480
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkCommandBuffer 0x55d979ea5d30 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkCommandBuffer 0x5627aedb9790 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x55d979ea5d30
+    [0] VkCommandBuffer 0x5627aedb9790
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkBuffer 0x420000000042 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkBuffer 0x3b000000003b has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x420000000042
+    [0] VkBuffer 0x3b000000003b
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkBuffer 0x470000000047 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkBuffer 0x360000000036 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x470000000047
+    [0] VkBuffer 0x360000000036
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkBuffer 0x200000000020 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkImage 0x910000000091 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x200000000020
+    [0] VkImage 0x910000000091
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkBuffer 0x1b000000001b has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkImage 0x5f000000005f has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x1b000000001b
+    [0] VkImage 0x5f000000005f
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkImage 0x290000000029 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkImage 0xb600000000b6 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkImage 0x290000000029
+    [0] VkImage 0xb600000000b6
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkImage 0xc000000000c has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkImage 0x270000000027 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkImage 0xc000000000c
+    [0] VkImage 0x270000000027
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkImage 0x330000000033 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkSemaphore 0x2f000000002f has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkImage 0x330000000033
+    [0] VkSemaphore 0x2f000000002f
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
 (Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyDevice(): Object Tracking - For VkDevice 0x55d979d79c50, VkSemaphore 0x140000000014 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x5627aecae670, VkSemaphore 0x2e000000002e has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x140000000014
+    [0] VkSemaphore 0x2e000000002e
 

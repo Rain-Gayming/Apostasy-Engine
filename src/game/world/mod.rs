@@ -1,9 +1,10 @@
-use crate::game::world::voxel_world::{new_voxel_world, VoxelWorld};
+use crate::{
+    app::engine::renderer::Renderer,
+    game::world::voxel_world::{new_voxel_world, VoxelWorld},
+};
 
 pub mod chunk;
-pub mod chunk_meshing;
 pub mod chunk_renderer;
-pub mod chunker;
 pub mod voxel;
 pub mod voxel_world;
 

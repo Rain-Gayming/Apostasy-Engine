@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use cgmath::Vector3;
 
 use crate::{
@@ -10,13 +8,25 @@ use crate::{
     },
     game::{
         game_constants::{CHUNK_SIZE, CHUNK_SIZE_MINUS_ONE},
-        world::chunk::{generate_chunk, Chunk},
+        world::voxel::{Voxel, VoxelType},
     },
 };
-pub fn mesh_chunk(chunk: &Chunk, position: Vector3<i32>, renderer: &mut Renderer) {
-    let voxels = &chunk.voxels;
+
+pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
     let mut vertex_data: Vec<VoxelVertex> = Vec::new();
     let mut index_data: Vec<u16> = Vec::new();
+
+    let mut voxels: Vec<Voxel> = Vec::with_capacity(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
+
+    for _x in 0..CHUNK_SIZE {
+        for _y in 0..CHUNK_SIZE {
+            for _z in 0..CHUNK_SIZE {
+                voxels.push(Voxel {
+                    voxel_type: VoxelType::Stone,
+                });
+            }
+        }
+    }
 
     for x in 0..CHUNK_SIZE {
         for y in 0..CHUNK_SIZE {
@@ -96,6 +106,10 @@ pub fn mesh_chunk(chunk: &Chunk, position: Vector3<i32>, renderer: &mut Renderer
             }
         }
     }
+
+    println!("vertex count: {}", vertex_data.len());
+    println!("index count: {}", index_data.len());
+    println!("voxel count: {}", voxels.len());
 
     if !vertex_data.is_empty() && !index_data.is_empty() {
         create_vertex_buffer_from_data(renderer, vertex_data, index_data, position);

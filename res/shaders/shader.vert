@@ -1,7 +1,7 @@
 
 #version 450
 
-layout(location = 0) in ivec3 inPosition;
+layout(location = 0) in uvec3 inPosition; // Change to uvec3 for u8 data
 
 layout(location = 0) out vec3 fragColor;
 
@@ -18,6 +18,8 @@ layout(push_constant) uniform Push {
 } pc;
 
 void main() {
-    gl_Position = pc.proj * pc.view * model * vec4(inPosition, 1.0);
+    vec3 position = vec3(inPosition);
+
+    gl_Position = pc.proj * pc.view * model * vec4(position, 1.0);
     fragColor = vec3(0.1, 0.1, 0.1);
 }

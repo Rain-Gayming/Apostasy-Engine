@@ -16,14 +16,12 @@ pub struct Keybind {
 
 pub struct InputManager {
     pub keys_held: Vec<PhysicalKey>,
-    pub keys_to_ignore: Vec<PhysicalKey>,
-    pub keys_released: Vec<PhysicalKey>,
     pub keybinds: Vec<Keybind>,
     pub mouse_delta: [f64; 2],
 }
 
-impl Default for InputManager {
-    fn default() -> Self {
+impl InputManager {
+    pub fn new() -> Self {
         let forward = Keybind {
             key: PhysicalKey::Code(winit::keyboard::KeyCode::KeyW),
             input_type: KeybindInputType::Held,
@@ -60,18 +58,10 @@ impl Default for InputManager {
             name: "move_crouch".to_string(),
         };
 
-        let pause = Keybind {
-            key: PhysicalKey::Code(winit::keyboard::KeyCode::Escape),
-            input_type: KeybindInputType::Released,
-            name: "game_pause".to_string(),
-        };
-
-        let keybinds: Vec<Keybind> = vec![forward, backwards, left, right, jump, crouch, pause];
+        let keybinds: Vec<Keybind> = vec![forward, backwards, left, right, jump, crouch];
 
         Self {
             keys_held: Vec::new(),
-            keys_to_ignore: Vec::new(),
-            keys_released: Vec::new(),
             keybinds,
             mouse_delta: [0.0, 0.0],
         }
@@ -108,41 +98,21 @@ pub fn process_keyboard_input(input_manager: &mut InputManager, event: &KeyEvent
         }
         winit::event::ElementState::Released => {
             input_manager.keys_held.retain(|&key| key != physical_key);
-            input_manager.keys_released.push(physical_key);
         }
     }
 }
 
-pub fn is_key_pressed(input_manager: &mut InputManager, key: PhysicalKey) -> bool {
-    if input_manager.keys_held.contains(&key) && !input_manager.keys_to_ignore.contains(&key) {
-        input_manager.keys_to_ignore.push(key);
-        input_manager.keys_held.retain(|&x| x != key);
-        true
-    } else {
-        false
-    }
-}
-
-pub fn is_key_released(input_manager: &mut InputManager, key: PhysicalKey) -> bool {
-    if input_manager.keys_released.contains(&key) && !input_manager.keys_to_ignore.contains(&key) {
-        input_manager.keys_released.retain(|&x| x != key);
-        true
-    } else {
-        false
-    }
-}
 pub fn is_key_held(input_manager: &InputManager, key: PhysicalKey) -> bool {
     input_manager.keys_held.contains(&key)
 }
-
-pub fn is_keybind_triggered(input_manager: &mut InputManager, keybind: &Keybind) -> bool {
+pub fn is_keybind_triggered(input_manager: &InputManager, keybind: &Keybind) -> bool {
     match keybind.input_type {
-        KeybindInputType::Pressed => is_key_pressed(input_manager, keybind.key),
-        KeybindInputType::Released => is_key_released(input_manager, keybind.key),
+        KeybindInputType::Pressed => is_key_held(input_manager, keybind.key),
+        KeybindInputType::Released => is_key_held(input_manager, keybind.key),
         KeybindInputType::Held => is_key_held(input_manager, keybind.key),
     }
 }
-pub fn is_keybind_name_triggered(input_manager: &mut InputManager, keybind_name: String) -> bool {
+pub fn is_keybind_name_triggered(input_manager: &InputManager, keybind_name: String) -> bool {
     let keybind_index = input_manager
         .keybinds
         .iter()
@@ -160,8 +130,8 @@ pub fn is_keybind_name_triggered(input_manager: &mut InputManager, keybind_name:
     let keybind = &input_manager.keybinds[keybind_index.unwrap()];
 
     match keybind.input_type {
-        KeybindInputType::Pressed => is_key_pressed(input_manager, keybind.key),
-        KeybindInputType::Released => is_key_released(input_manager, keybind.key),
+        KeybindInputType::Pressed => is_key_held(input_manager, keybind.key),
+        KeybindInputType::Released => is_key_held(input_manager, keybind.key),
         KeybindInputType::Held => is_key_held(input_manager, keybind.key),
     }
 }
