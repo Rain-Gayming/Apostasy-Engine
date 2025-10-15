@@ -1,9 +1,24 @@
-use std::collections::HashMap;
-
-use cgmath::Vector3;
-
-use crate::game::world::voxel::Voxel;
+use crate::game::{
+    game_constants::CHUNK_SIZE,
+    world::voxel::{Voxel, VoxelType},
+};
 
 pub struct Chunk {
-    pub voxels: HashMap<Vector3<u8>, Voxel>,
+    pub voxels: Vec<Voxel>,
+}
+
+pub fn generate_chunk() -> Chunk {
+    let mut voxels: Vec<Voxel> = Vec::with_capacity(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
+
+    for _x in 0..CHUNK_SIZE {
+        for _y in 0..CHUNK_SIZE {
+            for _z in 0..CHUNK_SIZE {
+                voxels.push(Voxel {
+                    voxel_type: VoxelType::Stone,
+                });
+            }
+        }
+    }
+
+    Chunk { voxels }
 }

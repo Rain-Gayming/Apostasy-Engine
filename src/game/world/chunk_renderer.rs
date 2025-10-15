@@ -8,25 +8,15 @@ use crate::{
     },
     game::{
         game_constants::{CHUNK_SIZE, CHUNK_SIZE_MINUS_ONE},
-        world::voxel::{Voxel, VoxelType},
+        world::chunk::Chunk,
     },
 };
 
-pub fn render_test_chunk(position: Vector3<i32>, renderer: &mut Renderer) {
+pub fn render_chunk(chunk: &Chunk, position: Vector3<i32>, renderer: &mut Renderer) {
     let mut vertex_data: Vec<VoxelVertex> = Vec::new();
     let mut index_data: Vec<u16> = Vec::new();
 
-    let mut voxels: Vec<Voxel> = Vec::with_capacity(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
-
-    for _x in 0..CHUNK_SIZE {
-        for _y in 0..CHUNK_SIZE {
-            for _z in 0..CHUNK_SIZE {
-                voxels.push(Voxel {
-                    voxel_type: VoxelType::Stone,
-                });
-            }
-        }
-    }
+    let voxels = &chunk.voxels;
 
     for x in 0..CHUNK_SIZE {
         for y in 0..CHUNK_SIZE {

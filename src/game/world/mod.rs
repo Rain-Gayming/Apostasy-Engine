@@ -4,6 +4,7 @@ use crate::{
 };
 
 pub mod chunk;
+pub mod chunk_generator;
 pub mod chunk_renderer;
 pub mod voxel;
 pub mod voxel_world;
