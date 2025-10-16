@@ -1,13 +1,16 @@
+use cgmath::Vector3;
+
 use crate::game::{
     game_constants::CHUNK_SIZE,
     world::voxel::{Voxel, VoxelType},
 };
 
 pub struct Chunk {
+    pub position: Vector3<i32>,
     pub voxels: Vec<Voxel>,
 }
 
-pub fn generate_chunk() -> Chunk {
+pub fn generate_chunk(position: Vector3<i32>) -> Chunk {
     let mut voxels: Vec<Voxel> = Vec::with_capacity(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
 
     for _x in 0..CHUNK_SIZE {
@@ -20,5 +23,5 @@ pub fn generate_chunk() -> Chunk {
         }
     }
 
-    Chunk { voxels }
+    Chunk { voxels, position }
 }

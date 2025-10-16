@@ -1,8 +1,5 @@
-vertex count: 24576
-index count: 36864
-voxel count: 32768
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x140000000014) is being signaled by VkQueue 0x562812cc0560, but it may still be in use by VkSwapchainKHR 0x1d000000001d.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x140000000014) is being signaled by VkQueue 0x55daacc19660, but it may still be in use by VkSwapchainKHR 0x190000000019.
 Here are the most recently acquired image indices: [0], 1, 2.
 (brackets mark the last use of VkSemaphore 0x140000000014 in a presentation operation)
 Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x140000000014 may still be in use and cannot be safely reused with image index 2.
@@ -12,22 +9,22 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x140000000014
-    [1] VkQueue 0x562812cc0560
+    [1] VkQueue 0x55daacc19660
 
 Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
-vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x1f000000001f is in VK_IMAGE_LAYOUT_UNDEFINED.
+vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x1b000000001b is in VK_IMAGE_LAYOUT_UNDEFINED.
 The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
 Objects: 1
-    [0] VkImage 0x1f000000001f
+    [0] VkImage 0x1b000000001b
 
 Validation Error: [ VUID-VkPresentInfoKHR-pImageIndices-01430 ] | MessageID = 0x48ad24c6
-vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x200000000020 is in VK_IMAGE_LAYOUT_UNDEFINED.
+vkQueuePresentKHR(): pPresentInfo->pSwapchains[0] images passed to present must be in layout VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR but VkImage 0x1c000000001c is in VK_IMAGE_LAYOUT_UNDEFINED.
 The Vulkan spec states: Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array, and the presented image subresource must be in the VK_IMAGE_LAYOUT_PRESENT_SRC_KHR or VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR layout at the time the operation is executed on a VkDevice (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkPresentInfoKHR-pImageIndices-01430)
 Objects: 1
-    [0] VkImage 0x200000000020
+    [0] VkImage 0x1c000000001c
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x170000000017) is being signaled by VkQueue 0x562812cc0560, but it may still be in use by VkSwapchainKHR 0x310000000031.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x170000000017) is being signaled by VkQueue 0x55daacc19660, but it may still be in use by VkSwapchainKHR 0x2d000000002d.
 Here are the most recently acquired image indices: [0], 1, 2.
 (brackets mark the last use of VkSemaphore 0x170000000017 in a presentation operation)
 Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x170000000017 may still be in use and cannot be safely reused with image index 2.
@@ -37,10 +34,10 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x170000000017
-    [1] VkQueue 0x562812cc0560
+    [1] VkQueue 0x55daacc19660
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x140000000014) is being signaled by VkQueue 0x562812cc0560, but it may still be in use by VkSwapchainKHR 0x310000000031.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x140000000014) is being signaled by VkQueue 0x55daacc19660, but it may still be in use by VkSwapchainKHR 0x2d000000002d.
 Here are the most recently acquired image indices: 0, [1], 2, 0.
 (brackets mark the last use of VkSemaphore 0x140000000014 in a presentation operation)
 Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x140000000014 may still be in use and cannot be safely reused with image index 0.
@@ -50,78 +47,608 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x140000000014
-    [1] VkQueue 0x562812cc0560
+    [1] VkQueue 0x55daacc19660
 
+generating new chunk at: Vector3 [0, 0, 0]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    1,
+    0,
+    0,
+]
+generating new chunk at: Vector3 [-1, 0, 0]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    0,
+    0,
+    0,
+]
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-offset-01795 ] | MessageID = 0x27bc88c6
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkCmdPushConstants(): is called with
+stageFlags (VK_SHADER_STAGE_VERTEX_BIT), offset (0), size (152)
+but the VkPipelineLayout 0x100000000010 doesn't have a VkPushConstantRange with VK_SHADER_STAGE_VERTEX_BIT.
+The Vulkan spec states: For each byte in the range specified by offset and size and for each shader stage in stageFlags, there must be a push constant range in layout that includes that byte and that stage (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-offset-01795)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+generating new chunk at: Vector3 [-2, 0, 0]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -1,
+    0,
+    0,
+]
+generating new chunk at: Vector3 [-3, 0, 0]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -2,
+    0,
+    0,
+]
+generating new chunk at: Vector3 [-4, 0, 0]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -3,
+    0,
+    0,
+]
+generating new chunk at: Vector3 [-4, 0, -1]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -3,
+    0,
+    -1,
+]
+generating new chunk at: Vector3 [-5, 0, -1]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    0,
+    -1,
+]
+generating new chunk at: Vector3 [-5, 0, -2]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    0,
+    -2,
+]
+generating new chunk at: Vector3 [-5, 0, -3]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    0,
+    -3,
+]
+generating new chunk at: Vector3 [-5, 0, -4]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    0,
+    -4,
+]
+generating new chunk at: Vector3 [-5, 0, -5]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    0,
+    -5,
+]
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabe19d30
+
+Validation Error: [ VUID-vkCmdPushConstants-size-00371 ] | MessageID = 0x7596dbc5
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkCmdPushConstants(): offset (0) plus size (260) is greater than maxPushConstantSize (256).
+The Vulkan spec states: size must be less than or equal to VkPhysicalDeviceLimits::maxPushConstantsSize minus offset (https://docs.vulkan.org/spec/latest/chapters/descriptorsets.html#VUID-vkCmdPushConstants-size-00371)
+Objects: 1
+    [0] VkCommandBuffer 0x55daabd03200
+
+generating new chunk at: Vector3 [-5, -1, -5]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    -1,
+    -5,
+]
+generating new chunk at: Vector3 [-5, -2, -5]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    -2,
+    -5,
+]
+generating new chunk at: Vector3 [-5, -2, -6]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -4,
+    -2,
+    -6,
+]
+generating new chunk at: Vector3 [-6, -2, -6]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -5,
+    -2,
+    -6,
+]
+generating new chunk at: Vector3 [-6, -3, -6]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -5,
+    -3,
+    -6,
+]
+generating new chunk at: Vector3 [-6, -3, -7]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -5,
+    -3,
+    -7,
+]
+generating new chunk at: Vector3 [-6, -4, -7]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -5,
+    -4,
+    -7,
+]
+generating new chunk at: Vector3 [-7, -4, -7]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -6,
+    -4,
+    -7,
+]
+generating new chunk at: Vector3 [-7, -4, -8]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -6,
+    -4,
+    -8,
+]
+generating new chunk at: Vector3 [-7, -5, -8]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -6,
+    -5,
+    -8,
+]
+generating new chunk at: Vector3 [-7, -5, -9]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -6,
+    -5,
+    -9,
+]
+generating new chunk at: Vector3 [-8, -5, -9]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -7,
+    -5,
+    -9,
+]
+generating new chunk at: Vector3 [-8, -5, -10]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -7,
+    -5,
+    -10,
+]
+generating new chunk at: Vector3 [-8, -5, -11]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -7,
+    -5,
+    -11,
+]
+generating new chunk at: Vector3 [-9, -5, -11]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -8,
+    -5,
+    -11,
+]
+generating new chunk at: Vector3 [-9, -5, -12]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -8,
+    -5,
+    -12,
+]
+generating new chunk at: Vector3 [-10, -5, -12]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -9,
+    -5,
+    -12,
+]
+generating new chunk at: Vector3 [-10, -5, -13]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -9,
+    -5,
+    -13,
+]
+generating new chunk at: Vector3 [-10, -5, -14]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -9,
+    -5,
+    -14,
+]
+generating new chunk at: Vector3 [-11, -5, -14]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -10,
+    -5,
+    -14,
+]
+generating new chunk at: Vector3 [-11, -5, -15]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -10,
+    -5,
+    -15,
+]
+generating new chunk at: Vector3 [-12, -5, -15]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -11,
+    -5,
+    -15,
+]
+generating new chunk at: Vector3 [-12, -5, -16]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -11,
+    -5,
+    -16,
+]
+generating new chunk at: Vector3 [-12, -5, -17]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -11,
+    -5,
+    -17,
+]
+generating new chunk at: Vector3 [-13, -5, -17]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -12,
+    -5,
+    -17,
+]
+generating new chunk at: Vector3 [-13, -5, -18]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -12,
+    -5,
+    -18,
+]
+generating new chunk at: Vector3 [-13, -5, -19]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -12,
+    -5,
+    -19,
+]
+generating new chunk at: Vector3 [-14, -5, -19]
+vertex count: 24576
+index count: 36864
+voxel count: 32768
+index offset: [
+    -13,
+    -5,
+    -19,
+]
 Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
-vkFreeMemory(): can't be called on VkDeviceMemory 0x390000000039 that is currently in use by VkImage 0x380000000038.
+vkFreeMemory(): can't be called on VkDeviceMemory 0x350000000035 that is currently in use by VkImage 0x340000000034.
 The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x190000000019 that is currently in use by VkCommandBuffer 0x5628131e7ec0.
+vkDestroyBuffer(): can't be called on VkBuffer 0x370000000037 that is currently in use by VkCommandBuffer 0x55daabe19d30.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x3b000000003b that is currently in use by VkCommandBuffer 0x55daabd03200.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x3f000000003f that is currently in use by VkCommandBuffer 0x55daabd03200.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x430000000043 that is currently in use by VkCommandBuffer 0x55daabe19d30.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x470000000047 that is currently in use by VkCommandBuffer 0x55daabe19d30.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x4b000000004b that is currently in use by VkCommandBuffer 0x55daabd03200.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x4f000000004f that is currently in use by VkCommandBuffer 0x55daabe19d30.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x530000000053 that is currently in use by VkCommandBuffer 0x55daabd03200.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+vkDestroyBuffer(): can't be called on VkBuffer 0x570000000057 that is currently in use by VkCommandBuffer 0x55daabd03200.
+The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
+
+Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
+(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
+vkDestroyBuffer(): can't be called on VkBuffer 0x5b000000005b that is currently in use by VkCommandBuffer 0x55daabe19d30.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
-vkDestroyPipeline(): can't be called on VkPipeline 0x110000000011 that is currently in use by VkCommandBuffer 0x5628131e7ec0.
+vkDestroyPipeline(): can't be called on VkPipeline 0x110000000011 that is currently in use by VkCommandBuffer 0x55daabd03200.
 The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkCommandBuffer 0x5628131e7ec0 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkCommandBuffer 0x55daabd03200 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x5628131e7ec0
+    [0] VkCommandBuffer 0x55daabd03200
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkCommandBuffer 0x5628131b8ce0 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkCommandBuffer 0x55daabe19d30 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x5628131b8ce0
+    [0] VkCommandBuffer 0x55daabe19d30
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkBuffer 0x1b000000001b has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0xbd00000000bd has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x1b000000001b
+    [0] VkBuffer 0xbd00000000bd
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkImage 0x2e000000002e has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0x410000000041 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkImage 0x2e000000002e
+    [0] VkBuffer 0x410000000041
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkImage 0x240000000024 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0x550000000055 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkImage 0x240000000024
+    [0] VkBuffer 0x550000000055
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkImage 0xc000000000c has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0xa900000000a9 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkImage 0xc000000000c
+    [0] VkBuffer 0xa900000000a9
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkSemaphore 0x140000000014 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0x950000000095 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x140000000014
+    [0] VkBuffer 0x950000000095
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkSemaphore 0x170000000017 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0xc100000000c1 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x170000000017
+    [0] VkBuffer 0xc100000000c1
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkSemaphore 0x160000000016 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0x3d000000003d has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x160000000016
+    [0] VkBuffer 0x3d000000003d
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
 (Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562811d94c50, VkSemaphore 0x130000000013 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55daabcedc50, VkBuffer 0x690000000069 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkSemaphore 0x130000000013
+    [0] VkBuffer 0x690000000069
 

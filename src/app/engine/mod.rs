@@ -5,16 +5,22 @@ pub mod rendering_context;
 
 use std::sync::{Arc, Mutex};
 
-use crate::app::engine::{
-    cursor_manager::{toggle_cursor_hidden, CursorManager},
-    input_manager::{
-        is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
+use crate::{
+    app::engine::{
+        cursor_manager::{toggle_cursor_hidden, CursorManager},
+        input_manager::{
+            is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
+        },
+        renderer::{
+            camera::{handle_camera_input, update_camera_position, Camera},
+            Renderer,
+        },
+        rendering_context::*,
     },
-    renderer::{
-        camera::{handle_camera_input, update_camera, Camera},
-        Renderer,
+    game::world::{
+        chunk::generate_chunk,
+        chunk_generator::{create_new_chunk, is_in_new_chunk, ChunkGenerator},
     },
-    rendering_context::*,
 };
 use anyhow::Result;
 use cgmath::Vector3;
@@ -33,6 +39,8 @@ pub struct Engine {
     engine_camera: Arc<Mutex<Camera>>,
 
     cursor_manager: CursorManager,
+    // TODO: MOVE THIS SOMEHWERE ELSE
+    pub chunk_generator: ChunkGenerator,
 }
 
 impl Engine {
@@ -68,6 +76,7 @@ impl Engine {
             input_manager,
             engine_camera,
             cursor_manager,
+            chunk_generator: ChunkGenerator::default(),
         })
     }
 
@@ -85,7 +94,23 @@ impl Engine {
             WindowEvent::RedrawRequested => {
                 self.renderer.render().unwrap();
 
-                update_camera(self.engine_camera.clone());
+                update_camera_position(self.engine_camera.clone());
+                if update_camera_position(self.engine_camera.clone()) {
+                    let camera = self.engine_camera.lock().unwrap();
+                    if is_in_new_chunk(
+                        &mut self.chunk_generator,
+                        Vector3::new(
+                            camera.position.x as i32,
+                            camera.position.y as i32,
+                            camera.position.z as i32,
+                        ),
+                    ) {
+                        create_new_chunk(
+                            self.chunk_generator.last_chunk_position,
+                            &mut self.renderer,
+                        );
+                    }
+                }
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 process_keyboard_input(&mut self.input_manager, &event);

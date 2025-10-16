@@ -415,9 +415,10 @@ impl Renderer {
                 self.pipeline,
             );
 
-            for index in 0..self.index_counts.len() {
+            for index in 0..self.index_offset.len() {
+                let index_offset = self.index_offset[index];
                 let offset_bytes = std::slice::from_raw_parts(
-                    &self.index_offset[index] as *const [i32; 3] as *const u8,
+                    &index_offset as *const [i32; 3] as *const u8,
                     std::mem::size_of::<[i32; 3]>(),
                 );
 
@@ -659,5 +660,9 @@ pub fn create_vertex_buffer_from_data(
         renderer
             .index_offset
             .push([chunk_position.x + 1, chunk_position.y, chunk_position.z]);
+        println!(
+            "index offset: {:#?}",
+            renderer.index_offset[renderer.index_offset.len() - 1]
+        );
     }
 }
