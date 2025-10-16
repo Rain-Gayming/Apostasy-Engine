@@ -18,11 +18,10 @@ use crate::app::engine::{
 };
 use anyhow::Result;
 use cgmath::Vector3;
-use tracing::Instrument;
 use winit::{
     event::{DeviceEvent, WindowEvent},
     event_loop::ActiveEventLoop,
-    window::{CursorIconParseError, Window, WindowAttributes, WindowId},
+    window::{Window, WindowAttributes, WindowId},
 };
 
 pub struct Engine {

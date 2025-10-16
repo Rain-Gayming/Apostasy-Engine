@@ -1,5 +1,6 @@
 use std::os::raw::c_void;
 use std::sync::{Arc, Mutex};
+use std::thread::current;
 
 pub mod camera;
 mod swapchain;
@@ -33,7 +34,7 @@ pub struct Renderer {
     pub in_flight_frames_count: usize,
     current_frame: usize,
     frames: Vec<Frame>,
-    command_pool: ash::vk::CommandPool,
+    _command_pool: ash::vk::CommandPool,
     pipeline: ash::vk::Pipeline,
     pipeline_layout: ash::vk::PipelineLayout,
     swapchain: Swapchain,
@@ -44,12 +45,11 @@ pub struct Renderer {
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
     descriptor_sets: Vec<vk::DescriptorSet>,
-    descriptor_set_layouts: Vec<vk::DescriptorSetLayout>,
-    descriptor_pools: Vec<vk::DescriptorPool>,
     vertex_buffers: Vec<Buffer>,
     index_buffers: Vec<Buffer>,
     index_counts: Vec<u32>,
     uniform_buffers: Vec<Buffer>,
+    index_offset: Vec<[i32; 3]>,
 }
 
 use std::fs::{self};
@@ -113,7 +113,8 @@ impl Renderer {
             let push_constant_range = vk::PushConstantRange {
                 stage_flags: vk::ShaderStageFlags::VERTEX,
                 offset: 0,
-                size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32,
+                size: (std::mem::size_of::<[[f32; 4]; 4]>() * 2) as u32
+                    + size_of::<[i32; 3]>() as u32,
             };
 
             let ubo_layout_binding = DescriptorSetLayoutBinding::default()
@@ -192,7 +193,7 @@ impl Renderer {
                 in_flight_frames_count,
                 current_frame: 0,
                 frames,
-                command_pool,
+                _command_pool: command_pool,
                 pipeline,
                 pipeline_layout,
                 context,
@@ -203,12 +204,11 @@ impl Renderer {
                 depth_image_memory,
                 depth_image_view,
                 descriptor_sets: Vec::new(),
-                descriptor_pools: Vec::new(),
-                descriptor_set_layouts: Vec::new(),
                 vertex_buffers: Vec::new(),
                 index_counts: Vec::new(),
                 uniform_buffers: Vec::new(),
                 index_buffers: Vec::new(),
+                index_offset: Vec::new(),
             })
         }
     }
@@ -409,25 +409,6 @@ impl Renderer {
             push_data.extend_from_slice(view_bytes);
             push_data.extend_from_slice(projection_bytes);
 
-            self.context.device.cmd_push_constants(
-                frame.command_buffer,
-                self.pipeline_layout,
-                vk::ShaderStageFlags::VERTEX,
-                0,
-                &push_data,
-            );
-
-            for set in self.descriptor_sets.iter() {
-                self.context.device.cmd_bind_descriptor_sets(
-                    frame.command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    self.pipeline_layout,
-                    0,
-                    &[*set],
-                    &[],
-                );
-            }
-
             self.context.device.cmd_bind_pipeline(
                 frame.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -435,12 +416,28 @@ impl Renderer {
             );
 
             for index in 0..self.index_counts.len() {
+                let offset_bytes = std::slice::from_raw_parts(
+                    &self.index_offset[index] as *const [i32; 3] as *const u8,
+                    std::mem::size_of::<[i32; 3]>(),
+                );
+
+                push_data.extend_from_slice(offset_bytes);
+
+                self.context.device.cmd_push_constants(
+                    frame.command_buffer,
+                    self.pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX,
+                    0,
+                    &push_data,
+                );
+
                 self.context.device.cmd_bind_vertex_buffers(
                     frame.command_buffer,
                     0,
                     &[self.vertex_buffers[index]],
                     &[0],
                 );
+
                 self.context.device.cmd_bind_index_buffer(
                     frame.command_buffer,
                     self.index_buffers[index],
@@ -601,139 +598,6 @@ pub fn create_vertex_buffer_from_data(
         );
 
         context.device.unmap_memory(vertex_buffer_memory);
-
-        // === UNIFORM BUFFERS === //
-
-        let positions: Vec<[i16; 3]> = vertex_data
-            .iter()
-            .map(|v| {
-                [
-                    v.position[0] as i16 * chunk_position.x as i16,
-                    v.position[1] as i16 * chunk_position.x as i16,
-                    v.position[2] as i16 * chunk_position.z as i16,
-                ]
-            })
-            .collect();
-        let uniform_buffer_size = (size_of::<[i16; 3]>() * positions.len()) as u64;
-
-        let uniform_buffer_info = vk::BufferCreateInfo {
-            size: uniform_buffer_size,
-            usage: BufferUsageFlags::UNIFORM_BUFFER,
-            sharing_mode: SharingMode::EXCLUSIVE,
-            ..Default::default()
-        };
-
-        let uniform_buffer = context
-            .device
-            .create_buffer(&uniform_buffer_info, None)
-            .expect("Create uniform buffer failed");
-
-        let uniform_memory_requirements = context
-            .device
-            .get_buffer_memory_requirements(uniform_buffer);
-
-        let uniform_allocation_info = MemoryAllocateInfo {
-            allocation_size: uniform_memory_requirements.size,
-            memory_type_index: find_memory_type(
-                uniform_memory_requirements.memory_type_bits,
-                &context.physical_device.memory_properties,
-            ),
-            ..Default::default()
-        };
-
-        let uniform_memory = context
-            .device
-            .allocate_memory(&uniform_allocation_info, None)
-            .expect("Allocate uniform memory failed");
-
-        context
-            .device
-            .bind_buffer_memory(uniform_buffer, uniform_memory, 0)
-            .expect("Bind uniform buffer memory failed");
-
-        let uniform_data_ptr = context
-            .device
-            .map_memory(
-                uniform_memory,
-                0,
-                uniform_buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )
-            .expect("Map uniform memory failed");
-
-        std::ptr::copy_nonoverlapping(
-            positions.as_ptr() as *const c_void,
-            uniform_data_ptr,
-            uniform_buffer_size as usize,
-        );
-
-        context.device.unmap_memory(uniform_memory);
-
-        let pool_size = vk::DescriptorPoolSize {
-            ty: vk::DescriptorType::UNIFORM_BUFFER,
-            descriptor_count: 1,
-        };
-
-        let descriptor_pool_info = vk::DescriptorPoolCreateInfo {
-            max_sets: 1,
-            pool_size_count: 1,
-            p_pool_sizes: &pool_size,
-            ..Default::default()
-        };
-
-        let descriptor_pool = context
-            .device
-            .create_descriptor_pool(&descriptor_pool_info, None)
-            .expect("Create descriptor pool failed");
-
-        let ubo_binding = vk::DescriptorSetLayoutBinding {
-            binding: 0,
-            descriptor_type: vk::DescriptorType::UNIFORM_BUFFER,
-            descriptor_count: 1,
-            stage_flags: vk::ShaderStageFlags::VERTEX,
-            ..Default::default()
-        };
-
-        let layout_info = vk::DescriptorSetLayoutCreateInfo {
-            binding_count: 1,
-            p_bindings: &ubo_binding,
-
-            ..Default::default()
-        };
-
-        let descriptor_set_layout = context
-            .device
-            .create_descriptor_set_layout(&layout_info, None)
-            .expect("Create descriptor set layout failed");
-
-        let alloc_info = vk::DescriptorSetAllocateInfo {
-            descriptor_pool,
-            descriptor_set_count: 1,
-            p_set_layouts: &descriptor_set_layout,
-            ..Default::default()
-        };
-
-        let ubo_descriptor_set = context
-            .device
-            .allocate_descriptor_sets(&alloc_info)
-            .expect("Allocate descriptor sets failed")[0];
-
-        let buffer_info = vk::DescriptorBufferInfo {
-            buffer: uniform_buffer,
-            offset: 0,
-            range: uniform_buffer_size,
-        };
-
-        let write_descriptor_set = vk::WriteDescriptorSet {
-            dst_set: ubo_descriptor_set,
-            dst_binding: 0,
-            dst_array_element: 0,
-            descriptor_count: 1,
-            descriptor_type: vk::DescriptorType::UNIFORM_BUFFER,
-            p_buffer_info: &buffer_info,
-            ..Default::default()
-        };
-
         // === INDEX BUFFER === //
 
         let index_buffer_size = (size_of::<u16>() * index_data.len()) as u64;
@@ -789,16 +653,11 @@ pub fn create_vertex_buffer_from_data(
 
         context.device.unmap_memory(index_buffer_memory);
 
-        context
-            .device
-            .update_descriptor_sets(&[write_descriptor_set], &[]);
-
         renderer.vertex_buffers.push(vertex_buffer);
-        renderer.uniform_buffers.push(uniform_buffer);
         renderer.index_buffers.push(index_buffer);
-        renderer.descriptor_sets.push(ubo_descriptor_set);
-        renderer.descriptor_set_layouts.push(descriptor_set_layout);
-        renderer.descriptor_pools.push(descriptor_pool);
         renderer.index_counts.push(index_data.len() as u32);
+        renderer
+            .index_offset
+            .push([chunk_position.x + 1, chunk_position.y, chunk_position.z]);
     }
 }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use ash::vk::{self, SemaphoreSignalInfo};
+use ash::vk;
 use winit::window::Window;
 
 use crate::app::engine::rendering_context::{RenderingContext, Surface};
