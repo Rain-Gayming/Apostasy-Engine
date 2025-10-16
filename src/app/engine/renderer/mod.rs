@@ -1,8 +1,9 @@
 use std::os::raw::c_void;
+use std::slice::from_raw_parts;
 use std::sync::{Arc, Mutex};
-use std::thread::current;
 
 pub mod camera;
+pub mod push_constants;
 mod swapchain;
 pub mod voxel_vertex;
 
@@ -16,6 +17,7 @@ use cgmath::Vector3;
 use winit::window::Window;
 
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
+use crate::app::engine::renderer::push_constants::PushConstants;
 use crate::app::engine::renderer::swapchain::Swapchain;
 use crate::app::engine::renderer::voxel_vertex::VoxelVertex;
 use crate::app::engine::rendering_context;
@@ -44,12 +46,11 @@ pub struct Renderer {
     depth_image: vk::Image,
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
-    descriptor_sets: Vec<vk::DescriptorSet>,
     vertex_buffers: Vec<Buffer>,
     index_buffers: Vec<Buffer>,
     index_counts: Vec<u32>,
-    uniform_buffers: Vec<Buffer>,
     index_offset: Vec<[i32; 3]>,
+    push_constant: PushConstants,
 }
 
 use std::fs::{self};
@@ -203,12 +204,11 @@ impl Renderer {
                 depth_image,
                 depth_image_memory,
                 depth_image_view,
-                descriptor_sets: Vec::new(),
                 vertex_buffers: Vec::new(),
                 index_counts: Vec::new(),
-                uniform_buffers: Vec::new(),
                 index_buffers: Vec::new(),
                 index_offset: Vec::new(),
+                push_constant: PushConstants::default(),
             })
         }
     }
@@ -391,23 +391,14 @@ impl Renderer {
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
 
-            let view: [[f32; 4]; 4] = get_view_matrix(self.camera.clone()).into();
-            let view_bytes = std::slice::from_raw_parts(
-                &view as *const [[f32; 4]; 4] as *const u8,
-                std::mem::size_of::<[[f32; 4]; 4]>(),
-            );
-
             let aspect = self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
+
+            let view: [[f32; 4]; 4] = get_view_matrix(self.camera.clone()).into();
             let projection: [[f32; 4]; 4] =
                 get_perspective_projection(self.camera.clone(), aspect).into();
-            let projection_bytes = std::slice::from_raw_parts(
-                &projection as *const [[f32; 4]; 4] as *const u8,
-                std::mem::size_of::<[[f32; 4]; 4]>(),
-            );
 
-            let mut push_data = Vec::with_capacity(std::mem::size_of::<[[f32; 4]; 4]>() * 2);
-            push_data.extend_from_slice(view_bytes);
-            push_data.extend_from_slice(projection_bytes);
+            self.push_constant.view_matrix = view;
+            self.push_constant.projection_matrix = projection;
 
             self.context.device.cmd_bind_pipeline(
                 frame.command_buffer,
@@ -417,19 +408,16 @@ impl Renderer {
 
             for index in 0..self.index_offset.len() {
                 let index_offset = self.index_offset[index];
-                let offset_bytes = std::slice::from_raw_parts(
-                    &index_offset as *const [i32; 3] as *const u8,
-                    std::mem::size_of::<[i32; 3]>(),
-                );
+                self.push_constant.chunk_position = index_offset;
 
-                push_data.extend_from_slice(offset_bytes);
+                let push_data = any_as_u8_slice(&self.push_constant);
 
                 self.context.device.cmd_push_constants(
                     frame.command_buffer,
                     self.pipeline_layout,
                     vk::ShaderStageFlags::VERTEX,
                     0,
-                    &push_data,
+                    push_data,
                 );
 
                 self.context.device.cmd_bind_vertex_buffers(
@@ -660,9 +648,8 @@ pub fn create_vertex_buffer_from_data(
         renderer
             .index_offset
             .push([chunk_position.x + 1, chunk_position.y, chunk_position.z]);
-        println!(
-            "index offset: {:#?}",
-            renderer.index_offset[renderer.index_offset.len() - 1]
-        );
     }
+}
+unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+    ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
 }

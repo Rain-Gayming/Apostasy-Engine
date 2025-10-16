@@ -97,10 +97,6 @@ pub fn render_chunk(chunk: &Chunk, position: Vector3<i32>, renderer: &mut Render
         }
     }
 
-    println!("vertex count: {}", vertex_data.len());
-    println!("index count: {}", index_data.len());
-    println!("voxel count: {}", voxels.len());
-
     if !vertex_data.is_empty() && !index_data.is_empty() {
         create_vertex_buffer_from_data(renderer, vertex_data, index_data, position);
     } else {
