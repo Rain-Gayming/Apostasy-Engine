@@ -1,7 +1,7 @@
 
 #version 450
 
-layout(location = 0) in uvec3 inPosition; // Change to uvec3 for u8 data
+layout(location = 0) in ivec3 inPosition;
 
 layout(location = 0) out vec3 fragColor;
 
