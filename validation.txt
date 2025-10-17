@@ -1,5 +1,5 @@
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x4a000000004a) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x2c000000002c.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x4a000000004a) is being signaled by VkQueue 0x55ed07513ee0, but it may still be in use by VkSwapchainKHR 0x2c000000002c.
 Here are the most recently acquired image indices: [0], 1.
 (brackets mark the last use of VkSemaphore 0x4a000000004a in a presentation operation)
 Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x4a000000004a may still be in use and cannot be safely reused with image index 1.
@@ -9,14 +9,14 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x4a000000004a
-    [1] VkQueue 0x562946926e20
+    [1] VkQueue 0x55ed07513ee0
 
 Validation Error: [ VUID-VkSwapchainCreateInfoKHR-presentMode-01281 ] | MessageID = 0xaddd2685
 vkCreateSwapchainKHR(): pCreateInfo->presentMode (VK_PRESENT_MODE_IMMEDIATE_KHR) is not supported (the following are supported ).
 The Vulkan spec states: presentMode must be one of the VkPresentModeKHR values returned by vkGetPhysicalDeviceSurfacePresentModesKHR for the surface (https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html#VUID-VkSwapchainCreateInfoKHR-presentMode-01281)
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x910000000091) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x730000000073.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x910000000091) is being signaled by VkQueue 0x55ed07513ee0, but it may still be in use by VkSwapchainKHR 0x730000000073.
 Here are the most recently acquired image indices: [0], 1.
 (brackets mark the last use of VkSemaphore 0x910000000091 in a presentation operation)
 Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x910000000091 may still be in use and cannot be safely reused with image index 1.
@@ -26,10 +26,10 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x910000000091
-    [1] VkQueue 0x562946926e20
+    [1] VkQueue 0x55ed07513ee0
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x910000000091) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x730000000073.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x910000000091) is being signaled by VkQueue 0x55ed07513ee0, but it may still be in use by VkSwapchainKHR 0x730000000073.
 Here are the most recently acquired image indices: 0, [1], 2.
 (brackets mark the last use of VkSemaphore 0x910000000091 in a presentation operation)
 Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x910000000091 may still be in use and cannot be safely reused with image index 2.
@@ -39,298 +39,102 @@ Vulkan insight: One solution is to assign each image its own semaphore. Here are
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x910000000091
-    [1] VkQueue 0x562946926e20
+    [1] VkQueue 0x55ed07513ee0
 
 Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x9e000000009e) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x730000000073.
-Here are the most recently acquired image indices: 0, 1, 2, 0, 1, [2], 0, 1.
+vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x9e000000009e) is being signaled by VkQueue 0x55ed07513ee0, but it may still be in use by VkSwapchainKHR 0x730000000073.
+Here are the most recently acquired image indices: 0, 1, 2, 0, [1], 2, 0.
 (brackets mark the last use of VkSemaphore 0x9e000000009e in a presentation operation)
-Swapchain image 2 was presented but was not re-acquired, so VkSemaphore 0x9e000000009e may still be in use and cannot be safely reused with image index 1.
+Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x9e000000009e may still be in use and cannot be safely reused with image index 0.
 Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
 	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
 	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
 The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
 Objects: 2
     [0] VkSemaphore 0x9e000000009e
-    [1] VkQueue 0x562946926e20
-
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0xeb00000000eb) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0xcd00000000cd.
-Here are the most recently acquired image indices: [0], 1.
-(brackets mark the last use of VkSemaphore 0xeb00000000eb in a presentation operation)
-Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0xeb00000000eb may still be in use and cannot be safely reused with image index 1.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0xeb00000000eb
-    [1] VkQueue 0x562946926e20
-
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0xeb00000000eb) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0xcd00000000cd.
-Here are the most recently acquired image indices: 0, [1], 2.
-(brackets mark the last use of VkSemaphore 0xeb00000000eb in a presentation operation)
-Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0xeb00000000eb may still be in use and cannot be safely reused with image index 2.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0xeb00000000eb
-    [1] VkQueue 0x562946926e20
+    [1] VkQueue 0x55ed07513ee0
 
 generating new chunk at: Vector3 [0, 0, 0]
-generating new chunk at: Vector3 [1, 0, 0]
-generating new chunk at: Vector3 [1, 0, 1]
-generating new chunk at: Vector3 [0, 0, 1]
-generating new chunk at: Vector3 [1, 0, 1]
-generating new chunk at: Vector3 [0, 0, 1]
-generating new chunk at: Vector3 [1, 0, 1]
-[2m2025-10-16T20:09:26.994742Z[0m [33m WARN[0m [2mcalloop::loop_logic[0m[2m:[0m [calloop] Received an event for non-existence source: TokenInner { id: 3, version: 9, sub_id: 0 }
-generating new chunk at: Vector3 [1, 0, 2]
-generating new chunk at: Vector3 [0, 0, 2]
-generating new chunk at: Vector3 [1, 0, 2]
-generating new chunk at: Vector3 [1, 0, 3]
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x14b000000014b) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x12d000000012d.
-Here are the most recently acquired image indices: [0], 1, 2.
-(brackets mark the last use of VkSemaphore 0x14b000000014b in a presentation operation)
-Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x14b000000014b may still be in use and cannot be safely reused with image index 2.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x14b000000014b
-    [1] VkQueue 0x562946926e20
-
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x1540000000154) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x12d000000012d.
-Here are the most recently acquired image indices: 0, [1], 2, 0.
-(brackets mark the last use of VkSemaphore 0x1540000000154 in a presentation operation)
-Swapchain image 1 was presented but was not re-acquired, so VkSemaphore 0x1540000000154 may still be in use and cannot be safely reused with image index 0.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x1540000000154
-    [1] VkQueue 0x562946926e20
-
-generating new chunk at: Vector3 [2, 0, 3]
-generating new chunk at: Vector3 [3, 0, 3]
-generating new chunk at: Vector3 [4, 0, 3]
-generating new chunk at: Vector3 [5, 0, 3]
-generating new chunk at: Vector3 [6, 0, 3]
-generating new chunk at: Vector3 [7, 0, 3]
-generating new chunk at: Vector3 [8, 0, 3]
-generating new chunk at: Vector3 [8, 0, 4]
-generating new chunk at: Vector3 [8, 0, 3]
-generating new chunk at: Vector3 [7, 0, 3]
-generating new chunk at: Vector3 [6, 0, 3]
-generating new chunk at: Vector3 [7, 0, 3]
-generating new chunk at: Vector3 [7, 0, 4]
-generating new chunk at: Vector3 [8, 0, 4]
-generating new chunk at: Vector3 [7, 0, 4]
-generating new chunk at: Vector3 [6, 0, 4]
-generating new chunk at: Vector3 [5, 0, 4]
-generating new chunk at: Vector3 [4, 0, 4]
-generating new chunk at: Vector3 [3, 0, 4]
-generating new chunk at: Vector3 [2, 0, 4]
-generating new chunk at: Vector3 [1, 0, 4]
-generating new chunk at: Vector3 [0, 0, 4]
-generating new chunk at: Vector3 [0, 0, 3]
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x59c000000059c) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x57e000000057e.
-Here are the most recently acquired image indices: [0], 1, 2.
-(brackets mark the last use of VkSemaphore 0x59c000000059c in a presentation operation)
-Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x59c000000059c may still be in use and cannot be safely reused with image index 2.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x59c000000059c
-    [1] VkQueue 0x562946926e20
-
-Validation Error: [ VUID-vkQueueSubmit-pSignalSemaphores-00067 ] | MessageID = 0x539277af
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkQueueSubmit(): pSubmits[0].pSignalSemaphores[0] (VkSemaphore 0x5cd00000005cd) is being signaled by VkQueue 0x562946926e20, but it may still be in use by VkSwapchainKHR 0x5af00000005af.
-Here are the most recently acquired image indices: [0], 1, 2.
-(brackets mark the last use of VkSemaphore 0x5cd00000005cd in a presentation operation)
-Swapchain image 0 was presented but was not re-acquired, so VkSemaphore 0x5cd00000005cd may still be in use and cannot be safely reused with image index 2.
-Vulkan insight: One solution is to assign each image its own semaphore. Here are some common methods to ensure that a semaphore passed to vkQueuePresentKHR is not in use and can be safely reused:
-	a) Use a separate semaphore per swapchain image. Index these semaphores using the index of the acquired image.
-	b) Consider the VK_KHR_swapchain_maintenance1 extension. It allows using a VkFence with the presentation operation.
-The Vulkan spec states: Each binary semaphore element of the pSignalSemaphores member of any element of pSubmits must be unsignaled when the semaphore signal operation it defines is executed on the device (https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#VUID-vkQueueSubmit-pSignalSemaphores-00067)
-Objects: 2
-    [0] VkSemaphore 0x5cd00000005cd
-    [1] VkQueue 0x562946926e20
-
-generating new chunk at: Vector3 [0, 0, 2]
-generating new chunk at: Vector3 [0, -1, 2]
-generating new chunk at: Vector3 [-1, -1, 2]
-generating new chunk at: Vector3 [-2, -1, 2]
-generating new chunk at: Vector3 [-3, -1, 2]
-generating new chunk at: Vector3 [-3, 0, 2]
-generating new chunk at: Vector3 [-2, 0, 2]
-generating new chunk at: Vector3 [-2, 0, 3]
-generating new chunk at: Vector3 [-1, 0, 3]
-generating new chunk at: Vector3 [0, 0, 3]
-generating new chunk at: Vector3 [0, 0, 4]
-generating new chunk at: Vector3 [0, 0, 5]
-generating new chunk at: Vector3 [1, 0, 5]
-generating new chunk at: Vector3 [1, -1, 5]
-generating new chunk at: Vector3 [2, -1, 5]
-generating new chunk at: Vector3 [3, -1, 5]
-generating new chunk at: Vector3 [4, -1, 5]
-generating new chunk at: Vector3 [4, 0, 5]
-generating new chunk at: Vector3 [5, 0, 5]
-generating new chunk at: Vector3 [6, 0, 5]
-generating new chunk at: Vector3 [7, 0, 5]
-generating new chunk at: Vector3 [7, 0, 6]
-generating new chunk at: Vector3 [7, 1, 6]
-generating new chunk at: Vector3 [7, 1, 7]
-generating new chunk at: Vector3 [7, 2, 7]
-generating new chunk at: Vector3 [7, 1, 7]
-generating new chunk at: Vector3 [7, 0, 7]
-generating new chunk at: Vector3 [8, 0, 7]
-generating new chunk at: Vector3 [9, 0, 7]
-generating new chunk at: Vector3 [9, 0, 6]
-generating new chunk at: Vector3 [8, 0, 6]
-generating new chunk at: Vector3 [8, 0, 5]
-generating new chunk at: Vector3 [9, 0, 5]
-generating new chunk at: Vector3 [9, 0, 4]
-generating new chunk at: Vector3 [9, 0, 3]
-generating new chunk at: Vector3 [9, 0, 2]
-generating new chunk at: Vector3 [9, 0, 1]
-generating new chunk at: Vector3 [9, 0, 0]
-generating new chunk at: Vector3 [8, 0, 0]
-generating new chunk at: Vector3 [8, 0, -1]
-generating new chunk at: Vector3 [8, 0, -2]
-generating new chunk at: Vector3 [8, 0, -3]
-generating new chunk at: Vector3 [7, 0, -3]
-generating new chunk at: Vector3 [7, 0, -2]
-generating new chunk at: Vector3 [7, -1, -2]
-generating new chunk at: Vector3 [7, -1, -1]
-generating new chunk at: Vector3 [7, -1, -2]
-generating new chunk at: Vector3 [7, -1, -1]
-generating new chunk at: Vector3 [7, -1, 0]
-generating new chunk at: Vector3 [8, -1, 0]
-generating new chunk at: Vector3 [7, -1, 0]
-generating new chunk at: Vector3 [7, 0, 0]
-generating new chunk at: Vector3 [8, 0, 0]
-generating new chunk at: Vector3 [8, 0, 1]
-generating new chunk at: Vector3 [7, 0, 1]
-generating new chunk at: Vector3 [6, 0, 1]
+generating new chunk at: Vector3 [-1, 0, 0]
+generating new chunk at: Vector3 [-1, 0, -1]
 Validation Error: [ VUID-vkFreeMemory-memory-00677 ] | MessageID = 0x485c8ea2
-vkFreeMemory(): can't be called on VkDeviceMemory 0x73b000000073b that is currently in use by VkImage 0x73a000000073a.
+vkFreeMemory(): can't be called on VkDeviceMemory 0x8e000000008e that is currently in use by VkImage 0x8d000000008d.
 The Vulkan spec states: All submitted commands that refer to memory (via images or buffers) must have completed execution (https://docs.vulkan.org/spec/latest/chapters/memory.html#VUID-vkFreeMemory-memory-00677)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0xfd00000000fd that is currently in use by VkCommandBuffer 0x5629459c1630.
+vkDestroyBuffer(): can't be called on VkBuffer 0xfd00000000fd that is currently in use by VkCommandBuffer 0x55ed075fe510.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x1050000000105 that is currently in use by VkCommandBuffer 0x5629459c1630.
+vkDestroyBuffer(): can't be called on VkBuffer 0x1010000000101 that is currently in use by VkCommandBuffer 0x55ed07605a70.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x1090000000109 that is currently in use by VkCommandBuffer 0x5629459c1630.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x10d000000010d that is currently in use by VkCommandBuffer 0x5629459c1630.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x1110000000111 that is currently in use by VkCommandBuffer 0x5629459c1630.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x1150000000115 that is currently in use by VkCommandBuffer 0x5629459c1630.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x1190000000119 that is currently in use by VkCommandBuffer 0x5629459c1630.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x11d000000011d that is currently in use by VkCommandBuffer 0x5629459c1630.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-vkDestroyBuffer(): can't be called on VkBuffer 0x1210000000121 that is currently in use by VkCommandBuffer 0x5629459c1630.
-The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
-
-Validation Error: [ VUID-vkDestroyBuffer-buffer-00922 ] | MessageID = 0xe4549c11
-(Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyBuffer(): can't be called on VkBuffer 0x1250000000125 that is currently in use by VkCommandBuffer 0x5629459c1630.
+vkDestroyBuffer(): can't be called on VkBuffer 0x1050000000105 that is currently in use by VkCommandBuffer 0x55ed07605a70.
 The Vulkan spec states: All submitted commands that refer to buffer, either directly or via a VkBufferView, must have completed execution (https://docs.vulkan.org/spec/latest/chapters/resources.html#VUID-vkDestroyBuffer-buffer-00922)
 
 Validation Error: [ VUID-vkDestroyPipeline-pipeline-00765 ] | MessageID = 0x6bdce5fd
-vkDestroyPipeline(): can't be called on VkPipeline 0x240000000024 that is currently in use by VkCommandBuffer 0x5629459c1630.
+vkDestroyPipeline(): can't be called on VkPipeline 0x240000000024 that is currently in use by VkCommandBuffer 0x55ed075fe510.
 The Vulkan spec states: All submitted commands that refer to pipeline must have completed execution (https://docs.vulkan.org/spec/latest/chapters/pipelines.html#VUID-vkDestroyPipeline-pipeline-00765)
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkCommandBuffer 0x5629459ba0d0 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkCommandBuffer 0x55ed075fe510 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x5629459ba0d0
+    [0] VkCommandBuffer 0x55ed075fe510
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkCommandBuffer 0x5629459c1630 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkCommandBuffer 0x55ed07605a70 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkCommandBuffer 0x5629459c1630
+    [0] VkCommandBuffer 0x55ed07605a70
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x1ac00000001ac has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkBuffer 0x1030000000103 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x1ac00000001ac
+    [0] VkBuffer 0x1030000000103
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x7e000000007e0 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkBuffer 0xff00000000ff has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x7e000000007e0
+    [0] VkBuffer 0xff00000000ff
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x8740000000874 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkBuffer 0x1070000000107 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x8740000000874
+    [0] VkBuffer 0x1070000000107
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x8200000000820 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkImage 0x460000000046 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x8200000000820
+    [0] VkImage 0x460000000046
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x8880000000888 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkImage 0x1f000000001f has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x8880000000888
+    [0] VkImage 0x1f000000001f
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x1b800000001b8 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkImage 0x700000000070 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x1b800000001b8
+    [0] VkImage 0x700000000070
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x8600000000860 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkSemaphore 0x2a000000002a has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x8600000000860
+    [0] VkSemaphore 0x2a000000002a
 
 Validation Error: [ VUID-vkDestroyDevice-device-05137 ] | MessageID = 0x4872eaa0
 (Warning - This VUID has now been reported 10 times, which is the duplicated_message_limit value, this will be the last time reporting it).
-vkDestroyDevice(): Object Tracking - For VkDevice 0x562945b42ba0, VkBuffer 0x8340000000834 has not been destroyed.
+vkDestroyDevice(): Object Tracking - For VkDevice 0x55ed0672ff90, VkSemaphore 0x290000000029 has not been destroyed.
 The Vulkan spec states: All child objects created on device that can be destroyed or freed must have been destroyed or freed prior to destroying device (https://docs.vulkan.org/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
 Objects: 1
-    [0] VkBuffer 0x8340000000834
+    [0] VkSemaphore 0x290000000029
 

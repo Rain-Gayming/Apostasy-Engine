@@ -1,7 +1,7 @@
 use anyhow::Result;
 use winit::event_loop::EventLoop;
 
-use crate::{app::App, game::initialize_game};
+use crate::app::App;
 
 pub mod app;
 pub mod game;

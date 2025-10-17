@@ -1,9 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use cgmath::{
-    Deg, Euler, Matrix4, One, PerspectiveFov, Quaternion, Rotation, Rotation3, Vector3, Vector4,
-    Zero,
-};
+use cgmath::{Deg, Euler, Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Zero};
 
 use crate::app::engine::input_manager::{is_keybind_name_triggered, InputManager};
 
@@ -20,10 +17,10 @@ pub struct Camera {
     pub projection_matrix: Matrix4<f32>,
 }
 
-impl Camera {
-    pub fn new(position: Vector3<f32>) -> Self {
+impl Default for Camera {
+    fn default() -> Self {
         Self {
-            position,
+            position: Vector3::zero(),
             rotation: Quaternion::one(),
             velocity: Vector3::new(0.0, 0.0, 0.0),
             pitch: 0.0,

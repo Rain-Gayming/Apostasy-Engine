@@ -10,9 +10,6 @@ pub struct Voxel {
 
 impl VoxelType {
     pub fn is_solid(&self) -> bool {
-        match self {
-            VoxelType::Air => false,
-            _ => true,
-        }
+        !matches!(self, VoxelType::Air)
     }
 }

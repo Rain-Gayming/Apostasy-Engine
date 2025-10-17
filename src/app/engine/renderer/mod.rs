@@ -1,5 +1,4 @@
 use std::os::raw::c_void;
-use std::slice::from_raw_parts;
 use std::sync::{Arc, Mutex};
 
 pub mod camera;
@@ -650,6 +649,8 @@ pub fn create_vertex_buffer_from_data(
             .push([chunk_position.x + 1, chunk_position.y, chunk_position.z]);
     }
 }
+
+#[allow(unsafe_op_in_unsafe_fn)]
 unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
     ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
 }

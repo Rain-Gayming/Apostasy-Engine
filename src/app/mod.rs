@@ -13,8 +13,14 @@ pub struct App {
 }
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        self.engine = Some(Engine::new(event_loop).unwrap());
         self.game = Some(initialize_game());
+        self.engine = Some(
+            Engine::new(
+                event_loop,
+                self.game.as_ref().unwrap().player.camera.clone(),
+            )
+            .unwrap(),
+        );
     }
 
     fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
@@ -29,13 +35,20 @@ impl ApplicationHandler for App {
         event: winit::event::WindowEvent,
     ) {
         if let Some(engine) = &mut self.engine {
-            engine.window_event(event_loop, event);
+            engine.window_event(event_loop, event.clone());
+
+            if let Some(game) = &mut self.game {
+                game.window_event(event, &mut engine.input_manager);
+            }
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
         if let Some(engine) = &mut self.engine {
             engine.request_redraw();
+        }
+        if let Some(game) = &mut self.game {
+            game.update(&mut self.engine.as_mut().unwrap().renderer);
         }
     }
 
@@ -46,7 +59,11 @@ impl ApplicationHandler for App {
         event: winit::event::DeviceEvent,
     ) {
         if let Some(engine) = &mut self.engine {
-            engine.device_event(event);
+            engine.device_event(event.clone());
+
+            if let Some(game) = &mut self.game {
+                game.device_event(event, &mut engine.input_manager);
+            }
         }
     }
 }

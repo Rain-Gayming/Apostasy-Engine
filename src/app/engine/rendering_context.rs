@@ -1,5 +1,4 @@
-#![allow(unsafe_op_in_unsafe_fn)]
-use std::{collections::HashSet, io, usize};
+use std::{collections::HashSet, io};
 
 use anyhow::Result;
 use ash::{
@@ -215,6 +214,7 @@ impl RenderingContext {
         }
     }
 
+    #[allow(unsafe_op_in_unsafe_fn, clippy::missing_safety_doc)]
     pub unsafe fn create_surface(&self, window: &Window) -> Result<Surface> {
         let raw_display_handle = window.display_handle()?.as_raw();
         let raw_window_handle = window.window_handle()?.as_raw();
@@ -280,6 +280,7 @@ impl RenderingContext {
         Ok(shader_module)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_graphics_pipeline(
         &self,
         vertex_shader: vk::ShaderModule,

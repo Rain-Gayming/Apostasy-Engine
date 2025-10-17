@@ -5,63 +5,39 @@ pub mod rendering_context;
 
 use std::sync::{Arc, Mutex};
 
-use crate::{
-    app::engine::{
-        cursor_manager::{toggle_cursor_hidden, CursorManager},
-        input_manager::{
-            is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
-        },
-        renderer::{
-            camera::{handle_camera_input, update_camera_position, Camera},
-            Renderer,
-        },
-        rendering_context::*,
+use crate::app::engine::{
+    cursor_manager::{toggle_cursor_hidden, CursorManager},
+    input_manager::{
+        is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
     },
-    game::world::{
-        chunk::generate_chunk,
-        chunk_generator::{create_new_chunk, is_in_new_chunk, ChunkGenerator},
-    },
+    renderer::{camera::Camera, Renderer},
+    rendering_context::*,
 };
 use anyhow::Result;
-use cgmath::Vector3;
 use winit::{
     event::{DeviceEvent, WindowEvent},
     event_loop::ActiveEventLoop,
-    window::{Window, WindowAttributes, WindowId},
+    window::Window,
 };
 
 pub struct Engine {
     pub renderer: Renderer,
     window: Arc<Window>,
-    window_id: WindowId,
-    rendering_context: Arc<RenderingContext>,
-    input_manager: InputManager,
-    engine_camera: Arc<Mutex<Camera>>,
-
+    pub input_manager: InputManager,
     cursor_manager: CursorManager,
-    // TODO: MOVE THIS SOMEHWERE ELSE
-    pub chunk_generator: ChunkGenerator,
 }
 
 impl Engine {
-    pub fn new(event_loop: &ActiveEventLoop) -> Result<Self> {
+    pub fn new(event_loop: &ActiveEventLoop, camera: Arc<Mutex<Camera>>) -> Result<Self> {
         let window = Arc::new(event_loop.create_window(Default::default())?);
-        let window_id = window.id();
 
         let rendering_context = Arc::new(RenderingContext::new(RenderingContextAttributes {
             compatability_window: &window,
             queue_family_picker: queue_family_picker::single_queue_family,
         })?);
 
-        let position: Vector3<f32> = Vector3::new(0.0, 1.0, 0.0);
-        let engine_camera = Arc::new(Mutex::new(Camera::new(position)));
-
-        let renderer = Renderer::new(
-            rendering_context.clone(),
-            window.clone(),
-            engine_camera.clone(),
-        )
-        .unwrap();
+        let renderer =
+            Renderer::new(rendering_context.clone(), window.clone(), camera.clone()).unwrap();
 
         let input_manager = InputManager::default();
 
@@ -71,12 +47,8 @@ impl Engine {
         Ok(Self {
             renderer,
             window,
-            window_id,
-            rendering_context,
             input_manager,
-            engine_camera,
             cursor_manager,
-            chunk_generator: ChunkGenerator::default(),
         })
     }
 
@@ -93,28 +65,9 @@ impl Engine {
             }
             WindowEvent::RedrawRequested => {
                 self.renderer.render().unwrap();
-
-                update_camera_position(self.engine_camera.clone());
-                if update_camera_position(self.engine_camera.clone()) {
-                    let camera = self.engine_camera.lock().unwrap();
-                    if is_in_new_chunk(
-                        &mut self.chunk_generator,
-                        Vector3::new(
-                            camera.position.x as i32,
-                            camera.position.y as i32,
-                            camera.position.z as i32,
-                        ),
-                    ) {
-                        create_new_chunk(
-                            self.chunk_generator.last_chunk_position,
-                            &mut self.renderer,
-                        );
-                    }
-                }
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 process_keyboard_input(&mut self.input_manager, &event);
-                handle_camera_input(&mut self.input_manager, &mut self.engine_camera);
 
                 if is_keybind_name_triggered(&mut self.input_manager, "game_pause".to_string()) {
                     let is_hidden = self.cursor_manager.is_hidden;
@@ -125,26 +78,6 @@ impl Engine {
         }
     }
 
-    pub fn create_window(
-        &mut self,
-        event_loop: &ActiveEventLoop,
-        attributes: WindowAttributes,
-    ) -> Result<WindowId> {
-        let window = Arc::new(event_loop.create_window(attributes)?);
-        let window_id = window.id();
-        self.window = window.clone();
-        self.window_id = window_id;
-
-        let renderer = Renderer::new(
-            self.rendering_context.clone(),
-            window,
-            self.engine_camera.clone(),
-        )?;
-        self.renderer = renderer;
-
-        Ok(window_id)
-    }
-
     pub fn request_redraw(&self) {
         self.window.request_redraw();
     }
@@ -152,7 +85,6 @@ impl Engine {
     pub fn device_event(&mut self, event: winit::event::DeviceEvent) {
         if let DeviceEvent::MouseMotion { delta, .. } = event {
             update_mouse_delta(&mut self.input_manager, delta.into());
-            handle_camera_input(&mut self.input_manager, &mut self.engine_camera)
         }
     }
 }
