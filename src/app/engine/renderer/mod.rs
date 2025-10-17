@@ -646,7 +646,7 @@ pub fn create_vertex_buffer_from_data(
         renderer.index_counts.push(index_data.len() as u32);
         renderer
             .index_offset
-            .push([chunk_position.x + 1, chunk_position.y, chunk_position.z]);
+            .push([chunk_position.x, chunk_position.y, chunk_position.z]);
     }
 }
 

@@ -20,7 +20,7 @@ layout(push_constant) uniform Push {
 
 void main() {
     // get the position, and add the chunk space coordinate * 32 (the chunk size)
-    vec3 position = vec3(inPosition + (pc.chunk_pos * 32));
+    vec3 position = vec3(vec3(inPosition) + vec3(pc.chunk_pos * 32));
     gl_Position = pc.proj * pc.view * model * vec4(position, 1.0);
     fragColor = vec3(0.1, 0.1, 0.1);
 }

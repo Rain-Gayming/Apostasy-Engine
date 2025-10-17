@@ -327,7 +327,7 @@ impl RenderingContext {
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo::default()
             .rasterizer_discard_enable(false)
             .polygon_mode(vk::PolygonMode::LINE)
-            .cull_mode(vk::CullModeFlags::BACK)
+            .cull_mode(vk::CullModeFlags::NONE)
             .front_face(vk::FrontFace::CLOCKWISE)
             .line_width(1.0);
 

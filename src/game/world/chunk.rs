@@ -5,6 +5,7 @@ use crate::game::{
     world::voxel::{Voxel, VoxelType},
 };
 
+#[derive(Clone)]
 pub struct Chunk {
     pub position: Vector3<i32>,
     pub voxels: Vec<Voxel>,

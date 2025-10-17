@@ -1,9 +1,11 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+
 pub enum VoxelType {
     Air,
     Stone,
 }
 
+#[derive(Clone, Copy)]
 pub struct Voxel {
     pub voxel_type: VoxelType,
 }

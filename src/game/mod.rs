@@ -12,7 +12,10 @@ use crate::{
     game::{
         player::Player,
         world::{
-            chunk_generator::{create_new_chunk, is_in_new_chunk},
+            chunk_generator::{
+                create_new_chunk, get_adjacent_chunks, get_chunks_in_range, is_in_new_chunk,
+            },
+            chunk_renderer::render_chunk,
             new_world, World,
         },
     },
@@ -38,7 +41,16 @@ impl Game {
                     camera.position.z as i32,
                 ),
             ) {
-                create_new_chunk(self.player.chunk_generator.last_chunk_position, renderer);
+                let mut chunks = Vec::new();
+                for chunk in get_chunks_in_range(&mut self.player.chunk_generator) {
+                    chunks.push(create_new_chunk(chunk, &mut self.world.voxel_world));
+                }
+                for chunk in chunks {
+                    let adjacent_chunks =
+                        get_adjacent_chunks(chunk.position, &self.world.voxel_world);
+                    println!("{}", adjacent_chunks[0].is_some());
+                    render_chunk(&chunk, renderer, adjacent_chunks);
+                }
             }
         }
     }
