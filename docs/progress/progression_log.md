@@ -169,3 +169,31 @@
 #### Generation:
 
 - added primative chunk generation
+
+# 18th october 2025:
+
+**Added full chunk meshing, chunk unloading and chunk generation**
+**Time worked on: 6 hours**
+
+## Project Size:
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 20    | 2101  |
+| GLSL     | 2     | 28    |
+| Total:   | 18    | 2129  |
+
+## Changelog
+
+### Engine:
+
+#### Renderer:
+
+- chunks now hide their interior faces
+- chunks will deload when past a certaint point
+
+### Game:
+
+#### Generation:
+
+- chunks now generate infinitely on the x y and z axis

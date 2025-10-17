@@ -120,8 +120,6 @@ pub fn render_chunk(
             index_data.to_vec(),
             chunk.position,
         );
-    } else {
-        println!("vertex and index buffers are empty");
     }
 }
 
