@@ -42,14 +42,34 @@ impl Game {
                 ),
             ) {
                 let mut chunks = Vec::new();
-                for chunk in get_chunks_in_range(&mut self.player.chunk_generator) {
+                for chunk in get_chunks_in_range(
+                    &mut self.player.chunk_generator,
+                    &mut self.world.voxel_world,
+                ) {
                     chunks.push(create_new_chunk(chunk, &mut self.world.voxel_world));
                 }
-                for chunk in chunks {
-                    let adjacent_chunks =
-                        get_adjacent_chunks(chunk.position, &self.world.voxel_world);
-                    println!("{}", adjacent_chunks[0].is_some());
-                    render_chunk(&chunk, renderer, adjacent_chunks);
+
+                for position in self.world.voxel_world.chunks_to_unmesh.clone() {
+                    let offset = [position.x, position.y, position.z];
+
+                    if renderer.index_offset.contains(&offset) {
+                        let offset_index = renderer
+                            .index_offset
+                            .iter()
+                            .position(|&pos| pos == offset)
+                            .unwrap();
+
+                        renderer.vertex_buffers.remove(offset_index);
+                        renderer.index_buffers.remove(offset_index);
+                        renderer.index_counts.remove(offset_index);
+                        renderer.index_offset.remove(offset_index);
+                        self.world.voxel_world.chunks_to_unmesh.remove(offset_index);
+                    }
+                }
+
+                for (position, mut chunk) in self.world.voxel_world.chunks.clone() {
+                    let adjacent_chunks = get_adjacent_chunks(position, &self.world.voxel_world);
+                    render_chunk(&mut chunk, renderer, adjacent_chunks);
                 }
             }
         }

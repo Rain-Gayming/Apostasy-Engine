@@ -1,4 +1,4 @@
-use cgmath::Vector3;
+use cgmath::{InnerSpace, Vector3};
 
 use crate::{
     app::engine::renderer::Renderer,
@@ -6,6 +6,7 @@ use crate::{
         game_constants::CHUNK_SIZE,
         world::{
             chunk::{generate_chunk, Chunk},
+            voxel,
             voxel_world::VoxelWorld,
         },
     },
@@ -38,7 +39,10 @@ pub fn is_in_new_chunk(chunk_generator: &mut ChunkGenerator, new_position: Vecto
     false
 }
 
-pub fn get_chunks_in_range(chunk_generator: &mut ChunkGenerator) -> Vec<Vector3<i32>> {
+pub fn get_chunks_in_range(
+    chunk_generator: &mut ChunkGenerator,
+    voxel_world: &mut VoxelWorld,
+) -> Vec<Vector3<i32>> {
     let mut chunks = Vec::new();
     for x in
         (chunk_generator.last_chunk_position.x - 8)..(chunk_generator.last_chunk_position.x + 8)
@@ -54,6 +58,18 @@ pub fn get_chunks_in_range(chunk_generator: &mut ChunkGenerator) -> Vec<Vector3<
         }
     }
 
+    for (position, _chunk) in voxel_world.chunks.clone() {
+        let position_float = Vector3::new(position.x as f32, position.y as f32, position.z as f32);
+        let generator_position_float = Vector3::new(
+            chunk_generator.last_chunk_position.x as f32,
+            chunk_generator.last_chunk_position.y as f32,
+            chunk_generator.last_chunk_position.z as f32,
+        );
+        if (generator_position_float - position_float).magnitude() > 8.0 {
+            voxel_world.chunks_to_unmesh.push(position);
+            voxel_world.chunks.remove(&position);
+        }
+    }
     chunks
 }
 

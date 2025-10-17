@@ -86,7 +86,7 @@ pub fn update_camera_position(camera: Arc<Mutex<Camera>>) -> bool {
         * Vector3::new(camera.velocity.x, camera.velocity.y, camera.velocity.z);
     let movement_vector = Vector3::new(movement_matrix.x, movement_matrix.y, movement_matrix.z);
 
-    camera.position += movement_vector / 50.0;
+    camera.position += movement_vector;
     drop(camera);
 
     movement_vector != Vector3::zero()

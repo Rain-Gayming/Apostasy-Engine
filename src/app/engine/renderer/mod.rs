@@ -45,10 +45,10 @@ pub struct Renderer {
     depth_image: vk::Image,
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
-    vertex_buffers: Vec<Buffer>,
-    index_buffers: Vec<Buffer>,
-    index_counts: Vec<u32>,
-    index_offset: Vec<[i32; 3]>,
+    pub vertex_buffers: Vec<Buffer>,
+    pub index_buffers: Vec<Buffer>,
+    pub index_counts: Vec<u32>,
+    pub index_offset: Vec<[i32; 3]>,
     push_constant: PushConstants,
 }
 

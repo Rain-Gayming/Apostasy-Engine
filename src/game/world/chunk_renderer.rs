@@ -10,9 +10,21 @@ use crate::{
     },
 };
 
-pub fn render_chunk(chunk: &Chunk, renderer: &mut Renderer, adjacent_chunks: [Option<Chunk>; 6]) {
-    let mut vertex_data: Vec<VoxelVertex> = Vec::new();
-    let mut index_data: Vec<u16> = Vec::new();
+#[derive(Clone, Default)]
+pub struct ChunkMesh {
+    pub vertices: Vec<VoxelVertex>,
+    pub indices: Vec<u16>,
+}
+
+pub fn render_chunk(
+    chunk: &mut Chunk,
+    renderer: &mut Renderer,
+    adjacent_chunks: [Option<Chunk>; 6],
+) {
+    chunk.mesh.vertices.clear();
+    chunk.mesh.indices.clear();
+    let vertex_data: &mut Vec<VoxelVertex> = &mut chunk.mesh.vertices;
+    let index_data: &mut Vec<u16> = &mut chunk.mesh.indices;
 
     let voxels = &chunk.voxels;
 
@@ -30,12 +42,7 @@ pub fn render_chunk(chunk: &Chunk, renderer: &mut Renderer, adjacent_chunks: [Op
                             .voxel_type
                             .is_solid())
                 {
-                    generate_voxel_face(
-                        &mut vertex_data,
-                        &mut index_data,
-                        0,
-                        [x as u8, y as u8, z as u8],
-                    );
+                    generate_voxel_face(vertex_data, index_data, 0, [x as u8, y as u8, z as u8]);
                 }
                 if !(z != CHUNK_SIZE_MINUS_ONE
                     && voxels[x + y * CHUNK_SIZE + (z + 1) * CHUNK_SIZE * CHUNK_SIZE]
@@ -48,12 +55,7 @@ pub fn render_chunk(chunk: &Chunk, renderer: &mut Renderer, adjacent_chunks: [Op
                             .voxel_type
                             .is_solid())
                 {
-                    generate_voxel_face(
-                        &mut vertex_data,
-                        &mut index_data,
-                        1,
-                        [x as u8, y as u8, z as u8],
-                    );
+                    generate_voxel_face(vertex_data, index_data, 1, [x as u8, y as u8, z as u8]);
                 }
                 if !(x != CHUNK_SIZE_MINUS_ONE
                     && voxels[(x + 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
@@ -66,12 +68,7 @@ pub fn render_chunk(chunk: &Chunk, renderer: &mut Renderer, adjacent_chunks: [Op
                             .voxel_type
                             .is_solid())
                 {
-                    generate_voxel_face(
-                        &mut vertex_data,
-                        &mut index_data,
-                        2,
-                        [x as u8, y as u8, z as u8],
-                    );
+                    generate_voxel_face(vertex_data, index_data, 2, [x as u8, y as u8, z as u8]);
                 }
                 if !(x != 0
                     && voxels[(x - 1) + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
@@ -84,12 +81,7 @@ pub fn render_chunk(chunk: &Chunk, renderer: &mut Renderer, adjacent_chunks: [Op
                             .voxel_type
                             .is_solid())
                 {
-                    generate_voxel_face(
-                        &mut vertex_data,
-                        &mut index_data,
-                        3,
-                        [x as u8, y as u8, z as u8],
-                    );
+                    generate_voxel_face(vertex_data, index_data, 3, [x as u8, y as u8, z as u8]);
                 }
                 if !(y != 0
                     && voxels[x + (y - 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
@@ -102,12 +94,7 @@ pub fn render_chunk(chunk: &Chunk, renderer: &mut Renderer, adjacent_chunks: [Op
                             .voxel_type
                             .is_solid())
                 {
-                    generate_voxel_face(
-                        &mut vertex_data,
-                        &mut index_data,
-                        4,
-                        [x as u8, y as u8, z as u8],
-                    );
+                    generate_voxel_face(vertex_data, index_data, 4, [x as u8, y as u8, z as u8]);
                 }
                 if !(y != CHUNK_SIZE_MINUS_ONE
                     && voxels[x + (y + 1) * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE]
@@ -120,19 +107,19 @@ pub fn render_chunk(chunk: &Chunk, renderer: &mut Renderer, adjacent_chunks: [Op
                             .voxel_type
                             .is_solid())
                 {
-                    generate_voxel_face(
-                        &mut vertex_data,
-                        &mut index_data,
-                        5,
-                        [x as u8, y as u8, z as u8],
-                    );
+                    generate_voxel_face(vertex_data, index_data, 5, [x as u8, y as u8, z as u8]);
                 }
             }
         }
     }
 
     if !vertex_data.is_empty() && !index_data.is_empty() {
-        create_vertex_buffer_from_data(renderer, vertex_data, index_data, chunk.position);
+        create_vertex_buffer_from_data(
+            renderer,
+            vertex_data.to_vec(),
+            index_data.to_vec(),
+            chunk.position,
+        );
     } else {
         println!("vertex and index buffers are empty");
     }
