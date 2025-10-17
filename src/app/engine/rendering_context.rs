@@ -357,13 +357,13 @@ impl RenderingContext {
 
         let binding = &[ash::vk::VertexInputBindingDescription {
             binding: 0,
-            stride: std::mem::size_of::<[u8; 3]>() as u32,
+            stride: std::mem::size_of::<u32>() as u32,
             input_rate: ash::vk::VertexInputRate::VERTEX,
         }];
         let vertex_input_attribute_descriptions = [ash::vk::VertexInputAttributeDescription {
             location: 0,
             binding: 0,
-            format: ash::vk::Format::R8G8B8_UINT,
+            format: ash::vk::Format::R32_SINT,
             offset: 0,
         }];
 

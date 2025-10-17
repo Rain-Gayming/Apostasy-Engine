@@ -149,10 +149,13 @@ pub fn generate_voxel_face(
     }
     for vertex in 0..4 {
         let base_position = CUBEMESH[face as usize * 4 + vertex];
-        let position_x = base_position[0] + position[0];
-        let position_y = base_position[1] + position[1];
-        let position_z = base_position[2] + position[2];
-        let position = [position_x, position_y, position_z];
-        vertex_data.push(VoxelVertex { position });
+        let position_x = (base_position[0] + position[0]) as usize;
+        let position_y = (base_position[1] + position[1]) as usize;
+        let position_z = (base_position[2] + position[2]) as usize;
+
+        let data =
+            (((position_z & 63) << 12) | ((position_y & 63) << 6) | (position_x & 63)) as u32;
+
+        vertex_data.push(VoxelVertex { data });
     }
 }

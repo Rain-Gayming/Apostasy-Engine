@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub struct VoxelVertex {
-    pub position: [u8; 3],
+    pub data: u32,
 }
 
 pub const CUBEMESH: [[u8; 3]; 24] = [
