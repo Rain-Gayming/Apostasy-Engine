@@ -58,8 +58,6 @@ pub fn get_chunks_in_range(chunk_generator: &mut ChunkGenerator) -> Vec<Vector3<
 }
 
 pub fn create_new_chunk(position: Vector3<i32>, voxel_world: &mut VoxelWorld) -> Chunk {
-    println!("generating new chunk at: {position:?}");
-
     let chunk = generate_chunk(position);
     voxel_world.chunks.insert(position, chunk.clone());
     chunk
