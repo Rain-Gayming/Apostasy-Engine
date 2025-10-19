@@ -12,9 +12,8 @@ use crate::{
     game::{
         player::Player,
         world::{
-            chunk_generator::{
-                create_new_chunk, get_adjacent_chunks, get_chunks_in_range, is_in_new_chunk,
-            },
+            chunk::generate_chunk,
+            chunk_generator::{get_adjacent_chunks, is_in_new_chunk, load_chunks_in_range},
             chunk_renderer::render_chunk,
             new_world, World,
         },
@@ -33,6 +32,7 @@ impl Game {
     pub fn update(&mut self, renderer: &mut Renderer) {
         if update_camera_position(self.player.camera.clone()) {
             let camera = self.player.camera.lock().unwrap();
+
             if is_in_new_chunk(
                 &mut self.player.chunk_generator,
                 Vector3::new(
@@ -41,36 +41,36 @@ impl Game {
                     camera.position.z as i32,
                 ),
             ) {
-                let mut chunks = Vec::new();
-                for chunk in get_chunks_in_range(
+                let mut chunks_loaded = 0;
+                load_chunks_in_range(
                     &mut self.player.chunk_generator,
                     &mut self.world.voxel_world,
-                ) {
-                    chunks.push(create_new_chunk(chunk, &mut self.world.voxel_world));
+                );
+
+                for (position, chunk) in self.world.voxel_world.chunks_to_load.iter_mut() {
+                    generate_chunk(*position, chunk);
+
+                    self.world
+                        .voxel_world
+                        .chunks_loaded
+                        .insert(*position, chunk.clone());
+
+                    chunks_loaded += 1;
+                }
+                for (position, mut chunk) in self.world.voxel_world.chunks_to_load.clone() {
+                    let adjacent_chunks =
+                        get_adjacent_chunks(position, &self.world.voxel_world.chunks_loaded);
+
+                    render_chunk(&mut chunk, renderer, adjacent_chunks.clone());
+
+                    self.world
+                        .voxel_world
+                        .chunks_rendering
+                        .insert(position, chunk);
                 }
 
-                for position in self.world.voxel_world.chunks_to_unmesh.clone() {
-                    let offset = [position.x, position.y, position.z];
-
-                    if renderer.index_offset.contains(&offset) {
-                        let offset_index = renderer
-                            .index_offset
-                            .iter()
-                            .position(|&pos| pos == offset)
-                            .unwrap();
-
-                        renderer.vertex_buffers.remove(offset_index);
-                        renderer.index_buffers.remove(offset_index);
-                        renderer.index_counts.remove(offset_index);
-                        renderer.index_offset.remove(offset_index);
-                        self.world.voxel_world.chunks_to_unmesh.remove(offset_index);
-                    }
-                }
-
-                for (position, mut chunk) in self.world.voxel_world.chunks.clone() {
-                    let adjacent_chunks = get_adjacent_chunks(position, &self.world.voxel_world);
-                    render_chunk(&mut chunk, renderer, adjacent_chunks);
-                }
+                self.world.voxel_world.chunks_to_load.clear();
+                println!("loaded chunks: {chunks_loaded}");
             }
         }
     }

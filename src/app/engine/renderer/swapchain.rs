@@ -6,6 +6,7 @@ use winit::window::Window;
 
 use crate::app::engine::rendering_context::{RenderingContext, Surface};
 
+#[derive(Clone)]
 pub struct Swapchain {
     pub desired_image_count: u32,
     pub format: vk::Format,

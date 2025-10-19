@@ -1,4 +1,4 @@
-use cgmath::Vector3;
+use cgmath::{Vector3, Zero};
 
 use crate::game::{
     game_constants::CHUNK_SIZE,
@@ -14,23 +14,30 @@ pub struct Chunk {
     pub voxels: Vec<Voxel>,
     pub mesh: ChunkMesh,
 }
+pub struct ChunkSend {
+    chunk: Chunk,
+}
 
-pub fn generate_chunk(position: Vector3<i32>) -> Chunk {
-    let mut voxels: Vec<Voxel> = Vec::with_capacity(CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE);
+impl Default for Chunk {
+    fn default() -> Self {
+        Chunk {
+            position: Vector3::zero(),
+            voxels: Vec::new(),
+            mesh: ChunkMesh::default(),
+        }
+    }
+}
+
+pub fn generate_chunk(position: Vector3<i32>, chunk: &mut Chunk) {
+    chunk.position = position;
 
     for _x in 0..CHUNK_SIZE {
         for _y in 0..CHUNK_SIZE {
             for _z in 0..CHUNK_SIZE {
-                voxels.push(Voxel {
+                chunk.voxels.push(Voxel {
                     voxel_type: VoxelType::Stone,
                 });
             }
         }
-    }
-
-    Chunk {
-        voxels,
-        position,
-        mesh: ChunkMesh::default(),
     }
 }

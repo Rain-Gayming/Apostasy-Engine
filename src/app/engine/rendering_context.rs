@@ -497,6 +497,7 @@ pub struct ImageLayoutState {
     pub queue_family_index: u32,
 }
 
+#[derive(Clone)]
 pub struct Surface {
     pub handle: vk::SurfaceKHR,
     pub capabilities: vk::SurfaceCapabilitiesKHR,

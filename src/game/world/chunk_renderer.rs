@@ -1,3 +1,5 @@
+use cgmath::Vector3;
+
 use crate::{
     app::engine::renderer::{
         create_vertex_buffer_from_data,
@@ -15,6 +17,10 @@ pub struct ChunkMesh {
     pub vertices: Vec<VoxelVertex>,
     pub indices: Vec<u16>,
 }
+pub struct ChunkMeshSend {
+    pub mesh: ChunkMesh,
+    pub position: Vector3<i32>,
+}
 
 pub fn render_chunk(
     chunk: &mut Chunk,
@@ -23,6 +29,7 @@ pub fn render_chunk(
 ) {
     chunk.mesh.vertices.clear();
     chunk.mesh.indices.clear();
+
     let vertex_data: &mut Vec<VoxelVertex> = &mut chunk.mesh.vertices;
     let index_data: &mut Vec<u16> = &mut chunk.mesh.indices;
 

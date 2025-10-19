@@ -1,15 +1,10 @@
-use cgmath::{InnerSpace, Vector3};
+use std::collections::HashMap;
 
-use crate::{
-    app::engine::renderer::Renderer,
-    game::{
-        game_constants::CHUNK_SIZE,
-        world::{
-            chunk::{generate_chunk, Chunk},
-            voxel,
-            voxel_world::VoxelWorld,
-        },
-    },
+use cgmath::Vector3;
+
+use crate::game::{
+    game_constants::CHUNK_SIZE,
+    world::{chunk::Chunk, voxel_world::VoxelWorld},
 };
 
 #[derive(Clone, Copy)]
@@ -39,52 +34,35 @@ pub fn is_in_new_chunk(chunk_generator: &mut ChunkGenerator, new_position: Vecto
     false
 }
 
-pub fn get_chunks_in_range(
-    chunk_generator: &mut ChunkGenerator,
-    voxel_world: &mut VoxelWorld,
-) -> Vec<Vector3<i32>> {
-    let mut chunks = Vec::new();
-    for x in
-        (chunk_generator.last_chunk_position.x - 8)..(chunk_generator.last_chunk_position.x + 8)
+pub fn load_chunks_in_range(chunk_generator: &mut ChunkGenerator, voxel_world: &mut VoxelWorld) {
+    let chunk_size = 3;
+    for x in (chunk_generator.last_chunk_position.x - chunk_size)
+        ..(chunk_generator.last_chunk_position.x + chunk_size)
     {
-        for y in
-            (chunk_generator.last_chunk_position.y - 8)..(chunk_generator.last_chunk_position.y + 8)
+        for y in (chunk_generator.last_chunk_position.y - chunk_size)
+            ..(chunk_generator.last_chunk_position.y + chunk_size)
         {
-            for z in (chunk_generator.last_chunk_position.z - 8)
-                ..(chunk_generator.last_chunk_position.z + 8)
+            for z in (chunk_generator.last_chunk_position.z - chunk_size)
+                ..(chunk_generator.last_chunk_position.z + chunk_size)
             {
-                chunks.push(Vector3::new(x, y, z));
+                if !voxel_world
+                    .chunks_loaded
+                    .contains_key(&Vector3::new(x, y, z))
+                {
+                    voxel_world
+                        .chunks_to_load
+                        .insert(Vector3::new(x, y, z), Chunk::default());
+                }
             }
         }
     }
-
-    for (position, _chunk) in voxel_world.chunks.clone() {
-        let position_float = Vector3::new(position.x as f32, position.y as f32, position.z as f32);
-        let generator_position_float = Vector3::new(
-            chunk_generator.last_chunk_position.x as f32,
-            chunk_generator.last_chunk_position.y as f32,
-            chunk_generator.last_chunk_position.z as f32,
-        );
-        if (generator_position_float - position_float).magnitude() > 8.0 {
-            voxel_world.chunks_to_unmesh.push(position);
-            voxel_world.chunks.remove(&position);
-        }
-    }
-    chunks
-}
-
-pub fn create_new_chunk(position: Vector3<i32>, voxel_world: &mut VoxelWorld) -> Chunk {
-    let chunk = generate_chunk(position);
-    voxel_world.chunks.insert(position, chunk.clone());
-    chunk
 }
 
 pub fn get_adjacent_chunks(
     chunk_position: Vector3<i32>,
-    voxel_world: &VoxelWorld,
+    chunks_to_check: &HashMap<Vector3<i32>, Chunk>,
 ) -> [Option<Chunk>; 6] {
-    let x_positive_chunk = voxel_world
-        .chunks
+    let x_positive_chunk = chunks_to_check
         .get(&Vector3::new(
             chunk_position.x + 1,
             chunk_position.y,
@@ -92,8 +70,7 @@ pub fn get_adjacent_chunks(
         ))
         .cloned();
 
-    let x_negative_chunk = voxel_world
-        .chunks
+    let x_negative_chunk = chunks_to_check
         .get(&Vector3::new(
             chunk_position.x - 1,
             chunk_position.y,
@@ -101,8 +78,7 @@ pub fn get_adjacent_chunks(
         ))
         .cloned();
 
-    let y_positive_chunk = voxel_world
-        .chunks
+    let y_positive_chunk = chunks_to_check
         .get(&Vector3::new(
             chunk_position.x,
             chunk_position.y + 1,
@@ -110,8 +86,7 @@ pub fn get_adjacent_chunks(
         ))
         .cloned();
 
-    let y_negative_chunk = voxel_world
-        .chunks
+    let y_negative_chunk = chunks_to_check
         .get(&Vector3::new(
             chunk_position.x,
             chunk_position.y - 1,
@@ -119,8 +94,7 @@ pub fn get_adjacent_chunks(
         ))
         .cloned();
 
-    let z_positive_chunk = voxel_world
-        .chunks
+    let z_positive_chunk = chunks_to_check
         .get(&Vector3::new(
             chunk_position.x,
             chunk_position.y,
@@ -128,8 +102,7 @@ pub fn get_adjacent_chunks(
         ))
         .cloned();
 
-    let z_negative_chunk = voxel_world
-        .chunks
+    let z_negative_chunk = chunks_to_check
         .get(&Vector3::new(
             chunk_position.x,
             chunk_position.y,

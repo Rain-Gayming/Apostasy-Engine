@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 pub mod camera;
 pub mod push_constants;
 mod swapchain;
+pub mod thread_manager;
 pub mod voxel_vertex;
 
 use anyhow::{Ok, Result};
@@ -18,12 +19,14 @@ use winit::window::Window;
 use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
 use crate::app::engine::renderer::push_constants::PushConstants;
 use crate::app::engine::renderer::swapchain::Swapchain;
+use crate::app::engine::renderer::thread_manager::ThreadManager;
 use crate::app::engine::renderer::voxel_vertex::VoxelVertex;
 use crate::app::engine::rendering_context;
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
 };
 
+#[derive(Clone)]
 struct Frame {
     command_buffer: ash::vk::CommandBuffer,
     image_available_semaphore: ash::vk::Semaphore,
@@ -50,6 +53,7 @@ pub struct Renderer {
     pub index_counts: Vec<u32>,
     pub index_offset: Vec<[i32; 3]>,
     push_constant: PushConstants,
+    pub thread_manager: ThreadManager,
 }
 
 use std::fs::{self};
@@ -208,6 +212,7 @@ impl Renderer {
                 index_buffers: Vec::new(),
                 index_offset: Vec::new(),
                 push_constant: PushConstants::default(),
+                thread_manager: ThreadManager::default(),
             })
         }
     }
