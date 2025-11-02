@@ -71,7 +71,33 @@ impl Swapchain {
         if self.extent.width == 0 || self.extent.height == 0 {
             return Ok(());
         }
-
+        let enable_vsync: bool = true;
+        let mut present_mode: vk::PresentModeKHR;
+        let present_modes = unsafe {
+            self.context
+                .surface_extension
+                .get_physical_device_surface_present_modes(
+                    self.context.physical_device.handle,
+                    self.surface.handle,
+                )?
+        };
+        if enable_vsync {
+            if present_modes.contains(&vk::PresentModeKHR::MAILBOX) {
+                present_mode = vk::PresentModeKHR::MAILBOX;
+            } else if present_modes.contains(&vk::PresentModeKHR::FIFO_RELAXED) {
+                present_mode = vk::PresentModeKHR::FIFO_RELAXED;
+            } else {
+                present_mode = vk::PresentModeKHR::FIFO;
+            }
+        } else {
+            if present_modes.contains(&vk::PresentModeKHR::IMMEDIATE) {
+                present_mode = vk::PresentModeKHR::IMMEDIATE;
+            } else if present_modes.contains(&vk::PresentModeKHR::MAILBOX) {
+                present_mode = vk::PresentModeKHR::MAILBOX;
+            } else {
+                present_mode = vk::PresentModeKHR::FIFO;
+            }
+        }
         unsafe {
             let new_swapchain = self.context.swapchain_extension.create_swapchain(
                 &vk::SwapchainCreateInfoKHR::default()
@@ -85,7 +111,7 @@ impl Swapchain {
                     .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
                     .pre_transform(self.surface.capabilities.current_transform)
                     .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-                    .present_mode(vk::PresentModeKHR::IMMEDIATE)
+                    .present_mode(present_mode)
                     .clipped(true)
                     .old_swapchain(self.handle),
                 None,

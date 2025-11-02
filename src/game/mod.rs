@@ -1,4 +1,3 @@
-use cgmath::Vector3;
 use winit::event::{DeviceEvent, WindowEvent};
 
 use crate::{
@@ -24,7 +23,7 @@ pub struct Game {
     pub player: Player,
 }
 impl Game {
-    pub fn update(&mut self, renderer: &mut Renderer) {
+    pub fn update(&mut self, _renderer: &mut Renderer) {
         update_camera_position(self.player.camera.clone());
     }
 
