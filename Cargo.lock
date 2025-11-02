@@ -74,6 +74,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
+name = "apostasy-engine"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ash",
+ "ash-window",
+ "bytemuck",
+ "cargo-mommy",
+ "cgmath",
+ "threadpool",
+ "tracing",
+ "tracing-subscriber",
+ "winit",
+]
+
+[[package]]
 name = "approx"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1482,22 +1498,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "vulkan-attempt-3"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ash",
- "ash-window",
- "bytemuck",
- "cargo-mommy",
- "cgmath",
- "threadpool",
- "tracing",
- "tracing-subscriber",
- "winit",
-]
 
 [[package]]
 name = "walkdir"

@@ -77,7 +77,7 @@ pub fn rotate_camera(camera: &mut Camera) {
     });
 }
 
-pub fn update_camera_position(camera: Arc<Mutex<Camera>>) -> bool {
+pub fn update_camera_position(camera: Arc<Mutex<Camera>>) {
     let mut camera = camera.lock().unwrap();
 
     let header = [camera.pitch, camera.yaw];
@@ -88,8 +88,6 @@ pub fn update_camera_position(camera: Arc<Mutex<Camera>>) -> bool {
 
     camera.position += movement_vector / 50.0;
     drop(camera);
-
-    movement_vector != Vector3::zero()
 }
 pub fn handle_camera_input(input_manager: &mut InputManager, camera: &mut Arc<Mutex<Camera>>) {
     let mut camera = camera.lock().unwrap();
