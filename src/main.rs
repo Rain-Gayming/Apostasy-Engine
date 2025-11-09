@@ -5,6 +5,7 @@ use crate::app::App;
 
 pub mod app;
 pub mod game;
+pub mod tests;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();

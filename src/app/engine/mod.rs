@@ -1,4 +1,5 @@
 pub mod cursor_manager;
+pub mod ecs;
 pub mod input_manager;
 pub mod renderer;
 pub mod rendering_context;
@@ -6,11 +7,11 @@ pub mod rendering_context;
 use std::sync::{Arc, Mutex};
 
 use crate::app::engine::{
-    cursor_manager::{toggle_cursor_hidden, CursorManager},
+    cursor_manager::{CursorManager, toggle_cursor_hidden},
     input_manager::{
-        is_keybind_name_triggered, process_keyboard_input, update_mouse_delta, InputManager,
+        InputManager, is_keybind_name_triggered, process_keyboard_input, update_mouse_delta,
     },
-    renderer::{camera::Camera, Renderer},
+    renderer::{Renderer, camera::Camera},
     rendering_context::*,
 };
 use anyhow::Result;

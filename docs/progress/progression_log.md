@@ -197,3 +197,25 @@
 #### Generation:
 
 - chunks now generate infinitely on the x y and z axis
+
+---
+
+# 1st november 2025:
+
+**Removed all voxel related code**
+
+---
+
+# 8th november 2025:
+
+**Added resources to the start of the ECS**
+
+## Project Size:
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 18    | 1828  |
+| GLSL     | 2     | 28    |
+| Total:   | 20    | 1856  |
+
+
