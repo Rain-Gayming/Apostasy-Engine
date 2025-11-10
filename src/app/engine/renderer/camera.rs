@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use cgmath::{Deg, Euler, Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Zero};
 
-use crate::app::engine::input_manager::{is_keybind_name_triggered, InputManager};
+use crate::app::engine::input_manager::{InputManager, is_keybind_name_triggered};
 
 #[derive(Clone, Copy)]
 pub struct Camera {

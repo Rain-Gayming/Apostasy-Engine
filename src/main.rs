@@ -1,7 +1,7 @@
 use anyhow::Result;
 use winit::event_loop::EventLoop;
 
-use crate::app::App;
+use crate::app::{App, engine::ecs::ECSWorld};
 
 pub mod app;
 pub mod game;
