@@ -20,7 +20,7 @@ impl Entity {
     ///
     ///     let new_entity = world
     ///         .create_entity()
-    ///         .add_component::<NewComponent>(NewComponent(59.0));
+    ///         .add_component::<NewComponent>(NewComponent(59.0))
     ///         .add_component::<NewComponentB>(NewComponentB(590.0));
     /// }
     /// ```
