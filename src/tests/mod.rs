@@ -1,35 +1,52 @@
-use std::any::TypeId;
+mod test {
 
-use crate::app::engine::ecs::ECSWorld;
-use crate::app::engine::ecs::component::Component;
+    use crate::app::engine::ecs::{component::Component, *};
 
-#[test]
-fn create_entity() {
-    let mut world = ECSWorld::default();
+    struct WorldSize {
+        pub width: f32,
+        pub height: f32,
+    }
+    struct NewComponent(f32);
+    impl Component for NewComponent {}
 
-    let new_entity = world
-        .create_entity()
-        .with_component::<NewComponent>(NewComponent(59.0));
-    let new_component = new_entity.get_component_ref::<NewComponent>().unwrap();
-    assert_eq!(new_component.0, 59.0);
+    #[test]
+    fn create_entity() {
+        let mut world = ECSWorld::default();
+
+        let new_entity = world
+            .create_entity()
+            .add_component::<NewComponent>(NewComponent(59.0));
+        let new_component = new_entity.get_component_ref::<NewComponent>().unwrap();
+        assert_eq!(new_component.0, 59.0);
+    }
+
+    #[test]
+    fn get_component_mutalby() {
+        let mut world = ECSWorld::default();
+
+        let new_entity = world
+            .create_entity()
+            .add_component::<NewComponent>(NewComponent(59.0));
+        let new_component = new_entity.get_component_mut::<NewComponent>().unwrap();
+
+        new_component.0 += 10.0;
+
+        assert_eq!(new_component.0, 69.0);
+    }
+
+    #[test]
+    fn add_resource() {
+        let mut world = ECSWorld::default();
+        let world_size = WorldSize {
+            width: 100.0,
+            height: 100.0,
+        };
+        world.add_resource(world_size);
+
+        let stored_resource = world.get_resource_ref::<WorldSize>().unwrap();
+        assert_eq!(100.0, stored_resource.width);
+    }
 }
-
-#[test]
-fn add_resource() {
-    let mut world = ECSWorld::default();
-    let world_size = WorldSize {
-        width: 100.0,
-        height: 100.0,
-    };
-    world.add_resource(world_size);
-
-    let stored_resource = world.get_resource_ref::<WorldSize>().unwrap();
-    assert_eq!(100.0, stored_resource.width);
-}
-
-struct NewComponent(f32);
-impl Component for NewComponent {}
-
 // #[test]
 // fn get_resource() {
 //     let resources = init_resource();
@@ -63,8 +80,3 @@ impl Component for NewComponent {}
 //         resources: init_resource(),
 //     }
 // }
-
-struct WorldSize {
-    pub width: f32,
-    pub height: f32,
-}

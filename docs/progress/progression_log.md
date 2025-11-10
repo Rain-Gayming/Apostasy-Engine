@@ -235,13 +235,14 @@
 - added components
 - refactored traits
 - allowed for accessing references to components on entities
+- allowed for accessing references to components on entities and mutating them
 
 ## Project Size:
 
 | Language | files | lines |
 | -------- | ----- | ----- |
-| Rust     | 20    | 1878  |
+| Rust     | 20    | 1892  |
 | GLSL     | 2     | 28    |
-| Total:   | 22    | 1904  |
+| Total:   | 22    | 1922  |
 
 

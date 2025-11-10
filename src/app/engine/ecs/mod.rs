@@ -3,9 +3,7 @@ use std::{
     collections::HashMap,
 };
 
-use ash::vk::MutableDescriptorTypeListEXT;
-
-use crate::app::engine::ecs::{component::Component, entities::Entity, resources::Resource};
+use crate::app::engine::ecs::entities::Entity;
 
 pub mod component;
 pub mod entities;
@@ -47,6 +45,7 @@ impl ECSWorld {
     }
 
     /// Removes a resource from the pool
+    ///
     pub fn remove_resource<T: Any>(&mut self) {
         let type_id = TypeId::of::<T>();
         self.resources.remove(&type_id);
