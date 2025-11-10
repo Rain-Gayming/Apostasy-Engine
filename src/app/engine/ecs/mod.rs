@@ -3,6 +3,8 @@ use std::{
     collections::HashMap,
 };
 
+use ash::vk::MutableDescriptorTypeListEXT;
+
 use crate::app::engine::ecs::{component::Component, entities::Entity, resources::Resource};
 
 pub mod component;
@@ -59,17 +61,15 @@ impl ECSWorld {
     ///     create_entity().with_component(xxx)
     /// }
     /// ```
-    pub fn create_entity(&mut self) -> &mut Self {
+    pub fn create_entity(&mut self) -> &mut Entity {
         let entity_id: u32 = self.entities.len() as u32;
 
-        self.entities.insert(
-            entity_id,
-            Entity {
-                components: vec![],
-                id: entity_id,
-            },
-        );
+        let new_entity = Entity {
+            components: HashMap::new(),
+            id: entity_id,
+        };
+        self.entities.insert(entity_id, new_entity);
 
-        self
+        self.entities.get_mut(&entity_id).unwrap()
     }
 }

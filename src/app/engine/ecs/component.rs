@@ -1,3 +1,4 @@
-use std::any::Any;
+use downcast_rs::{Downcast, impl_downcast};
 
-pub trait Component {}
+pub trait Component: Downcast {}
+impl_downcast!(Component);

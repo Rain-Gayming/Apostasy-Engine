@@ -1,38 +1,35 @@
-use super::*;
-use crate::app::engine::ecs::{ECSWorld, resources::Resource};
 use std::any::TypeId;
-//
-// #[cfg(test)]
-// fn create_and_get_resource_immutably() {
-//     use crate::app::engine::ecs::ECSWorld;
-//
-//     let mut world = ECSWorld::default();
-//
-//     world.add_resource(FpsResource(60));
-//     // if let Some(fps) = worldget_resource::<FpsResource>() {
-//     //     assert_eq!(*fps, &60);
-//     // }
-// }
-//
-// struct FpsResource(pub u32);
-//
-// impl std::ops::Deref for FpsResource {
-//     type Target = u32;
-//
-//     fn deref(&self) -> &Self::Target {
-//         &self.0
-//     }
-// }
-//
-// #[test]
-// fn add_resource() {
-//     let resources = init_resource();
-//
-//     let stored_resource = resources.data.get(&TypeId::of::<WorldSize>()).unwrap();
-//     let extrated_resource = stored_resource.downcast_ref::<WorldSize>().unwrap();
-//     assert_eq!(100.0, extrated_resource.width);
-// }
-//
+
+use crate::app::engine::ecs::ECSWorld;
+use crate::app::engine::ecs::component::Component;
+
+#[test]
+fn create_entity() {
+    let mut world = ECSWorld::default();
+
+    let new_entity = world
+        .create_entity()
+        .with_component::<NewComponent>(NewComponent(59.0));
+    let new_component = new_entity.get_component_ref::<NewComponent>().unwrap();
+    assert_eq!(new_component.0, 59.0);
+}
+
+#[test]
+fn add_resource() {
+    let mut world = ECSWorld::default();
+    let world_size = WorldSize {
+        width: 100.0,
+        height: 100.0,
+    };
+    world.add_resource(world_size);
+
+    let stored_resource = world.get_resource_ref::<WorldSize>().unwrap();
+    assert_eq!(100.0, stored_resource.width);
+}
+
+struct NewComponent(f32);
+impl Component for NewComponent {}
+
 // #[test]
 // fn get_resource() {
 //     let resources = init_resource();
@@ -65,18 +62,6 @@ use std::any::TypeId;
 //     ECSWorld {
 //         resources: init_resource(),
 //     }
-// }
-
-// fn init_resource() -> Resource{
-//     let mut resources = Resources::default();
-//     let world_size = WorldSize {
-//         width: 100.0,
-//         height: 100.0,
-//     };
-//
-//     resources.add(world_size);
-//
-//     resources
 // }
 
 struct WorldSize {
