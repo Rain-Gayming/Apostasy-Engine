@@ -142,6 +142,7 @@
 # 14th october 2025:
 
 **Added release and pressed keybinds to the input manager, meaning keys dont have to be just held constantly**
+**Time worked on: 3 hours**
 
 ## Changelog:
 
@@ -155,6 +156,7 @@
 # 16th october 2025:
 
 **Fixed issues with chunks not rendering, added chunk generation**
+**Time worked on: 4 hours**
 
 ## Changelog
 
@@ -203,6 +205,7 @@
 # 1st november 2025:
 
 **Removed all voxel related code**
+**Time worked on: 2 hours**
 
 ---
 
@@ -224,6 +227,7 @@
 # 10th november 2025:
 
 **Added entities to the ECS and allowed access to their components as references**
+**Time worked on: 7 hours**
 
 # Changelog
 
@@ -234,6 +238,7 @@
 - added entities,
 - added components
 - refactored traits
+- added systems (oh god this took so long)
 - allowed for accessing references to components on entities
 - allowed for accessing references to components on entities and mutating them
 
@@ -241,8 +246,8 @@
 
 | Language | files | lines |
 | -------- | ----- | ----- |
-| Rust     | 20    | 1892  |
+| Rust     | 29    | 2159  |
 | GLSL     | 2     | 28    |
-| Total:   | 22    | 1922  |
+| Total:   | 22    | 2187  |
 
 
