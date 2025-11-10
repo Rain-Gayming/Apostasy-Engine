@@ -219,3 +219,29 @@
 | Total:   | 20    | 1856  |
 
 
+--- 
+
+# 10th november 2025:
+
+**Added entities to the ECS and allowed access to their components as references**
+
+# Changelog
+
+## Engine:
+
+### ECS:
+
+- added entities,
+- added components
+- refactored traits
+- allowed for accessing references to components on entities
+
+## Project Size:
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 20    | 1878  |
+| GLSL     | 2     | 28    |
+| Total:   | 22    | 1904  |
+
+
