@@ -24,7 +24,6 @@ impl Entity {
     ///         .add_component::<NewComponentB>(NewComponentB(590.0));
     /// }
     /// ```
-
     pub fn add_component<T: Component>(&mut self, data: impl Any + Component) -> &mut Self {
         let type_id = TypeId::of::<T>();
 
