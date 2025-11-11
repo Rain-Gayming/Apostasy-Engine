@@ -93,3 +93,20 @@ impl ColumnsBuilder {
         self
     }
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[repr(transparent)]
+pub struct ArchetypeId(u32);
+
+impl ArchetypeId {
+    pub const EMPTY: ArchetypeId = ArchetypeId(0);
+    pub const INVALID: ArchetypeId = ArchetypeId(u32::MAX);
+    #[inline]
+    pub const fn new(index: usize) -> Self {
+        ArchetypeId(index as u32)
+    }
+    #[inline]
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+}
