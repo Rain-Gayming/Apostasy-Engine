@@ -6,10 +6,8 @@ use std::{
 use crate::app::engine::ecs::component::Component;
 
 /// A entity, used to hold components and an ID for the entity itself
-pub struct Entity {
-    pub components: HashMap<TypeId, Box<dyn Component>>,
-    pub id: u32,
-}
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct Entity(pub u64);
 
 impl Entity {
     /// Adds a component to an entity
@@ -27,7 +25,7 @@ impl Entity {
     pub fn add_component<T: Component>(&mut self, data: impl Any + Component) -> &mut Self {
         let type_id = TypeId::of::<T>();
 
-        self.components.insert(type_id, Box::new(data));
+        // self.components.insert(type_id, Box::new(data));
         self
     }
 
@@ -47,11 +45,12 @@ impl Entity {
     /// ```
     pub fn get_component_ref<T: Component>(&self) -> Option<&T> {
         let type_id = TypeId::of::<T>();
-        if let Some(data) = self.components.get(&type_id) {
-            data.downcast_ref()
-        } else {
-            None
-        }
+        // if let Some(data) = self.components.get(&type_id) {
+        //     data.downcast_ref()
+        // } else {
+        //     None
+        // }
+        None
     }
 
     /// Takes in a component type and gets a mutable reference to it from the entity
@@ -72,10 +71,11 @@ impl Entity {
     /// ```
     pub fn get_component_mut<T: Component>(&mut self) -> Option<&mut T> {
         let type_id = TypeId::of::<T>();
-        if let Some(data) = self.components.get_mut(&type_id) {
-            data.downcast_mut()
-        } else {
-            None
-        }
+        // if let Some(data) = self.components.get_mut(&type_id) {
+        //     data.downcast_mut()
+        // } else {
+        //     None
+        // }
+        None
     }
 }

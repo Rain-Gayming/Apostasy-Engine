@@ -1,7 +1,15 @@
-use std::{any::TypeId, collections::HashMap};
+use std::{
+    any::TypeId,
+    collections::{HashMap, HashSet},
+};
 
-use crate::app::engine::ecs::{entities::Entity, resources::Resource};
+use crate::app::engine::ecs::{
+    entities::Entity,
+    resources::Resource,
+    systems::{IntoSystem, Scheduler, System},
+};
 
+pub mod archetype;
 pub mod component;
 pub mod components;
 pub mod entities;
@@ -10,9 +18,10 @@ pub mod systems;
 
 #[derive(Default)]
 pub struct ECSWorld {
-    pub resources: HashMap<TypeId, Box<dyn Resource>>,
-    pub entities: HashMap<u32, Entity>,
-    pub systems: Vec<()>,
+    pub scheduler: Scheduler,
+    pub entities: HashMap<u64, Entity>,
+    pub next_entity_id: u64,
+    pub dead_entities: HashSet<Entity>,
 }
 
 impl ECSWorld {
@@ -27,56 +36,7 @@ impl ECSWorld {
     /// impl Resource for TestResource{}
     /// ```
     pub fn add_resource(&mut self, resource_data: impl Resource) {
-        let type_id = resource_data.type_id();
-        self.resources.insert(type_id, Box::new(resource_data));
-    }
-
-    /// Query for a resource and get a non-mutable reference to it as an option
-    /// allows for nothing to return but will cause a panic
-    /// ```
-    /// fn get_resource_ref(){
-    ///     let mut world = ECSWorld::default();
-    ///     let test_resource = TestResource(32.0);
-    ///     world.add_resource(test_resource);
-    ///
-    ///     let get_resource = world.get_resource_ref::<TestResource>().unwrap();
-    ///     assert_eq(get_resource.0, 32.0);
-    /// }
-    /// struct TestResource(f32);
-    /// impl Resource for TestResource{}
-    /// ```
-    pub fn get_resource_ref<T: Resource>(&self) -> Option<&T> {
-        let type_id = TypeId::of::<T>();
-        if let Some(data) = self.resources.get(&type_id) {
-            data.downcast_ref()
-        } else {
-            None
-        }
-    }
-
-    /// Query for a resource and get a mutable reference to it as an option
-    /// allows for nothing to return but will cause a panic
-    /// ```
-    /// fn get_resource_mut(){
-    ///     let mut world = ECSWorld::default();
-    ///     let test_resource = TestResource(32.0);
-    ///     world.add_resource(test_resource);
-    ///
-    ///     let get_resource = world.get_resource_mut::<TestResource>().unwrap();
-    ///     get_resource.0 += 32.0;
-    ///     
-    ///     assert_eq(get_resource.0, 64.0);
-    /// }
-    /// struct TestResource(f32);
-    /// impl Resource for TestResource{}
-    /// ```
-    pub fn get_resource_mut<T: Resource>(&mut self) -> Option<&mut T> {
-        let type_id = TypeId::of::<T>();
-        if let Some(data) = self.resources.get_mut(&type_id) {
-            data.downcast_mut()
-        } else {
-            None
-        }
+        self.scheduler.add_resource(resource_data);
     }
 
     /// Removes a resource from the pool
@@ -98,30 +58,44 @@ impl ECSWorld {
     /// ```
     pub fn remove_resource<T: Resource>(&mut self) {
         let type_id = TypeId::of::<T>();
-        self.resources.remove(&type_id);
+        self.scheduler.resources.remove(&type_id);
     }
 
-    /// Adds a blank entity to the entities pool,
-    /// to add components to it use
-    /// ```
-    /// fn foo(){
-    ///     let world = World::default();
-    ///     world.
-    ///     create_entity().with_component(xxx)
-    /// }
-    /// ```
+    // /// Adds a blank entity to the entities pool,
+    // /// to add components to it use
+    // /// ```
+    // /// fn foo(){
+    // ///     let world = World::default();
+    // ///     world.
+    // ///     create_entity().with_component(xxx)
+    // /// }
+    // /// ```
     pub fn create_entity(&mut self) -> &mut Entity {
-        let entity_id: u32 = self.entities.len() as u32;
+        let entity_id: u64 = self.next_entity_id;
 
-        let new_entity = Entity {
-            components: HashMap::new(),
-            id: entity_id,
-        };
+        if entity_id == u64::MAX {
+            panic!("Attempted to spawn an entity after running out of IDs");
+        }
+
+        let new_entity = Entity(entity_id);
         self.entities.insert(entity_id, new_entity);
+        self.next_entity_id += 1;
 
         self.entities.get_mut(&entity_id).unwrap()
     }
 
+    fn despawn(&mut self, entity: Entity) {
+        if self.is_alive(entity) {
+            self.dead_entities.insert(entity);
+        }
+    }
+
+    fn is_alive(&self, entity: Entity) -> bool {
+        if entity.0 >= self.next_entity_id {
+            panic!("Attempted to use an entity in an EntityGenerator that it was not spawned with");
+        }
+        !self.dead_entities.contains(&entity)
+    }
     /// Adds a system to the world
     /// ```
     /// fn add_system_test() {
@@ -132,8 +106,11 @@ impl ECSWorld {
     ///     println!("test");
     /// }
     /// ```
-    pub fn add_system(&mut self, system: ()) -> &mut Self {
-        self.systems.push(system);
+    pub fn add_system<I, S: System + 'static>(
+        &mut self,
+        system: impl IntoSystem<I, System = S>,
+    ) -> &mut Self {
+        self.scheduler.add_system(system);
         self
     }
 
@@ -142,15 +119,15 @@ impl ECSWorld {
     /// fn add_system_test() {
     ///     let mut world = ECSWorld::default();
     ///     world.add_system(test_system());
-    ///     world.run_systems();
+    ///     world.run();
     /// }
     /// fn test_system() {
     ///     println!("test");
     /// }
     /// ```
-    pub fn run_systems(&self) {
-        for system in self.systems.iter() {
-            system;
+    pub fn run(&mut self) {
+        for system in self.scheduler.systems.iter_mut() {
+            system.run(&mut self.scheduler.resources);
         }
     }
 }

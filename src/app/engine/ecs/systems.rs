@@ -5,13 +5,15 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
+use crate::app::engine::ecs::resources::Resource;
+
 pub struct FunctionSystem<Input, F> {
     f: F,
     marker: PhantomData<fn() -> Input>,
 }
 
 pub trait System {
-    fn run(&mut self, resources: &mut HashMap<TypeId, RefCell<Box<dyn Any>>>);
+    fn run(&mut self, resources: &mut HashMap<TypeId, RefCell<Box<dyn Resource>>>);
 }
 
 pub trait IntoSystem<Input> {
@@ -25,7 +27,7 @@ type StoredSystem = Box<dyn System>;
 #[derive(Default)]
 pub struct Scheduler {
     pub systems: Vec<StoredSystem>,
-    pub resources: HashMap<TypeId, RefCell<Box<dyn Any>>>,
+    pub resources: HashMap<TypeId, RefCell<Box<dyn Resource>>>,
 }
 
 impl Scheduler {
@@ -39,7 +41,7 @@ impl Scheduler {
         self.systems.push(Box::new(system.into_system()));
     }
 
-    pub fn add_resource<R: 'static>(&mut self, res: R) {
+    pub fn add_resource<R: 'static + Resource>(&mut self, res: R) {
         self.resources
             .insert(TypeId::of::<R>(), RefCell::new(Box::new(res)));
     }
@@ -48,7 +50,7 @@ impl Scheduler {
 pub trait SystemParam {
     type Item<'new>;
 
-    fn retrieve<'r>(resources: &'r HashMap<TypeId, RefCell<Box<dyn Any>>>) -> Self::Item<'r>;
+    fn retrieve<'r>(resources: &'r HashMap<TypeId, RefCell<Box<dyn Resource>>>) -> Self::Item<'r>;
 }
 
 macro_rules! impl_system {
@@ -63,7 +65,7 @@ macro_rules! impl_system {
                     FnMut($($params),*) +
                     FnMut($(<$params as SystemParam>::Item<'b>),*)
         {
-            fn run(&mut self, resources: &mut HashMap<TypeId, RefCell<Box<dyn Any>>>) {
+            fn run(&mut self, resources: &mut HashMap<TypeId, RefCell<Box<dyn Resource>>>) {
                 // necessary to tell rust exactly which impl to call; it gets a bit confused otherwise
                 fn call_inner<$($params),*>(
                     mut f: impl FnMut($($params),*),

@@ -3,7 +3,18 @@ use std::collections::HashMap;
 use anyhow::Result;
 use winit::event_loop::EventLoop;
 
-use crate::app::{App, engine::ecs::systems::*};
+use crate::{
+    app::{
+        App,
+        engine::ecs::{
+            ECSWorld,
+            components::{position::PositionComponent, velocity::VelocityComponent},
+            resources::{Res, ResMut, Resource},
+            systems::*,
+        },
+    },
+    game::world::{self, World},
+};
 
 pub mod app;
 pub mod game;
@@ -22,21 +33,26 @@ pub mod tests;
 //     Ok(())
 // }
 fn main() {
-    let mut scheduler = Scheduler::default();
+    let mut world = ECSWorld::default();
 
-    scheduler.add_system(foo);
-    scheduler.add_system(bar);
+    world.add_resource(WorldSize(0.0));
+    world
+        .create_entity()
+        .add_component::<PositionComponent>(PositionComponent::default())
+        .add_component::<VelocityComponent>(VelocityComponent::default());
+    world.add_system(add_to_world_size);
+    world.add_system(print_world_size);
 
-    scheduler.add_resource(12i32);
-    scheduler.add_resource("Hello, world!");
-
-    scheduler.run();
+    world.run();
 }
 
-fn foo(mut int: ResMut<i32>) {
-    *int += 1;
+fn add_to_world_size(mut world_size: ResMut<WorldSize>) {
+    world_size.0 += 100.0;
 }
 
-fn bar(statement: Res<&'static str>, num: Res<i32>) {
-    println!("{} My lucky number is: {}", *statement, *num);
+fn print_world_size(world_size: Res<WorldSize>) {
+    println!("world size: {}", world_size.0);
 }
+
+struct WorldSize(f32);
+impl Resource for WorldSize {}

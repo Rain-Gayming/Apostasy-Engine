@@ -1,7 +1,8 @@
 mod test {
 
+    use crate::app::engine::ecs::ECSWorld;
     #[deny(dead_code)]
-    use crate::app::engine::ecs::{component::Component, resources::Resource, *};
+    use crate::app::engine::ecs::{archetype::*, component::Component, resources::Resource};
 
     struct TestResource(f32);
     impl Resource for TestResource {}
@@ -14,76 +15,122 @@ mod test {
     impl Component for NewComponent {}
 
     #[test]
-    fn create_entity() {
-        let mut world = ECSWorld::default();
-
-        let new_entity = world
-            .create_entity()
-            .add_component::<NewComponent>(NewComponent(59.0));
-        let new_component = new_entity.get_component_ref::<NewComponent>().unwrap();
-        assert_eq!(new_component.0, 59.0);
+    #[should_panic]
+    fn add_preexisting() {
+        let archetype = Archetype {
+            entities: Vec::new(),
+            columns: Vec::new(),
+        };
+        let archetype = Archetype::new_from_add::<u32>(&archetype);
+        let archetype = Archetype::new_from_add::<u32>(&archetype);
     }
 
     #[test]
-    fn add_system_test() {
-        let mut world = ECSWorld::default();
-        world.add_system(test_system());
-        world.run_systems();
-    }
-    fn test_system() {
-        println!("sigma");
-    }
-
-    #[test]
-    fn get_component_mutalby() {
-        let mut world = ECSWorld::default();
-
-        let new_entity = world
-            .create_entity()
-            .add_component::<NewComponent>(NewComponent(59.0));
-        let new_component = new_entity.get_component_mut::<NewComponent>().unwrap();
-
-        new_component.0 += 10.0;
-
-        assert_eq!(new_component.0, 69.0);
+    #[should_panic]
+    fn remove_unpresent() {
+        let archetype = Archetype {
+            entities: Vec::new(),
+            columns: Vec::new(),
+        };
+        let archetype = Archetype::new_from_remove::<u32>(&archetype);
     }
 
     #[test]
-    fn add_resource() {
-        let mut world = ECSWorld::default();
-        let test_resource = TestResource(32.0);
-        world.add_resource(test_resource);
+    #[should_panic]
+    fn remove_unpresent_2() {
+        let archetype = Archetype {
+            entities: Vec::new(),
+            columns: Vec::new(),
+        };
+        let archetype = Archetype::new_from_add::<u64>(&archetype);
+        let archetype = Archetype::new_from_remove::<u32>(&archetype);
     }
 
     #[test]
-    fn get_resource_mut() {
-        let mut world = ECSWorld::default();
-        let test_resource = TestResource(32.0);
-        world.add_resource(test_resource);
+    fn add_removes() {
+        let archetype = Archetype {
+            entities: Vec::new(),
+            columns: Vec::new(),
+        };
 
-        let get_resource = world.get_resource_mut::<TestResource>().unwrap();
-        get_resource.0 += 32.0;
+        let archetype = Archetype::new_from_add::<u32>(&archetype);
+        assert!(archetype.columns.len() == 1);
+        assert!(
+            archetype
+                .columns
+                .iter()
+                .find(|col| col.as_any().is::<Vec<u32>>())
+                .is_some()
+        );
 
-        assert_eq!(get_resource.0, 64.0);
+        let archetype = Archetype::new_from_add::<u64>(&archetype);
+        assert!(archetype.columns.len() == 2);
+        assert!(
+            archetype
+                .columns
+                .iter()
+                .find(|col| col.as_any().is::<Vec<u32>>())
+                .is_some()
+        );
+        assert!(
+            archetype
+                .columns
+                .iter()
+                .find(|col| col.as_any().is::<Vec<u64>>())
+                .is_some()
+        );
+
+        let archetype = Archetype::new_from_remove::<u32>(&archetype);
+        assert!(archetype.columns.len() == 1);
+        assert!(
+            archetype
+                .columns
+                .iter()
+                .find(|col| col.as_any().is::<Vec<u64>>())
+                .is_some()
+        );
     }
 
     #[test]
-    fn get_resource_ref() {
-        let mut world = ECSWorld::default();
-        let test_resource = TestResource(32.0);
-        world.add_resource(test_resource);
+    fn columns_builder() {
+        let archetype = Archetype::new_from_columns(
+            Archetype::builder()
+                .with_column_type::<u32>()
+                .with_column_type::<u64>()
+                .with_column_type::<bool>(),
+        );
 
-        let get_resource = world.get_resource_ref::<TestResource>().unwrap();
-        assert_eq!(get_resource.0, 32.0);
+        assert!(archetype.columns.len() == 3);
+        assert!(
+            archetype
+                .columns
+                .iter()
+                .find(|col| col.as_any().is::<Vec<u32>>())
+                .is_some()
+        );
+        assert!(
+            archetype
+                .columns
+                .iter()
+                .find(|col| col.as_any().is::<Vec<u64>>())
+                .is_some()
+        );
+        assert!(
+            archetype
+                .columns
+                .iter()
+                .find(|col| col.as_any().is::<Vec<bool>>())
+                .is_some()
+        );
     }
 
     #[test]
-    fn remove_resource() {
-        let mut world = ECSWorld::default();
-        let test_resource = TestResource(32.0);
-        world.add_resource(test_resource);
-
-        world.remove_resource::<TestResource>();
-        assert!(world.get_resource_ref::<TestResource>().is_none());
+    #[should_panic]
+    fn columns_builder_duplicate() {
+        let archetype = Archetype::new_from_columns(
+            Archetype::builder()
+                .with_column_type::<u32>()
+                .with_column_type::<u32>(),
+        );
     }
 }

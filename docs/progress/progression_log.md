@@ -251,3 +251,17 @@
 | Total:   | 22    | 2187  |
 
 
+# 14th november 2025:
+
+**Added systems to the ECS and converted them to use my custom resources instead of the built in ones**
+**Time worked on 3 hours:**
+
+# Changelog:
+
+## Engine:
+
+### ECS:
+
+- added systems
+- converted resources to use my custom resource system
+
