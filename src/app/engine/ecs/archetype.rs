@@ -81,11 +81,26 @@ impl Archetype {
             .find(|column| column.as_any().is::<Vec<T>>())
             .is_some()
     }
+
+    /// Takes in a component column, loops through the current archetype,
+    /// if it has the column, return true, otherwise return false
+    pub fn contains_columns(&self, columns: Vec<Box<dyn ComponentColumn>>) -> bool {
+        let self_columns: Vec<_> = self
+            .columns
+            .iter()
+            .map(|column| column.new_empty_column())
+            .collect();
+
+        let other_columns: Vec<_> = columns
+            .iter()
+            .map(|column| column.new_empty_column())
+            .collect();
+    }
 }
 
 /// A struct that stores a vec of component columns,
 /// used only to create a brand new archetype
-pub struct ColumnsBuilder(Vec<Box<dyn ComponentColumn>>);
+pub struct ColumnsBuilder(pub Vec<Box<dyn ComponentColumn>>);
 
 /// Returns an empty ColumnBuilder
 pub fn new_column_builder() -> ColumnsBuilder {

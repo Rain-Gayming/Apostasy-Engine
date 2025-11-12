@@ -123,27 +123,34 @@ impl ECSWorld {
             //   if the current entity id is found
             //      remove it from the archetype
             if archetype.entities.contains(entity) {
+                // get the index of the entity
                 let index = archetype
                     .entities
                     .iter()
                     .position(|&e| e.0 == entity.0)
                     .unwrap();
+
+                // add all its components to the component builder
                 for column in archetype.columns.iter_mut() {
-                    let t: Box<dyn ComponentColumn> = column.new_empty_column();
-                    column_builder = column_builder.add_column(t);
+                    let component_column: Box<dyn ComponentColumn> = column.new_empty_column();
+                    column_builder = column_builder.add_column(component_column);
                 }
 
+                // remove the entity from the archetype
                 archetype.entities.remove(index);
             }
-
+        }
+        for archetype in self.archetypes.iter_mut() {
             // does the current archetype contain the component we are adding
             // if it does
             //      add the current entity to it
             //
-            if archetype.contains_component::<T>() {
-                archetype.entities.push(*entity);
-                has_found_new_archetype = true;
-                println!("adding to existing archetype");
+            for column in column_builder.0.iter() {
+                if archetype.contains_component::<T>() {
+                    archetype.entities.push(*entity);
+                    has_found_new_archetype = true;
+                    println!("adding to existing archetype");
+                }
             }
         }
 
