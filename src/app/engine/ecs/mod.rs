@@ -1,9 +1,11 @@
 use std::{
-    any::TypeId,
+    any::{Any, TypeId},
     collections::{HashMap, HashSet},
 };
 
 use crate::app::engine::ecs::{
+    archetype::Archetype,
+    component::Component,
     entities::Entity,
     resources::Resource,
     systems::{IntoSystem, Scheduler, System},
@@ -20,6 +22,7 @@ pub mod systems;
 pub struct ECSWorld {
     pub scheduler: Scheduler,
     pub entities: HashMap<u64, Entity>,
+    pub archetypes: Vec<Archetype>,
     pub next_entity_id: u64,
     pub dead_entities: HashSet<Entity>,
 }
@@ -82,6 +85,27 @@ impl ECSWorld {
         self.next_entity_id += 1;
 
         self.entities.get_mut(&entity_id).unwrap()
+    }
+
+    /// Adds a component to an entity
+    ///
+    /// ```
+    /// fn create_entity() {
+    ///     let mut world = ECSWorld::default();
+    ///
+    ///     let new_entity = world
+    ///         .create_entity()
+    ///         .add_component::<NewComponent>(NewComponent(59.0))
+    ///         .add_component::<NewComponentB>(NewComponentB(590.0));
+    /// }
+    /// ```
+    pub fn add_component<T: Component>(&mut self, data: impl Any + Component) -> &mut Self {
+        let type_id = TypeId::of::<T>();
+
+        for archetype in self.archetypes.iter() {}
+
+        // self.components.insert(type_id, Box::new(data));
+        self
     }
 
     fn despawn(&mut self, entity: Entity) {

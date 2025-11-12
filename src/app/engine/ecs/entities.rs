@@ -10,25 +10,6 @@ use crate::app::engine::ecs::component::Component;
 pub struct Entity(pub u64);
 
 impl Entity {
-    /// Adds a component to an entity
-    ///
-    /// ```
-    /// fn create_entity() {
-    ///     let mut world = ECSWorld::default();
-    ///
-    ///     let new_entity = world
-    ///         .create_entity()
-    ///         .add_component::<NewComponent>(NewComponent(59.0))
-    ///         .add_component::<NewComponentB>(NewComponentB(590.0));
-    /// }
-    /// ```
-    pub fn add_component<T: Component>(&mut self, data: impl Any + Component) -> &mut Self {
-        let type_id = TypeId::of::<T>();
-
-        // self.components.insert(type_id, Box::new(data));
-        self
-    }
-
     /// Takes in a component type and gets a non-mutable reference to it from the entity
     ///
     /// ```
