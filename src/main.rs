@@ -36,10 +36,7 @@ fn main() {
     let mut world = ECSWorld::default();
 
     world.add_resource(WorldSize(0.0));
-    world
-        .create_entity()
-        .add_component::<PositionComponent>(PositionComponent::default())
-        .add_component::<VelocityComponent>(VelocityComponent::default());
+    let entity = world.create_entity();
     world.add_system(add_to_world_size);
     world.add_system(print_world_size);
 

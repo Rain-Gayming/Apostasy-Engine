@@ -4,7 +4,9 @@ use std::{
 };
 
 use crate::app::engine::ecs::{
-    archetype::Archetype,
+    archetype::{
+        Archetype, ColumnsBuilder, ComponentColumn, new_archetype_from_builder, new_column_builder,
+    },
     component::Component,
     entities::Entity,
     resources::Resource,
@@ -99,13 +101,55 @@ impl ECSWorld {
     ///         .add_component::<NewComponentB>(NewComponentB(590.0));
     /// }
     /// ```
-    pub fn add_component<T: Component>(&mut self, data: impl Any + Component) -> &mut Self {
+    pub fn add_component<T: Component>(&mut self, entity: &mut Entity, data: impl Any + Component) {
         let type_id = TypeId::of::<T>();
 
-        for archetype in self.archetypes.iter() {}
+        // loop thrrough archetypes,
+        // find if an archetype contains all the components
+        //   - [x] if it does
+        //      - [x] add the current entity to it
+        //   if not then
+        //      create a new archetype with all the entities components
+        //
+        //   - [x] if the current entity id is found
+        //      - [x] remove it from the archetype
+        let mut has_found_new_archetype: bool = false;
+        let mut column_builder: &mut ColumnsBuilder = &mut new_column_builder();
+        for archetype in self.archetypes.iter_mut() {
+            //   if the current entity id is found
+            //      remove it from the archetype
+            if archetype.entities.contains(entity) {
+                let index = archetype
+                    .entities
+                    .iter()
+                    .position(|&entity| entity.0 == entity.0)
+                    .unwrap();
+                for column in archetype.columns.iter_mut() {
+                    let t: Box<dyn ComponentColumn> = column.new_empty_column();
+                    column_builder = column_builder.add_column(t);
+                }
+
+                archetype.entities.remove(index);
+            }
+
+            // does the current archetype contain the component we are adding
+            // if it does
+            //      add the current entity to it
+            //
+            if archetype.contains_component::<T>() {
+                archetype.entities.push(*entity);
+                has_found_new_archetype = true;
+            }
+        }
+
+        if !has_found_new_archetype {
+            let new_column_builder = column_builder.with_column_type::<T>();
+            let mut new_archetype = new_archetype_from_builder(new_column_builder);
+            new_archetype.entities.push(*entity);
+            self.archetypes.push(new_archetype);
+        }
 
         // self.components.insert(type_id, Box::new(data));
-        self
     }
 
     fn despawn(&mut self, entity: Entity) {
