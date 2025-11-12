@@ -9,6 +9,7 @@ use crate::{
         engine::ecs::{
             ECSWorld,
             components::{position::PositionComponent, velocity::VelocityComponent},
+            entities::Entity,
             resources::{Res, ResMut, Resource},
             systems::*,
         },
@@ -36,7 +37,13 @@ fn main() {
     let mut world = ECSWorld::default();
 
     world.add_resource(WorldSize(0.0));
-    let entity = world.create_entity();
+    world
+        .create_entity()
+        .add_component::<VelocityComponent>(&mut Entity(0), VelocityComponent::default());
+    world
+        .create_entity()
+        .add_component::<PositionComponent>(&mut Entity(1), PositionComponent::default())
+        .add_component::<VelocityComponent>(&mut Entity(1), VelocityComponent::default());
     world.add_system(add_to_world_size);
     world.add_system(print_world_size);
 

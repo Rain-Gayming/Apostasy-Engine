@@ -75,7 +75,7 @@ impl ECSWorld {
     // ///     create_entity().with_component(xxx)
     // /// }
     // /// ```
-    pub fn create_entity(&mut self) -> &mut Entity {
+    pub fn create_entity(&mut self) -> &mut Self {
         let entity_id: u64 = self.next_entity_id;
 
         if entity_id == u64::MAX {
@@ -86,7 +86,7 @@ impl ECSWorld {
         self.entities.insert(entity_id, new_entity);
         self.next_entity_id += 1;
 
-        self.entities.get_mut(&entity_id).unwrap()
+        self
     }
 
     /// Adds a component to an entity
@@ -101,7 +101,11 @@ impl ECSWorld {
     ///         .add_component::<NewComponentB>(NewComponentB(590.0));
     /// }
     /// ```
-    pub fn add_component<T: Component>(&mut self, entity: &mut Entity, data: impl Any + Component) {
+    pub fn add_component<T: Component>(
+        &mut self,
+        entity: &mut Entity,
+        data: impl Any + Component,
+    ) -> &mut Self {
         let type_id = TypeId::of::<T>();
 
         // loop thrrough archetypes,
@@ -122,7 +126,7 @@ impl ECSWorld {
                 let index = archetype
                     .entities
                     .iter()
-                    .position(|&entity| entity.0 == entity.0)
+                    .position(|&e| e.0 == entity.0)
                     .unwrap();
                 for column in archetype.columns.iter_mut() {
                     let t: Box<dyn ComponentColumn> = column.new_empty_column();
@@ -139,6 +143,7 @@ impl ECSWorld {
             if archetype.contains_component::<T>() {
                 archetype.entities.push(*entity);
                 has_found_new_archetype = true;
+                println!("adding to existing archetype");
             }
         }
 
@@ -147,9 +152,11 @@ impl ECSWorld {
             let mut new_archetype = new_archetype_from_builder(new_column_builder);
             new_archetype.entities.push(*entity);
             self.archetypes.push(new_archetype);
+            println!("adding to new archetype");
         }
 
         // self.components.insert(type_id, Box::new(data));
+        self
     }
 
     fn despawn(&mut self, entity: Entity) {
