@@ -271,7 +271,7 @@
 **Added archetypes to the ECS, allowing for better entity storage**
 **Time worked on: 5 hours**
 
-# Changelog
+# Changelog:
 
 ## Engine:
 
@@ -279,3 +279,13 @@
 
 - added archetypes to ECS
 - added partialeq to components and columns
+
+# Project Size:
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 30    | 2480  |
+| GLSL     | 2     | 28    |
+| Total:   | 32    | 2508  |
+
+

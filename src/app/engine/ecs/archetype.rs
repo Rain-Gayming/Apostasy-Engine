@@ -1,7 +1,4 @@
-use std::{
-    any::{Any, TypeId},
-    fmt::Debug,
-};
+use std::{any::TypeId, fmt::Debug};
 
 use crate::app::engine::ecs::{component::Component, entities::Entity};
 
@@ -45,6 +42,10 @@ impl PartialEq for dyn ComponentColumn {
 pub struct Archetype {
     /// entities in this archetype
     pub entities: Vec<Entity>,
+
+    /// the type ids of the components in this struct
+    pub component_types: Vec<TypeId>,
+
     /// the components the entities must have to be in this archetype
     pub columns: Vec<Box<dyn ComponentColumn>>,
 }
@@ -59,16 +60,18 @@ impl Archetype {
             .map(|column| column.new_empty_column())
             .collect();
 
-        assert!(
-            columns
-                .iter()
-                .find(|column| column.as_any().is::<Vec<T>>())
-                .is_none()
-        );
+        let mut component_types: Vec<_> = from_archetype
+            .columns
+            .iter()
+            .map(|column| column.type_id())
+            .collect();
+
         columns.push(Box::new(Vec::<T>::new()));
+        component_types.push(TypeId::of::<T>());
 
         Archetype {
             entities: Vec::new(),
+            component_types,
             columns,
         }
     }
@@ -87,10 +90,17 @@ impl Archetype {
             .position(|column| column.as_any().is::<Vec<T>>())
             .unwrap();
 
+        let mut component_types: Vec<_> = from_archetype
+            .columns
+            .iter()
+            .map(|column| column.type_id())
+            .collect();
+
         columns.remove(idx);
 
         Archetype {
             entities: Vec::new(),
+            component_types,
             columns,
         }
     }
@@ -98,7 +108,7 @@ impl Archetype {
     /// Takes in a component type, loops through the current archetype,
     /// if it has the component, return true, otherwise return false
     pub fn contains_component<T: Component>(&self) -> bool {
-        let mut columns: Vec<_> = self
+        let columns: Vec<_> = self
             .columns
             .iter()
             .map(|column| column.new_empty_column())
@@ -145,8 +155,11 @@ pub fn new_archetype_from_builder(columns: &mut ColumnsBuilder) -> Archetype {
         .map(|column| column.new_empty_column())
         .collect();
 
+    let component_types: Vec<_> = columns.iter().map(|column| column.type_id()).collect();
+
     Archetype {
         entities: Vec::new(),
+        component_types,
         columns,
     }
 }

@@ -10,6 +10,7 @@ use crate::{
             ECSWorld,
             components::{position::PositionComponent, velocity::VelocityComponent},
             entities::Entity,
+            query::Query,
             resources::{Res, ResMut, Resource},
             systems::*,
         },
@@ -40,15 +41,11 @@ fn main() {
     world
         .create_entity()
         .add_component::<VelocityComponent>(&mut Entity(0), VelocityComponent::default());
-    world
-        .create_entity()
-        .add_component::<PositionComponent>(&mut Entity(1), PositionComponent::default())
-        .add_component::<VelocityComponent>(&mut Entity(1), VelocityComponent::default());
+    world.create_entity();
 
-    world
-        .create_entity()
-        .add_component::<VelocityComponent>(&mut Entity(2), VelocityComponent::default())
-        .add_component::<PositionComponent>(&mut Entity(2), PositionComponent::default());
+    world.create_entity();
+
+    let query = Query::new(&world).with::<VelocityComponent>();
 
     world.add_system(add_to_world_size);
     world.add_system(print_world_size);

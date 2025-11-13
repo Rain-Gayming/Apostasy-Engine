@@ -17,13 +17,14 @@ pub mod archetype;
 pub mod component;
 pub mod components;
 pub mod entities;
+pub mod query;
 pub mod resources;
 pub mod systems;
 
 #[derive(Default)]
 pub struct ECSWorld {
     pub scheduler: Scheduler,
-    pub entities: HashMap<u64, Entity>,
+    pub entities: HashMap<Entity, (u64, u64)>,
     pub archetypes: Vec<Archetype>,
     pub next_entity_id: u64,
     pub dead_entities: HashSet<Entity>,
@@ -83,7 +84,31 @@ impl ECSWorld {
         }
 
         let new_entity = Entity(entity_id);
-        self.entities.insert(entity_id, new_entity);
+
+        // create an empty column builder and add the current component to it
+        let empty_column_builder: &mut ColumnsBuilder = &mut new_column_builder();
+
+        let mut has_found_new_archetype: bool = false;
+        // loop through the archetypes
+        for archetype in self.archetypes.iter_mut() {
+            // does the current archetype contain the component we are adding
+            // if it does
+            //      add the current entity to it
+            if archetype.contains_columns(&empty_column_builder.0) {
+                archetype.entities.push(new_entity);
+                has_found_new_archetype = true;
+                println!("adding to existing archetype");
+            }
+        }
+
+        if !has_found_new_archetype {
+            let mut new_archetype = new_archetype_from_builder(empty_column_builder);
+            new_archetype.entities.push(new_entity);
+            self.archetypes.push(new_archetype);
+            println!("adding to new archetype");
+        }
+
+        self.entities.insert(new_entity, (entity_id, 0));
         self.next_entity_id += 1;
 
         self
@@ -104,22 +129,15 @@ impl ECSWorld {
     pub fn add_component<T: Component + PartialEq>(
         &mut self,
         entity: &mut Entity,
-        data: impl Any + Component,
+        _data: impl Any + Component,
     ) -> &mut Self {
-        let type_id = TypeId::of::<T>();
-
-        // loop thrrough archetypes,
-        // find if an archetype contains all the components
-        //   - [x] if it does
-        //      - [x] add the current entity to it
-        //   if not then
-        //      create a new archetype with all the entities components
-        //
-        //   - [x] if the current entity id is found
-        //      - [x] remove it from the archetype
         let mut has_found_new_archetype: bool = false;
-        let mut empty_column_builder: &mut ColumnsBuilder = &mut new_column_builder();
+
+        // create an empty column builder and add the current component to it
+        let empty_column_builder: &mut ColumnsBuilder = &mut new_column_builder();
         let mut column_builder = empty_column_builder.with_column_type::<T>();
+
+        // loop through all archetypes
         for archetype in self.archetypes.iter_mut() {
             //   if the current entity id is found
             //      remove it from the archetype
@@ -142,11 +160,11 @@ impl ECSWorld {
             }
         }
 
+        // loop through the archetypes again
         for archetype in self.archetypes.iter_mut() {
             // does the current archetype contain the component we are adding
             // if it does
             //      add the current entity to it
-            //
             if archetype.contains_columns(&column_builder.0) {
                 archetype.entities.push(*entity);
                 has_found_new_archetype = true;
@@ -154,6 +172,8 @@ impl ECSWorld {
             }
         }
 
+        // if an archetype fitting the entities components wasnt found
+        // create a new one
         if !has_found_new_archetype {
             let mut new_archetype = new_archetype_from_builder(column_builder);
             new_archetype.entities.push(*entity);
@@ -165,18 +185,31 @@ impl ECSWorld {
         self
     }
 
-    fn despawn(&mut self, entity: Entity) {
-        if self.is_alive(entity) {
-            self.dead_entities.insert(entity);
-        }
-    }
-
-    fn is_alive(&self, entity: Entity) -> bool {
-        if entity.0 >= self.next_entity_id {
-            panic!("Attempted to use an entity in an EntityGenerator that it was not spawned with");
-        }
-        !self.dead_entities.contains(&entity)
-    }
+    // pub fn get_component<T: Component>(&self, entity: Entity) -> Option<&T> {
+    //     let (archetype_idx, entity_idx) = self.entities.get(&entity)?;
+    //     let archetype = &self.archetypes[*archetype_idx];
+    //
+    //     let component_vec = archetype
+    //         .components
+    //         .get(&TypeId::of::<T>())?
+    //         .downcast_ref::<Vec<T>>()?;
+    //
+    //     component_vec.get(*entity_idx)
+    // }
+    //
+    // // Mutable version
+    // pub fn get_component_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
+    //     let (archetype_idx, entity_idx) = self.entities.get(&entity)?;
+    //     let archetype = &mut self.archetypes[*archetype_idx];
+    //
+    //     let component_vec = archetype
+    //         .components
+    //         .get_mut(&TypeId::of::<T>())?
+    //         .downcast_mut::<Vec<T>>()?;
+    //
+    //     component_vec.get_mut(*entity_idx)
+    // }
+    //
     /// Adds a system to the world
     /// ```
     /// fn add_system_test() {
