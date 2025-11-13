@@ -1,0 +1,10 @@
+{
+  "item_name": "string",
+  "id": "game_string",
+  "components": {
+    "apostasy:can_stack":{},
+    "apostasy:consumable":{},
+    "apostasy:use_results_in":{"result_item": "apostasy_test"},
+  } 
+}
+

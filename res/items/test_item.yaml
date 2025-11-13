@@ -1,0 +1,8 @@
+item_name: name 
+id: apostasy_name
+components:
+  apostasy:can_stack: 
+    max_amount: 32
+  apostasy:consumable: {}
+  apostasy:use_results_in:
+    result_item: apostasy_test

@@ -251,7 +251,7 @@
 | Total:   | 22    | 2187  |
 
 
-# 14th november 2025:
+# 11th november 2025:
 
 **Added systems to the ECS and converted them to use my custom resources instead of the built in ones**
 **Time worked on 3 hours:**
@@ -265,3 +265,17 @@
 - added systems
 - converted resources to use my custom resource system
 
+
+# 13th november 2025:
+
+**Added archetypes to the ECS, allowing for better entity storage**
+**Time worked on: 5 hours**
+
+# Changelog
+
+## Engine:
+
+### ECS:
+
+- added archetypes to ECS
+- added partialeq to components and columns

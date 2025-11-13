@@ -1,19 +1,47 @@
-use std::any::Any;
+use std::{
+    any::{Any, TypeId},
+    fmt::Debug,
+};
 
 use crate::app::engine::ecs::{component::Component, entities::Entity};
 
 pub trait ComponentColumn: Component {
     fn new_empty_column(&self) -> Box<dyn ComponentColumn>;
+    fn eq_dyn(&self, other: &dyn ComponentColumn) -> bool;
 }
 
-impl<T: 'static> ComponentColumn for Vec<T> {
+impl<T: 'static + PartialEq> ComponentColumn for Vec<T> {
     fn new_empty_column(&self) -> Box<dyn ComponentColumn> {
         Box::new(Vec::<T>::new())
+    }
+
+    fn eq_dyn(&self, other: &dyn ComponentColumn) -> bool {
+        // Try to downcast other to Vec<T>
+        if let Some(other_vec) = other.as_any().downcast_ref::<Vec<T>>() {
+            self == other_vec
+        } else {
+            false
+        }
+    }
+}
+
+impl Debug for dyn ComponentColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Point")
+            .field("type", &self.type_id())
+            .finish()
+    }
+}
+
+impl PartialEq for dyn ComponentColumn {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq_dyn(other)
     }
 }
 
 /// A data struct that holds entities
 /// and only entities with the specified components in the `columns` data
+#[derive(Debug)]
 pub struct Archetype {
     /// entities in this archetype
     pub entities: Vec<Entity>,
@@ -24,7 +52,7 @@ pub struct Archetype {
 impl Archetype {
     /// Takes an input archetype,
     /// if it doesn't have the column of type <T> then it will create a new archetype out of it
-    pub fn new_from_add<T: 'static>(from_archetype: &Archetype) -> Archetype {
+    pub fn new_from_add<T: 'static + PartialEq>(from_archetype: &Archetype) -> Archetype {
         let mut columns: Vec<_> = from_archetype
             .columns
             .iter()
@@ -84,7 +112,7 @@ impl Archetype {
 
     /// Takes in a component column, loops through the current archetype,
     /// if it has the column, return true, otherwise return false
-    pub fn contains_columns(&self, columns: Vec<Box<dyn ComponentColumn>>) -> bool {
+    pub fn contains_columns(&self, columns: &Vec<Box<dyn ComponentColumn>>) -> bool {
         let self_columns: Vec<_> = self
             .columns
             .iter()
@@ -95,6 +123,8 @@ impl Archetype {
             .iter()
             .map(|column| column.new_empty_column())
             .collect();
+
+        self_columns == other_columns
     }
 }
 
@@ -124,15 +154,7 @@ pub fn new_archetype_from_builder(columns: &mut ColumnsBuilder) -> Archetype {
 impl ColumnsBuilder {
     /// Takes in a type <T> and adds it to it's own ComponentColumns
     /// Returns itself
-    pub fn with_column_type<T: 'static>(&mut self) -> &mut Self {
-        if let Some(_) = self
-            .0
-            .iter()
-            .find(|col| col.as_any().type_id() == std::any::TypeId::of::<Vec<T>>())
-        {
-            panic!("Attempted to create invalid archetype");
-        }
-
+    pub fn with_column_type<T: 'static + PartialEq>(&mut self) -> &mut Self {
         self.0.push(Box::new(Vec::<T>::new()));
         self
     }

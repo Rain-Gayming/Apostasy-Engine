@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 use cgmath::{Vector3, Zero};
 
 use crate::app::engine::ecs::component::Component;
@@ -13,4 +15,16 @@ impl Default for VelocityComponent {
     }
 }
 
-impl Component for VelocityComponent {}
+impl Component for VelocityComponent {
+    fn type_id_dyn(&self) -> TypeId {
+        TypeId::of::<VelocityComponent>()
+    }
+}
+impl PartialEq for VelocityComponent {
+    fn eq(&self, other: &Self) -> bool {
+        if self.type_id_dyn() != other.type_id_dyn() {
+            return false;
+        }
+        self.type_id_dyn() == other.type_id_dyn()
+    }
+}

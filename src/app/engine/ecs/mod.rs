@@ -101,7 +101,7 @@ impl ECSWorld {
     ///         .add_component::<NewComponentB>(NewComponentB(590.0));
     /// }
     /// ```
-    pub fn add_component<T: Component>(
+    pub fn add_component<T: Component + PartialEq>(
         &mut self,
         entity: &mut Entity,
         data: impl Any + Component,
@@ -118,7 +118,8 @@ impl ECSWorld {
         //   - [x] if the current entity id is found
         //      - [x] remove it from the archetype
         let mut has_found_new_archetype: bool = false;
-        let mut column_builder: &mut ColumnsBuilder = &mut new_column_builder();
+        let mut empty_column_builder: &mut ColumnsBuilder = &mut new_column_builder();
+        let mut column_builder = empty_column_builder.with_column_type::<T>();
         for archetype in self.archetypes.iter_mut() {
             //   if the current entity id is found
             //      remove it from the archetype
@@ -140,23 +141,21 @@ impl ECSWorld {
                 archetype.entities.remove(index);
             }
         }
+
         for archetype in self.archetypes.iter_mut() {
             // does the current archetype contain the component we are adding
             // if it does
             //      add the current entity to it
             //
-            for column in column_builder.0.iter() {
-                if archetype.contains_component::<T>() {
-                    archetype.entities.push(*entity);
-                    has_found_new_archetype = true;
-                    println!("adding to existing archetype");
-                }
+            if archetype.contains_columns(&column_builder.0) {
+                archetype.entities.push(*entity);
+                has_found_new_archetype = true;
+                println!("adding to existing archetype");
             }
         }
 
         if !has_found_new_archetype {
-            let new_column_builder = column_builder.with_column_type::<T>();
-            let mut new_archetype = new_archetype_from_builder(new_column_builder);
+            let mut new_archetype = new_archetype_from_builder(column_builder);
             new_archetype.entities.push(*entity);
             self.archetypes.push(new_archetype);
             println!("adding to new archetype");

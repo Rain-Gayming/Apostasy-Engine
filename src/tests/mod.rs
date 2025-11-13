@@ -1,5 +1,7 @@
 mod test {
 
+    use std::any::TypeId;
+
     use crate::app::engine::ecs::ECSWorld;
     #[deny(dead_code)]
     use crate::app::engine::ecs::{archetype::*, component::Component, resources::Resource};
@@ -12,7 +14,12 @@ mod test {
         pub height: f32,
     }
     struct NewComponent(f32);
-    impl Component for NewComponent {}
+
+    impl Component for NewComponent {
+        fn type_id_dyn(&self) -> TypeId {
+            TypeId::of::<NewComponent>()
+        }
+    }
 
     #[test]
     #[should_panic]
