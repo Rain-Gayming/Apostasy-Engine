@@ -3,7 +3,7 @@ use component_derive::DeriveComponent;
 
 use crate::app::engine::ecs::component::Component;
 
-#[derive(DeriveComponent)]
+#[derive(Clone, DeriveComponent)]
 pub struct VelocityComponent {
     pub velocity: Vector3<f32>,
 }

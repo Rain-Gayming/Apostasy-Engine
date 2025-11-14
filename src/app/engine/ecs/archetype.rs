@@ -1,4 +1,4 @@
-use std::{any::TypeId, fmt::Debug};
+use std::{any::TypeId, collections::HashMap, fmt::Debug};
 
 use crate::app::engine::ecs::{component::Component, entities::Entity};
 
@@ -7,7 +7,7 @@ pub trait ComponentColumn: Component {
     fn eq_dyn(&self, other: &dyn ComponentColumn) -> bool;
 }
 
-impl<T: 'static + PartialEq> ComponentColumn for Vec<T> {
+impl<T: 'static + PartialEq + Clone> ComponentColumn for Vec<T> {
     fn new_empty_column(&self) -> Box<dyn ComponentColumn> {
         Box::new(Vec::<T>::new())
     }
@@ -45,66 +45,13 @@ pub struct Archetype {
 
     /// the type ids of the components in this struct
     pub component_types: Vec<TypeId>,
+    pub components: HashMap<TypeId, Vec<Box<dyn Component>>>,
 
     /// the components the entities must have to be in this archetype
     pub columns: Vec<Box<dyn ComponentColumn>>,
 }
 
 impl Archetype {
-    /// Takes an input archetype,
-    /// if it doesn't have the column of type <T> then it will create a new archetype out of it
-    pub fn new_from_add<T: 'static + PartialEq>(from_archetype: &Archetype) -> Archetype {
-        let mut columns: Vec<_> = from_archetype
-            .columns
-            .iter()
-            .map(|column| column.new_empty_column())
-            .collect();
-
-        let mut component_types: Vec<_> = from_archetype
-            .columns
-            .iter()
-            .map(|column| column.type_id())
-            .collect();
-
-        columns.push(Box::new(Vec::<T>::new()));
-        component_types.push(TypeId::of::<T>());
-
-        Archetype {
-            entities: Vec::new(),
-            component_types,
-            columns,
-        }
-    }
-
-    /// Takes an input archetype,
-    /// if it has the column of type <T> it will remove it and give a new archetype
-    pub fn new_from_remove<T: 'static>(from_archetype: &Archetype) -> Archetype {
-        let mut columns: Vec<_> = from_archetype
-            .columns
-            .iter()
-            .map(|column| column.new_empty_column())
-            .collect();
-
-        let idx = columns
-            .iter()
-            .position(|column| column.as_any().is::<Vec<T>>())
-            .unwrap();
-
-        let mut component_types: Vec<_> = from_archetype
-            .columns
-            .iter()
-            .map(|column| column.type_id())
-            .collect();
-
-        columns.remove(idx);
-
-        Archetype {
-            entities: Vec::new(),
-            component_types,
-            columns,
-        }
-    }
-
     /// Takes in a component type, loops through the current archetype,
     /// if it has the component, return true, otherwise return false
     pub fn contains_component<T: Component>(&self) -> bool {
@@ -140,26 +87,42 @@ impl Archetype {
 
 /// A struct that stores a vec of component columns,
 /// used only to create a brand new archetype
-pub struct ColumnsBuilder(pub Vec<Box<dyn ComponentColumn>>);
+pub struct ColumnsBuilder(
+    pub Vec<Box<dyn ComponentColumn>>,
+    pub Vec<Box<dyn Component>>,
+);
 
 /// Returns an empty ColumnBuilder
 pub fn new_column_builder() -> ColumnsBuilder {
-    ColumnsBuilder(Vec::new())
+    ColumnsBuilder(Vec::new(), Vec::new())
 }
 
 /// Creates a new archetype from the column builder specified
-pub fn new_archetype_from_builder(columns: &mut ColumnsBuilder) -> Archetype {
-    let columns: Vec<Box<dyn ComponentColumn>> = columns
+pub fn new_archetype_from_builder(columns_builder: &mut ColumnsBuilder) -> Archetype {
+    // get the columns
+    let columns: Vec<Box<dyn ComponentColumn>> = columns_builder
         .0
         .iter()
         .map(|column| column.new_empty_column())
         .collect();
 
-    let component_types: Vec<_> = columns.iter().map(|column| column.type_id()).collect();
+    // get the component types
+    let component_types: Vec<TypeId> = columns_builder
+        .1
+        .iter()
+        .map(|comp| (*(*comp)).type_id())
+        .collect();
+
+    // get the components into a hashmap
+    let mut components: HashMap<TypeId, Vec<Box<dyn Component>>> = HashMap::new();
+    for component in columns_builder.1.iter() {
+        components.insert((*(*component)).type_id(), vec![component.clone()]);
+    }
 
     Archetype {
         entities: Vec::new(),
         component_types,
+        components,
         columns,
     }
 }
@@ -167,7 +130,7 @@ pub fn new_archetype_from_builder(columns: &mut ColumnsBuilder) -> Archetype {
 impl ColumnsBuilder {
     /// Takes in a type <T> and adds it to it's own ComponentColumns
     /// Returns itself
-    pub fn with_column_type<T: 'static + PartialEq>(&mut self) -> &mut Self {
+    pub fn with_column_type<T: 'static + PartialEq + Clone>(&mut self) -> &mut Self {
         self.0.push(Box::new(Vec::<T>::new()));
         self
     }

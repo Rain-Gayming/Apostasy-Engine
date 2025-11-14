@@ -289,3 +289,30 @@
 | Total:   | 32    | 2508  |
 
 
+# 14th november 2025:
+
+**Added querying to the ECS allowing for the accessing of entities, refactored archetypes**
+**Time worked on: 8 hours**
+
+# Changelog:
+
+## Engine:
+
+### ECS:
+
+- added querying
+- allowed for components to be copied
+- refactored archetypes
+- refactored entities
+
+# Project Size:
+
+
+| Language | files | lines |
+| -------- | ----- | ----- |
+| Rust     | 30    | 2371  |
+| GLSL     | 2     | 28    |
+| Total:   | 32    | 2416  |
+
+
+

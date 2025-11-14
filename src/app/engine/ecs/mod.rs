@@ -126,90 +126,138 @@ impl ECSWorld {
     ///         .add_component::<NewComponentB>(NewComponentB(590.0));
     /// }
     /// ```
-    pub fn add_component<T: Component + PartialEq>(
+    pub fn add_component<T: Component + PartialEq + Clone>(
         &mut self,
         entity: &mut Entity,
-        _data: impl Any + Component,
+        data: impl Any + Component,
     ) -> &mut Self {
-        let mut has_found_new_archetype: bool = false;
-
         // create an empty column builder and add the current component to it
         let empty_column_builder: &mut ColumnsBuilder = &mut new_column_builder();
         let mut column_builder = empty_column_builder.with_column_type::<T>();
+        let mut components: Vec<Box<dyn Component>> = vec![Box::new(data)];
 
         // loop through all archetypes
         for archetype in self.archetypes.iter_mut() {
-            //   if the current entity id is found
-            //      remove it from the archetype
-            if archetype.entities.contains(entity) {
-                // get the index of the entity
-                let index = archetype
-                    .entities
-                    .iter()
-                    .position(|&e| e.0 == entity.0)
-                    .unwrap();
-
+            if let Some(index) = archetype.entities.iter().position(|&e| e.0 == entity.0) {
                 // add all its components to the component builder
                 for column in archetype.columns.iter_mut() {
                     let component_column: Box<dyn ComponentColumn> = column.new_empty_column();
                     column_builder = column_builder.add_column(component_column);
                 }
 
+                // for each component type
+                for component_type in archetype.component_types.iter() {
+                    // get all components with this type
+                    if let Some(component_vec) = archetype.components.get(component_type) {
+                        // get the component relating to the entity
+                        if let Some(component) = component_vec.get(index) {
+                            components.push(component.clone());
+                        }
+                    }
+                }
+
                 // remove the entity from the archetype
                 archetype.entities.remove(index);
+                break; // entity should only be in one archetype
             }
         }
 
         // loop through the archetypes again
-        for archetype in self.archetypes.iter_mut() {
+        // TODO: convert this to be better
+        for pos in 0..self.archetypes.len() {
             // does the current archetype contain the component we are adding
             // if it does
             //      add the current entity to it
+            let archetype = self.archetypes.get_mut(pos).unwrap();
             if archetype.contains_columns(&column_builder.0) {
                 archetype.entities.push(*entity);
-                has_found_new_archetype = true;
-                println!("adding to existing archetype");
+
+                // add the components to the archetype
+                for component in components {
+                    let component_vec = archetype
+                        .components
+                        .get_mut(&(*component).type_id())
+                        .unwrap();
+                    component_vec.push(component);
+                }
+
+                // update the archetype id on the entity to the current archetype
+                let entity = self.entities.get_mut(entity).unwrap();
+                entity.0 = pos as u64;
+                return self;
             }
         }
 
         // if an archetype fitting the entities components wasnt found
         // create a new one
-        if !has_found_new_archetype {
-            let mut new_archetype = new_archetype_from_builder(column_builder);
-            new_archetype.entities.push(*entity);
-            self.archetypes.push(new_archetype);
-            println!("adding to new archetype");
+        for component in components {
+            column_builder.1.push(component);
         }
+        let mut new_archetype = new_archetype_from_builder(column_builder);
+        new_archetype.entities.push(*entity);
 
-        // self.components.insert(type_id, Box::new(data));
+        self.archetypes.push(new_archetype);
+
+        // update the entities archetype id to the newest added one
+        let entity = self.entities.get_mut(entity).unwrap();
+        entity.0 = self.archetypes.len() as u64 - 1;
+        println!("adding to new archetype");
+
+        self
+    }
+    /// Adds a component to an entity
+    /// **ONLY USE WHILE ADDING TO A NEWLY CREATED ENTITY**
+    /// ```
+    /// fn create_entity() {
+    ///     let mut world = ECSWorld::default();
+    ///
+    ///     let new_entity = world
+    ///         .create_entity()
+    ///         .with_component::<NewComponent>(NewComponent(59.0))
+    ///         .with_component::<NewComponentB>(NewComponentB(590.0));
+    /// }
+    /// ```
+    pub fn with_component<T: Component + PartialEq + Clone>(
+        &mut self,
+        data: impl Any + Component,
+    ) -> &mut Self {
+        // get the last entity in the array (should be the most recently added)
+        let last_entity_id = self.entities.len() - 1;
+        let mut entity = Entity(last_entity_id as u64);
+
+        // add the component
+        self.add_component::<T>(&mut entity, data);
+
         self
     }
 
-    // pub fn get_component<T: Component>(&self, entity: Entity) -> Option<&T> {
-    //     let (archetype_idx, entity_idx) = self.entities.get(&entity)?;
-    //     let archetype = &self.archetypes[*archetype_idx];
-    //
-    //     let component_vec = archetype
-    //         .components
-    //         .get(&TypeId::of::<T>())?
-    //         .downcast_ref::<Vec<T>>()?;
-    //
-    //     component_vec.get(*entity_idx)
-    // }
-    //
-    // // Mutable version
-    // pub fn get_component_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
-    //     let (archetype_idx, entity_idx) = self.entities.get(&entity)?;
-    //     let archetype = &mut self.archetypes[*archetype_idx];
-    //
-    //     let component_vec = archetype
-    //         .components
-    //         .get_mut(&TypeId::of::<T>())?
-    //         .downcast_mut::<Vec<T>>()?;
-    //
-    //     component_vec.get_mut(*entity_idx)
-    // }
-    //
+    /// Takes in a comopnent and an entity,
+    /// returns a reference to the component on that entity if it has it
+    pub fn get_component<T: Component>(&self, entity: Entity) -> Option<&T> {
+        let (archetype_idx, entity_idx) = self.entities.get(&entity)?;
+        let archetype = &self.archetypes[*archetype_idx as usize];
+
+        let component_vec: &_ = archetype.components.get(&TypeId::of::<T>())?;
+        component_vec
+            .get(*entity_idx as usize)
+            .unwrap()
+            .downcast_ref()
+    }
+
+    /// Takes in a comopnent and an entity,
+    /// returns a mutable reference component on that entity if it has it
+    pub fn get_component_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
+        let (archetype_idx, entity_idx) = self.entities.get(&entity)?;
+        let archetype = &mut self.archetypes[*archetype_idx as usize];
+
+        let component_vec = archetype.components.get_mut(&TypeId::of::<T>())?;
+
+        component_vec
+            .get_mut(*entity_idx as usize)
+            .unwrap()
+            .downcast_mut()
+    }
+
     /// Adds a system to the world
     /// ```
     /// fn add_system_test() {

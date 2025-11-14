@@ -1,21 +1,14 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
+//
+// use anyhow::Result;
+// use winit::event_loop::EventLoop;
 
-use anyhow::Result;
-use winit::event_loop::EventLoop;
-
-use crate::{
-    app::{
-        App,
-        engine::ecs::{
-            ECSWorld,
-            components::{position::PositionComponent, velocity::VelocityComponent},
-            entities::Entity,
-            query::Query,
-            resources::{Res, ResMut, Resource},
-            systems::*,
-        },
-    },
-    game::world::{self, World},
+use crate::app::engine::ecs::{
+    ECSWorld,
+    components::{position::PositionComponent, velocity::VelocityComponent},
+    entities::Entity,
+    query::Query,
+    resources::{Res, ResMut, Resource},
 };
 
 pub mod app;
@@ -40,18 +33,34 @@ fn main() {
     world.add_resource(WorldSize(0.0));
     world
         .create_entity()
-        .add_component::<VelocityComponent>(&mut Entity(0), VelocityComponent::default());
-    world.create_entity();
-
-    world.create_entity();
+        .with_component::<VelocityComponent>(VelocityComponent::default())
+        .with_component::<PositionComponent>(PositionComponent::default());
+    world
+        .create_entity()
+        .with_component::<VelocityComponent>(VelocityComponent::default());
+    world
+        .create_entity()
+        .with_component::<VelocityComponent>(VelocityComponent::default());
+    world
+        .create_entity()
+        .with_component::<VelocityComponent>(VelocityComponent::default());
 
     let query = Query::new(&world).with::<VelocityComponent>();
+    for entity in query.iter() {
+        let vel = world.get_component::<VelocityComponent>(entity).unwrap();
+        print_velocity(vel);
+    }
+    // // dbg!(query);
+    // dbg!(world.archetypes);
 
-    world.add_system(add_to_world_size);
-    world.add_system(print_world_size);
+    // world.add_system(add_to_world_size);
+    // world.add_system(print_world_size);
+    //
+    // world.run();
+}
 
-    world.run();
-    dbg!(world.archetypes);
+fn print_velocity(velocity_component: &VelocityComponent) {
+    println!("{:?}", velocity_component.velocity);
 }
 
 fn add_to_world_size(mut world_size: ResMut<WorldSize>) {

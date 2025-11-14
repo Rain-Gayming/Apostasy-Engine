@@ -14,13 +14,26 @@ pub fn derive_component(input: TokenStream) -> TokenStream {
             fn type_id_dyn(&self) -> std::any::TypeId {
                 std::any::TypeId::of::<Self>()
             }
+
+            fn clone_box(&self) -> Box<dyn Component> where Self: Clone {
+                Box::new(self.clone())
+            }
         }
-        impl #impl_generics PartialEq for #name #ty_generics #where_clause{
+
+        impl #impl_generics PartialEq for #name #ty_generics #where_clause {
             fn eq(&self, other: &Self) -> bool {
                 if self.type_id_dyn() != other.type_id_dyn() {
                     return false;
                 }
                 self.type_id_dyn() == other.type_id_dyn()
+            }
+        }
+
+        impl #impl_generics ::std::fmt::Debug for #name #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                f.debug_struct("type")
+                    .field("type_id", &::std::any::TypeId::of::<Self>())
+                    .finish()
             }
         }
     };

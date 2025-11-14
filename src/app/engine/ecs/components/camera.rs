@@ -1,11 +1,9 @@
-use std::any::TypeId;
-
 use cgmath::Matrix4;
 use component_derive::DeriveComponent;
 
 use crate::app::engine::ecs::component::Component;
 
-#[derive(DeriveComponent)]
+#[derive(Clone, DeriveComponent)]
 pub struct CameraComponent {
     pub far: f32,
     pub near: f32,

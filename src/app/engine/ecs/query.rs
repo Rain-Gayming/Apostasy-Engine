@@ -1,7 +1,4 @@
-// Query needs to take in components to find and excluse
-// use type id's of the inputs to determine if theyre in the archetype?
-
-use std::any::TypeId;
+use std::{any::TypeId, fmt::Debug};
 
 use crate::app::engine::ecs::{
     ECSWorld, archetype::Archetype, component::Component, entities::Entity,
@@ -13,7 +10,16 @@ pub struct Query<'a> {
     world: &'a ECSWorld,
 }
 
+impl<'a> Debug for Query<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("query")
+            .field("components", &self.required_components)
+            .finish()
+    }
+}
+
 impl<'a> Query<'a> {
+    /// Create a new query
     pub fn new(world: &'a ECSWorld) -> Self {
         Query {
             required_components: Vec::new(),
@@ -21,11 +27,13 @@ impl<'a> Query<'a> {
         }
     }
 
+    /// Adds a component to the query
     pub fn with<T: Component>(mut self) -> Self {
         self.required_components.push(TypeId::of::<T>());
         self
     }
 
+    /// Searches all archetypes for the components
     pub fn iter(&self) -> impl Iterator<Item = Entity> + '_ {
         self.world
             .archetypes
@@ -33,7 +41,7 @@ impl<'a> Query<'a> {
             .filter(|archetype| self.matches(archetype))
             .flat_map(|archetype| archetype.entities.iter().copied())
     }
-
+    /// Checks if the archetype has the components asked for
     fn matches(&self, archetype: &Archetype) -> bool {
         self.required_components
             .iter()

@@ -72,7 +72,7 @@ impl Swapchain {
             return Ok(());
         }
         let enable_vsync: bool = true;
-        let mut present_mode: vk::PresentModeKHR;
+        let present_mode: vk::PresentModeKHR;
         let present_modes = unsafe {
             self.context
                 .surface_extension
