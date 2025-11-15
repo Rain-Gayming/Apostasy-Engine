@@ -97,7 +97,7 @@ impl ECSWorld {
             if archetype.contains_columns(&empty_column_builder.0) {
                 archetype.entities.push(new_entity);
                 has_found_new_archetype = true;
-                println!("adding to existing archetype");
+                // println!("adding to existing archetype");
             }
         }
 
@@ -105,7 +105,7 @@ impl ECSWorld {
             let mut new_archetype = new_archetype_from_builder(empty_column_builder);
             new_archetype.entities.push(new_entity);
             self.archetypes.push(new_archetype);
-            println!("adding to new archetype");
+            // println!("adding to new archetype");
         }
 
         self.entities.insert(new_entity, (entity_id, 0));
