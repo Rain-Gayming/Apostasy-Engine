@@ -1,6 +1,7 @@
-use std::os::raw::c_void;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+pub mod depth_image;
+pub mod image_states;
 pub mod push_constants;
 mod swapchain;
 pub mod thread_manager;
@@ -8,17 +9,18 @@ pub mod voxel_vertex;
 
 use anyhow::{Ok, Result};
 use ash::vk::{
-    self, ClearColorValue, DescriptorSetLayoutBinding, DescriptorSetLayoutCreateInfo,
-    MemoryPropertyFlags, PhysicalDeviceMemoryProperties,
+    self, ClearColorValue, CommandPool, DescriptorSetLayoutBinding, DescriptorSetLayoutCreateInfo,
+    MemoryPropertyFlags, PhysicalDeviceMemoryProperties, Pipeline, PipelineLayout,
 };
 
 use winit::window::Window;
 
+use crate::app::engine::renderer::depth_image::{DepthImage, new_depth_image};
+use crate::app::engine::renderer::image_states::ImageStates;
+use crate::app::engine::renderer::rendering_context::RenderingContext;
 use crate::app::engine::renderer::swapchain::Swapchain;
 use crate::app::engine::rendering_context;
-use crate::app::engine::{
-    renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
-};
+use std::fs::{self};
 
 #[derive(Clone)]
 struct Frame {
@@ -32,18 +34,14 @@ pub struct Renderer {
     pub in_flight_frames_count: usize,
     current_frame: usize,
     frames: Vec<Frame>,
-    _command_pool: ash::vk::CommandPool,
-    pipeline: ash::vk::Pipeline,
-    pipeline_layout: ash::vk::PipelineLayout,
+    _command_pool: CommandPool,
+    pipeline: Pipeline,
+    pipeline_layout: PipelineLayout,
     swapchain: Swapchain,
     pub context: Arc<RenderingContext>,
-    depth_format: vk::Format,
-    depth_image: vk::Image,
-    depth_image_memory: vk::DeviceMemory,
-    depth_image_view: vk::ImageView,
+    pub image_states: ImageStates,
+    pub depth_image: DepthImage,
 }
-
-use std::fs::{self};
 
 const SHADER_DIR: &str = "res/shaders/";
 
@@ -52,51 +50,10 @@ impl Renderer {
         let mut swapchain = Swapchain::new(Arc::clone(&context), window)?;
         swapchain.resize()?;
 
-        let depth_format = vk::Format::D32_SFLOAT;
-
-        let depth_image_create_info = vk::ImageCreateInfo::default()
-            .image_type(vk::ImageType::TYPE_2D)
-            .format(depth_format)
-            .extent(vk::Extent3D {
-                width: swapchain.extent.width,
-                height: swapchain.extent.height,
-                depth: 1,
-            })
-            .mip_levels(1)
-            .array_layers(1)
-            .samples(vk::SampleCountFlags::TYPE_1)
-            .tiling(vk::ImageTiling::OPTIMAL)
-            .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
-            .initial_layout(vk::ImageLayout::UNDEFINED);
-
         let vertex_shader = load_shader_module(&context, "vert.spv")?;
         let fragment_shader = load_shader_module(&context, "frag.spv")?;
 
         unsafe {
-            let depth_image = context
-                .device
-                .create_image(&depth_image_create_info, None)?;
-            let mem_req = context.device.get_image_memory_requirements(depth_image);
-
-            let memory_type = find_memory_type(
-                mem_req.memory_type_bits,
-                &context.physical_device.memory_properties,
-            );
-
-            let depth_alloc_info = vk::MemoryAllocateInfo::default()
-                .allocation_size(mem_req.size)
-                .memory_type_index(memory_type);
-            let depth_image_memory = context.device.allocate_memory(&depth_alloc_info, None)?;
-            context
-                .device
-                .bind_image_memory(depth_image, depth_image_memory, 0)?;
-
-            let depth_image_view = context.create_image_view(
-                depth_image,
-                depth_format,
-                vk::ImageAspectFlags::DEPTH,
-            )?;
-
             let push_constant_range = vk::PushConstantRange {
                 stage_flags: vk::ShaderStageFlags::VERTEX,
                 offset: 0,
@@ -124,6 +81,7 @@ impl Renderer {
                 None,
             )?;
 
+            let depth_format = vk::Format::D32_SFLOAT;
             let pipeline = context.create_graphics_pipeline(
                 vertex_shader,
                 fragment_shader,
@@ -174,6 +132,7 @@ impl Renderer {
                 });
             }
 
+            let depth_image = new_depth_image(&context, &swapchain);
             // Bind the vertex buffer memory
 
             Ok(Self {
@@ -185,15 +144,14 @@ impl Renderer {
                 pipeline_layout,
                 context,
                 swapchain,
-                depth_format,
+                image_states: ImageStates::default(),
                 depth_image,
-                depth_image_memory,
-                depth_image_view,
             })
         }
     }
 
-    pub fn update_depth_buffer(&mut self) -> Result<()> {
+    /// Recreates the depth buffer upon screen resizing
+    pub fn update_depth_buffer(&mut self) {
         let depth_format = vk::Format::D32_SFLOAT;
 
         let depth_image_create_info = vk::ImageCreateInfo::default()
@@ -214,7 +172,8 @@ impl Renderer {
             let depth_image = self
                 .context
                 .device
-                .create_image(&depth_image_create_info, None)?;
+                .create_image(&depth_image_create_info, None)
+                .unwrap();
             let mem_req = self
                 .context
                 .device
@@ -236,7 +195,8 @@ impl Renderer {
                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
                 &self.context.physical_device.memory_properties,
             )
-            .ok_or_else(|| anyhow::anyhow!("No suitable memory type for depth image"))?;
+            .ok_or_else(|| anyhow::anyhow!("No suitable memory type for depth image"))
+            .unwrap();
 
             let depth_alloc_info = vk::MemoryAllocateInfo::default()
                 .allocation_size(mem_req.size)
@@ -244,27 +204,30 @@ impl Renderer {
             let depth_image_memory = self
                 .context
                 .device
-                .allocate_memory(&depth_alloc_info, None)?;
+                .allocate_memory(&depth_alloc_info, None)
+                .unwrap();
             self.context
                 .device
-                .bind_image_memory(depth_image, depth_image_memory, 0)?;
+                .bind_image_memory(depth_image, depth_image_memory, 0)
+                .unwrap();
 
-            let depth_image_view = self.context.create_image_view(
-                depth_image,
-                self.depth_format,
-                vk::ImageAspectFlags::DEPTH,
-            )?;
-            self.depth_format = depth_format;
-            self.depth_image = depth_image;
-            self.depth_image_memory = depth_image_memory;
-            self.depth_image_view = depth_image_view;
-
-            Ok(())
+            let depth_image_view = self
+                .context
+                .create_image_view(
+                    depth_image,
+                    self.depth_image.depth_format,
+                    vk::ImageAspectFlags::DEPTH,
+                )
+                .unwrap();
+            self.depth_image.depth_format = depth_format;
+            self.depth_image.depth_image = depth_image;
+            self.depth_image.depth_image_memory = depth_image_memory;
+            self.depth_image.depth_image_view = depth_image_view;
         }
     }
     pub fn resize(&mut self) -> Result<()> {
         let result = self.swapchain.resize();
-        let _ = self.update_depth_buffer();
+        self.update_depth_buffer();
         result
     }
 
@@ -291,53 +254,19 @@ impl Renderer {
                 &ash::vk::CommandBufferBeginInfo::default(),
             )?;
 
-            let undefined_image_state = ImageLayoutState {
-                layout: vk::ImageLayout::UNDEFINED,
-                access_mask: vk::AccessFlags::empty(),
-                stage_mask: vk::PipelineStageFlags::TOP_OF_PIPE,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
-            let renderable_state = ImageLayoutState {
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-                access_mask: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-                stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
-
-            let present_image_state = ImageLayoutState {
-                layout: vk::ImageLayout::PRESENT_SRC_KHR,
-                access_mask: vk::AccessFlags::empty(),
-                stage_mask: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
-
-            let undefined_depth_state = ImageLayoutState {
-                layout: vk::ImageLayout::UNDEFINED,
-                access_mask: vk::AccessFlags::empty(),
-                stage_mask: vk::PipelineStageFlags::TOP_OF_PIPE,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
-            let depth_attach_state = ImageLayoutState {
-                layout: vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
-                access_mask: vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-                stage_mask: vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS
-                    | vk::PipelineStageFlags::LATE_FRAGMENT_TESTS,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
-
             self.context.transition_image_layout(
                 frame.command_buffer,
-                self.depth_image,
-                undefined_depth_state,
-                depth_attach_state,
+                self.depth_image.depth_image,
+                self.image_states.undefined_image_state,
+                self.image_states.depth_attach_state,
                 vk::ImageAspectFlags::DEPTH,
             );
 
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                undefined_image_state,
-                renderable_state,
+                self.image_states.undefined_image_state,
+                self.image_states.renderable_image_state,
                 vk::ImageAspectFlags::COLOR,
             );
 
@@ -348,7 +277,7 @@ impl Renderer {
                     float32: [0.01, 0.01, 0.01, 1.0],
                 },
                 vk::Rect2D::default().extent(self.swapchain.extent),
-                self.depth_image_view,
+                self.depth_image.depth_image_view,
                 vk::ClearDepthStencilValue {
                     depth: 1.0,
                     stencil: 0,
@@ -427,8 +356,8 @@ impl Renderer {
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                renderable_state,
-                present_image_state,
+                self.image_states.renderable_image_state,
+                self.image_states.present_image_state,
                 vk::ImageAspectFlags::COLOR,
             );
 
@@ -464,14 +393,6 @@ impl Renderer {
 impl Drop for Renderer {
     fn drop(&mut self) {
         unsafe {
-            self.context
-                .device
-                .destroy_image_view(self.depth_image_view, None);
-            self.context
-                .device
-                .free_memory(self.depth_image_memory, None);
-            self.context.device.destroy_image(self.depth_image, None);
-
             // for buffer in self.vertex_buffers.iter() {
             //     self.context.device.destroy_buffer(*buffer, None);
             // }
@@ -503,9 +424,4 @@ pub fn find_memory_type(type_filter: u32, properties: &PhysicalDeviceMemoryPrope
         }
     }
     panic!("Failed to find suitable memory type!");
-}
-
-#[allow(unsafe_op_in_unsafe_fn)]
-unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
-    ::core::slice::from_raw_parts((p as *const T) as *const u8, ::core::mem::size_of::<T>())
 }
