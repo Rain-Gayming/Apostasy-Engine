@@ -1,7 +1,6 @@
 use std::os::raw::c_void;
 use std::sync::{Arc, Mutex};
 
-pub mod camera;
 pub mod push_constants;
 mod swapchain;
 pub mod thread_manager;
@@ -9,18 +8,13 @@ pub mod voxel_vertex;
 
 use anyhow::{Ok, Result};
 use ash::vk::{
-    self, Buffer, BufferCreateInfo, BufferUsageFlags, ClearColorValue, DescriptorSetLayoutBinding,
-    DescriptorSetLayoutCreateInfo, MemoryAllocateInfo, MemoryPropertyFlags,
-    PhysicalDeviceMemoryProperties, SharingMode,
+    self, ClearColorValue, DescriptorSetLayoutBinding, DescriptorSetLayoutCreateInfo,
+    MemoryPropertyFlags, PhysicalDeviceMemoryProperties,
 };
-use cgmath::Vector3;
+
 use winit::window::Window;
 
-use crate::app::engine::renderer::camera::{get_perspective_projection, get_view_matrix, Camera};
-use crate::app::engine::renderer::push_constants::PushConstants;
 use crate::app::engine::renderer::swapchain::Swapchain;
-use crate::app::engine::renderer::thread_manager::ThreadManager;
-use crate::app::engine::renderer::voxel_vertex::VoxelVertex;
 use crate::app::engine::rendering_context;
 use crate::app::engine::{
     renderer::rendering_context::RenderingContext, rendering_context::ImageLayoutState,
@@ -43,17 +37,10 @@ pub struct Renderer {
     pipeline_layout: ash::vk::PipelineLayout,
     swapchain: Swapchain,
     pub context: Arc<RenderingContext>,
-    camera: Arc<Mutex<Camera>>,
     depth_format: vk::Format,
     depth_image: vk::Image,
     depth_image_memory: vk::DeviceMemory,
     depth_image_view: vk::ImageView,
-    pub vertex_buffers: Vec<Buffer>,
-    pub index_buffers: Vec<Buffer>,
-    pub index_counts: Vec<u32>,
-    pub index_offset: Vec<[i32; 3]>,
-    push_constant: PushConstants,
-    pub thread_manager: ThreadManager,
 }
 
 use std::fs::{self};
@@ -61,11 +48,7 @@ use std::fs::{self};
 const SHADER_DIR: &str = "res/shaders/";
 
 impl Renderer {
-    pub fn new(
-        context: Arc<RenderingContext>,
-        window: Arc<Window>,
-        camera: Arc<Mutex<Camera>>,
-    ) -> Result<Self> {
+    pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
         let mut swapchain = Swapchain::new(Arc::clone(&context), window)?;
         swapchain.resize()?;
 
@@ -202,17 +185,10 @@ impl Renderer {
                 pipeline_layout,
                 context,
                 swapchain,
-                camera,
                 depth_format,
                 depth_image,
                 depth_image_memory,
                 depth_image_view,
-                vertex_buffers: Vec::new(),
-                index_counts: Vec::new(),
-                index_buffers: Vec::new(),
-                index_offset: Vec::new(),
-                push_constant: PushConstants::default(),
-                thread_manager: ThreadManager::default(),
             })
         }
     }
@@ -395,14 +371,14 @@ impl Renderer {
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
 
-            let aspect = self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
+            // let aspect = self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
 
-            let view: [[f32; 4]; 4] = get_view_matrix(self.camera.clone()).into();
-            let projection: [[f32; 4]; 4] =
-                get_perspective_projection(self.camera.clone(), aspect).into();
+            // let view: [[f32; 4]; 4] = get_view_matrix(self.camera.clone()).into();
+            // let projection: [[f32; 4]; 4] =
+            //     get_perspective_projection(self.camera.clone(), aspect).into();
 
-            self.push_constant.view_matrix = view;
-            self.push_constant.projection_matrix = projection;
+            // self.push_constant.view_matrix = view;
+            // self.push_constant.projection_matrix = projection;
 
             self.context.device.cmd_bind_pipeline(
                 frame.command_buffer,
@@ -410,42 +386,42 @@ impl Renderer {
                 self.pipeline,
             );
 
-            for index in 0..self.index_offset.len() {
-                let index_offset = self.index_offset[index];
-                self.push_constant.chunk_position = index_offset;
-
-                let push_data = any_as_u8_slice(&self.push_constant);
-
-                self.context.device.cmd_push_constants(
-                    frame.command_buffer,
-                    self.pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX,
-                    0,
-                    push_data,
-                );
-
-                self.context.device.cmd_bind_vertex_buffers(
-                    frame.command_buffer,
-                    0,
-                    &[self.vertex_buffers[index]],
-                    &[0],
-                );
-
-                self.context.device.cmd_bind_index_buffer(
-                    frame.command_buffer,
-                    self.index_buffers[index],
-                    0,
-                    vk::IndexType::UINT16,
-                );
-                self.context.device.cmd_draw_indexed(
-                    frame.command_buffer,
-                    self.index_counts[index],
-                    1,
-                    0,
-                    0,
-                    0,
-                );
-            }
+            // for index in 0..self.index_offset.len() {
+            //     let index_offset = self.index_offset[index];
+            //     self.push_constant.chunk_position = index_offset;
+            //
+            //     let push_data = any_as_u8_slice(&self.push_constant);
+            //
+            //     self.context.device.cmd_push_constants(
+            //         frame.command_buffer,
+            //         self.pipeline_layout,
+            //         vk::ShaderStageFlags::VERTEX,
+            //         0,
+            //         push_data,
+            //     );
+            //
+            //     self.context.device.cmd_bind_vertex_buffers(
+            //         frame.command_buffer,
+            //         0,
+            //         &[self.vertex_buffers[index]],
+            //         &[0],
+            //     );
+            //
+            //     self.context.device.cmd_bind_index_buffer(
+            //         frame.command_buffer,
+            //         self.index_buffers[index],
+            //         0,
+            //         vk::IndexType::UINT16,
+            //     );
+            //     self.context.device.cmd_draw_indexed(
+            //         frame.command_buffer,
+            //         self.index_counts[index],
+            //         1,
+            //         0,
+            //         0,
+            //         0,
+            //     );
+            // }
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             self.context.transition_image_layout(
@@ -496,9 +472,9 @@ impl Drop for Renderer {
                 .free_memory(self.depth_image_memory, None);
             self.context.device.destroy_image(self.depth_image, None);
 
-            for buffer in self.vertex_buffers.iter() {
-                self.context.device.destroy_buffer(*buffer, None);
-            }
+            // for buffer in self.vertex_buffers.iter() {
+            //     self.context.device.destroy_buffer(*buffer, None);
+            // }
 
             self.context
                 .device
@@ -527,132 +503,6 @@ pub fn find_memory_type(type_filter: u32, properties: &PhysicalDeviceMemoryPrope
         }
     }
     panic!("Failed to find suitable memory type!");
-}
-pub fn create_vertex_buffer_from_data(
-    renderer: &mut Renderer,
-    vertex_data: Vec<VoxelVertex>,
-    index_data: Vec<u16>,
-    chunk_position: Vector3<i32>,
-) {
-    let context = &renderer.context;
-
-    unsafe {
-        // === VERTEX BUFFER === //
-
-        let buffer_size = (size_of::<VoxelVertex>() * vertex_data.len()) as u64;
-
-        let vertex_buffer_info = BufferCreateInfo {
-            size: buffer_size,
-            usage: BufferUsageFlags::VERTEX_BUFFER,
-            sharing_mode: SharingMode::EXCLUSIVE,
-            ..Default::default()
-        };
-
-        let vertex_buffer = context
-            .device
-            .create_buffer(&vertex_buffer_info, None)
-            .expect("Create vertex buffer failed!");
-
-        let memory_requirements = context.device.get_buffer_memory_requirements(vertex_buffer);
-
-        let alloc_info = MemoryAllocateInfo {
-            allocation_size: memory_requirements.size,
-            memory_type_index: find_memory_type(
-                memory_requirements.memory_type_bits,
-                &context.physical_device.memory_properties,
-            ),
-            ..Default::default()
-        };
-
-        let vertex_buffer_memory = context
-            .device
-            .allocate_memory(&alloc_info, None)
-            .expect("Allocate vertex buffer memory failed!");
-
-        context
-            .device
-            .bind_buffer_memory(vertex_buffer, vertex_buffer_memory, 0)
-            .expect("Bind vertex buffer memory failed!");
-
-        let data_ptr = context
-            .device
-            .map_memory(
-                vertex_buffer_memory,
-                0,
-                buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )
-            .expect("Map memory failed!");
-
-        std::ptr::copy_nonoverlapping(
-            vertex_data.as_ptr() as *const c_void,
-            data_ptr,
-            buffer_size as usize,
-        );
-
-        context.device.unmap_memory(vertex_buffer_memory);
-        // === INDEX BUFFER === //
-
-        let index_buffer_size = (size_of::<u16>() * index_data.len()) as u64;
-
-        let index_buffer_info = BufferCreateInfo {
-            size: index_buffer_size,
-            usage: BufferUsageFlags::INDEX_BUFFER,
-            sharing_mode: SharingMode::EXCLUSIVE,
-            ..Default::default()
-        };
-
-        let index_buffer = context
-            .device
-            .create_buffer(&index_buffer_info, None)
-            .expect("Create vertex buffer failed!");
-
-        let index_memory_requirements = context.device.get_buffer_memory_requirements(index_buffer);
-
-        let index_alloc_info = MemoryAllocateInfo {
-            allocation_size: index_memory_requirements.size,
-            memory_type_index: find_memory_type(
-                index_memory_requirements.memory_type_bits,
-                &context.physical_device.memory_properties,
-            ),
-            ..Default::default()
-        };
-
-        let index_buffer_memory = context
-            .device
-            .allocate_memory(&index_alloc_info, None)
-            .expect("Allocate vertex buffer memory failed!");
-
-        context
-            .device
-            .bind_buffer_memory(index_buffer, index_buffer_memory, 0)
-            .expect("Bind index buffer memory failed!");
-
-        let data_ptr = context
-            .device
-            .map_memory(
-                index_buffer_memory,
-                0,
-                index_buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )
-            .expect("Map memory failed!");
-
-        std::ptr::copy_nonoverlapping(
-            index_data.as_ptr() as *const c_void,
-            data_ptr,
-            index_buffer_size as usize,
-        );
-
-        context.device.unmap_memory(index_buffer_memory);
-
-        renderer.vertex_buffers.push(vertex_buffer);
-        renderer.index_buffers.push(index_buffer);
-        renderer.index_counts.push(index_data.len() as u32);
-        renderer
-            .index_offset
-            .push([chunk_position.x, chunk_position.y, chunk_position.z]);
-    }
 }
 
 #[allow(unsafe_op_in_unsafe_fn)]

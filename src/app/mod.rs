@@ -2,7 +2,7 @@ pub mod engine;
 
 use crate::{
     app::engine::Engine,
-    game::{initialize_game, Game},
+    game::{Game, initialize_game},
 };
 use winit::application::ApplicationHandler;
 
@@ -14,13 +14,7 @@ pub struct App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         self.game = Some(initialize_game());
-        self.engine = Some(
-            Engine::new(
-                event_loop,
-                self.game.as_ref().unwrap().player.camera.clone(),
-            )
-            .unwrap(),
-        );
+        self.engine = Some(Engine::new(event_loop).unwrap());
     }
 
     fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
@@ -38,7 +32,7 @@ impl ApplicationHandler for App {
             engine.window_event(event_loop, event.clone());
 
             if let Some(game) = &mut self.game {
-                game.window_event(event, &mut engine.input_manager);
+                game.window_event(event);
             }
         }
     }
@@ -62,7 +56,7 @@ impl ApplicationHandler for App {
             engine.device_event(event.clone());
 
             if let Some(game) = &mut self.game {
-                game.device_event(event, &mut engine.input_manager);
+                game.device_event(event);
             }
         }
     }

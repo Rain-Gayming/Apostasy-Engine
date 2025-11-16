@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
-use crate::app::engine::ecs::resources::Resource;
+use crate::app::engine::ecs::resource::Resource;
 
 pub struct FunctionSystem<Input, F> {
     f: F,

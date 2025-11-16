@@ -1,11 +1,14 @@
 use winit::window::Window;
 
+use crate::app::engine::ecs::resource::{ResMut, Resource};
+
 pub struct CursorManager {
     pub is_hidden: bool,
 }
+impl Resource for CursorManager {}
 
 pub fn toggle_cursor_hidden(
-    cursor_manager: &mut CursorManager,
+    cursor_manager: &mut ResMut<CursorManager>,
     window: &Window,
     should_hide: bool,
 ) {

@@ -9,7 +9,7 @@ use crate::app::engine::ecs::{
     },
     component::Component,
     entities::Entity,
-    resources::Resource,
+    resource::Resource,
     systems::{IntoSystem, Scheduler, System},
 };
 
@@ -18,6 +18,7 @@ pub mod component;
 pub mod components;
 pub mod entities;
 pub mod query;
+pub mod resource;
 pub mod resources;
 pub mod systems;
 
