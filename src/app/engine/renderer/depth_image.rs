@@ -45,6 +45,7 @@ pub fn new_depth_image(context: &RenderingContext, swapchain: &Swapchain) -> Dep
         let depth_alloc_info = vk::MemoryAllocateInfo::default()
             .allocation_size(mem_req.size)
             .memory_type_index(memory_type);
+
         let depth_image_memory = context
             .device
             .allocate_memory(&depth_alloc_info, None)
