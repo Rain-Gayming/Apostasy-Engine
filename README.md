@@ -4,7 +4,7 @@
 
 ## What is Apostasy?
 
-Apostasy is a (relatively) simple in data driven game engine that is written in Rust. It will be open source for now and for ever.
+Apostasy is a (relatively) simple in data driven game engine that is written in Rust. It will be open source for now and forever.
 
 ---
 
@@ -37,4 +37,4 @@ For writing versions it follows this format Vx.y.zw
 
 ## AI:
 
-**Machine learning algorithims (generally AI, chatgpt, cluade, gemini, ect) cannot be used in this project, be it in writing production coding, writing issues or pull requests, asset creation (images, audio, ect) or any other form.**
+**Machine learning algorithims (generally AI, ChatGPT, Cluade, Gemini, ect.) cannot be used in this project, be it in writing production coding, writing issues or pull requests, asset creation (images, audio, ect.) or any other form.**
