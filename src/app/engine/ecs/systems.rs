@@ -47,7 +47,7 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    /// Run each system of a specific type
+    /// Run each system
     pub fn run(&mut self, system_type: SystemCallType) {
         match system_type {
             SystemCallType::Start => {

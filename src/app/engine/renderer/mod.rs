@@ -152,92 +152,91 @@ impl Renderer {
         }
     }
     //
-    //     /// Recreates the depth buffer upon screen resizing
-    //     pub fn update_depth_buffer(&mut renderer. {
-    //         let depth_format = vk::Format::D32_SFLOAT;
-    //
-    //         let depth_image_create_info = vk::ImageCreateInfo::default()
-    //             .image_type(vk::ImageType::TYPE_2D)
-    //             .format(depth_format)
-    //             .extent(vk::Extent3D {
-    //                 width: renderer.swapchain.extent.width,
-    //                 height: renderer.swapchain.extent.height,
-    //                 depth: 1,
-    //             })
-    //             .mip_levels(1)
-    //             .array_layers(1)
-    //             .samples(vk::SampleCountFlags::TYPE_1)
-    //             .tiling(vk::ImageTiling::OPTIMAL)
-    //             .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
-    //             .initial_layout(vk::ImageLayout::UNDEFINED);
-    //         unsafe {
-    //             let depth_image = self
-    //                 .context
-    //                 .device
-    //                 .create_image(&depth_image_create_info, None)
-    //                 .unwrap();
-    //             let mem_req = self
-    //                 .context
-    //                 .device
-    //                 .get_image_memory_requirements(depth_image);
-    //             fn find_memory_type(
-    //                 type_bits: u32,
-    //                 props: vk::MemoryPropertyFlags,
-    //                 mem_props: &vk::PhysicalDeviceMemoryProperties,
-    //             ) -> Option<u32> {
-    //                 for (i, mt) in mem_props.memory_types.iter().enumerate() {
-    //                     if (type_bits & (1 << i)) != 0 && mt.property_flags.contains(props) {
-    //                         return Some(i as u32);
-    //                     }
-    //                 }
-    //                 None
-    //             }
-    //             let memory_type = find_memory_type(
-    //                 mem_req.memory_type_bits,
-    //                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
-    //                 &renderer.context.physical_device.memory_properties,
-    //             )
-    //             .ok_or_else(|| anyhow::anyhow!("No suitable memory type for depth image"))
-    //             .unwrap();
-    //
-    //             let depth_alloc_info = vk::MemoryAllocateInfo::default()
-    //                 .allocation_size(mem_req.size)
-    //                 .memory_type_index(memory_type);
-    //             let depth_image_memory = self
-    //                 .context
-    //                 .device
-    //                 .allocate_memory(&depth_alloc_info, None)
-    //                 .unwrap();
-    //             renderer.context
-    //                 .device
-    //                 .bind_image_memory(depth_image, depth_image_memory, 0)
-    //                 .unwrap();
-    //
-    //             let depth_image_view = self
-    //                 .context
-    //                 .create_image_view(
-    //                     depth_image,
-    //                     renderer.depth_image.depth_format,
-    //                     vk::ImageAspectFlags::DEPTH,
-    //                 )
-    //                 .unwrap();
-    //             renderer.depth_image.depth_format = depth_format;
-    //             renderer.depth_image.depth_image = depth_image;
-    //             renderer.depth_image.depth_image_memory = depth_image_memory;
-    //             renderer.depth_image.depth_image_view = depth_image_view;
-    //         }
-    //     }
-    //     pub fn resize(&mut renderer. -> Result<()> {
-    //         let result = renderer.swapchain.resize();
-    //         renderer.update_depth_buffer();
-    //         result
-    //     }
-    //
-    // }
 }
 
-pub fn render(renderer: &mut Renderer) {
-    let frame = &renderer.frames[renderer.current_frame];
+pub fn resize(mut renderer: ResMut<Renderer>) {
+    let _ = renderer.swapchain.resize();
+}
+
+/// Recreates the depth buffer upon screen resizing
+pub fn update_depth_buffer(mut renderer: ResMut<Renderer>) {
+    let depth_format = vk::Format::D32_SFLOAT;
+
+    let depth_image_create_info = vk::ImageCreateInfo::default()
+        .image_type(vk::ImageType::TYPE_2D)
+        .format(depth_format)
+        .extent(vk::Extent3D {
+            width: renderer.swapchain.extent.width,
+            height: renderer.swapchain.extent.height,
+            depth: 1,
+        })
+        .mip_levels(1)
+        .array_layers(1)
+        .samples(vk::SampleCountFlags::TYPE_1)
+        .tiling(vk::ImageTiling::OPTIMAL)
+        .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
+        .initial_layout(vk::ImageLayout::UNDEFINED);
+    unsafe {
+        let depth_image = renderer
+            .context
+            .device
+            .create_image(&depth_image_create_info, None)
+            .unwrap();
+        let mem_req = renderer
+            .context
+            .device
+            .get_image_memory_requirements(depth_image);
+        fn find_memory_type(
+            type_bits: u32,
+            props: vk::MemoryPropertyFlags,
+            mem_props: &vk::PhysicalDeviceMemoryProperties,
+        ) -> Option<u32> {
+            for (i, mt) in mem_props.memory_types.iter().enumerate() {
+                if (type_bits & (1 << i)) != 0 && mt.property_flags.contains(props) {
+                    return Some(i as u32);
+                }
+            }
+            None
+        }
+        let memory_type = find_memory_type(
+            mem_req.memory_type_bits,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            &renderer.context.physical_device.memory_properties,
+        )
+        .ok_or_else(|| anyhow::anyhow!("No suitable memory type for depth image"))
+        .unwrap();
+
+        let depth_alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_req.size)
+            .memory_type_index(memory_type);
+        let depth_image_memory = renderer
+            .context
+            .device
+            .allocate_memory(&depth_alloc_info, None)
+            .unwrap();
+        renderer
+            .context
+            .device
+            .bind_image_memory(depth_image, depth_image_memory, 0)
+            .unwrap();
+
+        let depth_image_view = renderer
+            .context
+            .create_image_view(
+                depth_image,
+                renderer.depth_image.depth_format,
+                vk::ImageAspectFlags::DEPTH,
+            )
+            .unwrap();
+        renderer.depth_image.depth_format = depth_format;
+        renderer.depth_image.depth_image = depth_image;
+        renderer.depth_image.depth_image_memory = depth_image_memory;
+        renderer.depth_image.depth_image_view = depth_image_view;
+    }
+}
+
+pub fn render(mut renderer: ResMut<Renderer>) {
+    let frame = renderer.frames[renderer.current_frame].clone();
     unsafe {
         renderer
             .context

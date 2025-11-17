@@ -6,29 +6,25 @@ use std::sync::Arc;
 
 use crate::app::engine::{renderer::Renderer, rendering_context::*};
 use anyhow::Result;
-use winit::{event_loop::ActiveEventLoop, window::Window};
+use winit::{event_loop::EventLoop, window::Window};
 
-pub struct Engine {
-    pub renderer: Renderer,
-    window: Arc<Window>,
-}
+pub struct Engine {}
 
+#[allow(deprecated)]
 impl Engine {
-    pub fn new(event_loop: &ActiveEventLoop) -> Result<Self> {
-        let window = Arc::new(event_loop.create_window(Default::default())?);
+    pub fn new(event_loop: &EventLoop<()>) -> Result<Self> {
+        // let rendering_context = Arc::new(RenderingContext::new(RenderingContextAttributes {
+        //     compatability_window: &window,
+        //     queue_family_picker: queue_family_picker::single_queue_family,
+        // })?);
 
-        let rendering_context = Arc::new(RenderingContext::new(RenderingContextAttributes {
-            compatability_window: &window,
-            queue_family_picker: queue_family_picker::single_queue_family,
-        })?);
+        // let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
 
-        let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
-
-        Ok(Self { renderer, window })
+        Ok(Self {})
     }
 
     pub fn request_redraw(&self) {
-        self.window.request_redraw();
+        // self.window.request_redraw();
     }
 
     pub fn device_event(&mut self, event: winit::event::DeviceEvent) {

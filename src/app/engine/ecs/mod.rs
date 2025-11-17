@@ -290,7 +290,7 @@ impl ECSWorld {
     ///     println!("test");
     /// }
     /// ```
-    pub fn run(&mut self) {
-        self.scheduler.run(SystemCallType::Update);
+    pub fn run(&mut self, system_call_type: SystemCallType) {
+        self.scheduler.run(system_call_type);
     }
 }
