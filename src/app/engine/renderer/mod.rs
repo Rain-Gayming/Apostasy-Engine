@@ -15,9 +15,11 @@ use ash::vk::{
     MemoryPropertyFlags, PhysicalDeviceMemoryProperties, Pipeline, PipelineLayout,
 };
 
-use crate::app::engine::ecs::resource::{ResMut, Resource};
+use crate::app::engine::ecs::resource::{Res, ResMut, Resource};
+use crate::app::engine::ecs::resources::render_info::RenderInfo;
 use crate::app::engine::renderer::depth_image::{DepthImage, new_depth_image};
 use crate::app::engine::renderer::image_states::ImageStates;
+use crate::app::engine::renderer::push_constants::PushConstants;
 use crate::app::engine::renderer::rendering_context::RenderingContext;
 use crate::app::engine::renderer::swapchain::Swapchain;
 use crate::app::engine::rendering_context;
@@ -42,6 +44,7 @@ pub struct Renderer {
     pub context: Arc<RenderingContext>,
     pub image_states: ImageStates,
     pub depth_image: DepthImage,
+    push_constant: PushConstants,
 }
 impl Resource for Renderer {}
 
@@ -148,6 +151,7 @@ impl Renderer {
                 swapchain,
                 image_states: ImageStates::default(),
                 depth_image,
+                push_constant: PushConstants::default(),
             })
         }
     }
@@ -235,7 +239,7 @@ pub fn update_depth_buffer(mut renderer: ResMut<Renderer>) {
     }
 }
 
-pub fn render(mut renderer: ResMut<Renderer>) {
+pub fn render(mut renderer: ResMut<Renderer>, render_info: Res<RenderInfo>) {
     let frame = renderer.frames[renderer.current_frame].clone();
     unsafe {
         renderer
@@ -319,14 +323,15 @@ pub fn render(mut renderer: ResMut<Renderer>) {
             &[vk::Rect2D::default().extent(renderer.swapchain.extent)],
         );
 
-        // let aspect = renderer.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
+        let aspect =
+            renderer.swapchain.extent.width as f32 / renderer.swapchain.extent.height as f32;
 
         // let view: [[f32; 4]; 4] = get_view_matrix(renderer.camera.clone()).into();
         // let projection: [[f32; 4]; 4] =
         //     get_perspective_projection(renderer.camera.clone(), aspect).into();
 
-        // renderer.push_constant.view_matrix = view;
-        // renderer.push_constant.projection_matrix = projection;
+        renderer.push_constant.view_matrix = render_info.view_matrix;
+        renderer.push_constant.projection_matrix = render_info.projection_matrix;
 
         renderer.context.device.cmd_bind_pipeline(
             frame.command_buffer,
