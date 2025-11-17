@@ -3,7 +3,7 @@ use component_derive::DeriveComponent;
 
 use crate::app::engine::ecs::{
     component::Component,
-    components::{position::PositionComponent, rotation::RotationComponent},
+    components::{position_component::PositionComponent, rotation_component::RotationComponent},
 };
 
 #[derive(Clone, DeriveComponent)]

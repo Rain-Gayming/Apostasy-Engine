@@ -1,6 +1,6 @@
 use crate::app::engine::ecs::{
     component::Component,
-    components::{rotation::RotationComponent, velocity::VelocityComponent},
+    components::{rotation_component::RotationComponent, velocity_component::VelocityComponent},
     resource::{Res, ResMut},
     resources::input_manager::{InputManager, is_keybind_name_triggered},
 };

@@ -1,20 +1,25 @@
 pub mod engine;
 
 use crate::{
-    app::engine::Engine,
+    app::engine::{
+        Engine,
+        ecs::{ECSWorld, components::velocity_component::VelocityComponent},
+    },
     game::{Game, initialize_game},
 };
-use winit::application::ApplicationHandler;
+use winit::{application::ApplicationHandler, event::WindowEvent};
 
 #[derive(Default)]
 pub struct App {
     pub engine: Option<Engine>,
     pub game: Option<Game>,
+    pub world: Option<ECSWorld>,
 }
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         self.game = Some(initialize_game());
         self.engine = Some(Engine::new(event_loop).unwrap());
+        self.world = Some(ECSWorld::default());
     }
 
     fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
@@ -28,12 +33,20 @@ impl ApplicationHandler for App {
         _window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        if let Some(engine) = &mut self.engine {
-            engine.window_event(event_loop, event.clone());
-
-            if let Some(game) = &mut self.game {
-                game.window_event(event);
+        match event {
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
             }
+            WindowEvent::Resized(_) => {
+                // self.renderer.resize().unwrap();
+            }
+            WindowEvent::ScaleFactorChanged { .. } => {
+                // self.renderer.resize().unwrap();
+            }
+            WindowEvent::KeyboardInput { event, .. } => {
+                // send input over to the game
+            }
+            _ => {}
         }
     }
 
@@ -43,6 +56,12 @@ impl ApplicationHandler for App {
         }
         if let Some(game) = &mut self.game {
             game.update(&mut self.engine.as_mut().unwrap().renderer);
+        }
+        if let Some(world) = &mut self.world {
+            world
+                .create_entity()
+                .with_component::<VelocityComponent>(VelocityComponent::default());
+            world.run();
         }
     }
 

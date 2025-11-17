@@ -11,10 +11,6 @@ impl Game {
         // update_camera_position(self.player.camera.clone());
     }
 
-    pub fn window_event(&mut self, event: WindowEvent) {
-        if let WindowEvent::KeyboardInput { .. } = event {}
-    }
-
     pub fn device_event(
         &mut self,
         event: winit::event::DeviceEvent,

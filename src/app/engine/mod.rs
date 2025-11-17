@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::app::engine::{renderer::Renderer, rendering_context::*};
 use anyhow::Result;
-use winit::{event::WindowEvent, event_loop::ActiveEventLoop, window::Window};
+use winit::{event_loop::ActiveEventLoop, window::Window};
 
 pub struct Engine {
     pub renderer: Renderer,
@@ -25,27 +25,6 @@ impl Engine {
         let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
 
         Ok(Self { renderer, window })
-    }
-
-    pub fn window_event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent) {
-        match event {
-            WindowEvent::CloseRequested => {
-                event_loop.exit();
-            }
-            WindowEvent::Resized(_) => {
-                self.renderer.resize().unwrap();
-            }
-            WindowEvent::ScaleFactorChanged { .. } => {
-                self.renderer.resize().unwrap();
-            }
-            WindowEvent::RedrawRequested => {
-                self.renderer.render().unwrap();
-            }
-            WindowEvent::KeyboardInput { event, .. } => {
-                // send input over to the game
-            }
-            _ => {}
-        }
     }
 
     pub fn request_redraw(&self) {

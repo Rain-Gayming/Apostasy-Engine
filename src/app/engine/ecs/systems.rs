@@ -7,15 +7,26 @@ use std::ops::{Deref, DerefMut};
 
 use crate::app::engine::ecs::resource::Resource;
 
+/// System Call Type
+pub enum SystemCallType {
+    Start,
+    Update,
+    FixedUpdate,
+    Input,
+    WindowChanged,
+}
+
 pub struct FunctionSystem<Input, F> {
     f: F,
     marker: PhantomData<fn() -> Input>,
 }
 
+/// Trait applied to every function that is converted into a system
 pub trait System {
     fn run(&mut self, resources: &mut HashMap<TypeId, RefCell<Box<dyn Resource>>>);
 }
 
+/// Converts a function into a system
 pub trait IntoSystem<Input> {
     type System: System;
 
@@ -24,29 +35,76 @@ pub trait IntoSystem<Input> {
 
 type StoredSystem = Box<dyn System>;
 
+/// Stores systems and resources and allows them to run
 #[derive(Default)]
 pub struct Scheduler {
-    pub systems: Vec<StoredSystem>,
+    pub start_systems: Vec<StoredSystem>,
+    pub update_systems: Vec<StoredSystem>,
+    pub fixed_update_systems: Vec<StoredSystem>,
+    pub input_systems: Vec<StoredSystem>,
+    pub window_changed_systems: Vec<StoredSystem>,
     pub resources: HashMap<TypeId, RefCell<Box<dyn Resource>>>,
 }
 
 impl Scheduler {
-    pub fn run(&mut self) {
-        for system in self.systems.iter_mut() {
-            system.run(&mut self.resources);
+    /// Run each system of a specific type
+    pub fn run(&mut self, system_type: SystemCallType) {
+        match system_type {
+            SystemCallType::Start => {
+                for system in self.start_systems.iter_mut() {
+                    system.run(&mut self.resources);
+                }
+            }
+            SystemCallType::Update => {
+                for system in self.update_systems.iter_mut() {
+                    system.run(&mut self.resources);
+                }
+            }
+            SystemCallType::FixedUpdate => {
+                for system in self.fixed_update_systems.iter_mut() {
+                    system.run(&mut self.resources);
+                }
+            }
+            SystemCallType::Input => {
+                for system in self.input_systems.iter_mut() {
+                    system.run(&mut self.resources);
+                }
+            }
+            SystemCallType::WindowChanged => {
+                for system in self.window_changed_systems.iter_mut() {
+                    system.run(&mut self.resources);
+                }
+            }
         }
     }
 
-    pub fn add_system<I, S: System + 'static>(&mut self, system: impl IntoSystem<I, System = S>) {
-        self.systems.push(Box::new(system.into_system()));
+    /// Add a new system
+    pub fn add_system<I, S: System + 'static>(
+        &mut self,
+        system_type: SystemCallType,
+        system: impl IntoSystem<I, System = S>,
+    ) {
+        match system_type {
+            SystemCallType::Start => self.start_systems.push(Box::new(system.into_system())),
+            SystemCallType::Update => self.update_systems.push(Box::new(system.into_system())),
+            SystemCallType::FixedUpdate => self
+                .fixed_update_systems
+                .push(Box::new(system.into_system())),
+            SystemCallType::Input => self.input_systems.push(Box::new(system.into_system())),
+            SystemCallType::WindowChanged => self
+                .window_changed_systems
+                .push(Box::new(system.into_system())),
+        }
     }
 
+    /// Add a new resource
     pub fn add_resource<R: 'static + Resource>(&mut self, res: R) {
         self.resources
             .insert(TypeId::of::<R>(), RefCell::new(Box::new(res)));
     }
 }
 
+/// Magic
 pub trait SystemParam {
     type Item<'new>;
 

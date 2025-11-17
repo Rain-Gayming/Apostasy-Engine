@@ -1,6 +1,6 @@
 use crate::app::engine::ecs::{
     Component,
-    components::{rotation::RotationComponent, velocity::VelocityComponent},
+    components::{rotation_component::RotationComponent, velocity_component::VelocityComponent},
 };
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
 use component_derive::DeriveComponent;

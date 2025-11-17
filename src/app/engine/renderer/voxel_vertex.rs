@@ -1,8 +1,3 @@
-#[derive(Debug, Clone, Copy)]
-pub struct VoxelVertex {
-    pub data: u32,
-}
-
 pub const CUBEMESH: [[u8; 3]; 24] = [
     // front
     [1, 0, 0], // 0

@@ -10,7 +10,7 @@ use crate::app::engine::ecs::{
     component::Component,
     entities::Entity,
     resource::Resource,
-    systems::{IntoSystem, Scheduler, System},
+    systems::{IntoSystem, Scheduler, System, SystemCallType},
 };
 
 pub mod archetype;
@@ -272,9 +272,10 @@ impl ECSWorld {
     /// ```
     pub fn add_system<I, S: System + 'static>(
         &mut self,
+        system_call_type: SystemCallType,
         system: impl IntoSystem<I, System = S>,
     ) -> &mut Self {
-        self.scheduler.add_system(system);
+        self.scheduler.add_system(system_call_type, system);
         self
     }
 
@@ -290,8 +291,6 @@ impl ECSWorld {
     /// }
     /// ```
     pub fn run(&mut self) {
-        for system in self.scheduler.systems.iter_mut() {
-            system.run(&mut self.scheduler.resources);
-        }
+        self.scheduler.run(SystemCallType::Update);
     }
 }
