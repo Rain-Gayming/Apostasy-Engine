@@ -1,25 +1,19 @@
 use std::{
-    any::{Any, TypeId, type_name},
+    any::{Any, TypeId},
     collections::{HashMap, HashSet},
 };
-
-use winit::dpi::Position;
 
 use crate::app::engine::ecs::{
     archetype::{
         Archetype, ColumnsBuilder, ComponentColumn, new_archetype_from_builder, new_column_builder,
     },
-    bundle::Bundle,
     component::Component,
-    components::position::PositionComponent,
     entities::Entity,
     resource::Resource,
     systems::{IntoSystem, Scheduler, System},
 };
 
 pub mod archetype;
-pub mod bundle;
-pub mod bundles;
 pub mod component;
 pub mod components;
 pub mod entities;
@@ -209,17 +203,6 @@ impl ECSWorld {
         let entity = self.entities.get_mut(entity).unwrap();
         entity.0 = self.archetypes.len() as u64 - 1;
         println!("adding to new archetype");
-
-        self
-    }
-
-    pub fn with_bundle<T: Bundle>(&mut self) -> &mut Self {
-        // get the last entity in the array (should be the most recently added)
-        let last_entity_id = self.entities.len() - 1;
-        let mut entity = Entity(last_entity_id as u64);
-
-        // add the component
-        for comp in T::get_bundle_components().iter() {}
 
         self
     }
