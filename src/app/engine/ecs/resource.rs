@@ -39,7 +39,7 @@ impl<T: 'static + Resource> Deref for Res<'_, T> {
     }
 }
 
-/// Man fuck if i know
+/// Allows resources to be passed as a parameter for systems
 impl<'res, T: 'static> SystemParam for Res<'res, T> {
     type Item<'new> = Res<'new, T>;
 

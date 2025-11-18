@@ -104,7 +104,6 @@ impl Scheduler {
     }
 }
 
-/// Magic
 pub trait SystemParam {
     type Item<'new>;
 
@@ -115,16 +114,14 @@ macro_rules! impl_system {
     ($($params:ident),*) => {
         #[allow(unused_variables)]
         #[allow(non_snake_case)]
+        #[allow(clippy::too_many_arguments)]
         impl<F, $($params : SystemParam + 'static),*> System for FunctionSystem<($($params ,)*), F>
             where
-                // for any two arbitrary lifetimes, a mutable reference to F with lifetime 'a
-                // implements FnMut taking parameters of lifetime 'b
                 for<'a, 'b> &'a mut F:
                     FnMut($($params),*) +
                     FnMut($(<$params as SystemParam>::Item<'b>),*)
         {
             fn run(&mut self, resources: &mut HashMap<TypeId, RefCell<Box<dyn Resource>>>) {
-                // necessary to tell rust exactly which impl to call; it gets a bit confused otherwise
                 fn call_inner<$($params),*>(
                     mut f: impl FnMut($($params),*),
                     $(
