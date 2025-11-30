@@ -1,13 +1,19 @@
+[workspace]
+members = [
+    "apostasy",
+    "apostasy/macros",
+]
+resolver = "2"
+
 [package]
 name = "apostasy-engine"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
-downcast-rs = "2.0.2"
+apostasy = { path = "apostasy" }
 
-[profile.dev]
-opt-level = 1
+[[bin]]
+name = "apostasy-engine"
+path = "src/main.rs"
 
-[workspace]
-members = ["."] 

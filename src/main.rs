@@ -1,5 +1,6 @@
-pub mod engine;
+use apostasy::prelude::*;
+use apostasy_macros::Component;
 
 fn main() {
-    println!("sigma");
+    println!("yo im workin");
 }
