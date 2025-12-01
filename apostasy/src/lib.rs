@@ -1,8 +1,8 @@
 pub mod engine;
 pub mod utils;
-pub use apostasy_macros::Component;
+pub use apostasy_macros::ComponentDerive;
 
-#[derive(Component)]
+#[derive(ComponentDerive)]
 pub struct Sigma {}
 
 pub mod prelude {

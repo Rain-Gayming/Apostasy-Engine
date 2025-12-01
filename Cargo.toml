@@ -1,19 +1,6 @@
-[workspace]
-members = [
-    "apostasy",
-    "apostasy/macros",
-]
-resolver = "2"
-
 [package]
 name = "apostasy-engine"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-apostasy = { path = "apostasy" }
-
-[[bin]]
-name = "apostasy-engine"
-path = "src/main.rs"
 
