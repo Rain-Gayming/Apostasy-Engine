@@ -1,9 +1,7 @@
+use apostasy_macros::Component;
+
 pub mod engine;
 pub mod utils;
-pub use apostasy_macros::ComponentDerive;
-
-#[derive(ComponentDerive)]
-pub struct Sigma {}
 
 pub mod prelude {
     use crate::engine::ecs::component::*;
@@ -11,3 +9,6 @@ pub mod prelude {
     use crate::engine::ecs::query::*;
     use crate::engine::ecs::world::*;
 }
+
+#[derive(Component)]
+pub struct Sigma {}

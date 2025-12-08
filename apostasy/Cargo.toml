@@ -23,6 +23,8 @@ downcast-rs = "2.0.2"
 derive_more = { version  = "2.0.1", features = ["deref", "deref_mut", "from"] }
 smallvec = "1.15.0"
 aligned-vec = "0.6.4"
+thread_local = "1.1.8"
+
 apostasy-macros = { path = "macros" }
 
 
