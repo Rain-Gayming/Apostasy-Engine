@@ -1,6 +1,5 @@
 use std::{
     cell::{Cell, UnsafeCell},
-    process::Command,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -9,7 +8,10 @@ use std::{
 
 use thread_local::ThreadLocal;
 
-use crate::engine::ecs::{entity::Entity, world::core::Core};
+use crate::engine::ecs::{
+    entity::Entity,
+    world::{commands::Command, core::Core},
+};
 
 pub mod archetype;
 pub mod commands;
@@ -43,7 +45,7 @@ impl Mantle {
     pub fn flush(&mut self) {
         for cell in self.commands.iter_mut() {
             for command in cell.get_mut().drain(..) {
-                // command.apply(&mut self.core);
+                command.apply(&mut self.core);
             }
         }
     }
@@ -93,5 +95,30 @@ impl Crust {
         Self::begin_flush(&self.flush_guard);
         unsafe { self.mantle.get().as_mut().unwrap().flush() };
         Self::end_flush(&self.flush_guard);
+    }
+}
+
+impl World {
+    pub fn new() -> Self {
+        Self {
+            crust: Arc::new(Crust {
+                flush_guard: AtomicUsize::new(0),
+                mantle: UnsafeCell::new(Mantle {
+                    core: Core::new(),
+                    commands: Default::default(),
+                }),
+            }),
+        }
+    }
+
+    pub fn entity(&self, entity: Entity) -> View<'_> {
+        self.get_entity(entity).unwrap()
+    }
+
+    pub fn spawn(&self) {
+        self.crust.mantle(|mantle| {
+            let entity = mantle.core.create_uninitialized_entity();
+            mantle.enqueue(Command::spawn(entity));
+        });
     }
 }

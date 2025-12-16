@@ -1,3 +1,4 @@
+use core::fmt;
 use std::mem::MaybeUninit;
 
 use aligned_vec::{AVec, RuntimeAlign};
@@ -5,8 +6,10 @@ use derive_more::{Deref, DerefMut, From};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
 
-use crate::{engine::ecs::entity::Entity, utils::slotmap::Key};
-const ARCHETYPE_SAO: usize = 8;
+use crate::{
+    engine::ecs::{component::ComponentInfo, entity::Entity},
+    utils::slotmap::{Key, SlotMap},
+};
 
 #[derive(Clone, Copy, Deref, DerefMut, Debug)]
 pub struct ColumnIndex(pub usize);
@@ -23,6 +26,11 @@ impl ArchetypeId {
             index: 0,
             generation: 1,
         })
+    }
+}
+impl From<ArchetypeId> for Key {
+    fn from(value: ArchetypeId) -> Self {
+        value.0
     }
 }
 
@@ -50,7 +58,31 @@ pub struct Archetype {
 }
 
 #[derive(Debug)]
-pub(crate) struct Column {
+pub struct Column {
     buffer: AVec<MaybeUninit<u8>, RuntimeAlign>,
-    // info: ComponentInfo,
+    info: ComponentInfo,
+}
+
+impl Column {
+    pub fn new(component_info: ComponentInfo) -> Self {
+        Self {
+            buffer: AVec::new(align_of::<ComponentInfo>()),
+            info: component_info,
+        }
+    }
+}
+
+const ARCHETYPE_SAO: usize = 8;
+pub struct Signature(SmallVec<[FieldId; ARCHETYPE_SAO]>);
+impl Signature {
+    pub fn new(fields: &[FieldId]) -> Self {
+        // create new fields
+        let mut fields = SmallVec::from(fields);
+
+        // organise the fields and remove duplicates
+        fields.sort();
+        fields.dedup();
+
+        Self(fields)
+    }
 }
