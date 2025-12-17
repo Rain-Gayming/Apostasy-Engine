@@ -3,7 +3,7 @@
 
 - [-] components
     - [ ] component macro
-    - [-] component info 
+    - [ ] component info 
     - [ ] resources
         - [ ] adding resources
         - [ ] updating resources
@@ -13,7 +13,7 @@
 - [-] world
     - [ ] component registering
     - [-] entities
-        - [ ] entity adding
+        - [x] entity adding
         - [ ] entity removal 
         - [ ] getting an entity immutably
         - [ ] getting an entity mutably
@@ -24,8 +24,8 @@
         - [ ] adding entities to the archetype
         - [ ] adding components to the archetype
         - [ ] new archetype creation
-    - [ ] commands
-        - [ ] spawn command
+    - [-] commands
+        - [x] spawn command
         - [ ] despawn command
         - [ ] insert command
 

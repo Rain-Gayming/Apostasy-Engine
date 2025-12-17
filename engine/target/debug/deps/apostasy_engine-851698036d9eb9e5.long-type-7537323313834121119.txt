@@ -1,0 +1,1 @@
+utils::slotmap::SlotMap<engine::ecs::world::archetype::ArchetypeId, engine::ecs::world::archetype::Archetype>
