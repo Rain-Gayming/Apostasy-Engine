@@ -1,0 +1,107 @@
+    Blocking waiting for file lock on artifact directory
+   0.088310215s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy) target="apostasy"}: cargo::core::compiler::fingerprint: stale: changed "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs"
+   0.088323555s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy) target="apostasy"}: cargo::core::compiler::fingerprint:           (vs) "/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-macros-4aead5355465fe90/dep-lib-apostasy_macros"
+   0.088327175s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy) target="apostasy"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1766943875, nanos: 584057128 } < FileTime { seconds: 1766943910, nanos: 576057682 }
+   0.088717736s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy) target="apostasy"}: cargo::core::compiler::fingerprint: fingerprint error for apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("apostasy", ["lib"], "/home/rain/files/programming/rust/apostasy-engine/apostasy/src/lib.rs", Edition2024) }
+   0.088729286s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy) target="apostasy"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-e6c06506844e6334/lib-apostasy`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: <&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:581:40
+  16: std::panicking::catch_unwind::<i32, &dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:544:19
+  17: std::panic::catch_unwind::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{closure#0}
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:581:40
+  20: std::panicking::catch_unwind::<isize, std::rt::lang_start_internal::{closure#0}>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:544:19
+  21: std::panic::catch_unwind::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/rt.rs:171:5
+  23: main
+  24: <unknown>
+  25: __libc_start_main
+  26: <unknown>
+   0.095142487s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint: fingerprint dirty for apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros)/Build/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("apostasy_macros", ["proc-macro"], "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs", Edition2024) }
+   0.095151387s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-macros-4aead5355465fe90/dep-lib-apostasy_macros", reference_mtime: FileTime { seconds: 1766943875, nanos: 584057128 }, stale: "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs", stale_mtime: FileTime { seconds: 1766943910, nanos: 576057682 } }))
+   0.096033748s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy) target="apostasy"}: cargo::core::compiler::fingerprint: fingerprint error for apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("apostasy", ["lib"], "/home/rain/files/programming/rust/apostasy-engine/apostasy/src/lib.rs", Edition2024) }
+   0.096041598s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy) target="apostasy"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-52792e03ff9f440c/test-lib-apostasy`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: <&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync as core::ops::function::FnOnce<()>>::call_once
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:581:40
+  16: std::panicking::catch_unwind::<i32, &dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:544:19
+  17: std::panic::catch_unwind::<&dyn core::ops::function::Fn<(), Output = i32> + core::panic::unwind_safe::RefUnwindSafe + core::marker::Sync, i32>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{closure#0}
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:581:40
+  20: std::panicking::catch_unwind::<isize, std::rt::lang_start_internal::{closure#0}>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panicking.rs:544:19
+  21: std::panic::catch_unwind::<std::rt::lang_start_internal::{closure#0}, isize>
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/3ff30e7eafc1da7104c3960187d17939172428ed/library/std/src/rt.rs:171:5
+  23: main
+  24: <unknown>
+  25: __libc_start_main
+  26: <unknown>
+   0.096342098s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint: stale: changed "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs"
+   0.096346118s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint:           (vs) "/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-macros-bf4a7624f2fb465a/dep-lib-apostasy_macros"
+   0.096348808s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1766943875, nanos: 584057128 } < FileTime { seconds: 1766943910, nanos: 576057682 }
+   0.096369888s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint: fingerprint dirty for apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros)/Check { test: false }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("apostasy_macros", ["proc-macro"], "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs", Edition2024) }
+   0.096376178s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-macros-bf4a7624f2fb465a/dep-lib-apostasy_macros", reference_mtime: FileTime { seconds: 1766943875, nanos: 584057128 }, stale: "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs", stale_mtime: FileTime { seconds: 1766943910, nanos: 576057682 } }))
+   0.096632928s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint: stale: changed "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs"
+   0.096636898s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint:           (vs) "/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-macros-6605bf9eb64fd6b5/dep-test-lib-apostasy_macros"
+   0.096639488s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1766943875, nanos: 584057128 } < FileTime { seconds: 1766943910, nanos: 576057682 }
+   0.096657948s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint: fingerprint dirty for apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros)/Check { test: true }/TargetInner { name_inferred: true, for_host: true, proc_macro: true, ..: lib_target("apostasy_macros", ["proc-macro"], "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs", Edition2024) }
+   0.096663278s  INFO prepare_target{force=false package_id=apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros) target="apostasy_macros"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/rain/files/programming/rust/apostasy-engine/apostasy/target/debug/.fingerprint/apostasy-macros-6605bf9eb64fd6b5/dep-test-lib-apostasy_macros", reference_mtime: FileTime { seconds: 1766943875, nanos: 584057128 }, stale: "/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros/src/lib.rs", stale_mtime: FileTime { seconds: 1766943910, nanos: 576057682 } }))
+   Compiling apostasy-macros v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy/apostasy-macros)
+    Checking apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine/apostasy)
+error: could not compile `apostasy` (lib) due to 7 previous errors; 6 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `apostasy` (lib test) due to 7 previous errors; 7 warnings emitted

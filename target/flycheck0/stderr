@@ -1,16 +1,23 @@
+error: missing comma between array elements, expected `,`
+  --> apostasy/Cargo.toml:17:16
+   |
+17 | members = ["." "apostasy-macros"]
+   |                ^
     Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on package cache
-    Blocking waiting for file lock on artifact directory
-   0.115598454s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint: stale: changed "/home/rain/files/programming/rust/apostasy-engine/src/main.rs"
-   0.115608504s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint:           (vs) "/home/rain/files/programming/rust/apostasy-engine/target/debug/.fingerprint/apostasy-abefa03215710da0/dep-bin-apostasy"
-   0.115612134s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1765990341, nanos: 699430013 } < FileTime { seconds: 1765991297, nanos: 827350047 }
-   0.115653934s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint: fingerprint dirty for apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine)/Check { test: false }/TargetInner { name: "apostasy", doc: true, ..: with_path("/home/rain/files/programming/rust/apostasy-engine/src/main.rs", Edition2024) }
-   0.115662264s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/rain/files/programming/rust/apostasy-engine/target/debug/.fingerprint/apostasy-abefa03215710da0/dep-bin-apostasy", reference_mtime: FileTime { seconds: 1765990341, nanos: 699430013 }, stale: "/home/rain/files/programming/rust/apostasy-engine/src/main.rs", stale_mtime: FileTime { seconds: 1765991297, nanos: 827350047 } }))
-   0.117009375s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint: stale: changed "/home/rain/files/programming/rust/apostasy-engine/src/main.rs"
-   0.117015305s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint:           (vs) "/home/rain/files/programming/rust/apostasy-engine/target/debug/.fingerprint/apostasy-4956bf7f085cbb69/dep-test-bin-apostasy"
-   0.117018955s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1765990341, nanos: 699430013 } < FileTime { seconds: 1765991297, nanos: 827350047 }
-   0.117045745s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint: fingerprint dirty for apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine)/Check { test: true }/TargetInner { name: "apostasy", doc: true, ..: with_path("/home/rain/files/programming/rust/apostasy-engine/src/main.rs", Edition2024) }
-   0.117054485s  INFO prepare_target{force=false package_id=apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine) target="apostasy"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/rain/files/programming/rust/apostasy-engine/target/debug/.fingerprint/apostasy-4956bf7f085cbb69/dep-test-bin-apostasy", reference_mtime: FileTime { seconds: 1765990341, nanos: 699430013 }, stale: "/home/rain/files/programming/rust/apostasy-engine/src/main.rs", stale_mtime: FileTime { seconds: 1765991297, nanos: 827350047 } }))
-    Checking apostasy v0.1.0 (/home/rain/files/programming/rust/apostasy-engine)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+error: missing comma between array elements, expected `,`
+  --> apostasy/Cargo.toml:17:16
+   |
+17 | members = ["." "apostasy-macros"]
+   |                ^
+error: missing comma between array elements, expected `,`
+  --> apostasy/Cargo.toml:17:16
+   |
+17 | members = ["." "apostasy-macros"]
+   |                ^
+error: failed to get `apostasy` as a dependency of package `test v0.1.0 (/home/rain/files/programming/rust/apostasy-engine)`
+
+Caused by:
+  failed to load source for dependency `apostasy`
+
+Caused by:
+  Unable to update /home/rain/files/programming/rust/apostasy-engine/apostasy

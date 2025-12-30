@@ -1,3 +1,11 @@
+use apostasy::engine::ecs::world::World;
+
+#[derive(Component)]
+pub struct Health(f32);
+
 fn main() {
-    print!("ecs is pretty poggies");
+    let world = World::new();
+
+    // spawn entity
+    let entity = world.spawn();
 }
