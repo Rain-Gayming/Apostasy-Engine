@@ -15,28 +15,28 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
     let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
 
     let output = quote! {
-        unsafe impl #impl_generics apostasy::engine::ecs::component::Component for #struct_name #type_generics
+        unsafe impl #impl_generics crate::engine::ecs::component::Component for #struct_name #type_generics
             #where_clause{
 
-            fn id() -> apostasy::engine::ecs::entity::Entity {
-                #[linkme::distributed_slice(apostasy::engine::ecs::component::COMPONENT_ENTRIES)]
-                static ENTRY: apostasy::engine::ecs::component::ComponentEntry = #struct_name::init;
-                let begin = apostasy::engine::ecs::component::COMPONENT_ENTRIES[..].as_ptr() as u32;
+            fn id() -> crate::engine::ecs::entity::Entity {
+                #[linkme::distributed_slice(crate::engine::ecs::component::COMPONENT_ENTRIES)]
+                static ENTRY: crate::engine::ecs::component::ComponentEntry = #struct_name::init;
+                let begin = crate::engine::ecs::component::COMPONENT_ENTRIES[..].as_ptr() as u32;
                 let end = &raw const ENTRY as u32;
                 unsafe {
-                    apostasy::engine::ecs::entity::Entity::from_offset(
-                        (end - begin) / size_of::<apostasy::engine::ecs::component::ComponentEntry>() as u32,
+                    crate::engine::ecs::entity::Entity::from_offset(
+                        (end - begin) / size_of::<crate::engine::ecs::component::ComponentEntry>() as u32,
                     )
                 }
             }
 
-            fn init(world: &apostasy::engine::ecs::world::World) {
+            fn init;(world: &crate::engine::ecs::world::World) {
                 world.entity(#struct_name::id()).insert(#struct_name::info());
             }
 
-            fn info() -> apostasy::engine::ecs::component::ComponentInfo {
+            fn info() -> crate::engine::ecs::component::ComponentInfo {
                 unsafe {
-                    apostasy::engine::ecs::component::ComponentInfo {
+                    crate::engine::ecs::component::ComponentInfo {
                         name: std::any::type_name::<#struct_name>(),
                         align: std::mem::align_of::<#struct_name>(),
                         size: std::mem::size_of::<#struct_name>(),

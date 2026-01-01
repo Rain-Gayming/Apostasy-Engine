@@ -111,7 +111,7 @@ pub trait OnRemove {
     fn on_remove(entity: EntityView<'_>);
 }
 
-#[derive(Clone, Copy, Component, Debug)]
+#[derive(Clone, Copy, Debug, Component)]
 pub struct ComponentInfo {
     pub name: &'static str,
     pub align: usize,

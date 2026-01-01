@@ -1,1 +1,0 @@
-parking_lot::lock_api::MutexGuard<'_, parking_lot::RawMutex, utils::slotmap::SlotMap<engine::ecs::entity::Entity, engine::ecs::entity::EntityLocation>>

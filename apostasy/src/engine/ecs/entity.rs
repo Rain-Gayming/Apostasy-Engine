@@ -30,6 +30,17 @@ impl EntityLocation {
 #[derive(Debug, Clone, Copy, From, PartialEq, Eq)]
 pub struct Entity(pub Key);
 
+impl Entity {
+    /// # Safety
+    /// Should never be called manually
+    pub unsafe fn from_offset(val: u32) -> Self {
+        Self(Key {
+            index: val,
+            generation: 1,
+        })
+    }
+}
+
 impl From<Entity> for Key {
     fn from(value: Entity) -> Self {
         value.0
