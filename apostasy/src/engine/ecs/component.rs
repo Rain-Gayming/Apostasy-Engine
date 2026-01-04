@@ -29,6 +29,13 @@ impl From<Entity> for ComponentId {
     }
 }
 
+impl ComponentId {
+    pub fn as_entity(&self) -> Option<Entity> {
+        Some(Entity::from_raw(self.0))
+    }
+}
+
+#[allow(clippy::type_complexity, clippy::missing_safety_doc)]
 pub unsafe trait Component: Sized {
     fn id() -> Entity;
     fn info() -> ComponentInfo;
@@ -85,6 +92,7 @@ pub unsafe trait Component: Sized {
     fn get_on_insert() -> Option<fn(EntityView<'_>)> {
         struct Getter<T>(PhantomData<T>);
         impl<T: OnInsert> Getter<T> {
+            #[allow(dead_code)]
             fn get() -> Option<fn(EntityView<'_>)> {
                 Some(T::on_insert)
             }
@@ -138,7 +146,7 @@ pub struct ComponentInfo {
 }
 
 #[derive(Deref, DerefMut, Default, Debug)]
-pub struct ComponentLocations(HashMap<ArchetypeId, ColumnIndex>);
+pub struct ComponentLocations(pub HashMap<ArchetypeId, ColumnIndex>);
 
 // Component info should hold:
 //  - bit size of the component

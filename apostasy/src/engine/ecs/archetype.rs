@@ -1,4 +1,4 @@
-use std::{fmt::Debug, mem::MaybeUninit};
+use std::{collections::HashMap, fmt::Debug, mem::MaybeUninit};
 
 use aligned_vec::{AVec, RuntimeAlign};
 use derive_more::{Deref, DerefMut, From};
@@ -22,6 +22,7 @@ pub struct Archetype {
     pub signature: Signature,
     pub entities: Vec<Entity>,
     pub columns: Vec<RwLock<Column>>,
+    pub edges: HashMap<ComponentId, ArchetypeEdge>,
 }
 
 impl Debug for Slot<Archetype> {
@@ -31,6 +32,12 @@ impl Debug for Slot<Archetype> {
             .field("entities", &self.data.as_ref().unwrap().entities)
             .finish()
     }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ArchetypeEdge {
+    pub add: Option<ArchetypeId>,
+    pub remove: Option<ArchetypeId>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, From, Hash)]

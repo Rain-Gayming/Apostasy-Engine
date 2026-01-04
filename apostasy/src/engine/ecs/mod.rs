@@ -2,7 +2,6 @@ use std::{
     cell::{Cell, UnsafeCell},
     collections::HashMap,
     mem::MaybeUninit,
-    ops::Deref,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -14,12 +13,14 @@ use thread_local::ThreadLocal;
 
 use crate::{
     engine::ecs::{
-        archetype::{Archetype, ArchetypeId, Column, ColumnIndex, RowIndex, Signature},
+        archetype::{
+            Archetype, ArchetypeEdge, ArchetypeId, Column, ColumnIndex, RowIndex, Signature,
+        },
         command::Command,
         component::{COMPONENT_ENTRIES, Component, ComponentId, ComponentInfo, ComponentLocations},
         entity::{Entity, EntityLocation, EntityView},
     },
-    utils::slotmap::{Slot, SlotMap},
+    utils::slotmap::SlotMap,
 };
 
 pub mod archetype;
@@ -186,10 +187,13 @@ impl Core {
         // Create the empty archetype and component info archetype
         let empty_archetype_id = archetypes.insert(Archetype::default());
         let component_info_archetype_id = archetypes.insert(Archetype::default());
+        assert_eq!(empty_archetype_id, ArchetypeId::empty_archetype());
+        assert_ne!(empty_archetype_id, component_info_archetype_id);
 
         if let Some(empty_archetype) = archetypes.get_mut(empty_archetype_id) {
             // Add all components as entities before init starts
             for n in 0..COMPONENT_ENTRIES.len() {
+                println!("{}", n);
                 let id = entity_index.insert(EntityLocation {
                     archetype: empty_archetype_id,
                     row: RowIndex(n),
@@ -197,11 +201,11 @@ impl Core {
                 empty_archetype.entities.push(id);
             }
 
-            //TODO: Archetype edge addition
-            /*
-                let component_edge = &mut empty_archetype.edges.entry(ComponentInfo::id().into).or_default();
-                component_edge.add = Some(component_info_archetype_id;)
-            */
+            let component_edge = &mut empty_archetype
+                .edges
+                .entry(ComponentInfo::id().into())
+                .or_default();
+            component_edge.add = Some(component_info_archetype_id);
         }
 
         // Manually create ComponentInfo Archetype
@@ -210,13 +214,31 @@ impl Core {
             signature: component_info_signature.clone(),
             entities: Default::default(),
             columns: vec![RwLock::new(Column::new(ComponentInfo::info()))],
+            edges: HashMap::from([(
+                ComponentInfo::id().into(),
+                ArchetypeEdge {
+                    remove: Some(empty_archetype_id),
+                    add: None,
+                },
+            )]),
         };
+
+        dbg!(archetypes.slots.iter().clone());
 
         Core {
             archetypes,
             entity_index: Mutex::new(entity_index),
-            component_index: HashMap::new(),
-            signature_index: HashMap::new(),
+            component_index: HashMap::from([(
+                ComponentInfo::id().into(),
+                ComponentLocations(HashMap::from([(
+                    component_info_archetype_id,
+                    ColumnIndex(0),
+                )])),
+            )]),
+            signature_index: HashMap::from([
+                (Signature::default(), empty_archetype_id),
+                (component_info_signature, component_info_archetype_id),
+            ]),
         }
     }
 
@@ -247,6 +269,7 @@ impl Core {
         entity_index.get(entity).copied()
     }
 
+    /// Returns the component info of a component
     fn get_component_info(
         entity_index: &SlotMap<Entity, EntityLocation>,
         component_index: &HashMap<ComponentId, ComponentLocations>,
@@ -268,7 +291,7 @@ impl Core {
             })
     }
 
-    /// Get metadata of a component
+    /// Get data of a component
     pub fn component_info(&mut self, component: Entity) -> Option<ComponentInfo> {
         let entity_index = self.entity_index.get_mut();
         let component_index = &self.component_index;
@@ -284,13 +307,15 @@ impl Core {
                 signature: signature.clone(),
                 entities: Default::default(),
                 columns: Default::default(),
-                // edges: Default::default()
+                edges: Default::default(),
             };
 
             // Create columns
             for component in signature.iter() {
-                // let info = self.component_info(component.as_entity().unwrap()).unwrap();
-                // new_archetype.columns.push(RwLock::new(Column::new(info)));
+                println!("{}", component.as_entity().is_some());
+
+                let info = self.component_info(component.as_entity().unwrap()).unwrap();
+                new_archetype.columns.push(RwLock::new(Column::new(info)));
             }
 
             let id = self.archetypes.insert(new_archetype);
@@ -304,9 +329,24 @@ impl Core {
             }
 
             // do edge connections
-            // self.connect_edges(signature, id)
+            self.connect_edges(signature, id);
 
             id
+        }
+    }
+
+    fn connect_edges(&mut self, signature: Signature, id: ArchetypeId) {
+        for field in signature.iter() {
+            let without_field = signature.clone().without(*field);
+            let Some(other) = self.signature_index.get(&without_field).copied() else {
+                continue;
+            };
+
+            // Connect this to other
+            self.archetypes[id].edges.entry(*field).or_default().remove = Some(other);
+
+            // Connect other to this
+            self.archetypes[other].edges.entry(*field).or_default().add = Some(id);
         }
     }
 
@@ -326,9 +366,13 @@ impl Core {
         // Find destination archetype
         let destination = if current_archetype.signature.contains(info.id.into()) {
             current_location.archetype
-        }
-        // add edge detection here {}
-        else {
+        } else if let Some(edge) = current_archetype
+            .edges
+            .get(&info.id.into())
+            .and_then(|edge| edge.add)
+        {
+            edge
+        } else {
             self.create_archetype(current_archetype.signature.clone().with(info.id.into()))
         };
 
@@ -341,6 +385,7 @@ impl Core {
         //  - chunk for the row is moved if a new archetype is created
         //  - write_info will call drop on old component value if not move to a new archetype
         let updated_location = self.entity_location(entity).unwrap();
+        println!("name: {}", info.name);
         unsafe {
             let column = self.component_index[&info.id.into()][&updated_location.archetype];
 
