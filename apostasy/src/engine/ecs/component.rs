@@ -1,13 +1,19 @@
 use std::{
+    collections::HashMap,
     marker::PhantomData,
     mem::{ManuallyDrop, MaybeUninit},
 };
 
 use apostasy_macros::Component;
+use derive_more::{Deref, DerefMut, From};
 
-use crate::engine::ecs::{
-    entity::{Entity, EntityView},
-    world::World,
+use crate::{
+    self as apostasy,
+    engine::ecs::{
+        World,
+        archetype::{ArchetypeId, ColumnIndex},
+        entity::{Entity, EntityView},
+    },
 };
 
 pub type ComponentEntry = fn(world: &World);
@@ -15,10 +21,18 @@ pub type ComponentEntry = fn(world: &World);
 #[linkme::distributed_slice]
 pub static COMPONENT_ENTRIES: [ComponentEntry];
 
-pub trait Component: Sized {
+#[derive(Clone, Copy, Hash, From, PartialOrd, Ord, Debug, PartialEq, Eq)]
+pub struct ComponentId(pub u64);
+impl From<Entity> for ComponentId {
+    fn from(entity: Entity) -> Self {
+        Self(entity.raw() & u32::MAX as u64)
+    }
+}
+
+pub unsafe trait Component: Sized {
     fn id() -> Entity;
-    fn init(_: &World);
     fn info() -> ComponentInfo;
+    fn init(_: &World);
 
     fn get_erased_clone() -> Option<unsafe fn(&[MaybeUninit<u8>]) -> &'static [MaybeUninit<u8>]> {
         struct Getter<T>(PhantomData<T>);
@@ -71,7 +85,6 @@ pub trait Component: Sized {
     fn get_on_insert() -> Option<fn(EntityView<'_>)> {
         struct Getter<T>(PhantomData<T>);
         impl<T: OnInsert> Getter<T> {
-            #[allow(dead_code)]
             fn get() -> Option<fn(EntityView<'_>)> {
                 Some(T::on_insert)
             }
@@ -111,15 +124,31 @@ pub trait OnRemove {
     fn on_remove(entity: EntityView<'_>);
 }
 
-#[derive(Clone, Copy, Debug, Component)]
+#[derive(Debug, Component)]
 pub struct ComponentInfo {
     pub name: &'static str,
-    pub align: usize,
-    pub size: usize,
     pub id: Entity,
+    pub size: usize,
+    pub align: usize,
+    pub drop: unsafe fn(&mut [MaybeUninit<u8>]),
     pub clone: Option<unsafe fn(&[MaybeUninit<u8>]) -> &'static [MaybeUninit<u8>]>,
     pub default: Option<fn() -> &'static [MaybeUninit<u8>]>,
-    pub drop: unsafe fn(&mut [MaybeUninit<u8>]),
     pub on_insert: Option<fn(EntityView<'_>)>,
     pub on_remove: Option<fn(EntityView<'_>)>,
 }
+
+#[derive(Deref, DerefMut, Default, Debug)]
+pub struct ComponentLocations(HashMap<ArchetypeId, ColumnIndex>);
+
+// Component info should hold:
+//  - bit size of the component
+//  - the components id
+//  - components name
+//  - the components align size
+//
+
+// Component trait should store:
+//  - a reference to the component info
+//  - a direct to its id
+//  - how its initialized into the world
+// Components are stored as entities in the world

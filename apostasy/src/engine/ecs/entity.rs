@@ -2,24 +2,23 @@ use derive_more::From;
 
 use crate::{
     engine::ecs::{
+        World,
+        archetype::{ArchetypeId, RowIndex},
+        command::Command,
         component::Component,
-        world::{
-            World,
-            archetype::{ArchetypeId, RowIndex},
-            commands::Command,
-        },
     },
     utils::slotmap::Key,
 };
 
-#[derive(Debug, PartialEq, Clone, Copy, Eq)]
+/// The location of an entity in an archetype
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EntityLocation {
     pub archetype: ArchetypeId,
     pub row: RowIndex,
 }
 
 impl EntityLocation {
-    pub fn uninitalized() -> Self {
+    pub fn uninitialized() -> Self {
         Self {
             archetype: ArchetypeId::empty_archetype(),
             row: RowIndex(usize::MAX),
@@ -27,8 +26,15 @@ impl EntityLocation {
     }
 }
 
-#[derive(Debug, Clone, Copy, From, PartialEq, Eq)]
-pub struct Entity(pub Key);
+/// They key for an entity
+#[derive(Clone, Copy, Debug, From, PartialEq, Eq)]
+pub struct Entity(Key);
+
+impl From<Entity> for Key {
+    fn from(value: Entity) -> Self {
+        value.0
+    }
+}
 
 impl Entity {
     /// # Safety
@@ -39,25 +45,29 @@ impl Entity {
             generation: 1,
         })
     }
-}
 
-impl From<Entity> for Key {
-    fn from(value: Entity) -> Self {
-        value.0
+    pub fn raw(self) -> u64 {
+        self.0.raw()
+    }
+
+    pub(crate) fn from_raw(val: u64) -> Self {
+        Self(Key::from_raw(val))
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct EntityView<'a> {
     pub entity: Entity,
     pub world: &'a World,
 }
 
 impl EntityView<'_> {
-    /// Insert a component into the entity
+    pub fn id(&self) -> Entity {
+        self.entity
+    }
     pub fn insert<C: Component>(self, component: C) -> Self {
         self.world
-            .crust
-            .mantle(|mantle| mantle.enqueue(Command::insert(component, self.entity)));
+            .queue_command(Command::insert(component, self.entity));
         self
     }
 }
