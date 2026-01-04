@@ -50,7 +50,7 @@ impl Entity {
         self.0.raw()
     }
 
-    pub(crate) fn from_raw(val: u64) -> Self {
+    pub fn from_raw(val: u64) -> Self {
         Self(Key::from_raw(val))
     }
 }
@@ -66,8 +66,9 @@ impl EntityView<'_> {
         self.entity
     }
     pub fn insert<C: Component>(self, component: C) -> Self {
-        self.world
-            .queue_command(Command::insert(component, self.entity));
+        self.world.crust.mantle(|mantle| {
+            mantle.queue_command(Command::insert(component, self.entity));
+        });
         self
     }
 }

@@ -4,9 +4,9 @@ use std::{
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub(crate) struct Key {
-    pub(crate) index: u32,
-    pub(crate) generation: u32,
+pub struct Key {
+    pub index: u32,
+    pub generation: u32,
 }
 
 impl Key {
@@ -23,9 +23,9 @@ impl Key {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct Slot<T> {
-    pub(crate) generation: u32, // 0_u32: NULL (unused index)
-    pub(crate) data: Option<T>,
+pub struct Slot<T> {
+    pub generation: u32, // 0_u32: NULL (unused index)
+    pub data: Option<T>,
 }
 
 impl<T> Default for Slot<T> {
@@ -38,9 +38,9 @@ impl<T> Default for Slot<T> {
 }
 
 #[derive(Clone)]
-pub(crate) struct SlotMap<K, T> {
-    pub(crate) slots: Vec<Slot<T>>,
-    pub(crate) available: Vec<usize>,
+pub struct SlotMap<K, T> {
+    pub slots: Vec<Slot<T>>,
+    pub available: Vec<usize>,
     _phantom: PhantomData<K>,
 }
 

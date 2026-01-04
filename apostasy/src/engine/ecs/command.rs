@@ -1,7 +1,7 @@
 use std::mem::{ManuallyDrop, MaybeUninit};
 
 use crate::engine::ecs::{
-    World,
+    Core,
     component::{Component, ComponentInfo},
     entity::{self, Entity},
 };
@@ -33,12 +33,12 @@ impl Default for Command {
 }
 
 impl Command {
-    pub fn apply(self, world: &mut World) {
+    pub fn apply(self, core: &mut Core) {
         use CommandOperation::*;
         match self.operation {
             Null => {}
             Spawn(entity) => {
-                world.spawn_entity(entity);
+                core.spawn_entity(entity);
             }
             // TODO:
             // Despawn(entity) => {
@@ -49,7 +49,7 @@ impl Command {
                 bytes,
                 entity,
             } => {
-                unsafe { world.insert_component_bytes(info, &bytes, entity) };
+                unsafe { core.insert_component_bytes(info, &bytes, entity) };
             }
 
             _ => {

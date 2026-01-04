@@ -9,6 +9,10 @@ fn main() {
 
     // spawn entity
     let entity = world.spawn();
+    let entity2 = world.spawn();
+    let entity3 = world.spawn();
 
-    dbg!(entity);
+    world.flush();
+
+    dbg!(world.crust.mantle(|mantle| mantle.archetypes()));
 }

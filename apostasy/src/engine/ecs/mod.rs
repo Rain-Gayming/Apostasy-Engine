@@ -1,16 +1,25 @@
-use std::{cell::Cell, collections::HashMap, mem::MaybeUninit};
+use std::{
+    cell::{Cell, UnsafeCell},
+    collections::HashMap,
+    mem::MaybeUninit,
+    ops::Deref,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use thread_local::ThreadLocal;
 
 use crate::{
     engine::ecs::{
-        archetype::{Archetype, ArchetypeId, ColumnIndex, RowIndex, Signature},
+        archetype::{Archetype, ArchetypeId, Column, ColumnIndex, RowIndex, Signature},
         command::Command,
-        component::{Component, ComponentId, ComponentInfo, ComponentLocations},
+        component::{COMPONENT_ENTRIES, Component, ComponentId, ComponentInfo, ComponentLocations},
         entity::{Entity, EntityLocation, EntityView},
     },
-    utils::slotmap::SlotMap,
+    utils::slotmap::{Slot, SlotMap},
 };
 
 pub mod archetype;
@@ -18,42 +27,32 @@ pub mod command;
 pub mod component;
 pub mod entity;
 
-/// The world of the ecs, it contains the archetypes and entities
 pub struct World {
+    pub crust: Arc<Crust>,
+}
+
+pub struct Crust {
+    pub mantle: UnsafeCell<Mantle>,
+    pub flush_guard: AtomicUsize,
+}
+
+unsafe impl Send for Crust {}
+unsafe impl Sync for Crust {}
+
+pub struct Mantle {
+    pub core: Core,
+    pub commands: ThreadLocal<Cell<Vec<Command>>>,
+}
+
+/// The world of the ecs, it contains the archetypes and entities
+pub struct Core {
     pub archetypes: SlotMap<ArchetypeId, Archetype>,
     pub entity_index: Mutex<SlotMap<Entity, EntityLocation>>,
     pub component_index: HashMap<ComponentId, ComponentLocations>,
     pub signature_index: HashMap<Signature, ArchetypeId>,
-    pub commands: ThreadLocal<Cell<Vec<Command>>>,
 }
 
-#[allow(clippy::new_without_default)]
-impl World {
-    pub fn new() -> Self {
-        let mut archetypes = SlotMap::<ArchetypeId, Archetype>::default();
-        let entity_index = SlotMap::<Entity, EntityLocation>::default();
-
-        let empty_archetype = Archetype {
-            signature: Signature::new(&[]),
-            entities: Vec::new(),
-            columns: Vec::new(),
-        };
-
-        archetypes.insert(empty_archetype);
-
-        World {
-            archetypes,
-            entity_index: Mutex::new(entity_index),
-            component_index: HashMap::new(),
-            signature_index: HashMap::new(),
-            commands: ThreadLocal::new(),
-        }
-    }
-
-    pub fn entity(&self, entity: Entity) -> EntityView<'_> {
-        self.get_entity(entity).unwrap()
-    }
-
+impl Mantle {
     pub fn queue_command(&self, command: Command) {
         let cell = self.commands.get_or(|| Cell::new(Vec::default()));
         let mut queue = cell.take();
@@ -61,12 +60,164 @@ impl World {
         cell.set(queue);
     }
 
+    pub fn apply_commands(&mut self) {
+        for cell in self.commands.iter_mut() {
+            for command in cell.get_mut().drain(..) {
+                command.apply(&mut self.core);
+            }
+        }
+    }
+
+    pub fn archetypes(&self) {
+        for archetype in self.core.archetypes.slots.iter() {
+            dbg!(archetype);
+        }
+    }
+}
+
+#[allow(clippy::redundant_pattern_matching)]
+impl Crust {
+    pub fn begin_access(flush_guard: &AtomicUsize) {
+        if let Err(_) = flush_guard.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| {
+            (old < usize::MAX).then_some(old + 1)
+        }) {
+            panic!("Tried to read while structurally mutating");
+        }
+    }
+
+    pub fn end_access(flush_guard: &AtomicUsize) {
+        if let Err(_) = flush_guard.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| {
+            (0 < old && old < usize::MAX).then_some(old - 1)
+        }) {
+            panic!("No read to end");
+        }
+    }
+
+    pub fn begin_flush(flush_guard: &AtomicUsize) {
+        if let Err(_) = flush_guard.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| {
+            (0 == old).then_some(usize::MAX)
+        }) {
+            panic!("Tried to structurally mutate while reading");
+        }
+    }
+
+    pub fn end_flush(flush_guard: &AtomicUsize) {
+        if let Err(_) = flush_guard.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| {
+            (old == usize::MAX).then_some(0)
+        }) {
+            panic!("No write to end");
+        }
+    }
+
+    pub fn mantle<R>(&self, func: impl FnOnce(&Mantle) -> R) -> R {
+        Self::begin_access(&self.flush_guard);
+        let ret = func(unsafe { self.mantle.get().as_ref().unwrap() });
+        Self::end_access(&self.flush_guard);
+        ret
+    }
+
+    pub fn flush(&self) {
+        Self::begin_flush(&self.flush_guard);
+        unsafe { self.mantle.get().as_mut().unwrap().apply_commands() };
+        Self::end_flush(&self.flush_guard);
+    }
+}
+
+#[allow(clippy::new_without_default)]
+impl World {
+    pub fn new() -> Self {
+        let mut world = Self {
+            crust: Arc::new(Crust {
+                flush_guard: AtomicUsize::new(0),
+                mantle: UnsafeCell::new(Mantle {
+                    core: Core::new(),
+                    commands: Default::default(),
+                }),
+            }),
+        };
+
+        for init in COMPONENT_ENTRIES {
+            (init)(&mut world);
+        }
+
+        world.flush();
+
+        world
+    }
+
+    pub fn entity(&self, entity: Entity) -> EntityView<'_> {
+        self.get_entity(entity).unwrap()
+    }
+
     pub fn get_entity(&self, entity: Entity) -> Option<EntityView<'_>> {
-        self.get_entity_location_locking(entity)
-            .map(|_| EntityView {
+        self.crust.mantle(|mantle| {
+            mantle
+                .core
+                .get_entity_location_locking(entity)
+                .map(|_| EntityView {
+                    entity,
+                    world: self,
+                })
+        })
+    }
+    pub fn spawn(&self) -> EntityView<'_> {
+        self.crust.mantle(|mantle| {
+            let entity = mantle.core.create_unspawned_entity();
+            mantle.queue_command(Command::spawn(entity));
+            EntityView {
                 entity,
                 world: self,
-            })
+            }
+        })
+    }
+
+    pub fn flush(&self) {
+        self.crust.flush();
+    }
+}
+
+#[allow(clippy::new_without_default)]
+impl Core {
+    pub fn new() -> Self {
+        // Create the slotmaps for entities and archetypes
+        let mut archetypes = SlotMap::<ArchetypeId, Archetype>::default();
+        let mut entity_index = SlotMap::<Entity, EntityLocation>::default();
+
+        // Create the empty archetype and component info archetype
+        let empty_archetype_id = archetypes.insert(Archetype::default());
+        let component_info_archetype_id = archetypes.insert(Archetype::default());
+
+        if let Some(empty_archetype) = archetypes.get_mut(empty_archetype_id) {
+            // Add all components as entities before init starts
+            for n in 0..COMPONENT_ENTRIES.len() {
+                let id = entity_index.insert(EntityLocation {
+                    archetype: empty_archetype_id,
+                    row: RowIndex(n),
+                });
+                empty_archetype.entities.push(id);
+            }
+
+            //TODO: Archetype edge addition
+            /*
+                let component_edge = &mut empty_archetype.edges.entry(ComponentInfo::id().into).or_default();
+                component_edge.add = Some(component_info_archetype_id;)
+            */
+        }
+
+        // Manually create ComponentInfo Archetype
+        let component_info_signature = Signature::new(&[ComponentInfo::id().into()]);
+        archetypes[component_info_archetype_id] = Archetype {
+            signature: component_info_signature.clone(),
+            entities: Default::default(),
+            columns: vec![RwLock::new(Column::new(ComponentInfo::info()))],
+        };
+
+        Core {
+            archetypes,
+            entity_index: Mutex::new(entity_index),
+            component_index: HashMap::new(),
+            signature_index: HashMap::new(),
+        }
     }
 
     pub fn get_entity_location_locking(&self, entity: Entity) -> Option<EntityLocation> {
@@ -74,17 +225,12 @@ impl World {
         entity_index.get(entity).copied()
     }
 
-    pub fn spawn(&mut self) {
-        let entity = self.create_unspawned_entity();
-        self.spawn_entity(entity);
-    }
-
-    pub fn create_unspawned_entity(&mut self) -> Entity {
+    pub fn create_unspawned_entity(&self) -> Entity {
         let mut entity_index = self.entity_index.lock();
         entity_index.insert(EntityLocation::uninitialized())
     }
 
-    pub fn spawn_entity(&mut self, entity: Entity) -> EntityLocation {
+    pub fn spawn_entity(&mut self, entity: Entity) -> Entity {
         let entity_index = self.entity_index.get_mut();
         let mut location = entity_index[entity];
         if location == EntityLocation::uninitialized() {
@@ -93,7 +239,7 @@ impl World {
             empty_archetype.entities.push(entity);
             entity_index[entity] = location;
         }
-        location
+        entity
     }
 
     pub fn entity_location(&mut self, entity: Entity) -> Option<EntityLocation> {
@@ -123,7 +269,7 @@ impl World {
     }
 
     /// Get metadata of a component
-    pub(crate) fn component_info(&mut self, component: Entity) -> Option<ComponentInfo> {
+    pub fn component_info(&mut self, component: Entity) -> Option<ComponentInfo> {
         let entity_index = self.entity_index.get_mut();
         let component_index = &self.component_index;
         let archetypes = &self.archetypes;

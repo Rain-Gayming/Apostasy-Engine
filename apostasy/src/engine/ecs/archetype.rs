@@ -1,4 +1,4 @@
-use std::mem::MaybeUninit;
+use std::{fmt::Debug, mem::MaybeUninit};
 
 use aligned_vec::{AVec, RuntimeAlign};
 use derive_more::{Deref, DerefMut, From};
@@ -10,18 +10,27 @@ use crate::{
         Entity,
         component::{ComponentId, ComponentInfo},
     },
-    utils::slotmap::Key,
+    utils::slotmap::{Key, Slot},
 };
 
 /// A data type that contains
 ///     - entities
 ///     - component data
 ///     - component types
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Archetype {
     pub signature: Signature,
     pub entities: Vec<Entity>,
     pub columns: Vec<RwLock<Column>>,
+}
+
+impl Debug for Slot<Archetype> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Archetype")
+            .field("signature", &self.data.as_ref().unwrap().signature)
+            .field("entities", &self.data.as_ref().unwrap().entities)
+            .finish()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, From, Hash)]
@@ -120,7 +129,7 @@ impl Signature {
 }
 
 #[derive(Debug)]
-pub(crate) struct Column {
+pub struct Column {
     buffer: AVec<MaybeUninit<u8>, RuntimeAlign>,
     info: ComponentInfo,
 }
