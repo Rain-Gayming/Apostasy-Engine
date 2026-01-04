@@ -11,10 +11,7 @@ fn main() {
 
     // spawn entity
     let entity = world.spawn().insert::<Health>(Health(0.0));
-    let entity2 = world
-        .spawn()
-        .insert::<Health>(Health(0.0))
-        .insert::<Health2>(Health2(2.0));
+    let entity2 = world.spawn().insert::<Health>(Health(0.0)).insert::<Health2>(Health2(2.0));
     let entity3 = world.spawn();
 
     world.flush();
