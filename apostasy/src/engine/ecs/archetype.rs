@@ -190,6 +190,47 @@ impl Column {
             (self.info.drop)(&mut self.buffer[row * self.info.size..][..self.info.size]);
         }
     }
+
+    /// Moves one row into the current buffer
+    pub fn move_into(&mut self, other: &mut Self, RowIndex(row): RowIndex) {
+        debug_assert_eq!(self.info.id, other.info.id);
+        if self.info.size == 0 {
+            return;
+        }
+
+        // Swap with last
+        self.swap_with_last(RowIndex(row));
+
+        // Move last to other column
+        other
+            .buffer
+            .resize(other.buffer.len() + other.info.size, MaybeUninit::zeroed());
+        let n = self.buffer.len() - self.info.size;
+        let m = other.buffer.len() - other.info.size;
+        self.buffer[n..].swap_with_slice(&mut other.buffer[m..]);
+
+        // Remove bytes old bytes
+        self.buffer.truncate(n);
+    }
+
+    /// Truncates the buffer to fit the current size
+    /// used when moving entities around archetypes
+    pub fn shrink_to_fit(&mut self, target_chunks: usize) {
+        for n in target_chunks..self.no_chunks() {
+            // SAFETY: Shrunk after loop
+            unsafe { self.call_drop(RowIndex(n)) };
+        }
+        self.buffer.truncate(target_chunks * self.info.size);
+    }
+
+    /// Swaps one row with the last
+    /// used to easily truncate the buffer
+    fn swap_with_last(&mut self, RowIndex(row): RowIndex) {
+        if row + 1 < self.no_chunks() {
+            let (left, right) = self.buffer.split_at_mut((row + 1) * self.info.size);
+            left[row * self.info.size..].swap_with_slice(right);
+        }
+    }
 }
 
 impl Drop for Column {

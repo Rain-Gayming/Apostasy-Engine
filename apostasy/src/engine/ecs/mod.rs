@@ -193,7 +193,6 @@ impl Core {
         if let Some(empty_archetype) = archetypes.get_mut(empty_archetype_id) {
             // Add all components as entities before init starts
             for n in 0..COMPONENT_ENTRIES.len() {
-                println!("{}", n);
                 let id = entity_index.insert(EntityLocation {
                     archetype: empty_archetype_id,
                     row: RowIndex(n),
@@ -222,8 +221,6 @@ impl Core {
                 },
             )]),
         };
-
-        dbg!(archetypes.slots.iter().clone());
 
         Core {
             archetypes,
@@ -378,14 +375,13 @@ impl Core {
 
         // SAFETY: New chunk is immediately created for entity
         // Move entity
-        // unsafe { self.move_entity(current_location, destination) };
+        unsafe { self.move_entity(current_location, destination) };
 
         // SAFETY:
         //  - component info should match the columns
         //  - chunk for the row is moved if a new archetype is created
         //  - write_info will call drop on old component value if not move to a new archetype
         let updated_location = self.entity_location(entity).unwrap();
-        println!("name: {}", info.name);
         unsafe {
             let column = self.component_index[&info.id.into()][&updated_location.archetype];
 
@@ -393,6 +389,48 @@ impl Core {
                 .columns[*column]
                 .get_mut()
                 .write_into(updated_location.row, bytes);
+        }
+
+        updated_location
+    }
+
+    unsafe fn move_entity(
+        &mut self,
+        old_location: EntityLocation,
+        destination_id: ArchetypeId,
+    ) -> EntityLocation {
+        if old_location.archetype == destination_id {
+            return old_location;
+        }
+        let entity_index = self.entity_index.get_mut();
+        let [old_archetype, new_archetype] = self
+            .archetypes
+            .disjoint([old_location.archetype, destination_id])
+            .unwrap();
+
+        let entity = old_archetype.entities.swap_remove(*old_location.row);
+        new_archetype.entities.push(entity);
+
+        old_archetype
+            .signature
+            .each_shared(&new_archetype.signature, |n, m| {
+                let old_column = old_archetype.columns[n].get_mut();
+                let new_column = new_archetype.columns[m].get_mut();
+                old_column.move_into(new_column, old_location.row);
+            });
+
+        // Update entity locations
+        let updated_location = EntityLocation {
+            archetype: destination_id,
+            row: RowIndex(new_archetype.entities.len() - 1),
+        };
+        entity_index[entity] = updated_location;
+        if *old_location.row < old_archetype.entities.len() {
+            entity_index[old_archetype.entities[*old_location.row]].row = old_location.row;
+        }
+
+        for column in old_archetype.columns.iter() {
+            column.write().shrink_to_fit(old_archetype.entities.len());
         }
 
         updated_location

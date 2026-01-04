@@ -1,24 +1,25 @@
-use apostasy::engine::ecs::World;
+use apostasy::engine::ecs::{World, command::Command};
 use apostasy_macros::Component;
 
 #[derive(Component)]
-pub struct Health();
-
+pub struct Health(f32);
 #[derive(Component)]
-pub struct Stamina();
-
-#[derive(Component)]
-pub struct Magicka();
+pub struct Health2(f32);
 
 fn main() {
     let world = World::new();
 
     // spawn entity
-    // let entity = world.spawn();
-    // let entity2 = world.spawn();
-    // let entity3 = world.spawn();
+    let entity = world.spawn().insert::<Health>(Health(0.0));
+    let entity2 = world
+        .spawn()
+        .insert::<Health>(Health(0.0))
+        .insert::<Health2>(Health2(2.0));
+    let entity3 = world.spawn();
 
     world.flush();
 
-    dbg!(world.crust.mantle(|mantle| mantle.archetypes()));
+    println!("AAAAAAAAA");
+
+    world.crust.mantle(|mantle| mantle.archetypes());
 }
