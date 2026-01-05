@@ -41,9 +41,9 @@ impl Command {
                 core.spawn_entity(entity);
             }
             // TODO:
-            // Despawn(entity) => {
-            //     world.despawn(entity);
-            // }
+            Despawn(entity) => {
+                core.despawn_entity(entity);
+            }
             Insert {
                 info,
                 bytes,

@@ -172,6 +172,13 @@ impl World {
         })
     }
 
+    /// Despawns an entity
+    pub fn despawn(&self, entity: Entity) {
+        self.crust.mantle(|mantle| {
+            mantle.queue_command(Command::despawn(entity));
+        });
+    }
+
     pub fn flush(&self) {
         self.crust.flush();
     }
@@ -259,6 +266,32 @@ impl Core {
             entity_index[entity] = location;
         }
         entity
+    }
+
+    pub fn despawn_entity(&mut self, entity: Entity) {
+        let mut entity_index = self.entity_index.get_mut();
+        let mut location = entity_index[entity];
+
+        let archetype = &mut self.archetypes[location.archetype];
+        let mut current_row = archetype.entities.get(location.row.0).unwrap();
+        let mut final_row = archetype.entities.last().unwrap();
+
+        // find entity's location
+        // swap the current entity with the end entity
+        // remove the end entity
+
+        // Only swap if the current row isnt the last row
+        if current_row != final_row {
+            let s_row = final_row.clone();
+            final_row = current_row;
+            current_row = &s_row;
+        }
+
+        let final_entity = archetype.entities.last().unwrap().to_owned();
+        let final_location = entity_index[final_entity];
+        archetype.entities.remove(final_location.row.0);
+
+        entity_index.remove(entity);
     }
 
     pub fn entity_location(&mut self, entity: Entity) -> Option<EntityLocation> {

@@ -2,8 +2,8 @@
 **Entity Component System:**
 
 - [-] components
-    - [-] component macro
-    - [- ] component info 
+    - [x] component macro
+    - [x] component info 
     - [ ] resources
         - [ ] adding resources
         - [ ] updating resources
@@ -11,23 +11,23 @@
     - [ ] bundles
 
 - [-] world
-    - [- ] component registering
+    - [x] component registering
     - [-] entities
         - [x] entity adding
-        - [ ] entity removal 
+        - [x] entity removal 
         - [ ] getting an entity immutably
         - [ ] getting an entity mutably
-        - [-] adding components to an entity
+        - [x] adding components to an entity
         - [ ] removing components to an entity
     - [-] archetypes
-        - [-] archetype edges
-        - [-] adding entities to the archetype
-        - [-] adding components to the archetype
-        - [-] new archetype creation
+        - [x] archetype edges
+        - [x] adding entities to the archetype
+        - [x] adding components to the archetype
+        - [x] new archetype creation
     - [-] commands
         - [x] spawn command
-        - [ ] despawn command
-        - [-] insert command
+        - [x] despawn command
+        - [x] insert command
 
 **Rendering:**
 
