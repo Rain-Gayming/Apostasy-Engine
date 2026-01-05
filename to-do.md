@@ -17,6 +17,8 @@
         - [x] entity removal 
         - [x] adding components to an entity
         - [x] removing components to an entity
+        - [x] get components mutably
+        - [x] get components immutably
     - [x] archetypes
         - [x] archetype edges
         - [x] adding entities to the archetype

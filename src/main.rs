@@ -1,23 +1,44 @@
-use apostasy::engine::ecs::{World, command::Command, component::Component};
+use apostasy::engine::ecs::{World, command::Command, component::Component, entity::EntityView};
 use apostasy_macros::Component;
 
 #[derive(Component)]
-pub struct Health3(f32);
+pub struct A(f32);
+#[derive(Component)]
+pub struct B();
+#[derive(Component)]
+pub struct C();
 fn main() {
     let world = World::new();
 
     // spawn entity
-    let entity3 = world.spawn().insert::<Health3>(Health3(2.0));
+    world.spawn().insert(A(0.0));
+    world.spawn().insert(A(0.0)).insert(B());
+    world.spawn().insert(A(0.0)).insert(B());
+    world.spawn().insert(A(0.0)).insert(B());
+    world.spawn().insert(A(0.0)).insert(B()).insert(C());
+    world.spawn().insert(A(0.0)).insert(B()).insert(C());
+    world.spawn().insert(A(0.0)).insert(B()).insert(C());
 
     world.flush();
 
-    println!("Spawned");
-
-    world.crust.mantle(|mantle| mantle.archetypes());
-
-    entity3.remove(Health3::id());
-
-    world.flush();
-    println!("Despawned");
-    world.crust.mantle(|mantle| mantle.archetypes());
+    println!(
+        "{}",
+        world
+            .query()
+            .with()
+            .include(A::id())
+            .build()
+            .components
+            .len()
+    );
+    world
+        .query()
+        .with()
+        .include(A::id())
+        .build()
+        .run(|view: EntityView<'_>| {
+            println!("before:");
+            view.get_mut::<A>().unwrap().0 += 1.0;
+            println!("after: {}", view.get_mut::<A>().unwrap().0);
+        });
 }

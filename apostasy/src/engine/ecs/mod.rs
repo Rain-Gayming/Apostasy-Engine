@@ -8,7 +8,9 @@ use std::{
     },
 };
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{
+    MappedRwLockReadGuard, MappedRwLockWriteGuard, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
 use thread_local::ThreadLocal;
 
 use crate::{
@@ -19,6 +21,7 @@ use crate::{
         command::Command,
         component::{COMPONENT_ENTRIES, Component, ComponentId, ComponentInfo, ComponentLocations},
         entity::{Entity, EntityLocation, EntityView},
+        query::QueryBuilder,
     },
     utils::slotmap::SlotMap,
 };
@@ -183,6 +186,13 @@ impl World {
     pub fn flush(&self) {
         self.crust.flush();
     }
+
+    /// Creates a new query
+    pub fn query(&self) -> QueryBuilder {
+        QueryBuilder::new(World {
+            crust: self.crust.clone(),
+        })
+    }
 }
 
 #[allow(clippy::new_without_default)]
@@ -343,8 +353,6 @@ impl Core {
 
             // Create columns
             for component in signature.iter() {
-                println!("{}", component.as_entity().is_some());
-
                 let info = self.component_info(component.as_entity().unwrap()).unwrap();
                 new_archetype.columns.push(RwLock::new(Column::new(info)));
             }
@@ -367,17 +375,25 @@ impl Core {
     }
 
     fn connect_edges(&mut self, signature: Signature, id: ArchetypeId) {
-        for field in signature.iter() {
-            let without_field = signature.clone().without(*field);
-            let Some(other) = self.signature_index.get(&without_field).copied() else {
+        for component in signature.iter() {
+            let without_component = signature.clone().without(*component);
+            let Some(other) = self.signature_index.get(&without_component).copied() else {
                 continue;
             };
 
             // Connect this to other
-            self.archetypes[id].edges.entry(*field).or_default().remove = Some(other);
+            self.archetypes[id]
+                .edges
+                .entry(*component)
+                .or_default()
+                .remove = Some(other);
 
             // Connect other to this
-            self.archetypes[other].edges.entry(*field).or_default().add = Some(id);
+            self.archetypes[other]
+                .edges
+                .entry(*component)
+                .or_default()
+                .add = Some(id);
         }
     }
 
@@ -489,5 +505,47 @@ impl Core {
 
         // SAFETY: Should only ever drop components
         unsafe { self.move_entity(current_location, destination) }
+    }
+
+    /// Get a component from an entity as type erased bytes
+    pub fn get_bytes<'a>(
+        &'a self,
+        component: ComponentId,
+        entity_location: EntityLocation,
+    ) -> Option<MappedRwLockReadGuard<'a, [MaybeUninit<u8>]>> {
+        self.component_index
+            .get(&component)
+            .and_then(|component_locations| {
+                let column = self
+                    .archetypes
+                    .get(entity_location.archetype)?
+                    .columns
+                    .get(**component_locations.get(&entity_location.archetype)?)?
+                    .read();
+                Some(RwLockReadGuard::map(column, |column| {
+                    column.get_chunk(entity_location.row)
+                }))
+            })
+    }
+
+    /// Get a component from an entity as type erased bytes
+    pub fn get_bytes_mut<'a>(
+        &'a self,
+        component: ComponentId,
+        entity_location: EntityLocation,
+    ) -> Option<MappedRwLockWriteGuard<'a, [MaybeUninit<u8>]>> {
+        self.component_index
+            .get(&component)
+            .and_then(|component_locations| {
+                let column = self
+                    .archetypes
+                    .get(entity_location.archetype)?
+                    .columns
+                    .get(**component_locations.get(&entity_location.archetype)?)?
+                    .write();
+                Some(RwLockWriteGuard::map(column, |column| {
+                    column.get_chunk_mut(entity_location.row)
+                }))
+            })
     }
 }
