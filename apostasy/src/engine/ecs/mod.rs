@@ -58,6 +58,8 @@ pub struct Core {
 }
 
 impl Mantle {
+    /// Adds a command to the queue,
+    /// rarely manually called
     pub fn queue_command(&self, command: Command) {
         let cell = self.commands.get_or(|| Cell::new(Vec::default()));
         let mut queue = cell.take();
@@ -65,6 +67,8 @@ impl Mantle {
         cell.set(queue);
     }
 
+    /// Applies every command currently in the queue
+    /// rarely manually called
     pub fn apply_commands(&mut self) {
         for cell in self.commands.iter_mut() {
             for command in cell.get_mut().drain(..) {
@@ -73,6 +77,8 @@ impl Mantle {
         }
     }
 
+    /// Debugs all archetypes
+    /// rarely manually called
     pub fn archetypes(&self) {
         for archetype in self.core.archetypes.slots.iter() {
             dbg!(archetype);
@@ -82,6 +88,7 @@ impl Mantle {
 
 #[allow(clippy::redundant_pattern_matching)]
 impl Crust {
+    /// Opens access to the crust
     pub fn begin_access(flush_guard: &AtomicUsize) {
         if let Err(_) = flush_guard.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| {
             (old < usize::MAX).then_some(old + 1)
@@ -90,6 +97,7 @@ impl Crust {
         }
     }
 
+    /// Closes access to the crust
     pub fn end_access(flush_guard: &AtomicUsize) {
         if let Err(_) = flush_guard.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| {
             (0 < old && old < usize::MAX).then_some(old - 1)
@@ -114,6 +122,19 @@ impl Crust {
         }
     }
 
+    /// Opens access to the mantle
+    /// use:
+    /// ```rust
+    ///
+    ///     fn main(){
+    ///         let world = World::new();
+    ///
+    ///         world.crust.mantle(|mantle| {
+    ///             ...
+    ///         });
+    ///     }
+    ///
+    /// ```
     pub fn mantle<R>(&self, func: impl FnOnce(&Mantle) -> R) -> R {
         Self::begin_access(&self.flush_guard);
         let ret = func(unsafe { self.mantle.get().as_ref().unwrap() });
@@ -121,6 +142,7 @@ impl Crust {
         ret
     }
 
+    /// Runs a flush, applies all commands
     pub fn flush(&self) {
         Self::begin_flush(&self.flush_guard);
         unsafe { self.mantle.get().as_mut().unwrap().apply_commands() };
@@ -130,6 +152,13 @@ impl Crust {
 
 #[allow(clippy::new_without_default)]
 impl World {
+    /// Creates a new world
+    /// use:
+    /// ```rust
+    ///     fn main(){
+    ///         let world = World::new();
+    ///     }
+    /// ```
     pub fn new() -> Self {
         let mut world = Self {
             crust: Arc::new(Crust {
@@ -150,10 +179,21 @@ impl World {
         world
     }
 
+    /// Takes in an entity and returns it's EntityView
+    /// use:
+    /// ```rust
+    ///     fn main(){
+    ///         let world = World::new();
+    ///         let entity = world.spawn();
+    ///
+    ///         let entity_view = world.entity(entity);
+    ///     }
+    /// ```
     pub fn entity(&self, entity: Entity) -> EntityView<'_> {
         self.get_entity(entity).unwrap()
     }
 
+    /// Gets an option of EntityView
     pub fn get_entity(&self, entity: Entity) -> Option<EntityView<'_>> {
         self.crust.mantle(|mantle| {
             mantle
@@ -165,6 +205,16 @@ impl World {
                 })
         })
     }
+
+    /// Spawns an entity
+    /// use:
+    /// ```rust
+    ///     fn main(){
+    ///         let world = World::new();
+    ///
+    ///         let entity = world.spawn();
+    ///     }
+    /// ```
     pub fn spawn(&self) -> EntityView<'_> {
         self.crust.mantle(|mantle| {
             let entity = mantle.core.create_unspawned_entity();
@@ -177,6 +227,16 @@ impl World {
     }
 
     /// Despawns an entity
+    /// use:
+    /// ```rust
+    ///     fn main(){
+    ///         let world = World::new();
+    ///
+    ///         let entity = world.spawn();
+    ///
+    ///         world.despawn(entity.entity);
+    ///     }
+    /// ```
     pub fn despawn(&self, entity: Entity) {
         self.crust.mantle(|mantle| {
             mantle.queue_command(Command::despawn(entity));
@@ -188,6 +248,26 @@ impl World {
     }
 
     /// Creates a new query
+    /// use:
+    /// ```rust
+    ///     #[derive(Component)]
+    ///     struct A(f32);
+    ///
+    ///     fn main(){
+    ///         let world = World::new();
+    ///
+    ///         let entity = world.spawn().insert(A(0.0));
+    ///
+    ///         world
+    ///             .query()
+    ///             .with()
+    ///             .include(A::id())
+    ///             .build()
+    ///             .run(|view: EntityView<'_>| {
+    ///                 ...
+    ///             });
+    ///     }
+    /// ```
     pub fn query(&self) -> QueryBuilder {
         QueryBuilder::new(World {
             crust: self.crust.clone(),

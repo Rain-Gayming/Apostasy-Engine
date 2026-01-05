@@ -1,11 +1,7 @@
-use core::index;
-
-use apostasy_macros::Component;
-
-use crate::engine::ecs::archetype::{Archetype, ArchetypeId, Signature};
-use crate::engine::ecs::component::ComponentId;
+use crate::engine::ecs::World;
+use crate::engine::ecs::component::Component;
 use crate::engine::ecs::entity::EntityView;
-use crate::engine::ecs::{World, entity::Entity};
+use apostasy_macros::Component;
 
 #[derive(PartialEq, Eq)]
 pub enum QueryAccess {
@@ -72,21 +68,56 @@ impl QueryBuilder {
         self
     }
 
-    pub fn include(mut self, component: Entity) -> Self {
+    /// use:
+    /// ```rust
+    ///     #[derive(Component)]
+    ///     struct A();
+    ///     fn main(){
+    ///         world
+    ///             .query()
+    ///             .with()
+    ///             .include(A::id())
+    ///             .build()
+    ///             .run(|view: EntityView<'_>| {
+    ///                 ...
+    ///              });
+    ///     }
+    /// ```
+    pub fn include<C: Component>(mut self) -> Self {
         let Some(query_component) = self.query.components.last_mut() else {
             panic!("Must add a component before trying to calling `include`");
         };
         query_component.access = QueryAccess::Include;
-        query_component.id = component.raw();
+        query_component.id = C::id().raw();
         self
     }
 
-    pub fn exclude(mut self, component: Entity) -> Self {
+    /// Excludes a specific component from the query
+    /// use:
+    /// ```rust
+    ///
+    ///     #[derive(Component)]
+    ///     struct A();
+    ///     #[derive(Component)]
+    ///     struct B();
+    ///     fn main(){
+    ///         world
+    ///             .query()
+    ///             .with()
+    ///             .include::<A>()
+    ///             .exclude::<B>()
+    ///             .build()
+    ///             .run(|view: EntityView<'_>| {
+    ///                 ...
+    ///              });
+    ///     }
+    /// ```
+    pub fn exclude<C: Component>(mut self) -> Self {
         let Some(query_component) = self.query.components.last_mut() else {
             panic!("Must add a component before trying to calling `exclude`");
         };
         query_component.access = QueryAccess::Exclude;
-        query_component.id = component.raw();
+        query_component.id = C::id().raw();
         self
     }
 

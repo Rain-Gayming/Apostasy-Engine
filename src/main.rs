@@ -21,23 +21,13 @@ fn main() {
 
     world.flush();
 
-    println!(
-        "{}",
-        world
-            .query()
-            .with()
-            .include(A::id())
-            .build()
-            .components
-            .len()
-    );
     world
         .query()
         .with()
-        .include(A::id())
+        .include::<A>()
         .build()
         .run(|view: EntityView<'_>| {
-            println!("before:");
+            println!("before: {}", view.get_mut::<A>().unwrap().0);
             view.get_mut::<A>().unwrap().0 += 1.0;
             println!("after: {}", view.get_mut::<A>().unwrap().0);
         });
