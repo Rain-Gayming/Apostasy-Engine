@@ -468,4 +468,25 @@ impl Core {
 
         updated_location
     }
+    pub fn remove_component(&mut self, component: ComponentId, entity: Entity) -> EntityLocation {
+        // Look for the entity
+        let Some(current_location) = self.entity_location(entity) else {
+            panic!("Entity does not exist");
+        };
+        let current_archetype = &self.archetypes[current_location.archetype];
+
+        // Find the new destination
+        let destination = if let Some(edge) = current_archetype //
+            .edges
+            .get(&component)
+            .and_then(|edge| edge.remove)
+        {
+            edge
+        } else {
+            self.create_archetype(current_archetype.signature.clone().without(component))
+        };
+
+        // SAFETY: Should only ever drop components
+        unsafe { self.move_entity(current_location, destination) }
+    }
 }

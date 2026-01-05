@@ -7,7 +7,7 @@ use crate::{
         World,
         archetype::{ArchetypeId, RowIndex},
         command::Command,
-        component::Component,
+        component::{Component, ComponentId},
     },
     utils::slotmap::Key,
 };
@@ -70,6 +70,13 @@ impl EntityView<'_> {
     pub fn insert<C: Component>(self, component: C) -> Self {
         self.world.crust.mantle(|mantle| {
             mantle.queue_command(Command::insert(component, self.entity));
+        });
+        self
+    }
+
+    pub fn remove<C: Into<ComponentId>>(self, component: C) -> Self {
+        self.world.crust.mantle(|mantle| {
+            mantle.queue_command(Command::remove(component.into(), self.entity));
         });
         self
     }

@@ -2,7 +2,7 @@ use std::mem::{ManuallyDrop, MaybeUninit};
 
 use crate::engine::ecs::{
     Core,
-    component::{Component, ComponentInfo},
+    component::{Component, ComponentId, ComponentInfo},
     entity::{self, Entity},
 };
 
@@ -13,6 +13,10 @@ pub enum CommandOperation {
     Insert {
         info: ComponentInfo,
         bytes: Box<[MaybeUninit<u8>]>,
+        entity: Entity,
+    },
+    Remove {
+        component: ComponentId,
         entity: Entity,
     },
 }
@@ -52,6 +56,10 @@ impl Command {
                 unsafe { core.insert_component_bytes(info, &bytes, entity) };
             }
 
+            Remove { component, entity } => {
+                core.remove_component(component, entity);
+            }
+
             _ => {
                 println!("Command has no function");
             }
@@ -69,6 +77,16 @@ impl Command {
         Self {
             jump: 1,
             operation: CommandOperation::Despawn(entity),
+        }
+    }
+
+    pub fn remove<C: Into<ComponentId>>(component: C, entity: Entity) -> Self {
+        Self {
+            jump: 1,
+            operation: CommandOperation::Remove {
+                component: component.into(),
+                entity,
+            },
         }
     }
 

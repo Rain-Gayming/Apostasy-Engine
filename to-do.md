@@ -18,7 +18,7 @@
         - [ ] getting an entity immutably
         - [ ] getting an entity mutably
         - [x] adding components to an entity
-        - [ ] removing components to an entity
+        - [x] removing components to an entity
     - [-] archetypes
         - [x] archetype edges
         - [x] adding entities to the archetype
@@ -28,6 +28,7 @@
         - [x] spawn command
         - [x] despawn command
         - [x] insert command
+        - [x] remove command
 
 **Rendering:**
 
