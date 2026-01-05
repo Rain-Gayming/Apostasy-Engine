@@ -12,23 +12,22 @@
 
 - [-] world
     - [x] component registering
-    - [-] entities
+    - [x] entities
         - [x] entity adding
         - [x] entity removal 
-        - [ ] getting an entity immutably
-        - [ ] getting an entity mutably
         - [x] adding components to an entity
         - [x] removing components to an entity
-    - [-] archetypes
+    - [x] archetypes
         - [x] archetype edges
         - [x] adding entities to the archetype
         - [x] adding components to the archetype
         - [x] new archetype creation
-    - [-] commands
+    - [x] commands
         - [x] spawn command
         - [x] despawn command
         - [x] insert command
         - [x] remove command
+    - [-] queries
 
 **Rendering:**
 

@@ -27,6 +27,7 @@ pub mod archetype;
 pub mod command;
 pub mod component;
 pub mod entity;
+pub mod query;
 
 pub struct World {
     pub crust: Arc<Crust>,
