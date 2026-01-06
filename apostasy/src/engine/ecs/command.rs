@@ -3,7 +3,7 @@ use std::mem::{ManuallyDrop, MaybeUninit};
 use crate::engine::ecs::{
     Core,
     component::{Component, ComponentId, ComponentInfo},
-    entity::{self, Entity},
+    entity::Entity,
 };
 
 pub enum CommandOperation {
@@ -59,10 +59,6 @@ impl Command {
             Remove { component, entity } => {
                 core.remove_component(component, entity);
             }
-
-            _ => {
-                println!("Command has no function");
-            }
         }
     }
 
@@ -98,6 +94,7 @@ impl Command {
         unsafe { Self::insert_bytes(C::info(), bytes.into(), entity) }
     }
 
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn insert_bytes(
         info: ComponentInfo,
         bytes: Box<[MaybeUninit<u8>]>,

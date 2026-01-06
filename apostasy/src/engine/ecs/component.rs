@@ -133,6 +133,7 @@ pub trait OnRemove {
 }
 
 #[derive(Clone, Copy, Debug, Component)]
+#[allow(clippy::type_complexity)]
 pub struct ComponentInfo {
     pub name: &'static str,
     pub id: Entity,

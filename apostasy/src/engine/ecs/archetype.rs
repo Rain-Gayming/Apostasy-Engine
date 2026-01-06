@@ -169,6 +169,7 @@ impl Column {
     }
 
     /// Writes into the column
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn write_into(&mut self, RowIndex(row): RowIndex, bytes: &[MaybeUninit<u8>]) {
         if self.info.size == 0 {
             return;

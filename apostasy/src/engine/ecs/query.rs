@@ -1,15 +1,18 @@
+use crate as apostasy;
 use crate::engine::ecs::World;
 use crate::engine::ecs::component::Component;
 use crate::engine::ecs::entity::EntityView;
 use apostasy_macros::Component;
 
+/// What the query is to do with the specific component
 #[derive(PartialEq, Eq)]
 pub enum QueryAccess {
     Noop,
     Include,
     Exclude,
 }
-use crate as apostasy;
+
+/// A component added to a query
 pub struct QueryComponent {
     pub access: QueryAccess,
     pub id: u64,
@@ -24,35 +27,44 @@ impl Default for QueryComponent {
     }
 }
 
+/// A query of components in the world
 pub struct Query {
     pub world: World,
     pub components: Vec<QueryComponent>,
 }
 
 #[derive(Component)]
-struct QueryState {
-    // TODO:
-}
+struct QueryState {}
+
+#[allow(private_bounds)]
 trait QueryClosure {
     fn run(self, query: &Query, state: &QueryState);
 }
 
+#[allow(unused_variables)]
 impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
     fn run(self, query: &Query, state: &QueryState) {}
 }
 
 impl Query {
+    /// Runs the query
+    #[allow(private_bounds)]
     pub fn run<Closure: QueryClosure>(&self, func: Closure) {
         let cache = QueryState {};
         func.run(self, &cache);
     }
 }
+
+/// Constructer for a query
+#[allow(dead_code)]
 pub struct QueryBuilder {
     query: Query,
     size: usize,
 }
 
 impl QueryBuilder {
+    /// Creates a new QueryBuilder and Query,
+    /// called through World
     pub fn new(world: World) -> Self {
         QueryBuilder {
             query: Query {
@@ -63,16 +75,17 @@ impl QueryBuilder {
         }
     }
 
+    /// Adds a component to the query
     pub fn with(mut self) -> Self {
         self.query.components.push(QueryComponent::default());
         self
     }
 
-    /// use:
+    /// Includes a specific component from the query, use:
     /// ```rust
     ///     #[derive(Component)]
     ///     struct A();
-    ///     fn main(){
+    ///     fn foo(){
     ///         world
     ///             .query()
     ///             .with()
@@ -92,15 +105,14 @@ impl QueryBuilder {
         self
     }
 
-    /// Excludes a specific component from the query
-    /// use:
+    /// Excludes a specific component from the query, use:
     /// ```rust
     ///
     ///     #[derive(Component)]
     ///     struct A();
     ///     #[derive(Component)]
     ///     struct B();
-    ///     fn main(){
+    ///     fn foo(){
     ///         world
     ///             .query()
     ///             .with()
@@ -121,63 +133,19 @@ impl QueryBuilder {
         self
     }
 
+    /// Builds the query, use:
+    /// ```rust
+    //
+    ///     fn foo(){
+    ///         world
+    ///             .query()
+    ///             .build()
+    ///             .run(|view: EntityView<'_>| {
+    ///                 ...
+    ///              });
+    ///     }
+    /// ```
     pub fn build(self) -> Query {
-        // let mut archetypes_included: Vec<ArchetypeId> = Vec::new();
-        // let mut archetypes_excluded: Vec<ArchetypeId> = Vec::new();
-        //
-        // self.query.world.crust.mantle(|mantle| {
-        //     for signature in mantle.core.signature_index.iter() {
-        //         for component in self.query.components.iter() {
-        //             if signature.0.contains(ComponentId(component.id)) {
-        //                 match component.access {
-        //                     QueryAccess::Noop => (),
-        //                     QueryAccess::Include => {
-        //                         if archetypes_included.contains(signature.1) {
-        //                             continue;
-        //                         }
-        //                         archetypes_included.push(signature.1.clone());
-        //                     }
-        //                     QueryAccess::Exclude => {
-        //                         if archetypes_excluded.contains(signature.1) {
-        //                             continue;
-        //                         }
-        //                         archetypes_excluded.push(signature.1.clone());
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // });
-        //
-        // let mut to_remove = Vec::new();
-        // for included in archetypes_included.clone() {
-        //     if archetypes_excluded.contains(&included) {
-        //         to_remove.push(included);
-        //     }
-        // }
-        // for remove in to_remove {
-        //     archetypes_included.retain(|&x| x != remove);
-        // }
-        //
-        // self.query.world.crust.mantle(|mantle| {
-        //     for archetype_id in archetypes_included {
-        //         let archetype = mantle.core.archetypes[archetype_id];
-        //     }
-        // });
-
         self.query
     }
 }
-
-// Queries take *in* a set of components
-// and return any entities with those components
-//
-// eg:
-// ```
-//  fn foo(query: Query<Health, Stamina>){
-//      for entity in query.results{
-//          ...
-//      }
-//  }
-//
-// ```
