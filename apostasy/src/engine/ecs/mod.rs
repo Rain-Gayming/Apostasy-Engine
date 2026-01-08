@@ -1,4 +1,5 @@
 use std::{
+    arch,
     cell::{Cell, UnsafeCell},
     sync::{
         Arc,
@@ -12,7 +13,7 @@ use crate::engine::ecs::{
     command::Command,
     component::COMPONENT_ENTRIES,
     core::Core,
-    entity::{Entity, EntityView},
+    entity::{Entity, EntityLocation, EntityView},
     query::QueryBuilder,
 };
 
@@ -206,6 +207,27 @@ impl World {
                 entity,
                 world: self,
             }
+        })
+    }
+
+    pub fn entity_from_location(&self, entity_location: EntityLocation) -> EntityView<'_> {
+        self.crust.mantle(|mantle| {
+            println!("reached archetype");
+            let archetype = mantle
+                .core
+                .archetypes
+                .get(entity_location.archetype)
+                .unwrap();
+
+            println!("reached get entity");
+            self.get_entity(
+                archetype
+                    .entity_index
+                    .get(&entity_location)
+                    .unwrap()
+                    .to_owned(),
+            )
+            .unwrap()
         })
     }
 

@@ -1,3 +1,4 @@
+use core::hash;
 use std::{collections::HashMap, fmt::Debug, mem::MaybeUninit};
 
 use aligned_vec::{AVec, RuntimeAlign};
@@ -9,6 +10,7 @@ use crate::{
     engine::ecs::{
         Entity,
         component::{ComponentId, ComponentInfo},
+        entity::EntityLocation,
     },
     utils::slotmap::{Key, Slot},
 };
@@ -21,6 +23,7 @@ use crate::{
 pub struct Archetype {
     pub signature: Signature,
     pub entities: Vec<Entity>,
+    pub entity_index: HashMap<EntityLocation, Entity>,
     pub columns: Vec<RwLock<Column>>,
     pub edges: HashMap<ComponentId, ArchetypeEdge>,
 }
@@ -57,7 +60,7 @@ impl From<ArchetypeId> for Key {
 }
 
 /// The position of data in an archetype row
-#[derive(Clone, Deref, DerefMut, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Deref, Hash, DerefMut, Copy, Debug, PartialEq, Eq)]
 pub struct RowIndex(pub usize);
 /// The position of data in an archetype column
 #[derive(Clone, Deref, DerefMut, Copy, Debug, PartialEq, Eq)]
@@ -231,6 +234,10 @@ impl Column {
             let (left, right) = self.buffer.split_at_mut((row + 1) * self.info.size);
             left[row * self.info.size..].swap_with_slice(right);
         }
+    }
+
+    fn get_row(&mut self, RowIndex(row): RowIndex) {
+        let row = self.buffer.get(row * self.info.size).unwrap();
     }
 }
 

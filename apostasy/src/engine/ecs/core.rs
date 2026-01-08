@@ -1,3 +1,4 @@
+use core::arch;
 use std::{collections::HashMap, mem::MaybeUninit};
 
 use parking_lot::{
@@ -10,7 +11,7 @@ use crate::{
             Archetype, ArchetypeEdge, ArchetypeId, Column, ColumnIndex, RowIndex, Signature,
         },
         component::{COMPONENT_ENTRIES, Component, ComponentId, ComponentInfo, ComponentLocations},
-        entity::{Entity, EntityLocation},
+        entity::{Entity, EntityLocation, EntityView},
     },
     utils::slotmap::SlotMap,
 };
@@ -59,6 +60,7 @@ impl Core {
         archetypes[component_info_archetype_id] = Archetype {
             signature: component_info_signature.clone(),
             entities: Default::default(),
+            entity_index: Default::default(),
             columns: vec![RwLock::new(Column::new(ComponentInfo::info()))],
             edges: HashMap::from([(
                 ComponentInfo::id().into(),
@@ -106,6 +108,7 @@ impl Core {
             let empty_archetype = &mut self.archetypes[ArchetypeId::empty_archetype()];
             location.row = RowIndex(empty_archetype.entities.len());
             empty_archetype.entities.push(entity);
+            empty_archetype.entity_index.insert(location, entity);
             entity_index[entity] = location;
         }
         entity
@@ -130,6 +133,7 @@ impl Core {
         let final_entity = archetype.entities.last().unwrap().to_owned();
         let final_location = entity_index[final_entity];
         archetype.entities.remove(final_location.row.0);
+        archetype.entity_index.remove(&final_location);
 
         entity_index.remove(entity);
     }
@@ -178,6 +182,7 @@ impl Core {
                 signature: signature.clone(),
                 entities: Default::default(),
                 columns: Default::default(),
+                entity_index: Default::default(),
                 edges: Default::default(),
             };
 
@@ -294,7 +299,6 @@ impl Core {
 
         let entity = old_archetype.entities.swap_remove(*old_location.row);
         new_archetype.entities.push(entity);
-
         old_archetype
             .signature
             .each_shared(&new_archetype.signature, |n, m| {
@@ -303,11 +307,14 @@ impl Core {
                 old_column.move_into(new_column, old_location.row);
             });
 
+        old_archetype.entity_index.remove(&old_location);
+
         // Update entity locations
         let updated_location = EntityLocation {
             archetype: destination_id,
             row: RowIndex(new_archetype.entities.len() - 1),
         };
+        new_archetype.entity_index.insert(updated_location, entity);
         entity_index[entity] = updated_location;
         if *old_location.row < old_archetype.entities.len() {
             entity_index[old_archetype.entities[*old_location.row]].row = old_location.row;

@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// The location of an entity in an archetype
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub struct EntityLocation {
     pub archetype: ArchetypeId,
     pub row: RowIndex,
@@ -93,6 +93,28 @@ impl EntityView<'_> {
         let core = unsafe { &self.world.crust.mantle.get().as_ref().unwrap().core };
         let location = core.get_entity_location_locking(self.entity).unwrap();
         let out = core.get_bytes(T::id().into(), location).map(|bytes| {
+            ColumnReadGuard::new(
+                MappedRwLockReadGuard::map(bytes, |bytes| {
+                    unsafe { (bytes.as_ptr() as *const T).as_ref() }.unwrap()
+                }),
+                &self.world.crust.flush_guard,
+            )
+        });
+
+        // Close access to the crust
+        Crust::end_access(&self.world.crust.flush_guard);
+
+        out
+    }
+
+    /// Get a component on an entity immutably
+    pub fn get_id<T: Into<ComponentId>>(&self, component: T) -> Option<ColumnReadGuard<'_, T>> {
+        // Open access to the crust
+        Crust::begin_access(&self.world.crust.flush_guard);
+
+        let core = unsafe { &self.world.crust.mantle.get().as_ref().unwrap().core };
+        let location = core.get_entity_location_locking(self.entity).unwrap();
+        let out = core.get_bytes(component.into(), location).map(|bytes| {
             ColumnReadGuard::new(
                 MappedRwLockReadGuard::map(bytes, |bytes| {
                     unsafe { (bytes.as_ptr() as *const T).as_ref() }.unwrap()

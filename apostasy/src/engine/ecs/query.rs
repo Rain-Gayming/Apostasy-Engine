@@ -5,7 +5,7 @@ use crate::engine::ecs::entity::EntityView;
 use apostasy_macros::Component;
 
 /// What the query is to do with the specific component
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum QueryAccess {
     Noop,
     Include,
@@ -13,6 +13,7 @@ pub enum QueryAccess {
 }
 
 /// A component added to a query
+#[derive(Clone, Debug)]
 pub struct QueryComponent {
     pub access: QueryAccess,
     pub id: u64,
@@ -43,7 +44,27 @@ trait QueryClosure {
 
 #[allow(unused_variables)]
 impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
-    fn run(self, query: &Query, state: &QueryState) {}
+    fn run(self, query: &Query, state: &QueryState) {
+        query.world.crust.mantle(|mantle| {
+            for entity_location in mantle.core.entity_index.lock().slots.iter() {
+                let matches = query.components.iter().all(|qc| {
+                    let data = entity_location.data.unwrap();
+                    let entity_view = query
+                        .world
+                        .entity_from_location(entity_location.data.unwrap());
+
+                    println!("reached component");
+                    let has_component = entity_view.get_id(qc.id).is_some();
+
+                    match qc.access {
+                        QueryAccess::Include => has_component,
+                        QueryAccess::Exclude => !has_component,
+                        QueryAccess::Noop => true,
+                    }
+                });
+            }
+        });
+    }
 }
 
 impl Query {
@@ -52,6 +73,17 @@ impl Query {
     pub fn run<Closure: QueryClosure>(&self, func: Closure) {
         let cache = QueryState {};
         func.run(self, &cache);
+    }
+}
+
+impl Clone for Query {
+    fn clone(&self) -> Self {
+        Self {
+            components: self.components.clone(),
+            world: World {
+                crust: self.world.crust.clone(),
+            },
+        }
     }
 }
 
@@ -90,10 +122,6 @@ impl QueryBuilder {
     ///             .query()
     ///             .with()
     ///             .include(A::id())
-    ///             .build()
-    ///             .run(|view: EntityView<'_>| {
-    ///                 ...
-    ///              });
     ///     }
     /// ```
     pub fn include<C: Component>(mut self) -> Self {
@@ -116,12 +144,7 @@ impl QueryBuilder {
     ///         world
     ///             .query()
     ///             .with()
-    ///             .include::<A>()
     ///             .exclude::<B>()
-    ///             .build()
-    ///             .run(|view: EntityView<'_>| {
-    ///                 ...
-    ///              });
     ///     }
     /// ```
     pub fn exclude<C: Component>(mut self) -> Self {
