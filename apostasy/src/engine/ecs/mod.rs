@@ -175,7 +175,9 @@ impl World {
     ///     }
     /// ```
     pub fn entity(&self, entity: Entity) -> EntityView<'_> {
-        self.get_entity(entity).unwrap()
+        let entity = self.get_entity(entity).unwrap();
+        println!("got entity");
+        entity
     }
 
     /// Gets an option of EntityView
@@ -212,14 +214,14 @@ impl World {
 
     pub fn entity_from_location(&self, entity_location: EntityLocation) -> EntityView<'_> {
         self.crust.mantle(|mantle| {
-            println!("reached archetype");
+            println!("getting archetype");
             let archetype = mantle
                 .core
                 .archetypes
                 .get(entity_location.archetype)
                 .unwrap();
 
-            println!("reached get entity");
+            println!("getting entity");
             self.get_entity(
                 archetype
                     .entity_index

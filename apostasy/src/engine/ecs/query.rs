@@ -49,11 +49,12 @@ impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
             for entity_location in mantle.core.entity_index.lock().slots.iter() {
                 let matches = query.components.iter().all(|qc| {
                     let data = entity_location.data.unwrap();
+                    println!("looking for entity");
                     let entity_view = query
                         .world
                         .entity_from_location(entity_location.data.unwrap());
 
-                    println!("reached component");
+                    println!("looking for component");
                     let has_component = entity_view.get_id(qc.id).is_some();
 
                     match qc.access {
