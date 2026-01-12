@@ -90,8 +90,12 @@ impl Core {
 
     /// Returns an entity's location
     pub fn get_entity_location_locking(&self, entity: Entity) -> Option<EntityLocation> {
-        let entity_index = self.entity_index.lock();
-        entity_index.get(entity).copied()
+        {
+            let entity_index = self.entity_index.lock();
+            let result = entity_index.get(entity).copied();
+            drop(entity_index);
+            result
+        }
     }
 
     /// Creates a new entity

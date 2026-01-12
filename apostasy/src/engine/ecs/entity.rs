@@ -52,6 +52,10 @@ impl Entity {
         })
     }
 
+    pub fn val(self) -> u64 {
+        self.0.index as u64
+    }
+
     pub fn raw(self) -> u64 {
         self.0.raw()
     }

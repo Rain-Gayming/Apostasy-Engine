@@ -1,3 +1,5 @@
+use core::arch;
+
 use crate as apostasy;
 use crate::engine::ecs::World;
 use crate::engine::ecs::component::Component;
@@ -41,33 +43,47 @@ struct QueryState {}
 trait QueryClosure {
     fn run(self, query: &Query, state: &QueryState);
 }
-
 #[allow(unused_variables)]
 impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
-    fn run(self, query: &Query, state: &QueryState) {
-        query.world.crust.mantle(|mantle| {
-            for entity_location in mantle.core.entity_index.lock().slots.iter() {
-                let matches = query.components.iter().all(|qc| {
-                    let data = entity_location.data.unwrap();
-                    println!("looking for entity");
-                    let entity_view = query
-                        .world
-                        .entity_from_location(entity_location.data.unwrap());
-
-                    println!("looking for component");
-                    let has_component = entity_view.get_id(qc.id).is_some();
-
-                    match qc.access {
-                        QueryAccess::Include => has_component,
-                        QueryAccess::Exclude => !has_component,
-                        QueryAccess::Noop => true,
-                    }
-                });
-            }
+    fn run(mut self, query: &Query, state: &QueryState) {
+        let entity_locations: Vec<_> = query.world.crust.mantle(|mantle| {
+            mantle
+                .core
+                .entity_index
+                .lock()
+                .slots
+                .iter()
+                .filter_map(|slot| slot.data)
+                .collect()
         });
+
+        for entity_location in entity_locations {
+            let entity_view = query.world.entity_from_location(entity_location);
+
+            query.world.crust.mantle(|mantle| {
+                let archetype = mantle
+                    .core
+                    .archetypes
+                    .get(entity_location.archetype)
+                    .unwrap();
+            });
+            // Check if entity matches the query
+            let matches = query.components.iter().all(|qc| {
+                let has_component = entity_view.get_id(qc.id).is_some();
+
+                match qc.access {
+                    QueryAccess::Include => has_component,
+                    QueryAccess::Exclude => !has_component,
+                    QueryAccess::Noop => true,
+                }
+            });
+
+            if matches {
+                self(entity_view);
+            }
+        }
     }
 }
-
 impl Query {
     /// Runs the query
     #[allow(private_bounds)]
@@ -108,12 +124,6 @@ impl QueryBuilder {
         }
     }
 
-    /// Adds a component to the query
-    pub fn with(mut self) -> Self {
-        self.query.components.push(QueryComponent::default());
-        self
-    }
-
     /// Includes a specific component from the query, use:
     /// ```rust
     ///     #[derive(Component)]
@@ -121,16 +131,16 @@ impl QueryBuilder {
     ///     fn foo(){
     ///         world
     ///             .query()
-    ///             .with()
     ///             .include(A::id())
     ///     }
     /// ```
     pub fn include<C: Component>(mut self) -> Self {
+        self.query.components.push(QueryComponent::default());
         let Some(query_component) = self.query.components.last_mut() else {
             panic!("Must add a component before trying to calling `include`");
         };
         query_component.access = QueryAccess::Include;
-        query_component.id = C::id().raw();
+        query_component.id = C::id().val();
         self
     }
 
@@ -144,16 +154,16 @@ impl QueryBuilder {
     ///     fn foo(){
     ///         world
     ///             .query()
-    ///             .with()
     ///             .exclude::<B>()
     ///     }
     /// ```
     pub fn exclude<C: Component>(mut self) -> Self {
+        self.query.components.push(QueryComponent::default());
         let Some(query_component) = self.query.components.last_mut() else {
             panic!("Must add a component before trying to calling `exclude`");
         };
         query_component.access = QueryAccess::Exclude;
-        query_component.id = C::id().raw();
+        query_component.id = C::id().val();
         self
     }
 

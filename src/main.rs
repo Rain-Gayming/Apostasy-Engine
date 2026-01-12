@@ -8,21 +8,23 @@ pub struct A(f32);
 pub struct B();
 #[derive(Component)]
 pub struct C();
+
 fn main() {
     let world = World::new();
 
     // spawn entity
-    world.spawn().insert(A(0.0));
+    world.spawn().insert(A(0.0)).insert(B());
 
     world.flush();
 
-    let query = world
+    world
         .query()
-        .with()
         .include::<A>()
+        .include::<B>()
         .build()
         .run(|view: EntityView<'_>| {
-            let a = view.get::<A>().unwrap().0;
+            let a = view.get::<A>().unwrap().0 + 1.0;
             println!("{}", a);
         });
+    world.flush();
 }
