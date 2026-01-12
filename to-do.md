@@ -29,7 +29,7 @@
         - [x] despawn command
         - [x] insert command
         - [x] remove command
-    - [-] queries
+    - [x] queries
 
 **Rendering:**
 
