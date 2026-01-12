@@ -1,0 +1,11 @@
+use std::sync::Arc;
+
+use winit::window::Window;
+
+pub struct Renderer {}
+
+impl Renderer {
+    pub fn new(window: Arc<Window>) -> Self {
+        Self {}
+    }
+}

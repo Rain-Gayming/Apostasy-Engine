@@ -1,4 +1,7 @@
-use apostasy::engine::ecs::{World, entity::EntityView};
+use apostasy::engine::{
+    ecs::{World, entity::EntityView},
+    rendering::{Application, start_renderer},
+};
 use apostasy_macros::Component;
 
 #[allow(dead_code)]
@@ -12,6 +15,8 @@ fn main() {
 
     world.spawn().insert(A(0.0)).insert(B());
 
+    start_renderer();
+
     world
         .query()
         .include::<A>()
@@ -21,5 +26,4 @@ fn main() {
             let a = view.get::<A>().unwrap().0 + 1.0;
             println!("{}", a);
         });
-    world.flush();
 }
