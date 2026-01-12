@@ -3,6 +3,9 @@ use winit::{application::ApplicationHandler, event_loop::EventLoop};
 
 use crate::engine::rendering::render_engine::RenderEngine;
 
+pub mod physical_device;
+pub mod queue_families;
+pub mod render_context;
 pub mod render_engine;
 pub mod renderer;
 
@@ -22,6 +25,13 @@ impl ApplicationHandler for Application {
         window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
+        if let Some(engine) = self.render_engine.as_mut() {
+            engine.window_event(event_loop, window_id, event);
+        }
+    }
+
+    fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
+        self.render_engine = None;
     }
 }
 
