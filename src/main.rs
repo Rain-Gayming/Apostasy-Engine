@@ -6,16 +6,11 @@ use apostasy_macros::Component;
 pub struct A(f32);
 #[derive(Component)]
 pub struct B();
-#[derive(Component)]
-pub struct C();
 
 fn main() {
     let world = World::new();
 
-    // spawn entity
     world.spawn().insert(A(0.0)).insert(B());
-
-    world.flush();
 
     world
         .query()
