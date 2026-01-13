@@ -7,33 +7,44 @@ use winit::{
     window::{self, Window, WindowAttributes, WindowId},
 };
 
-use crate::engine::rendering::renderer::Renderer;
+use crate::engine::rendering::{
+    queue_families::queue_family_picker::single_queue_family,
+    renderer::Renderer,
+    rendering_context::{RenderingContext, RenderingContextAttributes},
+};
 
 pub struct RenderEngine {
-    pub windows: HashMap<WindowId, Arc<Window>>,
     pub renderers: HashMap<WindowId, Renderer>,
+    pub windows: HashMap<WindowId, Arc<Window>>,
     pub primary_window_id: WindowId,
+    pub rendering_context: Arc<RenderingContext>,
 }
 
 impl RenderEngine {
-    pub fn new(event_loop: &ActiveEventLoop) -> Self {
+    pub fn new(event_loop: &ActiveEventLoop) -> Result<Self> {
         let primary_window = Arc::new(event_loop.create_window(Default::default()).unwrap());
         let primary_window_id = primary_window.id();
         let windows = HashMap::from([(primary_window_id, primary_window.clone())]);
 
+        let rendering_context = Arc::new(RenderingContext::new(RenderingContextAttributes {
+            window: &primary_window,
+            queue_family_picker: single_queue_family,
+        })?);
+
         let renderers = windows
             .iter()
             .map(|(id, window)| {
-                let renderer = Renderer::new(window.clone());
+                let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
                 (*id, renderer)
             })
             .collect::<HashMap<WindowId, Renderer>>();
 
-        Self {
-            windows,
+        Ok(Self {
             renderers,
+            windows,
             primary_window_id,
-        }
+            rendering_context,
+        })
     }
 
     pub fn window_event(
@@ -62,10 +73,9 @@ impl RenderEngine {
     ) -> Result<WindowId> {
         let window = Arc::new(event_loop.create_window(attributes)?);
         let window_id = window.id();
+        self.windows.insert(window_id, window.clone());
 
-        self.windows.insert(window_id, window);
-
-        let renderer = Renderer::new(self.windows.get(&window_id).unwrap().clone());
+        let renderer = Renderer::new(self.rendering_context.clone(), window)?;
         self.renderers.insert(window_id, renderer);
         Ok(window_id)
     }

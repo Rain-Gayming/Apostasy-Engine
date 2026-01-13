@@ -1,28 +1,28 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use winit::{
     event::WindowEvent,
     event_loop::ActiveEventLoop,
     window::{Window, WindowId},
 };
 
-use crate::engine::rendering::render_context::{RenderContext, RenderContextAttributes};
+use crate::engine::rendering::rendering_context::RenderingContext;
 
 pub struct Renderer {
-    pub context: RenderContext,
+    pub context: Arc<RenderingContext>,
 }
 
 impl Renderer {
-    pub fn new(window: Arc<Window>) -> Self {
-        let context = RenderContext::new(RenderContextAttributes { window }).unwrap();
-        Self { context }
+    pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
+        Ok(Self { context })
     }
 
     pub fn window_event(
         &mut self,
-        event_loop: &ActiveEventLoop,
-        window_id: WindowId,
-        event: WindowEvent,
+        _event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        _event: WindowEvent,
     ) {
     }
 }

@@ -5,9 +5,10 @@ use crate::engine::rendering::render_engine::RenderEngine;
 
 pub mod physical_device;
 pub mod queue_families;
-pub mod render_context;
 pub mod render_engine;
+pub mod render_manager;
 pub mod renderer;
+pub mod rendering_context;
 
 #[derive(Default)]
 pub struct Application {
@@ -16,7 +17,7 @@ pub struct Application {
 
 impl ApplicationHandler for Application {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        self.render_engine = Some(RenderEngine::new(event_loop));
+        self.render_engine = Some(RenderEngine::new(event_loop).unwrap());
     }
 
     fn window_event(

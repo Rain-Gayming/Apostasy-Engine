@@ -6,7 +6,7 @@ use ash::{
         PhysicalDeviceBufferDeviceAddressFeatures, PhysicalDeviceDynamicRenderingFeatures, Queue,
     },
 };
-use std::{collections::HashSet, sync::Arc};
+use std::collections::HashSet;
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -17,32 +17,34 @@ use crate::engine::rendering::{
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
 };
 
-pub struct RenderContext {
+pub struct RenderingContext {
     pub queues: Vec<vk::Queue>,
     pub device: vk::Device,
     pub queue_family_indices: HashSet<u32>,
     pub queue_families: QueueFamilies,
     pub physical_device: PhysicalDevice,
-    pub surface: vk::SurfaceKHR,
     pub surface_extensions: ash::khr::surface::Instance,
     pub instance: ash::Instance,
     pub entry: ash::Entry,
-    pub context_attributes: RenderContextAttributes,
 }
-pub struct RenderContextAttributes {
-    pub window: Arc<Window>,
+pub struct RenderingContextAttributes<'window> {
+    pub compatability_window: &'window Window,
     pub queue_family_picker: QueueFamilyPicker,
 }
 
-impl RenderContext {
-    pub fn new(context_attributes: RenderContextAttributes) -> Result<Self> {
+impl RenderingContext {
+    pub fn new(context_attributes: RenderingContextAttributes) -> Result<Self> {
         unsafe {
             let entry = ash::Entry::load()?;
 
-            let window = context_attributes.window.clone();
-
-            let raw_display_handle = window.display_handle()?.as_raw();
-            let raw_window_handle = window.window_handle()?.as_raw();
+            let raw_display_handle = context_attributes
+                .compatability_window
+                .display_handle()?
+                .as_raw();
+            let raw_window_handle = context_attributes
+                .compatability_window
+                .window_handle()?
+                .as_raw();
 
             let instance = entry.create_instance(
                 &InstanceCreateInfo::default()
@@ -54,7 +56,7 @@ impl RenderContext {
             )?;
 
             let surface_extensions = surface::Instance::new(&entry, &instance);
-            let surface = ash_window::create_surface(
+            let compatability_surface = ash_window::create_surface(
                 &entry,
                 &instance,
                 raw_display_handle,
@@ -78,7 +80,7 @@ impl RenderContext {
                         .enumerate()
                         .map(|(index, properties)| QueueFamily {
                             index: index as u32,
-                            properties: vec![properties],
+                            properties,
                         })
                         .collect::<Vec<QueueFamily>>();
 
@@ -94,18 +96,20 @@ impl RenderContext {
 
             physical_devices.retain(|device| {
                 surface_extensions
-                    .get_physical_device_surface_support(device.handle, 0, surface)
+                    .get_physical_device_surface_support(device.handle, 0, compatability_surface)
                     .unwrap_or(false)
             });
+
+            surface_extensions.destroy_surface(compatability_surface, None);
 
             let (physical_device, queue_families) =
                 (context_attributes.queue_family_picker)(physical_devices)?;
 
             let queue_family_indices: HashSet<u32> = HashSet::from_iter([
-                queue_families.graphics.index,
-                queue_families.compute.index,
-                queue_families.transfer.index,
-                queue_families.present.index,
+                queue_families.graphics,
+                queue_families.compute,
+                queue_families.transfer,
+                queue_families.present,
             ]);
 
             let queue_create_infos = queue_family_indices
@@ -142,20 +146,10 @@ impl RenderContext {
                 queue_family_indices,
                 queue_families,
                 physical_device,
-                surface,
                 surface_extensions,
                 instance,
                 entry,
-                context_attributes,
             })
-        }
-    }
-}
-
-impl Drop for RenderContext {
-    fn drop(&mut self) {
-        unsafe {
-            self.surface_extensions.destroy_surface(self.surface, None);
         }
     }
 }
