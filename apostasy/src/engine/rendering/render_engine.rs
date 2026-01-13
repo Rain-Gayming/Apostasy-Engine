@@ -27,7 +27,7 @@ impl RenderEngine {
         let windows = HashMap::from([(primary_window_id, primary_window.clone())]);
 
         let rendering_context = Arc::new(RenderingContext::new(RenderingContextAttributes {
-            window: &primary_window,
+            compatability_window: &primary_window,
             queue_family_picker: single_queue_family,
         })?);
 
@@ -60,6 +60,11 @@ impl RenderEngine {
                 } else {
                     self.windows.remove(&window_id);
                     self.renderers.remove(&window_id);
+                }
+            }
+            WindowEvent::Resized(_size) => {
+                if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    renderer.swapchain.resize().unwrap();
                 }
             }
             _ => (),

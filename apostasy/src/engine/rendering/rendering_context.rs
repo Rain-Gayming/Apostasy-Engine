@@ -1,12 +1,14 @@
 use anyhow::Result;
 use ash::{
     khr::{surface, swapchain},
+    prelude::VkResult,
     vk::{
-        self, ApplicationInfo, DeviceQueueCreateInfo, InstanceCreateInfo,
+        self, ApplicationInfo, DeviceQueueCreateInfo, Image, ImageView, InstanceCreateInfo,
         PhysicalDeviceBufferDeviceAddressFeatures, PhysicalDeviceDynamicRenderingFeatures, Queue,
+        SurfaceCapabilitiesKHR,
     },
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -15,11 +17,13 @@ use winit::{
 use crate::engine::rendering::{
     physical_device::PhysicalDevice,
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
+    surface::Surface,
 };
 
 pub struct RenderingContext {
     pub queues: Vec<vk::Queue>,
-    pub device: vk::Device,
+    pub device: ash::Device,
+    pub swapchain_extensions: ash::khr::swapchain::Device,
     pub queue_family_indices: HashSet<u32>,
     pub queue_families: QueueFamilies,
     pub physical_device: PhysicalDevice,
@@ -135,6 +139,8 @@ impl RenderingContext {
                 None,
             )?;
 
+            let swapchain_extensions = ash::khr::swapchain::Device::new(&instance, &device);
+
             let queues = queue_family_indices
                 .iter()
                 .map(|index| device.get_device_queue(*index, 0))
@@ -142,7 +148,8 @@ impl RenderingContext {
 
             Ok(Self {
                 queues,
-                device: Default::default(),
+                device,
+                swapchain_extensions,
                 queue_family_indices,
                 queue_families,
                 physical_device,
@@ -150,6 +157,78 @@ impl RenderingContext {
                 instance,
                 entry,
             })
+        }
+    }
+    /// Safety: the window should outlive the surface
+    pub unsafe fn create_surface(&self, window: &Arc<Window>) -> Result<Surface> {
+        unsafe {
+            let raw_display_handle = window.display_handle()?.as_raw();
+            let raw_window_handle = window.window_handle()?.as_raw();
+
+            let handle = ash_window::create_surface(
+                &self.entry,
+                &self.instance,
+                raw_display_handle,
+                raw_window_handle,
+                None,
+            )?;
+
+            let capabilities = self
+                .surface_extensions
+                .get_physical_device_surface_capabilities(self.physical_device.handle, handle)?;
+
+            let formats = self
+                .surface_extensions
+                .get_physical_device_surface_formats(self.physical_device.handle, handle)?;
+
+            let present_modes = self
+                .surface_extensions
+                .get_physical_device_surface_present_modes(self.physical_device.handle, handle)?;
+
+            Ok(Surface {
+                handle,
+                capabilities,
+            })
+        }
+    }
+
+    pub fn create_image_view(
+        &self,
+        image: Image,
+        format: vk::Format,
+        aspect_flags: vk::ImageAspectFlags,
+    ) -> Result<ImageView> {
+        unsafe {
+            let image = self.device.create_image_view(
+                &vk::ImageViewCreateInfo::default()
+                    .image(image)
+                    .view_type(vk::ImageViewType::TYPE_2D)
+                    .format(format)
+                    .components(vk::ComponentMapping {
+                        r: vk::ComponentSwizzle::IDENTITY,
+                        g: vk::ComponentSwizzle::IDENTITY,
+                        b: vk::ComponentSwizzle::IDENTITY,
+                        a: vk::ComponentSwizzle::IDENTITY,
+                    })
+                    .subresource_range(vk::ImageSubresourceRange {
+                        aspect_mask: aspect_flags,
+                        base_mip_level: 0,
+                        level_count: 1,
+                        base_array_layer: 0,
+                        layer_count: 1,
+                    }),
+                None,
+            )?;
+            Ok(image)
+        }
+    }
+}
+
+impl Drop for RenderingContext {
+    fn drop(&mut self) {
+        unsafe {
+            // self.device.destory_device(None);
+            self.instance.destroy_instance(None);
         }
     }
 }

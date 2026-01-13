@@ -9,6 +9,8 @@ pub mod render_engine;
 pub mod render_manager;
 pub mod renderer;
 pub mod rendering_context;
+pub mod surface;
+pub mod swapchain;
 
 #[derive(Default)]
 pub struct Application {

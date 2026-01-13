@@ -20,7 +20,7 @@ pub struct RenderManager {
 }
 
 impl RenderManager {
-    pub fn new(window: &Arc<Window>) -> Result<Self> {
+    pub fn new(window: &Window) -> Result<Self> {
         unsafe {
             let entry = ash::Entry::load()?;
 
@@ -49,7 +49,7 @@ impl RenderManager {
                 surface_extensions,
                 instance,
                 entry,
-                renderers,
+                renderers: HashMap::new(),
             })
         }
     }
