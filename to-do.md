@@ -4,11 +4,6 @@
 - [-] components
     - [x] component macro
     - [x] component info 
-    - [ ] resources
-        - [ ] adding resources
-        - [ ] updating resources
-        - [ ] getting resources
-    - [ ] bundles
 
 - [-] world
     - [x] component registering
@@ -33,9 +28,9 @@
 
 **Rendering:**
 
-- [ ] windowing
-    - [ ] window creation
-    - [ ] window titles 
-    - [ ] window resizing
-    - [ ] window deletion 
+- [x] windowing
+    - [x] window creation
+    - [x] window titles 
+    - [x] window resizing
+    - [x] window deletion 
 
