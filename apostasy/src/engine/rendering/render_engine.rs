@@ -4,7 +4,7 @@ use anyhow::Result;
 use winit::{
     event::WindowEvent,
     event_loop::ActiveEventLoop,
-    window::{self, Window, WindowAttributes, WindowId},
+    window::{Window, WindowAttributes, WindowId},
 };
 
 use crate::engine::rendering::{

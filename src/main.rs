@@ -1,6 +1,6 @@
 use apostasy::engine::{
     ecs::{World, entity::EntityView},
-    rendering::{Application, start_renderer},
+    rendering::start_renderer,
 };
 use apostasy_macros::Component;
 
@@ -15,7 +15,7 @@ fn main() {
 
     world.spawn().insert(A(0.0)).insert(B());
 
-    start_renderer();
+    start_renderer().unwrap();
 
     world
         .query()

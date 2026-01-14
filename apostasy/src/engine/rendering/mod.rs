@@ -9,7 +9,6 @@ use crate::engine::rendering::render_engine::RenderEngine;
 pub mod physical_device;
 pub mod queue_families;
 pub mod render_engine;
-pub mod render_manager;
 pub mod renderer;
 pub mod rendering_context;
 pub mod surface;
@@ -36,7 +35,7 @@ impl ApplicationHandler for Application {
         }
     }
 
-    fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+    fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
         if let Some(engine) = &mut self.render_engine {
             engine.request_redraw();
         }

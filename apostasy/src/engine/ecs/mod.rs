@@ -1,5 +1,4 @@
 use std::{
-    arch,
     cell::{Cell, UnsafeCell},
     sync::{
         Arc,
@@ -20,6 +19,7 @@ use crate::engine::ecs::{
 pub mod archetype;
 pub mod command;
 pub mod component;
+pub mod components;
 pub mod core;
 pub mod entity;
 pub mod query;
@@ -175,8 +175,7 @@ impl World {
     ///     }
     /// ```
     pub fn entity(&self, entity: Entity) -> EntityView<'_> {
-        let entity = self.get_entity(entity).unwrap();
-        entity
+        self.get_entity(entity).unwrap()
     }
 
     /// Gets an option of EntityView

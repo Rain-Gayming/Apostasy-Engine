@@ -1,5 +1,3 @@
-use core::arch;
-
 use crate as apostasy;
 use crate::engine::ecs::World;
 use crate::engine::ecs::component::Component;

@@ -1,4 +1,3 @@
-use core::hash;
 use std::{collections::HashMap, fmt::Debug, mem::MaybeUninit};
 
 use aligned_vec::{AVec, RuntimeAlign};
@@ -234,10 +233,6 @@ impl Column {
             let (left, right) = self.buffer.split_at_mut((row + 1) * self.info.size);
             left[row * self.info.size..].swap_with_slice(right);
         }
-    }
-
-    fn get_row(&mut self, RowIndex(row): RowIndex) {
-        let row = self.buffer.get(row * self.info.size).unwrap();
     }
 }
 

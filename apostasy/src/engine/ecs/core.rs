@@ -1,4 +1,3 @@
-use core::arch;
 use std::{collections::HashMap, mem::MaybeUninit};
 
 use parking_lot::{
@@ -11,7 +10,7 @@ use crate::{
             Archetype, ArchetypeEdge, ArchetypeId, Column, ColumnIndex, RowIndex, Signature,
         },
         component::{COMPONENT_ENTRIES, Component, ComponentId, ComponentInfo, ComponentLocations},
-        entity::{Entity, EntityLocation, EntityView},
+        entity::{Entity, EntityLocation},
     },
     utils::slotmap::SlotMap,
 };

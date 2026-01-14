@@ -2,12 +2,11 @@ use anyhow::Result;
 use ash::{
     khr::{surface, swapchain},
     vk::{
-        self, ApplicationInfo, ColorComponentFlags, DeviceQueueCreateInfo, Image, ImageView,
-        InstanceCreateInfo, PhysicalDeviceBufferDeviceAddressFeatures,
-        PhysicalDeviceDynamicRenderingFeatures, Queue,
+        self, ApplicationInfo, DeviceQueueCreateInfo, Image, ImageView, InstanceCreateInfo,
+        PhysicalDeviceBufferDeviceAddressFeatures, PhysicalDeviceDynamicRenderingFeatures, Queue,
     },
 };
-use std::{collections::HashSet, ffi::CStr, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -114,12 +113,6 @@ impl RenderingContext {
             let (physical_device, queue_families) =
                 (context_attributes.queue_family_picker)(physical_devices)?;
 
-            let present_queue_supports_surface = surface_extensions
-                .get_physical_device_surface_support(
-                    physical_device.handle,
-                    queue_families.present,
-                    compatability_surface,
-                )?;
             let queue_family_indices: HashSet<u32> = HashSet::from_iter([
                 queue_families.graphics,
                 queue_families.present,
@@ -151,7 +144,6 @@ impl RenderingContext {
             )?;
 
             let swapchain_extensions = ash::khr::swapchain::Device::new(&instance, &device);
-            let available_extensions = entry.enumerate_instance_extension_properties(None)?;
 
             let queues = queue_family_indices
                 .iter()
@@ -172,6 +164,7 @@ impl RenderingContext {
         }
     }
     /// Safety: the window should outlive the surface
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn create_surface(&self, window: &Arc<Window>) -> Result<Surface> {
         unsafe {
             let raw_display_handle = window.display_handle()?.as_raw();
@@ -188,14 +181,6 @@ impl RenderingContext {
             let capabilities = self
                 .surface_extensions
                 .get_physical_device_surface_capabilities(self.physical_device.handle, handle)?;
-
-            let formats = self
-                .surface_extensions
-                .get_physical_device_surface_formats(self.physical_device.handle, handle)?;
-
-            let present_modes = self
-                .surface_extensions
-                .get_physical_device_surface_present_modes(self.physical_device.handle, handle)?;
 
             Ok(Surface {
                 handle,
