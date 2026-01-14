@@ -22,7 +22,13 @@ pub struct RenderEngine {
 
 impl RenderEngine {
     pub fn new(event_loop: &ActiveEventLoop) -> Result<Self> {
-        let primary_window = Arc::new(event_loop.create_window(Default::default()).unwrap());
+        let primary_window = Arc::new(
+            event_loop.create_window(
+                Window::default_attributes()
+                    .with_title("Apostasy")
+                    .with_visible(true),
+            )?,
+        );
         let primary_window_id = primary_window.id();
         let windows = HashMap::from([(primary_window_id, primary_window.clone())]);
 
@@ -64,10 +70,27 @@ impl RenderEngine {
             }
             WindowEvent::Resized(_size) => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    renderer.swapchain.resize().unwrap();
+                    renderer.resize().unwrap();
                 }
             }
+            WindowEvent::ScaleFactorChanged { .. } => {
+                if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    renderer.resize().unwrap();
+                }
+            }
+            WindowEvent::RedrawRequested => {
+                if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    renderer.render().unwrap();
+                }
+            }
+
             _ => (),
+        }
+    }
+
+    pub fn request_redraw(&self) {
+        for window in self.windows.values() {
+            window.request_redraw();
         }
     }
 

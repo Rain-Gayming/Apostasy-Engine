@@ -1,5 +1,8 @@
 use anyhow::Result;
-use winit::{application::ApplicationHandler, event_loop::EventLoop};
+use winit::{
+    application::ApplicationHandler,
+    event_loop::{ControlFlow, EventLoop},
+};
 
 use crate::engine::rendering::render_engine::RenderEngine;
 
@@ -33,6 +36,12 @@ impl ApplicationHandler for Application {
         }
     }
 
+    fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        if let Some(engine) = &mut self.render_engine {
+            engine.request_redraw();
+        }
+    }
+
     fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
         self.render_engine = None;
     }
@@ -43,6 +52,7 @@ pub fn start_renderer() -> Result<()> {
     let mut app = Application::default();
 
     let event_loop = EventLoop::new()?;
+    event_loop.set_control_flow(ControlFlow::Poll);
     event_loop.run_app(&mut app)?;
 
     Ok(())
