@@ -1,29 +1,5 @@
-use apostasy::engine::{
-    ecs::{World, entity::EntityView},
-    rendering::start_renderer,
-};
-use apostasy_macros::Component;
-
-#[allow(dead_code)]
-#[derive(Component)]
-pub struct A(f32);
-#[derive(Component)]
-pub struct B();
+use apostasy::engine::rendering::start_renderer;
 
 fn main() {
-    let world = World::new();
-
-    world.spawn().insert(A(0.0)).insert(B());
-
     start_renderer().unwrap();
-
-    world
-        .query()
-        .include::<A>()
-        .include::<B>()
-        .build()
-        .run(|view: EntityView<'_>| {
-            let a = view.get::<A>().unwrap().0 + 1.0;
-            println!("{}", a);
-        });
 }
