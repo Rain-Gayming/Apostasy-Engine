@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use ash::vk::{self};
+use ash::vk::{self, Handle};
 use winit::window::Window;
 
 use crate::engine::rendering::{rendering_context::RenderingContext, surface::Surface};
@@ -17,6 +17,10 @@ pub struct Swapchain {
     pub window: Arc<Window>,
     pub context: Arc<RenderingContext>,
     pub is_dirty: bool,
+    pub depth_format: vk::Format,
+    pub depth_image: vk::Image,
+    pub depth_image_view: vk::ImageView,
+    pub depth_memory: vk::DeviceMemory,
 }
 
 impl Swapchain {
@@ -24,6 +28,7 @@ impl Swapchain {
         unsafe {
             let surface = context.create_surface(&window)?;
             let format = vk::Format::B8G8R8A8_SRGB;
+            let depth_format = vk::Format::D32_SFLOAT;
             let extent = if surface.capabilities.current_extent.width != u32::MAX {
                 surface.capabilities.current_extent
             } else {
@@ -52,6 +57,10 @@ impl Swapchain {
                 window,
                 context,
                 is_dirty: true,
+                depth_format,
+                depth_image: vk::Image::null(),
+                depth_image_view: vk::ImageView::null(),
+                depth_memory: vk::DeviceMemory::null(),
             })
         }
     }
@@ -90,6 +99,21 @@ impl Swapchain {
                 self.context.device.destroy_image_view(image_view, None);
             }
 
+            if !self.depth_image_view.is_null() {
+                self.context
+                    .device
+                    .destroy_image_view(self.depth_image_view, None);
+                self.depth_image_view = vk::ImageView::null();
+            }
+            if !self.depth_image.is_null() {
+                self.context.device.destroy_image(self.depth_image, None);
+                self.depth_image = vk::Image::null();
+            }
+            if !self.depth_memory.is_null() {
+                self.context.device.free_memory(self.depth_memory, None);
+                self.depth_memory = vk::DeviceMemory::null();
+            }
+
             self.context
                 .swapchain_extensions
                 .destroy_swapchain(self.handle, None);
@@ -108,8 +132,24 @@ impl Swapchain {
                     vk::ImageAspectFlags::COLOR,
                 )?);
             }
+
+            // Create depth buffer
+            self.depth_image = self.context.create_image(
+                self.extent,
+                self.depth_format,
+                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+            )?;
+            self.depth_memory = self
+                .context
+                .allocate_image_memory(self.depth_image, vk::MemoryPropertyFlags::DEVICE_LOCAL)?;
+            self.depth_image_view = self.context.create_image_view(
+                self.depth_image,
+                self.depth_format,
+                vk::ImageAspectFlags::DEPTH,
+            )?;
         }
 
+        self.is_dirty = false;
         Ok(())
     }
 
@@ -152,3 +192,28 @@ impl Swapchain {
         Ok(())
     }
 }
+impl Drop for Swapchain {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.depth_image_view.is_null() {
+                self.context
+                    .device
+                    .destroy_image_view(self.depth_image_view, None);
+            }
+            if !self.depth_image.is_null() {
+                self.context.device.destroy_image(self.depth_image, None);
+            }
+            if !self.depth_memory.is_null() {
+                self.context.device.free_memory(self.depth_memory, None);
+            }
+            for image_view in &self.image_views {
+                self.context.device.destroy_image_view(*image_view, None);
+            }
+            self.context
+                .swapchain_extensions
+                .destroy_swapchain(self.handle, None);
+        }
+    }
+}
+
+

@@ -6,4 +6,5 @@ version = "0.1.0"
 [dependencies]
 apostasy = { version = "0.1.0", path = "apostasy" }
 apostasy-macros = { version = "0.1.0", path = "apostasy/apostasy-macros" }
+cgmath = "0.18"
 linkme = "0.3.35"

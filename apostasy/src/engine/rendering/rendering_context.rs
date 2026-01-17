@@ -189,6 +189,72 @@ impl RenderingContext {
         }
     }
 
+    pub fn create_image(
+        &self,
+        extent: vk::Extent2D,
+        format: vk::Format,
+        usage: vk::ImageUsageFlags,
+    ) -> Result<vk::Image> {
+        unsafe {
+            let image = self.device.create_image(
+                &vk::ImageCreateInfo::default()
+                    .image_type(vk::ImageType::TYPE_2D)
+                    .format(format)
+                    .extent(vk::Extent3D {
+                        width: extent.width,
+                        height: extent.height,
+                        depth: 1,
+                    })
+                    .mip_levels(1)
+                    .array_layers(1)
+                    .samples(vk::SampleCountFlags::TYPE_1)
+                    .tiling(vk::ImageTiling::OPTIMAL)
+                    .usage(usage)
+                    .sharing_mode(vk::SharingMode::EXCLUSIVE)
+                    .initial_layout(vk::ImageLayout::UNDEFINED),
+                None,
+            )?;
+            Ok(image)
+        }
+    }
+
+    pub fn allocate_image_memory(
+        &self,
+        image: vk::Image,
+        memory_properties: vk::MemoryPropertyFlags,
+    ) -> Result<vk::DeviceMemory> {
+        unsafe {
+            let requirements = self.device.get_image_memory_requirements(image);
+            let memory_type_index =
+                self.find_memory_type(requirements.memory_type_bits, memory_properties)?;
+            let memory = self.device.allocate_memory(
+                &vk::MemoryAllocateInfo::default()
+                    .allocation_size(requirements.size)
+                    .memory_type_index(memory_type_index),
+                None,
+            )?;
+            self.device.bind_image_memory(image, memory, 0)?;
+            Ok(memory)
+        }
+    }
+
+    pub fn find_memory_type(
+        &self,
+        filter: u32,
+        properties: vk::MemoryPropertyFlags,
+    ) -> Result<u32> {
+        for i in 0..self.physical_device.memory_properties.memory_type_count {
+            if (filter & (1 << i)) != 0
+                && (self.physical_device.memory_properties.memory_types[i as usize].property_flags
+                    & properties)
+                    == properties
+            {
+                return Ok(i);
+            }
+        }
+        Err(anyhow::anyhow!("Failed to find suitable memory type"))
+    }
+
     pub fn create_image_view(
         &self,
         image: Image,
@@ -236,6 +302,7 @@ impl RenderingContext {
         fragment_shader: vk::ShaderModule,
         extent: vk::Extent2D,
         format: vk::Format,
+        depth_format: vk::Format,
         pipeline_layout: vk::PipelineLayout,
         pipeline_cache: vk::PipelineCache,
     ) -> Result<vk::Pipeline> {
@@ -277,7 +344,7 @@ impl RenderingContext {
                         .rasterization_state(
                             &vk::PipelineRasterizationStateCreateInfo::default()
                                 .polygon_mode(vk::PolygonMode::FILL)
-                                .cull_mode(vk::CullModeFlags::FRONT)
+                                .cull_mode(vk::CullModeFlags::BACK)
                                 .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
                                 .line_width(1.0),
                         )
@@ -292,6 +359,12 @@ impl RenderingContext {
                                     .blend_enable(false),
                             ]),
                         )
+                        .depth_stencil_state(
+                            &vk::PipelineDepthStencilStateCreateInfo::default()
+                                .depth_test_enable(true)
+                                .depth_write_enable(true)
+                                .depth_compare_op(vk::CompareOp::LESS),
+                        )
                         .dynamic_state(
                             &vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&[
                                 vk::DynamicState::VIEWPORT,
@@ -301,7 +374,8 @@ impl RenderingContext {
                         .layout(pipeline_layout)
                         .push_next(
                             &mut vk::PipelineRenderingCreateInfo::default()
-                                .color_attachment_formats(&[format]),
+                                .color_attachment_formats(&[format])
+                                .depth_attachment_format(depth_format),
                         )],
                     None,
                 )
@@ -349,6 +423,7 @@ impl RenderingContext {
         &self,
         command_buffer: vk::CommandBuffer,
         view: vk::ImageView,
+        depth_view: vk::ImageView,
         clear_value: vk::ClearColorValue,
         render_area: vk::Rect2D,
     ) -> Result<()> {
@@ -363,6 +438,19 @@ impl RenderingContext {
                         .clear_value(vk::ClearValue { color: clear_value })
                         .load_op(vk::AttachmentLoadOp::CLEAR)
                         .store_op(vk::AttachmentStoreOp::STORE)])
+                    .depth_attachment(
+                        &vk::RenderingAttachmentInfo::default()
+                            .image_view(depth_view)
+                            .image_layout(vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
+                            .clear_value(vk::ClearValue {
+                                depth_stencil: vk::ClearDepthStencilValue {
+                                    depth: 1.0,
+                                    stencil: 0,
+                                },
+                            })
+                            .load_op(vk::AttachmentLoadOp::CLEAR)
+                            .store_op(vk::AttachmentStoreOp::STORE),
+                    )
                     .render_area(render_area),
             );
         }

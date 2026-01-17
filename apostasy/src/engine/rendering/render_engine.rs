@@ -7,10 +7,13 @@ use winit::{
     window::{Window, WindowAttributes, WindowId},
 };
 
-use crate::engine::rendering::{
-    queue_families::queue_family_picker::single_queue_family,
-    renderer::Renderer,
-    rendering_context::{RenderingContext, RenderingContextAttributes},
+use crate::engine::{
+    ecs::World,
+    rendering::{
+        queue_families::queue_family_picker::single_queue_family,
+        renderer::{Renderer, render},
+        rendering_context::{RenderingContext, RenderingContextAttributes},
+    },
 };
 
 pub struct RenderEngine {
@@ -18,10 +21,11 @@ pub struct RenderEngine {
     pub windows: HashMap<WindowId, Arc<Window>>,
     pub primary_window_id: WindowId,
     pub rendering_context: Arc<RenderingContext>,
+    pub world: World,
 }
 
 impl RenderEngine {
-    pub fn new(event_loop: &ActiveEventLoop) -> Result<Self> {
+    pub fn new(event_loop: &ActiveEventLoop, world: World) -> Result<Self> {
         let primary_window = Arc::new(
             event_loop.create_window(
                 Window::default_attributes()
@@ -50,6 +54,7 @@ impl RenderEngine {
             windows,
             primary_window_id,
             rendering_context,
+            world,
         })
     }
 
@@ -80,7 +85,7 @@ impl RenderEngine {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    renderer.render().unwrap();
+                    let _ = render(renderer, &self.world);
                 }
             }
 

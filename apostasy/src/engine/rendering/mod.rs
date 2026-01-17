@@ -4,7 +4,10 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
 };
 
-use crate::engine::rendering::render_engine::RenderEngine;
+use crate::engine::{
+    ecs::World,
+    rendering::render_engine::RenderEngine,
+};
 
 pub mod physical_device;
 pub mod queue_families;
@@ -14,14 +17,16 @@ pub mod rendering_context;
 pub mod surface;
 pub mod swapchain;
 
-#[derive(Default)]
 pub struct Application {
     render_engine: Option<RenderEngine>,
+    world: Option<World>,
 }
 
 impl ApplicationHandler for Application {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        self.render_engine = Some(RenderEngine::new(event_loop).unwrap());
+        if let Some(world) = self.world.take() {
+            self.render_engine = Some(RenderEngine::new(event_loop, world).unwrap());
+        }
     }
 
     fn window_event(
@@ -46,9 +51,12 @@ impl ApplicationHandler for Application {
     }
 }
 
-pub fn start_renderer() -> Result<()> {
+pub fn start_renderer(world: World) -> Result<()> {
     tracing_subscriber::fmt::init();
-    let mut app = Application::default();
+    let mut app = Application {
+        render_engine: None,
+        world: Some(world),
+    };
 
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
