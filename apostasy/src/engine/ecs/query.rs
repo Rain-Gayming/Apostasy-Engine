@@ -1,7 +1,6 @@
 use crate as apostasy;
 use crate::engine::ecs::component::Component;
 use crate::engine::ecs::entity::EntityView;
-use crate::engine::ecs::resource::*;
 use crate::engine::ecs::{Mantle, World};
 use apostasy_macros::Component;
 

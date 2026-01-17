@@ -33,4 +33,12 @@
     - [x] window titles 
     - [x] window resizing
     - [x] window deletion 
-
+- [x] rendering context
+    - [x] swapchain creation
+    - [x] swapchain resizing
+    - [x] swapchain presentation
+- [x] renderer
+    - [x] shader loading
+    - [x] pipeline creation
+    - [x] image creation
+    - [x] rendering
