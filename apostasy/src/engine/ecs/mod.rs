@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+use parking_lot::RwLock;
 use thread_local::ThreadLocal;
 
 use crate::engine::ecs::{
@@ -14,6 +15,7 @@ use crate::engine::ecs::{
     core::Core,
     entity::{Entity, EntityLocation, EntityView},
     query::QueryBuilder,
+    resource::{Resource, ResourceMap},
 };
 
 pub mod archetype;
@@ -23,6 +25,7 @@ pub mod components;
 pub mod core;
 pub mod entity;
 pub mod query;
+pub mod resource;
 
 /// Wrapper for the Crust
 pub struct World {
@@ -42,6 +45,7 @@ unsafe impl Sync for Crust {}
 pub struct Mantle {
     pub core: Core,
     pub commands: ThreadLocal<Cell<Vec<Command>>>,
+    pub resources: RwLock<ResourceMap>,
 }
 
 impl Mantle {
@@ -152,6 +156,7 @@ impl World {
                 mantle: UnsafeCell::new(Mantle {
                     core: Core::new(),
                     commands: Default::default(),
+                    resources: Default::default(),
                 }),
             }),
         };
@@ -259,6 +264,76 @@ impl World {
     ///     }
     pub fn flush(&self) {
         self.crust.flush();
+    }
+
+    /// Inserts a resource, use:
+    /// ```rust
+    ///     #[derive(Resource)]
+    ///     struct MyResource {
+    ///         pub value: i32,
+    ///     }
+    ///
+    ///     fn foo(){
+    ///         let world = World::new();
+    ///
+    ///         world.insert_resource::<MyResource>(MyResource { value: 42 });
+    ///     }
+    /// ```
+    pub fn insert_resource<T: Resource>(&self, resource: T) {
+        self.crust.mantle(|mantle| {
+            mantle.resources.write().insert(resource);
+        });
+    }
+
+    /// Gets a resource, use:
+    /// ```rust
+    ///     #[derive(Resource)]
+    ///     struct MyResource {
+    ///         pub value: i32,
+    ///     }
+    ///
+    ///     fn foo(){
+    ///         let world = World::new();
+    ///
+    ///         world.insert_resource::<MyResource>(MyResource { value: 42 });
+    ///         world.with_resource::<MyResource, _>(|time| {
+    ///             println!("Delta: {}", time.value);
+    ///         });
+    ///     }
+    /// ```
+    pub fn with_resource<T: Resource, F: FnOnce(&T)>(&self, func: F) {
+        self.crust.mantle(|mantle| {
+            let resources = mantle.resources.read();
+            if let Some(resource) = resources.get::<T>() {
+                func(resource);
+            }
+        })
+    }
+
+    /// Gets a resource mutably, use:
+    /// ```rust
+    ///     #[derive(Resource)]
+    ///     struct MyResource {
+    ///         pub value: i32,
+    ///     }
+    ///
+    ///     fn foo(){
+    ///         let world = World::new();
+    ///
+    ///         world.insert_resource::<MyResource>(MyResource { value: 42 });
+    ///         world.with_resource_mut::<MyResource, _>(|time| {
+    ///             time.value += 1;
+    ///             println!("Delta: {}", time.value);
+    ///         });
+    ///     }
+    /// ```
+    pub fn with_resource_mut<T: Resource, F: FnOnce(&mut T)>(&self, func: F) {
+        self.crust.mantle(|mantle| {
+            let mut resources = mantle.resources.write();
+            if let Some(resource) = resources.get_mut::<T>() {
+                func(resource);
+            }
+        })
     }
 
     /// Creates a new query, use:

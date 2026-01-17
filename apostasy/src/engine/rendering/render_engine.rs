@@ -16,6 +16,7 @@ use crate::engine::{
     },
 };
 
+/// The render engine, contains all the data for rendering, windowing and their logic
 pub struct RenderEngine {
     pub renderers: HashMap<WindowId, Renderer>,
     pub windows: HashMap<WindowId, Arc<Window>>,

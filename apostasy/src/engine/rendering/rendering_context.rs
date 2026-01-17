@@ -18,6 +18,7 @@ use crate::engine::rendering::{
     surface::Surface,
 };
 
+/// A set of data required for a renderer
 pub struct RenderingContext {
     pub queues: Vec<vk::Queue>,
     pub device: ash::Device,
@@ -35,6 +36,7 @@ pub struct RenderingContextAttributes<'window> {
 }
 
 impl RenderingContext {
+    /// Creates a new RenderingContext
     pub fn new(context_attributes: RenderingContextAttributes) -> Result<Self> {
         unsafe {
             let entry = ash::Entry::load()?;
@@ -189,6 +191,7 @@ impl RenderingContext {
         }
     }
 
+    /// Creates an image for rendering
     pub fn create_image(
         &self,
         extent: vk::Extent2D,
@@ -218,6 +221,7 @@ impl RenderingContext {
         }
     }
 
+    /// Allocates memory for an image
     pub fn allocate_image_memory(
         &self,
         image: vk::Image,
@@ -286,6 +290,7 @@ impl RenderingContext {
         }
     }
 
+    /// Creates a shader module
     pub fn create_shader_module(&self, code: &[u8]) -> Result<vk::ShaderModule> {
         unsafe {
             let mut code = std::io::Cursor::new(code);
@@ -296,6 +301,8 @@ impl RenderingContext {
         }
     }
 
+    /// Creates a graphics pipeline
+    #[allow(clippy::too_many_arguments)]
     pub fn create_graphics_pipeline(
         &self,
         vertex_shader: vk::ShaderModule,
@@ -386,6 +393,7 @@ impl RenderingContext {
         }
     }
 
+    /// Transitions from one layout to another
     pub fn transition_image_layout(
         &self,
         command_buffer: vk::CommandBuffer,
@@ -419,6 +427,7 @@ impl RenderingContext {
         }
     }
 
+    /// Begins the rendering process
     pub fn begin_rendering(
         &self,
         command_buffer: vk::CommandBuffer,
@@ -467,6 +476,7 @@ impl Drop for RenderingContext {
     }
 }
 
+/// The layout of an image
 #[derive(Clone, Copy)]
 pub struct ImageLayoutState {
     pub layout: vk::ImageLayout,
