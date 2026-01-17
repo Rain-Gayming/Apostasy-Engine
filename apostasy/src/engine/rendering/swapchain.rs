@@ -24,6 +24,7 @@ pub struct Swapchain {
 }
 
 impl Swapchain {
+    /// Creates a new Swapchain
     pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
         unsafe {
             let surface = context.create_surface(&window)?;
@@ -65,6 +66,7 @@ impl Swapchain {
         }
     }
 
+    /// Resizes the swapchain based on the window size
     pub fn resize(&mut self) -> Result<()> {
         let size = self.window.inner_size();
         self.extent = vk::Extent2D {
@@ -153,6 +155,7 @@ impl Swapchain {
         Ok(())
     }
 
+    /// Acquires the next image in the swapchain
     pub fn acquire_next_image(&mut self, image_available_semaphore: vk::Semaphore) -> Result<u32> {
         let (image_index, is_suboptimal) = unsafe {
             self.context.swapchain_extensions.acquire_next_image(
@@ -170,6 +173,7 @@ impl Swapchain {
         Ok(image_index)
     }
 
+    /// Presents an image to the renderer
     pub fn present_image(
         &mut self,
         image_index: u32,
@@ -215,5 +219,3 @@ impl Drop for Swapchain {
         }
     }
 }
-
-

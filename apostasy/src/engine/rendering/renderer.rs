@@ -28,6 +28,7 @@ use crate::engine::rendering::{
     swapchain::Swapchain,
 };
 
+/// A frame of the renderer
 pub struct Frame {
     pub command_buffer: vk::CommandBuffer,
     pub image_available_semaphore: vk::Semaphore,
@@ -35,6 +36,7 @@ pub struct Frame {
     pub in_flight_fence: vk::Fence,
 }
 
+/// A renderer
 #[derive(Component)]
 pub struct Renderer {
     pub frame_index: usize,
@@ -150,6 +152,7 @@ impl Renderer {
     }
 }
 
+/// Renders the world from a perspective of a camera
 pub fn render(renderer: &mut Renderer, world: &World) -> Result<()> {
     let frame = &mut renderer.frames[renderer.frame_index];
     unsafe {

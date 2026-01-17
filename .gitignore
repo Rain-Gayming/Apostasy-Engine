@@ -1,3 +1,4 @@
-/target
-/apostasy/target
-/apostasy-macros/target
+/target/       
+/apostasy/target/
+./apostasy/target/
+/apostasy-macros/target/
