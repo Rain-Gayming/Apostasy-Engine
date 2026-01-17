@@ -1,7 +1,8 @@
 use crate as apostasy;
-use crate::engine::ecs::World;
 use crate::engine::ecs::component::Component;
 use crate::engine::ecs::entity::EntityView;
+use crate::engine::ecs::resource::*;
+use crate::engine::ecs::{Mantle, World};
 use apostasy_macros::Component;
 
 /// What the query is to do with the specific component
@@ -82,12 +83,45 @@ impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
         }
     }
 }
+
 impl Query {
     /// Runs the query
     #[allow(private_bounds)]
     pub fn run<Closure: QueryClosure>(&self, func: Closure) {
         let cache = QueryState {};
         func.run(self, &cache);
+    }
+
+    pub fn run_with_resources<F: FnMut(EntityView<'_>, &Mantle)>(&self, mut func: F) {
+        let entity_locations: Vec<_> = self.world.crust.mantle(|mantle| {
+            mantle
+                .core
+                .entity_index
+                .lock()
+                .slots
+                .iter()
+                .filter_map(|slot| slot.data)
+                .collect()
+        });
+
+        for entity_location in entity_locations {
+            let entity_view = self.world.entity_from_location(entity_location);
+
+            let matches = self.components.iter().all(|qc| {
+                let has_component = entity_view.get_id(qc.id).is_some();
+                match qc.access {
+                    QueryAccess::Include => has_component,
+                    QueryAccess::Exclude => !has_component,
+                    QueryAccess::Noop => true,
+                }
+            });
+
+            if matches {
+                self.world.crust.mantle(|mantle| {
+                    func(entity_view, mantle);
+                });
+            }
+        }
     }
 }
 

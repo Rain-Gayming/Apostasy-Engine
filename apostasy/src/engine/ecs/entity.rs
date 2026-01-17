@@ -33,7 +33,7 @@ impl EntityLocation {
 }
 
 /// They key for an entity
-#[derive(Clone, Copy, Debug, From, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, Debug, From, PartialEq, Eq)]
 pub struct Entity(Key);
 
 impl From<Entity> for Key {
