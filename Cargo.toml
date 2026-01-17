@@ -1,24 +1,10 @@
 [package]
-name = "apostasy-engine"
-version = "0.1.0"
+name = "test"
 edition = "2024"
+version = "0.1.0" 
 
 [dependencies]
-ash = "0.38.0"
-downcast-rs = "2.0.2"
-ash-window = "0.13.0"
-anyhow = "1.0.100"
-bytemuck = { version = "1.19.0", features = ["derive"]}
-cgmath = "0.18.0"
-tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
-winit = "0.30.5"
-cargo-mommy = "0.3.1"
-threadpool = "1.8.1"
-component_derive = { path = "./component_derive" }
-
-[profile.dev]
-opt-level = 1
-
-[workspace]
-members = [".", "component_derive"]
+apostasy = { version = "0.1.0", path = "apostasy" }
+apostasy-macros = { version = "0.1.0", path = "apostasy/apostasy-macros" }
+cgmath = "0.18"
+linkme = "0.3.35"

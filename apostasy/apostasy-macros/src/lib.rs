@@ -1,0 +1,57 @@
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{DeriveInput, parse_macro_input, parse_quote};
+
+#[proc_macro_derive(Component)]
+pub fn component_derive(input: TokenStream) -> TokenStream {
+    let mut ast = parse_macro_input!(input as DeriveInput);
+
+    ast.generics
+        .make_where_clause()
+        .predicates
+        .push(parse_quote! { Self: Sized + Send + Sync + 'static });
+
+    let struct_name = &ast.ident;
+    let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
+
+    let output = quote! {
+        unsafe impl #impl_generics apostasy::engine::ecs::component::Component for #struct_name #type_generics
+        #where_clause
+        {
+            fn id() -> apostasy::engine::ecs::entity::Entity {
+                #[linkme::distributed_slice(apostasy::engine::ecs::component::COMPONENT_ENTRIES)]
+                static ENTRY: apostasy::engine::ecs::component::ComponentEntry = #struct_name::init;
+                let begin = apostasy::engine::ecs::component::COMPONENT_ENTRIES[..].as_ptr() as u32;
+                let end = &raw const ENTRY as u32;
+                unsafe {
+                    apostasy::engine::ecs::entity::Entity::from_offset(
+                        (end - begin) / size_of::<apostasy::engine::ecs::component::ComponentEntry>() as u32,
+                    )
+                }
+            }
+
+            fn init(world: &apostasy::engine::ecs::World) {
+                // println!("initalizing for: {}", std::any::type_name::<#struct_name>());
+                world.entity(#struct_name::id()).insert(#struct_name::info());
+            }
+
+            fn info() -> apostasy::engine::ecs::component::ComponentInfo {
+                unsafe {
+                    apostasy::engine::ecs::component::ComponentInfo {
+                        name: std::any::type_name::<#struct_name>(),
+                        align: std::mem::align_of::<#struct_name>(),
+                        size: std::mem::size_of::<#struct_name>(),
+                        id: #struct_name::id(),
+                        drop: #struct_name::erased_drop,
+                        clone: #struct_name::get_erased_clone(),
+                        default: #struct_name::get_erased_default(),
+                        on_insert: #struct_name::get_on_insert(),
+                        on_remove: #struct_name::get_on_remove(),
+                    }
+                }
+            }
+        }
+    };
+
+    output.into()
+}
