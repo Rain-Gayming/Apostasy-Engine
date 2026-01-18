@@ -11,7 +11,7 @@ use apostasy::engine::{
     },
     start_app,
 };
-use apostasy_macros::{Resource, update};
+use apostasy_macros::{Resource, fixed_update, update};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
 
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -42,8 +42,8 @@ fn main() {
     start_app(world).unwrap();
 }
 
-#[update]
-pub fn input_handle(world: &mut World) {
+#[fixed_update]
+pub fn input_handle(world: &mut World, delta_time: f32) {
     world
         .query()
         .include::<Controllable>()
@@ -56,16 +56,16 @@ pub fn input_handle(world: &mut World) {
                 let mut velocity = entity.get_mut::<Velocity>().unwrap();
                 let mut transform = entity.get_mut::<Transform>().unwrap();
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyW)) {
-                    add_velocity(&mut velocity, calculate_forward(&transform));
+                    add_velocity(&mut velocity, calculate_forward(&transform) * delta_time);
                 }
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyS)) {
-                    add_velocity(&mut velocity, -calculate_forward(&transform));
+                    add_velocity(&mut velocity, -calculate_forward(&transform) * delta_time);
                 }
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyD)) {
-                    add_velocity(&mut velocity, calculate_right(&transform));
+                    add_velocity(&mut velocity, calculate_right(&transform) * delta_time);
                 }
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyA)) {
-                    add_velocity(&mut velocity, -calculate_right(&transform));
+                    add_velocity(&mut velocity, -calculate_right(&transform) * delta_time);
                 }
                 apply_velocity(&velocity, &mut transform);
                 velocity.direction = Vector3::zero();

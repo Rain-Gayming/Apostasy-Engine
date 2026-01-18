@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, ItemFn, parse_macro_input, parse_quote};
 
+/// Registers a component, Components are used to store data that is in an entity
 #[proc_macro_derive(Component)]
 pub fn component_derive(input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
@@ -56,6 +57,7 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
     output.into()
 }
 
+/// Registers a resource, Resources are used to store data that is shared between systems
 #[proc_macro_derive(Resource)]
 pub fn resource_derive(input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
@@ -95,6 +97,8 @@ pub fn resource_derive(input: TokenStream) -> TokenStream {
 
     output.into()
 }
+
+/// Registers a start system, Start systems run once at the start of the game
 #[proc_macro_attribute]
 pub fn start(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
@@ -114,6 +118,29 @@ pub fn start(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+/// Registers a fixed update system, Fixed updates run a specific amount of times per second
+#[proc_macro_attribute]
+pub fn fixed_update(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+
+    // Generate an inventory registration
+    let expanded = quote! {
+        #input_fn
+
+        inventory::submit! {
+            apostasy::engine::ecs::system::FixedUpdateSystem {
+                name: stringify!(#fn_name),
+                func: #fn_name,
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Registers an update system, Update systems run every frame
 #[proc_macro_attribute]
 pub fn update(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);

@@ -18,12 +18,14 @@ use crate::engine::{
         renderer::{Renderer, render},
         rendering_context::{RenderingContext, RenderingContextAttributes},
     },
+    timer::EngineTimer,
 };
 
 use crate::engine::ecs::World;
 
 pub mod ecs;
 pub mod rendering;
+pub mod timer;
 
 /// Render application
 pub struct Application {
@@ -90,6 +92,7 @@ pub struct Engine {
     pub primary_window_id: WindowId,
     pub rendering_context: Arc<RenderingContext>,
     pub world: World,
+    pub timer: EngineTimer,
 }
 
 impl Engine {
@@ -117,12 +120,15 @@ impl Engine {
             })
             .collect::<HashMap<WindowId, Renderer>>();
 
+        let timer = EngineTimer::new();
+
         Ok(Self {
             renderers,
             windows,
             primary_window_id,
             rendering_context,
             world,
+            timer,
         })
     }
 
@@ -157,6 +163,7 @@ impl Engine {
             }
             WindowEvent::RedrawRequested => {
                 self.world.update();
+                self.world.fixed_update(self.timer.tick().fixed_dt);
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     let _ = render(renderer, &self.world);
                 }

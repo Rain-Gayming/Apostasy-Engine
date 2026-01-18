@@ -16,7 +16,7 @@ use crate::engine::ecs::{
     entity::{Entity, EntityLocation, EntityView},
     query::QueryBuilder,
     resource::{Resource, ResourceMap},
-    system::{StartSystem, UpdateSystem},
+    system::{FixedUpdateSystem, StartSystem, UpdateSystem},
 };
 
 pub mod archetype;
@@ -232,6 +232,20 @@ impl World {
         }
     }
 
+    /// Runs every function with the #[fixed_update] attribute, use:
+    /// ```rust
+    ///     
+    ///     #[fixed_update]
+    ///     fn foo(world: &mut World) {
+    ///         world.entity(entity).insert(A(0.0));
+    ///     }
+    /// ```
+    pub fn fixed_update(&mut self, tick: f32) {
+        for system in inventory::iter::<FixedUpdateSystem> {
+            (system.func)(self, tick);
+        }
+    }
+
     /// Runs every function with the #[start] attribute, use:
     /// ```rust
     ///     
@@ -312,6 +326,9 @@ impl World {
     /// ```
     pub fn insert_resource<T: Resource>(&self, resource: T) {
         self.crust.mantle(|mantle| {
+            if mantle.resources.read().get::<T>().is_some() {
+                panic!("Resource ({}) already exists", T::name());
+            }
             mantle.resources.write().insert(resource);
         });
     }

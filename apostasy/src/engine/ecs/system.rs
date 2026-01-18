@@ -13,3 +13,9 @@ pub struct StartSystem {
 }
 
 inventory::collect!(StartSystem);
+
+pub struct FixedUpdateSystem {
+    pub name: &'static str,
+    pub func: fn(&mut World, delta: f32),
+}
+inventory::collect!(FixedUpdateSystem);

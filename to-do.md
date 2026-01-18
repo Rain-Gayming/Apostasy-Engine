@@ -29,7 +29,7 @@
         - [x] system registration
         - [x] system macro
         - [x] start system
-        - [ ] delta update system
+        - [x] delta update system
         - [x] update system
         
 
