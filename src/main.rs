@@ -4,7 +4,9 @@ use apostasy::engine::{
         components::{
             camera::Camera,
             controllable::Controllable,
-            transform::{Transform, calculate_forward, calculate_right},
+            transform::{
+                Transform, calculate_forward, calculate_right, calculate_rotation, calculate_up,
+            },
             velocity::{Velocity, add_velocity, apply_velocity},
         },
         resources::input_manager::{
@@ -14,7 +16,7 @@ use apostasy::engine::{
     start_app,
 };
 use apostasy_macros::{Resource, fixed_update, start};
-use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
+use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero, num_traits::clamp};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[derive(Resource)]
@@ -44,7 +46,7 @@ fn main() {
 }
 
 #[start]
-pub fn start(world: &mut World) {
+pub fn kebind_registration(world: &mut World) {
     world.with_resource_mut::<InputManager, _>(|input_manager| {
         register_keybind(
             input_manager,
@@ -65,6 +67,16 @@ pub fn start(world: &mut World) {
             input_manager,
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyD), KeyAction::Hold),
             "right",
+        );
+        register_keybind(
+            input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyE), KeyAction::Hold),
+            "up",
+        );
+        register_keybind(
+            input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyQ), KeyAction::Hold),
+            "down",
         );
     });
 }
@@ -94,7 +106,19 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
                 if is_keybind_active(input_manager, "left") {
                     add_velocity(&mut velocity, -calculate_right(&transform) * delta_time);
                 }
+                if is_keybind_active(input_manager, "up") {
+                    add_velocity(&mut velocity, calculate_up(&transform) * delta_time);
+                }
+                if is_keybind_active(input_manager, "down") {
+                    add_velocity(&mut velocity, -calculate_up(&transform) * delta_time);
+                }
                 apply_velocity(&velocity, &mut transform);
+
+                transform.yaw += -input_manager.mouse_delta.0 as f32;
+                transform.pitch += -input_manager.mouse_delta.1 as f32;
+
+                calculate_rotation(&mut transform);
+
                 velocity.direction = Vector3::zero();
             }
         });

@@ -264,9 +264,9 @@ impl Renderer {
 
                         // Model matrix: cube at origin with 45-degree rotations
                         let rotation_y =
-                            Quaternion::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), Deg(45.0));
+                            Quaternion::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), Deg(0.0));
                         let rotation_x =
-                            Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(30.0));
+                            Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(0.0));
                         let combined_rotation = rotation_y * rotation_x;
 
                         let model = Matrix4::from(combined_rotation);

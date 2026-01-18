@@ -31,7 +31,7 @@ pub struct InputManager {
     keys_held: HashSet<PhysicalKey>,
     mouse_held: HashSet<MouseButton>,
     mouse_position: PhysicalPosition<f64>,
-    mouse_delta: (f64, f64),
+    pub mouse_delta: (f64, f64),
     // scroll_delta: (f32, f32),
 
     // Resets each frame
@@ -61,6 +61,7 @@ pub fn clear_actions(world: &mut World) {
         input_manager.keys_released.clear();
         input_manager.mouse_pressed.clear();
         input_manager.mouse_released.clear();
+        input_manager.mouse_delta = (0.0, 0.0);
     });
 }
 
