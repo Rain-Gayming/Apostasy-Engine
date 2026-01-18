@@ -4,19 +4,17 @@ use apostasy::engine::{
         components::{
             camera::Camera,
             controllable::Controllable,
-            transform::{
-                Transform, calculate_forward, calculate_right, calculate_rotation, calculate_up,
-            },
+            transform::{Transform, calculate_rotation},
             velocity::{Velocity, add_velocity, apply_velocity},
         },
         resources::input_manager::{
-            InputManager, KeyAction, KeyBind, is_keybind_active, register_keybind,
+            InputManager, KeyAction, KeyBind, input_vector_3d, register_keybind,
         },
     },
     start_app,
 };
 use apostasy_macros::{Resource, fixed_update, start};
-use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero, num_traits::clamp};
+use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[derive(Resource)]
@@ -94,24 +92,19 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
             if let Some(input_manager) = resources.get::<InputManager>() {
                 let mut velocity = entity.get_mut::<Velocity>().unwrap();
                 let mut transform = entity.get_mut::<Transform>().unwrap();
-                if is_keybind_active(input_manager, "forward") {
-                    add_velocity(&mut velocity, calculate_forward(&transform) * delta_time);
-                }
-                if is_keybind_active(input_manager, "backward") {
-                    add_velocity(&mut velocity, -calculate_forward(&transform) * delta_time);
-                }
-                if is_keybind_active(input_manager, "right") {
-                    add_velocity(&mut velocity, calculate_right(&transform) * delta_time);
-                }
-                if is_keybind_active(input_manager, "left") {
-                    add_velocity(&mut velocity, -calculate_right(&transform) * delta_time);
-                }
-                if is_keybind_active(input_manager, "up") {
-                    add_velocity(&mut velocity, calculate_up(&transform) * delta_time);
-                }
-                if is_keybind_active(input_manager, "down") {
-                    add_velocity(&mut velocity, -calculate_up(&transform) * delta_time);
-                }
+
+                let direction = transform.rotation
+                    * input_vector_3d(
+                        input_manager,
+                        "right",
+                        "left",
+                        "up",
+                        "down",
+                        "forward",
+                        "backward",
+                    );
+                add_velocity(&mut velocity, direction * delta_time);
+
                 apply_velocity(&velocity, &mut transform);
 
                 transform.yaw += -input_manager.mouse_delta.0 as f32;

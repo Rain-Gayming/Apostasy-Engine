@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use crate::{self as apostasy, engine::ecs::World};
 use apostasy_macros::{Resource, late_update};
+use cgmath::{Vector2, Vector3};
 use egui::ahash::HashMap;
 use winit::{
     dpi::PhysicalPosition,
@@ -42,6 +43,7 @@ pub struct InputManager {
 }
 
 pub fn register_keybind(input_manager: &mut InputManager, key: KeyBind, name: &str) {
+    println!("registering keybind: {}", name);
     input_manager.keybinds.insert(name.to_string(), key);
 }
 
@@ -63,6 +65,63 @@ pub fn clear_actions(world: &mut World) {
         input_manager.mouse_released.clear();
         input_manager.mouse_delta = (0.0, 0.0);
     });
+}
+
+pub fn input_vector_2d(
+    input_manager: &InputManager,
+    forward: &str,
+    right: &str,
+    up: &str,
+    down: &str,
+) -> Vector2<f32> {
+    let mut x = 0.0;
+    let mut y = 0.0;
+    if is_keybind_active(input_manager, forward) {
+        x += 1.0;
+    }
+    if is_keybind_active(input_manager, right) {
+        x -= 1.0;
+    }
+    if is_keybind_active(input_manager, up) {
+        y += 1.0;
+    }
+    if is_keybind_active(input_manager, down) {
+        y -= 1.0;
+    }
+    Vector2::new(x, y)
+}
+
+pub fn input_vector_3d(
+    input_manager: &InputManager,
+    x_pos: &str,
+    x_neg: &str,
+    y_pos: &str,
+    y_neg: &str,
+    z_pos: &str,
+    z_neg: &str,
+) -> Vector3<f32> {
+    let mut x = 0.0;
+    let mut y = 0.0;
+    let mut z = 0.0;
+    if is_keybind_active(input_manager, x_pos) {
+        x += 1.0;
+    }
+    if is_keybind_active(input_manager, x_neg) {
+        x -= 1.0;
+    }
+    if is_keybind_active(input_manager, y_pos) {
+        y += 1.0;
+    }
+    if is_keybind_active(input_manager, y_neg) {
+        y -= 1.0;
+    }
+    if is_keybind_active(input_manager, z_pos) {
+        z += 1.0;
+    }
+    if is_keybind_active(input_manager, z_neg) {
+        z -= 1.0;
+    }
+    Vector3::new(x, y, z)
 }
 
 pub fn handle_input_event(input_manager: &mut InputManager, event: WindowEvent) {
