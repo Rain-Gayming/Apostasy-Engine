@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 use winit::{
     application::ApplicationHandler,
     event_loop::{ControlFlow, EventLoop},
@@ -14,6 +14,7 @@ use winit::{
 use crate::engine::{
     ecs::resources::input_manager::{InputManager, handle_input_event},
     rendering::{
+        model::{ModelLoader, load_models_from_dir},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -119,6 +120,11 @@ impl Engine {
                 (*id, renderer)
             })
             .collect::<HashMap<WindowId, Renderer>>();
+
+        let main_renderer = renderers.get(&primary_window_id).unwrap();
+
+        let model_loader = ModelLoader::default();
+        load_models_from_dir(main_renderer, Path::new("apostasy/res/models/"));
 
         let timer = EngineTimer::new();
 

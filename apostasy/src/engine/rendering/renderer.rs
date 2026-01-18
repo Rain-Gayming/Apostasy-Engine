@@ -1,10 +1,13 @@
-use crate::engine::ecs::{
-    World,
-    components::{
-        camera::{Camera, get_perspective_projection},
-        transform::{Transform, calculate_forward, calculate_up},
+use crate::engine::{
+    ecs::{
+        World,
+        components::{
+            camera::{Camera, get_perspective_projection},
+            transform::{Transform, calculate_forward, calculate_up},
+        },
+        entity::EntityView,
     },
-    entity::EntityView,
+    rendering::model::{Model, Vertex},
 };
 use std::sync::Arc;
 
@@ -41,6 +44,7 @@ pub struct Renderer {
     pub pipeline_layout: vk::PipelineLayout,
     pub swapchain: Swapchain,
     pub context: Arc<RenderingContext>,
+    pub models: Vec<Model>,
 }
 
 pub fn load_engine_shader_module(
@@ -130,6 +134,7 @@ impl Renderer {
                 pipeline_layout,
                 swapchain,
                 context,
+                models: Vec::new(),
             })
         }
     }
@@ -303,6 +308,31 @@ impl Renderer {
                         let model_array: [f32; 16] = std::mem::transmute(model);
 
                         let mut push_constants = Vec::new();
+
+                        for model in &self.models {
+                            for mesh in &model.meshes {
+                                device.cmd_bind_vertex_buffers(
+                                    command_buffer,
+                                    0,
+                                    &[mesh.vertex_buffer],
+                                    &[0],
+                                );
+                                device.cmd_bind_index_buffer(
+                                    command_buffer,
+                                    mesh.index_buffer,
+                                    0,
+                                    vk::IndexType::UINT32,
+                                );
+                                device.cmd_draw_indexed(
+                                    command_buffer,
+                                    mesh.indices.len() as u32,
+                                    1,
+                                    0,
+                                    0,
+                                    0,
+                                );
+                            }
+                        }
                         push_constants.extend_from_slice(
                             &mvp_array
                                 .iter()
@@ -327,7 +357,6 @@ impl Renderer {
                         device.cmd_draw(command_buffer, 36, 1, 0, 0);
                     }
                 });
-
             // End the render pass
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
@@ -360,6 +389,93 @@ impl Renderer {
             self.frame_index = (self.frame_index + 1) % self.frames.len();
             Ok(())
         }
+    }
+
+    pub fn create_vertex_buffer(
+        &self,
+        vertices: &[Vertex],
+    ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
+        let buffer_size = (std::mem::size_of::<Vertex>() * vertices.len()) as vk::DeviceSize;
+
+        let buffer_info = vk::BufferCreateInfo::default()
+            .size(buffer_size)
+            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+        let buffer = unsafe { self.context.device.create_buffer(&buffer_info, None)? };
+
+        let mem_requirements =
+            unsafe { self.context.device.get_buffer_memory_requirements(buffer) };
+
+        let alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_requirements.size)
+            .memory_type_index(self.context.find_memory_type(
+                mem_requirements.memory_type_bits,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?);
+
+        let buffer_memory = unsafe { self.context.device.allocate_memory(&alloc_info, None)? };
+
+        unsafe {
+            self.context
+                .device
+                .bind_buffer_memory(buffer, buffer_memory, 0)?;
+
+            let data_ptr = self.context.device.map_memory(
+                buffer_memory,
+                0,
+                buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )? as *mut Vertex;
+
+            data_ptr.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
+
+            self.context.device.unmap_memory(buffer_memory);
+        }
+
+        Ok((buffer, buffer_memory))
+    }
+
+    pub fn create_index_buffer(&self, indices: &[u32]) -> Result<(vk::Buffer, vk::DeviceMemory)> {
+        let buffer_size = (std::mem::size_of::<u32>() * indices.len()) as vk::DeviceSize;
+
+        let buffer_info = vk::BufferCreateInfo::default()
+            .size(buffer_size)
+            .usage(vk::BufferUsageFlags::INDEX_BUFFER)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+        let buffer = unsafe { self.context.device.create_buffer(&buffer_info, None)? };
+
+        let mem_requirements =
+            unsafe { self.context.device.get_buffer_memory_requirements(buffer) };
+
+        let alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_requirements.size)
+            .memory_type_index(self.context.find_memory_type(
+                mem_requirements.memory_type_bits,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?);
+
+        let buffer_memory = unsafe { self.context.device.allocate_memory(&alloc_info, None)? };
+
+        unsafe {
+            self.context
+                .device
+                .bind_buffer_memory(buffer, buffer_memory, 0)?;
+
+            let data_ptr = self.context.device.map_memory(
+                buffer_memory,
+                0,
+                buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )? as *mut u32;
+
+            data_ptr.copy_from_nonoverlapping(indices.as_ptr(), indices.len());
+
+            self.context.device.unmap_memory(buffer_memory);
+        }
+
+        Ok((buffer, buffer_memory))
     }
 
     pub fn window_event(

@@ -25,6 +25,7 @@ derive_more = { version  = "2.0.1", features = ["deref", "deref_mut", "from"] }
 egui = "0.33.3"
 egui-ash-renderer = {version = "0.11", features = ["dynamic-rendering"]}
 egui-winit = "0.33.3"
+gltf = {version = "1.4.1", features = ["KHR_materials_pbrSpecularGlossiness"]}
 inventory = "0.3"
 linkme = "0.3.35"
 parking_lot = "0.12.5"

@@ -1,3 +1,4 @@
+pub mod model;
 pub mod physical_device;
 pub mod queue_families;
 pub mod render_engine;
