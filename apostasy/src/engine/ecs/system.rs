@@ -19,3 +19,9 @@ pub struct FixedUpdateSystem {
     pub func: fn(&mut World, delta: f32),
 }
 inventory::collect!(FixedUpdateSystem);
+
+pub struct LateUpdateSystem {
+    pub name: &'static str,
+    pub func: fn(&mut World),
+}
+inventory::collect!(LateUpdateSystem);

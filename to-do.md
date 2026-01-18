@@ -31,7 +31,21 @@
         - [x] start system
         - [x] delta update system
         - [x] update system
-        
+        - [x] late update system
+    - [x] resources
+        - [x] resource macro
+        - [x] resource creation 
+        - [x] resource access
+        - [x] resource access mutably
+
+**General:**
+
+- [x] input
+    - [x] input manager
+        - [x] key binds
+        - [x] key bind creation
+        - [x] key bind activation
+        - [x] key bind registering
 
 **Rendering:**
 

@@ -1,15 +1,33 @@
 use std::collections::HashSet;
 
-use crate as apostasy;
-use apostasy_macros::Resource;
+use crate::{self as apostasy, engine::ecs::World};
+use apostasy_macros::{Resource, late_update};
+use egui::ahash::HashMap;
 use winit::{
     dpi::PhysicalPosition,
     event::{MouseButton, WindowEvent},
     keyboard::PhysicalKey,
 };
 
+pub enum KeyAction {
+    Press,
+    Release,
+    Hold,
+}
+pub struct KeyBind {
+    pub key: PhysicalKey,
+    pub action: KeyAction,
+}
+
+impl KeyBind {
+    pub fn new(key: PhysicalKey, action: KeyAction) -> Self {
+        Self { key, action }
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct InputManager {
+    keybinds: HashMap<String, KeyBind>,
     keys_held: HashSet<PhysicalKey>,
     mouse_held: HashSet<MouseButton>,
     mouse_position: PhysicalPosition<f64>,
@@ -21,6 +39,29 @@ pub struct InputManager {
     keys_released: HashSet<PhysicalKey>,
     mouse_pressed: HashSet<MouseButton>,
     mouse_released: HashSet<MouseButton>,
+}
+
+pub fn register_keybind(input_manager: &mut InputManager, key: KeyBind, name: &str) {
+    input_manager.keybinds.insert(name.to_string(), key);
+}
+
+pub fn is_keybind_active(input_manager: &InputManager, name: &str) -> bool {
+    let key = input_manager.keybinds.get(name).unwrap();
+    match key.action {
+        KeyAction::Press => input_manager.keys_pressed.contains(&key.key),
+        KeyAction::Release => input_manager.keys_released.contains(&key.key),
+        KeyAction::Hold => input_manager.keys_held.contains(&key.key),
+    }
+}
+
+#[late_update]
+pub fn clear_actions(world: &mut World) {
+    world.with_resource_mut::<InputManager, _>(|input_manager| {
+        input_manager.keys_pressed.clear();
+        input_manager.keys_released.clear();
+        input_manager.mouse_pressed.clear();
+        input_manager.mouse_released.clear();
+    });
 }
 
 pub fn handle_input_event(input_manager: &mut InputManager, event: WindowEvent) {
@@ -53,8 +94,4 @@ pub fn handle_input_event(input_manager: &mut InputManager, event: WindowEvent) 
         }
         _ => {}
     }
-}
-
-pub fn is_key_held(input_manager: &InputManager, key: PhysicalKey) -> bool {
-    input_manager.keys_held.contains(&key)
 }

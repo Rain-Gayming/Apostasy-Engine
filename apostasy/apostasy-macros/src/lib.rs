@@ -160,3 +160,24 @@ pub fn update(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+/// Registers an late update system, Update systems run at the end of every frame
+#[proc_macro_attribute]
+pub fn late_update(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+
+    // Generate an inventory registration
+    let expanded = quote! {
+        #input_fn
+
+        inventory::submit! {
+            apostasy::engine::ecs::system::LateUpdateSystem {
+                name: stringify!(#fn_name),
+                func: #fn_name,
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}

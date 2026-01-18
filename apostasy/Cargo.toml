@@ -22,6 +22,9 @@ apostasy-macros.workspace = true
 bytemuck = {version = "1.19.0", features = ["derive"]}
 cgmath = "0.18.0"
 derive_more = { version  = "2.0.1", features = ["deref", "deref_mut", "from"] }
+egui = "0.33.3"
+egui-ash-renderer = {version = "0.11", features = ["dynamic-rendering"]}
+egui-winit = "0.33.3"
 inventory = "0.3"
 linkme = "0.3.35"
 parking_lot = "0.12.5"
@@ -30,3 +33,4 @@ tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 thread_local = "1.1.8"
 winit = "0.30.5"
+

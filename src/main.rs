@@ -7,13 +7,14 @@ use apostasy::engine::{
             transform::{Transform, calculate_forward, calculate_right},
             velocity::{Velocity, add_velocity, apply_velocity},
         },
-        resources::input_manager::{InputManager, is_key_held},
+        resources::input_manager::{
+            InputManager, KeyAction, KeyBind, is_keybind_active, register_keybind,
+        },
     },
     start_app,
 };
-use apostasy_macros::{Resource, fixed_update, update};
+use apostasy_macros::{Resource, fixed_update, start};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
-
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[derive(Resource)]
@@ -42,6 +43,32 @@ fn main() {
     start_app(world).unwrap();
 }
 
+#[start]
+pub fn start(world: &mut World) {
+    world.with_resource_mut::<InputManager, _>(|input_manager| {
+        register_keybind(
+            input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold),
+            "forward",
+        );
+        register_keybind(
+            input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyS), KeyAction::Hold),
+            "backward",
+        );
+        register_keybind(
+            input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyA), KeyAction::Hold),
+            "left",
+        );
+        register_keybind(
+            input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyD), KeyAction::Hold),
+            "right",
+        );
+    });
+}
+
 #[fixed_update]
 pub fn input_handle(world: &mut World, delta_time: f32) {
     world
@@ -55,16 +82,16 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
             if let Some(input_manager) = resources.get::<InputManager>() {
                 let mut velocity = entity.get_mut::<Velocity>().unwrap();
                 let mut transform = entity.get_mut::<Transform>().unwrap();
-                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyW)) {
+                if is_keybind_active(input_manager, "forward") {
                     add_velocity(&mut velocity, calculate_forward(&transform) * delta_time);
                 }
-                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyS)) {
+                if is_keybind_active(input_manager, "backward") {
                     add_velocity(&mut velocity, -calculate_forward(&transform) * delta_time);
                 }
-                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyD)) {
+                if is_keybind_active(input_manager, "right") {
                     add_velocity(&mut velocity, calculate_right(&transform) * delta_time);
                 }
-                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyA)) {
+                if is_keybind_active(input_manager, "left") {
                     add_velocity(&mut velocity, -calculate_right(&transform) * delta_time);
                 }
                 apply_velocity(&velocity, &mut transform);

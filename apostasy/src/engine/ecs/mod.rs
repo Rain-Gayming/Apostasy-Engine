@@ -16,7 +16,7 @@ use crate::engine::ecs::{
     entity::{Entity, EntityLocation, EntityView},
     query::QueryBuilder,
     resource::{Resource, ResourceMap},
-    system::{FixedUpdateSystem, StartSystem, UpdateSystem},
+    system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
 };
 
 pub mod archetype;
@@ -243,6 +243,20 @@ impl World {
     pub fn fixed_update(&mut self, tick: f32) {
         for system in inventory::iter::<FixedUpdateSystem> {
             (system.func)(self, tick);
+        }
+    }
+
+    /// Runs every function with the #[late_update] attribute, use:
+    /// ```rust
+    ///     
+    ///     #[late_update]
+    ///     fn foo(world: &mut World) {
+    ///         world.entity(entity).insert(A(0.0));
+    ///     }
+    /// ```
+    pub fn late_update(&mut self) {
+        for system in inventory::iter::<LateUpdateSystem> {
+            (system.func)(self);
         }
     }
 
