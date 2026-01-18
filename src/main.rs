@@ -5,14 +5,14 @@ use apostasy::engine::{
             camera::Camera,
             controllable::Controllable,
             transform::{Transform, calculate_forward, calculate_right},
-            velocity::{Velocity, apply_velocity},
+            velocity::{Velocity, add_velocity, apply_velocity},
         },
         resources::input_manager::{InputManager, is_key_held},
     },
     start_app,
 };
 use apostasy_macros::{Resource, update};
-use cgmath::{Deg, Quaternion, Rotation3, Vector3};
+use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
 
 use winit::keyboard::{KeyCode, PhysicalKey};
 
@@ -53,43 +53,22 @@ pub fn input_handle(world: &mut World) {
         .run_with_resources(|entity, mantle| {
             let resources = mantle.resources.read();
             if let Some(input_manager) = resources.get::<InputManager>() {
+                let mut velocity = entity.get_mut::<Velocity>().unwrap();
+                let mut transform = entity.get_mut::<Transform>().unwrap();
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyW)) {
-                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
-                    let mut transform = entity.get_mut::<Transform>().unwrap();
-
-                    velocity.direction = calculate_forward(&transform);
-                    velocity.speed = 0.01;
-
-                    apply_velocity(&velocity, &mut transform);
+                    add_velocity(&mut velocity, calculate_forward(&transform));
                 }
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyS)) {
-                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
-                    let mut transform = entity.get_mut::<Transform>().unwrap();
-
-                    velocity.direction = -calculate_forward(&transform);
-                    velocity.speed = 0.01;
-
-                    apply_velocity(&velocity, &mut transform);
+                    add_velocity(&mut velocity, -calculate_forward(&transform));
                 }
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyD)) {
-                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
-                    let mut transform = entity.get_mut::<Transform>().unwrap();
-
-                    velocity.direction = calculate_right(&transform);
-                    velocity.speed = 0.01;
-
-                    apply_velocity(&velocity, &mut transform);
+                    add_velocity(&mut velocity, calculate_right(&transform));
                 }
                 if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyA)) {
-                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
-
-                    let mut transform = entity.get_mut::<Transform>().unwrap();
-
-                    velocity.direction = -calculate_right(&transform);
-                    velocity.speed = 0.01;
-
-                    apply_velocity(&velocity, &mut transform);
+                    add_velocity(&mut velocity, -calculate_right(&transform));
                 }
+                apply_velocity(&velocity, &mut transform);
+                velocity.direction = Vector3::zero();
             }
         });
 }
