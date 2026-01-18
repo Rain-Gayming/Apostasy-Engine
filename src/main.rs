@@ -9,7 +9,7 @@ use apostasy::engine::{
         },
         resources::input_manager::{InputManager, is_key_held},
     },
-    rendering::start_app,
+    start_app,
 };
 use apostasy_macros::{Resource, update};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3};
