@@ -24,7 +24,6 @@ pub struct MyResource {
 fn main() {
     let world = World::new();
 
-    // Rotate camera to look down at cube from an angle
     let rotation = Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(35.0));
 
     world
@@ -59,6 +58,34 @@ pub fn input_handle(world: &mut World) {
                     let mut transform = entity.get_mut::<Transform>().unwrap();
 
                     velocity.direction = calculate_forward(&transform);
+                    velocity.speed = 0.01;
+
+                    apply_velocity(&velocity, &mut transform);
+                }
+                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyS)) {
+                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
+                    let mut transform = entity.get_mut::<Transform>().unwrap();
+
+                    velocity.direction = -calculate_forward(&transform);
+                    velocity.speed = 0.01;
+
+                    apply_velocity(&velocity, &mut transform);
+                }
+                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyD)) {
+                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
+                    let mut transform = entity.get_mut::<Transform>().unwrap();
+
+                    velocity.direction = calculate_right(&transform);
+                    velocity.speed = 0.01;
+
+                    apply_velocity(&velocity, &mut transform);
+                }
+                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyA)) {
+                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
+
+                    let mut transform = entity.get_mut::<Transform>().unwrap();
+
+                    velocity.direction = -calculate_right(&transform);
                     velocity.speed = 0.01;
 
                     apply_velocity(&velocity, &mut transform);

@@ -1,17 +1,10 @@
 use anyhow::Result;
 use winit::{
     application::ApplicationHandler,
-    event::WindowEvent,
     event_loop::{ControlFlow, EventLoop},
 };
 
-use crate::engine::{
-    ecs::{
-        World,
-        resources::input_manager::{InputManager, handle_input_event},
-    },
-    rendering::render_engine::RenderEngine,
-};
+use crate::engine::{ecs::World, rendering::render_engine::RenderEngine};
 
 pub mod physical_device;
 pub mod queue_families;
@@ -28,9 +21,9 @@ pub struct Application {
 }
 
 impl Application {
-    fn update(&mut self) {
+    fn start(&mut self) {
         if let Some(world) = self.world.as_mut() {
-            world.update();
+            world.start();
         }
     }
 }
@@ -71,7 +64,7 @@ pub fn start_app(world: World) -> Result<()> {
         world: Some(world),
     };
 
-    app.update();
+    app.start();
 
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);

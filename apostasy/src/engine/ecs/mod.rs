@@ -16,7 +16,7 @@ use crate::engine::ecs::{
     entity::{Entity, EntityLocation, EntityView},
     query::QueryBuilder,
     resource::{Resource, ResourceMap},
-    system::UpdateSystem,
+    system::{StartSystem, UpdateSystem},
 };
 
 pub mod archetype;
@@ -218,8 +218,30 @@ impl World {
         })
     }
 
+    /// Runs every function with the #[update] attribute, use:
+    /// ```rust
+    ///     
+    ///     #[update]
+    ///     fn foo(world: &mut World) {
+    ///         world.entity(entity).insert(A(0.0));
+    ///     }
+    /// ```
     pub fn update(&mut self) {
         for system in inventory::iter::<UpdateSystem> {
+            (system.func)(self);
+        }
+    }
+
+    /// Runs every function with the #[start] attribute, use:
+    /// ```rust
+    ///     
+    ///     #[start]
+    ///     fn foo(world: &mut World) {
+    ///         world.entity(entity).insert(A(0.0));
+    ///     }
+    /// ```
+    pub fn start(&mut self) {
+        for system in inventory::iter::<StartSystem> {
             (system.func)(self);
         }
     }
