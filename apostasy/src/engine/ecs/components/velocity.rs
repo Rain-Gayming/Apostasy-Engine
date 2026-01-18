@@ -8,6 +8,15 @@ pub struct Velocity {
     pub speed: f32,
 }
 
+impl Default for Velocity {
+    fn default() -> Self {
+        Self {
+            direction: Vector3::new(0.0, 0.0, 0.0),
+            speed: 0.0,
+        }
+    }
+}
+
 pub fn apply_velocity(velocity: &Velocity, transform: &mut Transform) {
     transform.position += velocity.direction * velocity.speed;
 }

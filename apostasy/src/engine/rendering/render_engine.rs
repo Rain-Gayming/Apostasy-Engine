@@ -8,7 +8,10 @@ use winit::{
 };
 
 use crate::engine::{
-    ecs::World,
+    ecs::{
+        World,
+        resources::input_manager::{InputManager, handle_input_event},
+    },
     rendering::{
         queue_families::queue_family_picker::single_queue_family,
         renderer::{Renderer, render},
@@ -65,6 +68,10 @@ impl RenderEngine {
         window_id: WindowId,
         event: WindowEvent,
     ) {
+        self.world
+            .with_resource_mut::<InputManager, _>(|input_manager| {
+                handle_input_event(input_manager, event.clone());
+            });
         match event {
             WindowEvent::CloseRequested => {
                 if window_id == self.primary_window_id {
@@ -85,6 +92,7 @@ impl RenderEngine {
                 }
             }
             WindowEvent::RedrawRequested => {
+                self.world.update();
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     let _ = render(renderer, &self.world);
                 }

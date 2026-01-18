@@ -85,6 +85,7 @@ dependencies = [
  "bytemuck",
  "cgmath",
  "derive_more",
+ "inventory",
  "linkme",
  "parking_lot",
  "smallvec",
@@ -547,6 +548,15 @@ checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
 dependencies = [
  "equivalent",
  "hashbrown",
+]
+
+[[package]]
+name = "inventory"
+version = "0.3.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc61209c082fbeb19919bee74b176221b27223e27b65d781eb91af24eb1fb46e"
+dependencies = [
+ "rustversion",
 ]
 
 [[package]]
@@ -1359,7 +1369,9 @@ dependencies = [
  "apostasy",
  "apostasy-macros",
  "cgmath",
+ "inventory",
  "linkme",
+ "winit",
 ]
 
 [[package]]

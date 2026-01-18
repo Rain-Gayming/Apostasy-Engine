@@ -25,6 +25,13 @@
         - [x] insert command
         - [x] remove command
     - [x] queries
+    - [x] syetems
+        - [x] system registration
+        - [x] system macro
+        - [ ] start system
+        - [ ] delta update system
+        - [x] update system
+        
 
 **Rendering:**
 

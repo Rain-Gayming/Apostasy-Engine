@@ -1,12 +1,20 @@
 use apostasy::engine::{
     ecs::{
         World,
-        components::{camera::Camera, transform::Transform},
+        components::{
+            camera::Camera,
+            controllable::Controllable,
+            transform::{Transform, calculate_forward, calculate_right},
+            velocity::{Velocity, apply_velocity},
+        },
+        resources::input_manager::{InputManager, is_key_held},
     },
-    rendering::start_renderer,
+    rendering::start_app,
 };
-use apostasy_macros::Resource;
+use apostasy_macros::{Resource, update};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3};
+
+use winit::keyboard::{KeyCode, PhysicalKey};
 
 #[derive(Resource)]
 pub struct MyResource {
@@ -19,30 +27,42 @@ fn main() {
     // Rotate camera to look down at cube from an angle
     let rotation = Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(35.0));
 
-    world.spawn().insert(Camera::default()).insert(Transform {
-        position: Vector3::new(0.0, -2.0, 2.0),
-        rotation,
-        ..Default::default()
-    });
+    world
+        .spawn()
+        .insert(Camera::default())
+        .insert(Velocity::default())
+        .insert(Transform {
+            position: Vector3::new(0.0, -2.0, 2.0),
+            rotation,
+            ..Default::default()
+        })
+        .insert(Controllable);
 
-    // resource examples
-    world.insert_resource::<MyResource>(MyResource { value: 42 });
+    world.insert_resource::<InputManager>(InputManager::default());
+
+    start_app(world).unwrap();
+}
+
+#[update]
+pub fn input_handle(world: &mut World) {
     world
         .query()
+        .include::<Controllable>()
         .include::<Transform>()
+        .include::<Velocity>()
         .build()
         .run_with_resources(|entity, mantle| {
             let resources = mantle.resources.read();
-            if let Some(my_resource) = resources.get::<MyResource>() {
-                println!("Time: {}, ", my_resource.value,);
+            if let Some(input_manager) = resources.get::<InputManager>() {
+                if is_key_held(input_manager, PhysicalKey::Code(KeyCode::KeyW)) {
+                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
+                    let mut transform = entity.get_mut::<Transform>().unwrap();
+
+                    velocity.direction = calculate_forward(&transform);
+                    velocity.speed = 0.01;
+
+                    apply_velocity(&velocity, &mut transform);
+                }
             }
         });
-    world.with_resource::<MyResource, _>(|time| {
-        println!("Delta: {}", time.value);
-    });
-    world.with_resource_mut::<MyResource, _>(|time| {
-        time.value += 1;
-        println!("Delta: {}", time.value);
-    });
-    start_renderer(world).unwrap();
 }

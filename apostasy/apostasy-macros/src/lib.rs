@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, parse_macro_input, parse_quote};
+use syn::{DeriveInput, ItemFn, parse_macro_input, parse_quote};
 
 #[proc_macro_derive(Component)]
 pub fn component_derive(input: TokenStream) -> TokenStream {
@@ -94,4 +94,27 @@ pub fn resource_derive(input: TokenStream) -> TokenStream {
     };
 
     output.into()
+}
+
+#[proc_macro_attribute]
+pub fn update(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+    let fn_block = &input_fn.block;
+    let fn_inputs = &input_fn.sig.inputs;
+    let fn_output = &input_fn.sig.output;
+
+    // Generate an inventory registration
+    let expanded = quote! {
+        #input_fn
+
+        inventory::submit! {
+            apostasy::engine::ecs::system::UpdateSystem {
+                name: stringify!(#fn_name),
+                func: #fn_name,
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
 }

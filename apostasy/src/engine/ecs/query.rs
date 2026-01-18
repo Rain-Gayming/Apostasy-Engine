@@ -91,6 +91,26 @@ impl Query {
         func.run(self, &cache);
     }
 
+    /// Runs a query and allows resources to be accessed, use:
+    /// ```rust
+    ///     #[derive(Resource)]
+    ///     struct MyResource {
+    ///         pub value: i32,
+    ///     }
+    ///
+    ///     fn foo(){
+    ///         world
+    ///             .query()
+    ///             .include::<Transform>()
+    ///             .build()
+    ///             .run_with_resources(|entity, mantle| {
+    ///                 let resources = mantle.resources.read();
+    ///                 if let Some(my_resource) = resources.get::<MyResource>() {
+    ///                     println!("Time: {}, ", my_resource.value,);
+    ///                 }
+    ///             });
+    ///     }
+    /// ```
     pub fn run_with_resources<F: FnMut(EntityView<'_>, &Mantle)>(&self, mut func: F) {
         let entity_locations: Vec<_> = self.world.crust.mantle(|mantle| {
             mantle

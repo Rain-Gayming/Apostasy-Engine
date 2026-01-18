@@ -16,6 +16,7 @@ use crate::engine::ecs::{
     entity::{Entity, EntityLocation, EntityView},
     query::QueryBuilder,
     resource::{Resource, ResourceMap},
+    system::UpdateSystem,
 };
 
 pub mod archetype;
@@ -26,6 +27,8 @@ pub mod core;
 pub mod entity;
 pub mod query;
 pub mod resource;
+pub mod resources;
+pub mod system;
 
 /// Wrapper for the Crust
 pub struct World {
@@ -213,6 +216,12 @@ impl World {
                 world: self,
             }
         })
+    }
+
+    pub fn update(&mut self) {
+        for system in inventory::iter::<UpdateSystem> {
+            (system.func)(self);
+        }
     }
 
     pub fn entity_from_location(&self, entity_location: EntityLocation) -> EntityView<'_> {
