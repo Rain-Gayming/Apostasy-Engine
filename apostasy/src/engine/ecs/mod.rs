@@ -269,7 +269,12 @@ impl World {
     ///     }
     /// ```
     pub fn start(&mut self) {
-        for system in inventory::iter::<StartSystem> {
+        let mut systems: Vec<&StartSystem> = inventory::iter::<StartSystem>.into_iter().collect();
+        systems.sort_by_key(|s| s.priority);
+        systems.reverse();
+
+        for system in systems {
+            println!("running start system");
             (system.func)(self);
         }
     }
@@ -368,6 +373,8 @@ impl World {
             let resources = mantle.resources.read();
             if let Some(resource) = resources.get::<T>() {
                 func(resource);
+            } else {
+                println!("resource ({}) not found", T::name());
             }
         })
     }
@@ -394,6 +401,8 @@ impl World {
             let mut resources = mantle.resources.write();
             if let Some(resource) = resources.get_mut::<T>() {
                 func(resource);
+            } else {
+                println!("resource ({}) not found", T::name());
             }
         })
     }

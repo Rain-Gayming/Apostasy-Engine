@@ -1,8 +1,9 @@
 use anyhow::Result;
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
     event_loop::{ControlFlow, EventLoop},
+    window,
 };
 
 use winit::{
@@ -14,12 +15,12 @@ use winit::{
 use crate::engine::{
     ecs::resources::input_manager::{InputManager, handle_input_event},
     rendering::{
-        model::{ModelLoader, load_models_from_dir},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
+    windowing::WindowManager,
 };
 
 use crate::engine::ecs::World;
@@ -27,6 +28,7 @@ use crate::engine::ecs::World;
 pub mod ecs;
 pub mod rendering;
 pub mod timer;
+pub mod windowing;
 
 /// Render application
 pub struct Application {
@@ -89,8 +91,6 @@ pub fn start_app(world: World) -> Result<()> {
 /// The render engine, contains all the data for rendering, windowing and their logic
 pub struct Engine {
     pub renderers: HashMap<WindowId, Renderer>,
-    pub windows: HashMap<WindowId, Arc<Window>>,
-    pub primary_window_id: WindowId,
     pub rendering_context: Arc<RenderingContext>,
     pub world: World,
     pub timer: EngineTimer,
@@ -121,17 +121,22 @@ impl Engine {
             })
             .collect::<HashMap<WindowId, Renderer>>();
 
-        let main_renderer = renderers.get(&primary_window_id).unwrap();
-
-        let model_loader = ModelLoader::default();
-        load_models_from_dir(main_renderer, Path::new("apostasy/res/models/"));
+        // let model_loader = ModelLoader::default();
+        // load_models_from_dir(main_renderer, Path::new("apostasy/res/models/"));
 
         let timer = EngineTimer::new();
 
+        world.insert_resource::<WindowManager>(WindowManager::default());
+
+        world.with_resource_mut::<WindowManager, _>(|window_manager| {
+            window_manager.primary_window_id = primary_window_id;
+            window_manager
+                .windows
+                .insert(primary_window_id, primary_window.clone());
+        });
+
         Ok(Self {
             renderers,
-            windows,
-            primary_window_id,
             rendering_context,
             world,
             timer,
@@ -149,47 +154,59 @@ impl Engine {
                 handle_input_event(input_manager, event.clone());
             });
 
-        if let Some(renderer) = self.renderers.get_mut(&window_id)
-            && let Some(window) = self.windows.get_mut(&window_id)
-        {
-            renderer.window_event(event_loop, window_id, event.clone(), window);
-        }
-        match event {
-            WindowEvent::CloseRequested => {
-                if window_id == self.primary_window_id {
-                    event_loop.exit();
-                } else {
-                    self.windows.remove(&window_id);
-                    self.renderers.remove(&window_id);
-                }
-            }
-            WindowEvent::Resized(_size) => {
-                if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    renderer.resize().unwrap();
-                }
-            }
-            WindowEvent::ScaleFactorChanged { .. } => {
-                if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    renderer.resize().unwrap();
-                }
-            }
-            WindowEvent::RedrawRequested => {
-                self.world.fixed_update(self.timer.tick().fixed_dt);
+        self.world
+            .with_resource_mut::<WindowManager, _>(|window_manager| {
                 if let Some(renderer) = self.renderers.get_mut(&window_id)
-                    && let Some(window) = self.windows.get_mut(&window_id)
+                    && let Some(window) = window_manager.windows.get_mut(&window_id)
                 {
-                    let _ = renderer.render(&self.world, window);
+                    renderer.window_event(event_loop, window_id, event.clone(), window);
                 }
-            }
 
+                match event.clone() {
+                    WindowEvent::CloseRequested => {
+                        if window_id == window_manager.primary_window_id {
+                            event_loop.exit();
+                        } else {
+                            window_manager.windows.remove(&window_id);
+                            self.renderers.remove(&window_id);
+                        }
+                    }
+                    WindowEvent::Resized(_size) => {
+                        if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                            renderer.resize().unwrap();
+                        }
+                    }
+                    WindowEvent::ScaleFactorChanged { .. } => {
+                        if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                            renderer.resize().unwrap();
+                        }
+                    }
+                    WindowEvent::RedrawRequested => {
+                        if let Some(renderer) = self.renderers.get_mut(&window_id)
+                            && let Some(window) = window_manager.windows.get_mut(&window_id)
+                        {
+                            let _ = renderer.render(&self.world, window);
+                        }
+                    }
+
+                    _ => (),
+                }
+            });
+
+        match event {
             _ => (),
         }
     }
 
     pub fn request_redraw(&mut self) {
-        for window in self.windows.values() {
-            window.request_redraw();
-        }
+        self.world.fixed_update(self.timer.tick().fixed_dt);
+
+        self.world
+            .with_resource_mut::<WindowManager, _>(|window_manager| {
+                for window in window_manager.windows.values() {
+                    window.request_redraw();
+                }
+            });
 
         self.world.late_update();
     }
@@ -201,7 +218,11 @@ impl Engine {
     ) -> Result<WindowId> {
         let window = Arc::new(event_loop.create_window(attributes)?);
         let window_id = window.id();
-        self.windows.insert(window_id, window.clone());
+
+        self.world
+            .with_resource_mut::<WindowManager, _>(|window_manager| {
+                window_manager.windows.insert(window_id, window.clone());
+            });
 
         let renderer = Renderer::new(self.rendering_context.clone(), window)?;
         self.renderers.insert(window_id, renderer);

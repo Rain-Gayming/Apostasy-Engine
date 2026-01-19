@@ -7,11 +7,14 @@ use apostasy::engine::{
             transform::{Transform, calculate_rotation},
             velocity::{Velocity, add_velocity, apply_velocity},
         },
+        entity::EntityView,
+        resource,
         resources::input_manager::{
-            InputManager, KeyAction, KeyBind, input_vector_3d, register_keybind,
+            InputManager, KeyAction, KeyBind, input_vector_3d, is_keybind_active, register_keybind,
         },
     },
     start_app,
+    windowing::{CursorManager, WindowManager, grab_cursor, toggle_hide_cursor},
 };
 use apostasy_macros::{Resource, fixed_update, start};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
@@ -25,6 +28,11 @@ pub struct MyResource {
 fn main() {
     let world = World::new();
 
+    start_app(world).unwrap();
+}
+
+#[start(priority = 1)]
+pub fn start(world: &mut World) {
     let rotation = Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(35.0));
 
     world
@@ -39,12 +47,11 @@ fn main() {
         .insert(Controllable);
 
     world.insert_resource::<InputManager>(InputManager::default());
-
-    start_app(world).unwrap();
+    world.insert_resource::<CursorManager>(CursorManager::default());
 }
 
 #[start]
-pub fn kebind_registration(world: &mut World) {
+pub fn keybind_registration(world: &mut World) {
     world.with_resource_mut::<InputManager, _>(|input_manager| {
         register_keybind(
             input_manager,
@@ -76,11 +83,17 @@ pub fn kebind_registration(world: &mut World) {
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyQ), KeyAction::Hold),
             "down",
         );
+        register_keybind(
+            input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::Escape), KeyAction::Press),
+            "pause",
+        );
     });
 }
 
 #[fixed_update]
 pub fn input_handle(world: &mut World, delta_time: f32) {
+    let mut pauisng = false;
     world
         .query()
         .include::<Controllable>()
@@ -88,8 +101,7 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
         .include::<Velocity>()
         .build()
         .run_with_resources(|entity, mantle| {
-            let resources = mantle.resources.read();
-            if let Some(input_manager) = resources.get::<InputManager>() {
+            world.with_resource_mut::<InputManager, _>(|input_manager| {
                 let mut velocity = entity.get_mut::<Velocity>().unwrap();
                 let mut transform = entity.get_mut::<Transform>().unwrap();
 
@@ -100,19 +112,31 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
                         "left",
                         "up",
                         "down",
-                        "forward",
                         "backward",
+                        "forward",
                     );
                 add_velocity(&mut velocity, direction * delta_time);
 
                 apply_velocity(&velocity, &mut transform);
 
                 transform.yaw += -input_manager.mouse_delta.0 as f32;
-                transform.pitch += -input_manager.mouse_delta.1 as f32;
+                transform.pitch += input_manager.mouse_delta.1 as f32;
 
                 calculate_rotation(&mut transform);
 
                 velocity.direction = Vector3::zero();
+
+                if is_keybind_active(input_manager, "pause") {
+                    pauisng = true;
+                }
+            });
+
+            if pauisng {
+                // world.with_resources_mut::<(WindowManager, CursorManager), _>(
+                //     |(window_manager, cursor_manager)| {
+                //         grab_cursor(cursor_manager, window_manager);
+                //     },
+                // );
             }
         });
 }

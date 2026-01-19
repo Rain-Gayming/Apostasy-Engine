@@ -48,7 +48,11 @@ pub fn register_keybind(input_manager: &mut InputManager, key: KeyBind, name: &s
 }
 
 pub fn is_keybind_active(input_manager: &InputManager, name: &str) -> bool {
-    let key = input_manager.keybinds.get(name).unwrap();
+    let key = input_manager.keybinds.get(name);
+    if key.is_none() {
+        return false;
+    }
+    let key = key.unwrap();
     match key.action {
         KeyAction::Press => input_manager.keys_pressed.contains(&key.key),
         KeyAction::Release => input_manager.keys_released.contains(&key.key),

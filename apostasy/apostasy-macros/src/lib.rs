@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, ItemFn, parse_macro_input, parse_quote};
+use syn::parse::{Parse, ParseStream};
+use syn::{DeriveInput, ItemFn, LitInt, parse_macro_input, parse_quote};
 
 /// Registers a component, Components are used to store data that is in an entity
 #[proc_macro_derive(Component)]
@@ -98,27 +99,53 @@ pub fn resource_derive(input: TokenStream) -> TokenStream {
     output.into()
 }
 
+struct StartArgs {
+    priority: Option<u32>,
+}
+
+/// Parser for the attribute arguments
+impl Parse for StartArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.is_empty() {
+            return Ok(StartArgs { priority: None });
+        }
+
+        let name: syn::Ident = input.parse()?;
+        if name != "priority" {
+            return Err(syn::Error::new_spanned(name, "expected `priority`"));
+        }
+
+        input.parse::<syn::Token![=]>()?;
+        let priority_lit: LitInt = input.parse()?;
+        let priority: u32 = priority_lit.base10_parse()?;
+
+        Ok(StartArgs {
+            priority: Some(priority),
+        })
+    }
+}
+
 /// Registers a start system, Start systems run once at the start of the game
 #[proc_macro_attribute]
-pub fn start(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn start(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as StartArgs);
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
 
-    // Generate an inventory registration
+    let priority = args.priority.unwrap_or(0);
+
     let expanded = quote! {
         #input_fn
-
         inventory::submit! {
             apostasy::engine::ecs::system::StartSystem{
                 name: stringify!(#fn_name),
                 func: #fn_name,
+                priority: #priority,
             }
         }
     };
-
     TokenStream::from(expanded)
 }
-
 /// Registers a fixed update system, Fixed updates run a specific amount of times per second
 #[proc_macro_attribute]
 pub fn fixed_update(_attr: TokenStream, item: TokenStream) -> TokenStream {

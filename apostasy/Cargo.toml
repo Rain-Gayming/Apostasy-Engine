@@ -15,6 +15,7 @@ apostasy-macros = {path = "apostasy-macros"}
 
 [dependencies]
 anyhow ="1.0.100"
+anymap = "0.12.1"
 ash = "0.38.0"
 ash-window = "0.13.0"
 aligned-vec = "0.6.4"
@@ -22,6 +23,7 @@ apostasy-macros.workspace = true
 bytemuck = {version = "1.19.0", features = ["derive"]}
 cgmath = "0.18.0"
 derive_more = { version  = "2.0.1", features = ["deref", "deref_mut", "from"] }
+downcast = "0.11.0"
 egui = "0.33.3"
 egui-ash-renderer = {version = "0.11", features = ["dynamic-rendering"]}
 egui-winit = "0.33.3"

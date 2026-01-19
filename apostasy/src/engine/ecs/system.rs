@@ -10,6 +10,7 @@ inventory::collect!(UpdateSystem);
 pub struct StartSystem {
     pub name: &'static str,
     pub func: fn(&mut World),
+    pub priority: u32,
 }
 
 inventory::collect!(StartSystem);
