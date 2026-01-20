@@ -6,7 +6,7 @@ use cgmath::{Vector2, Vector3};
 use egui::ahash::HashMap;
 use winit::{
     dpi::PhysicalPosition,
-    event::{MouseButton, WindowEvent},
+    event::{DeviceEvent, MouseButton, WindowEvent},
     keyboard::PhysicalKey,
 };
 
@@ -126,6 +126,12 @@ pub fn input_vector_3d(
         z -= 1.0;
     }
     Vector3::new(x, y, z)
+}
+
+pub fn handle_device_event(input_manager: &mut InputManager, event: DeviceEvent) {
+    if let DeviceEvent::MouseMotion { delta } = event {
+        input_manager.mouse_delta = delta;
+    }
 }
 
 pub fn handle_input_event(input_manager: &mut InputManager, event: WindowEvent) {

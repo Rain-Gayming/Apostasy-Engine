@@ -132,11 +132,11 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
             });
 
             if pauisng {
-                // world.with_resources_mut::<(WindowManager, CursorManager), _>(
-                //     |(window_manager, cursor_manager)| {
-                //         grab_cursor(cursor_manager, window_manager);
-                //     },
-                // );
+                world.with_resources::<(WindowManager, CursorManager), _, _>(
+                    |(window_manager, cursor_manager)| {
+                        grab_cursor(cursor_manager, window_manager);
+                    },
+                );
             }
         });
 }

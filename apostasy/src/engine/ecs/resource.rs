@@ -36,3 +36,61 @@ pub unsafe trait Resource: Sized + 'static {
     fn id() -> Entity;
     fn name() -> &'static str;
 }
+
+pub trait ResourcesGetter {
+    type Output<'a>;
+
+    fn get(resource_map: &mut ResourceMap) -> Self::Output<'_>;
+}
+
+impl<T: Resource> ResourcesGetter for T {
+    type Output<'a> = &'a mut T;
+
+    fn get(resources: &mut ResourceMap) -> Self::Output<'_> {
+        resources.get_mut::<T>().unwrap()
+    }
+}
+
+impl<T: Resource, T2: Resource> ResourcesGetter for (T, T2) {
+    type Output<'a> = (&'a mut T, &'a mut T2);
+
+    fn get(resources: &mut ResourceMap) -> Self::Output<'_> {
+        unsafe {
+            let ptr = resources as *mut ResourceMap;
+            (
+                (*ptr).get_mut::<T>().unwrap(),
+                (*ptr).get_mut::<T2>().unwrap(),
+            )
+        }
+    }
+}
+
+impl<T: Resource, T2: Resource, T3: Resource> ResourcesGetter for (T, T2, T3) {
+    type Output<'a> = (&'a mut T, &'a mut T2, &'a mut T3);
+
+    fn get(resources: &mut ResourceMap) -> Self::Output<'_> {
+        unsafe {
+            let ptr = resources as *mut ResourceMap;
+            (
+                (*ptr).get_mut::<T>().unwrap(),
+                (*ptr).get_mut::<T2>().unwrap(),
+                (*ptr).get_mut::<T3>().unwrap(),
+            )
+        }
+    }
+}
+impl<T: Resource, T2: Resource, T3: Resource, T4: Resource> ResourcesGetter for (T, T2, T3, T4) {
+    type Output<'a> = (&'a mut T, &'a mut T2, &'a mut T3, &'a mut T4);
+
+    fn get(resources: &mut ResourceMap) -> Self::Output<'_> {
+        unsafe {
+            let ptr = resources as *mut ResourceMap;
+            (
+                (*ptr).get_mut::<T>().unwrap(),
+                (*ptr).get_mut::<T2>().unwrap(),
+                (*ptr).get_mut::<T3>().unwrap(),
+                (*ptr).get_mut::<T4>().unwrap(),
+            )
+        }
+    }
+}

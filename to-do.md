@@ -37,6 +37,7 @@
         - [x] resource creation 
         - [x] resource access
         - [x] resource access mutably
+        - [x] multiple resource access
 
 **General:**
 
@@ -46,6 +47,7 @@
         - [x] key bind creation
         - [x] key bind activation
         - [x] key bind registering
+        - [x] mouse input
 
 **Rendering:**
 
@@ -54,6 +56,7 @@
     - [x] window titles 
     - [x] window resizing
     - [x] window deletion 
+    - [x] cursor management
 - [x] rendering context
     - [x] swapchain creation
     - [x] swapchain resizing

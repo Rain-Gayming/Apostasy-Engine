@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
+    event::{DeviceEvent, DeviceId},
     event_loop::{ControlFlow, EventLoop},
     window,
 };
@@ -13,7 +14,7 @@ use winit::{
 };
 
 use crate::engine::{
-    ecs::resources::input_manager::{InputManager, handle_input_event},
+    ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
     rendering::{
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
@@ -59,6 +60,17 @@ impl ApplicationHandler for Application {
     ) {
         if let Some(engine) = self.render_engine.as_mut() {
             engine.window_event(event_loop, window_id, event.clone());
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
+        if let Some(engine) = self.render_engine.as_mut() {
+            engine.device_event(event_loop, device_id, event.clone());
         }
     }
 
@@ -192,10 +204,18 @@ impl Engine {
                     _ => (),
                 }
             });
+    }
 
-        match event {
-            _ => (),
-        }
+    pub fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        self.world
+            .with_resource_mut::<InputManager, _>(|input_manager| {
+                handle_device_event(input_manager, event.clone());
+            });
     }
 
     pub fn request_redraw(&mut self) {

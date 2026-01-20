@@ -15,7 +15,7 @@ use crate::engine::ecs::{
     core::Core,
     entity::{Entity, EntityLocation, EntityView},
     query::QueryBuilder,
-    resource::{Resource, ResourceMap},
+    resource::{Resource, ResourceMap, ResourcesGetter},
     system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
 };
 
@@ -404,6 +404,15 @@ impl World {
             } else {
                 println!("resource ({}) not found", T::name());
             }
+        })
+    }
+    pub fn with_resources<T: ResourcesGetter, F, R>(&self, func: F) -> R
+    where
+        F: FnOnce(T::Output<'_>) -> R,
+    {
+        self.crust.mantle(|mantle| {
+            let mut resources = mantle.resources.write();
+            func(T::get(&mut resources))
         })
     }
 

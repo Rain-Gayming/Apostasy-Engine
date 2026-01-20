@@ -32,8 +32,11 @@ pub fn grab_cursor(cursor_manager: &mut CursorManager, window_manager: &mut Wind
 
     window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(false);
     window_manager.windows[&window_manager.primary_window_id]
-        .set_cursor_grab(CursorGrabMode::Confined)
-        .unwrap();
+        .set_cursor_grab(CursorGrabMode::Locked)
+        .or_else(|_| {
+            window_manager.windows[&window_manager.primary_window_id]
+                .set_cursor_grab(CursorGrabMode::Confined)
+        });
 }
 
 pub fn ungrab_cursor(cursor_manager: &mut CursorManager, window_manager: &mut WindowManager) {
