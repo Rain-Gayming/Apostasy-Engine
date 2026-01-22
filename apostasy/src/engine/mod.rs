@@ -4,7 +4,6 @@ use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId},
     event_loop::{ControlFlow, EventLoop},
-    window,
 };
 
 use winit::{

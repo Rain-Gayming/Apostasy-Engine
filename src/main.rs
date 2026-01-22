@@ -7,14 +7,15 @@ use apostasy::engine::{
             transform::{Transform, calculate_rotation},
             velocity::{Velocity, add_velocity, apply_velocity},
         },
-        entity::EntityView,
-        resource,
         resources::input_manager::{
             InputManager, KeyAction, KeyBind, input_vector_3d, is_keybind_active, register_keybind,
         },
     },
     start_app,
-    windowing::{CursorManager, WindowManager, grab_cursor, toggle_hide_cursor},
+    windowing::{
+        WindowManager,
+        cursor_manager::{CursorManager, grab_cursor},
+    },
 };
 use apostasy_macros::{Resource, fixed_update, start};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
@@ -93,14 +94,14 @@ pub fn keybind_registration(world: &mut World) {
 
 #[fixed_update]
 pub fn input_handle(world: &mut World, delta_time: f32) {
-    let mut pauisng = false;
+    let mut pausing = false;
     world
         .query()
         .include::<Controllable>()
         .include::<Transform>()
         .include::<Velocity>()
         .build()
-        .run_with_resources(|entity, mantle| {
+        .run(|entity| {
             world.with_resource_mut::<InputManager, _>(|input_manager| {
                 let mut velocity = entity.get_mut::<Velocity>().unwrap();
                 let mut transform = entity.get_mut::<Transform>().unwrap();
@@ -127,11 +128,11 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
                 velocity.direction = Vector3::zero();
 
                 if is_keybind_active(input_manager, "pause") {
-                    pauisng = true;
+                    pausing = true;
                 }
             });
 
-            if pauisng {
+            if pausing {
                 world.with_resources::<(WindowManager, CursorManager), _, _>(
                     |(window_manager, cursor_manager)| {
                         grab_cursor(cursor_manager, window_manager);

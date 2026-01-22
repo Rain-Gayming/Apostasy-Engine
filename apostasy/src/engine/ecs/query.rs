@@ -86,7 +86,7 @@ impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
 impl Query {
     /// Runs the query
     #[allow(private_bounds)]
-    pub fn run<Closure: QueryClosure>(&self, func: Closure) {
+    pub fn run<F: FnMut(EntityView<'_>)>(&self, func: F) {
         let cache = QueryState {};
         func.run(self, &cache);
     }
