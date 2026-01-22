@@ -26,7 +26,7 @@ pub fn ungrab_cursor(cursor_manager: &mut CursorManager, window_manager: &mut Wi
     cursor_manager.is_grabbed = false;
     cursor_manager.is_hidden = false;
 
-    window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(false);
+    window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(true);
     let _ = window_manager.windows[&window_manager.primary_window_id]
         .set_cursor_grab(CursorGrabMode::None);
 }

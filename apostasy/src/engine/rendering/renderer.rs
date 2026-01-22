@@ -1,10 +1,13 @@
-use crate::engine::ecs::{
-    World,
-    components::{
-        camera::{Camera, get_perspective_projection},
-        transform::{Transform, calculate_forward, calculate_up},
+use crate::engine::{
+    ecs::{
+        World,
+        components::{
+            camera::{Camera, get_perspective_projection},
+            transform::{Transform, calculate_forward, calculate_up},
+        },
+        entity::EntityView,
     },
-    entity::EntityView,
+    rendering::model::Model,
 };
 use std::sync::Arc;
 
@@ -137,7 +140,7 @@ impl Renderer {
     }
 
     /// Renders the world from a perspective of a camera
-    pub fn render(&mut self, world: &World, _window: &Window) -> Result<()> {
+    pub fn render(&mut self, world: &World, _window: &Window, model: &Model) -> Result<()> {
         let frame = &mut self.frames[self.frame_index];
         unsafe {
             // Wait for the image to be available

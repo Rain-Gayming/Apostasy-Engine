@@ -11,10 +11,11 @@ use apostasy::engine::{
             InputManager, KeyAction, KeyBind, input_vector_3d, is_keybind_active, register_keybind,
         },
     },
+    rendering::model::{Model, load_model},
     start_app,
     windowing::{
         WindowManager,
-        cursor_manager::{CursorManager, grab_cursor},
+        cursor_manager::{CursorManager, grab_cursor, ungrab_cursor},
     },
 };
 use apostasy_macros::{Resource, fixed_update, start};
@@ -45,6 +46,7 @@ pub fn start(world: &mut World) {
             rotation,
             ..Default::default()
         })
+        .insert(load_model("scene.gltf"))
         .insert(Controllable);
 
     world.insert_resource::<InputManager>(InputManager::default());
@@ -102,40 +104,48 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
         .include::<Velocity>()
         .build()
         .run(|entity| {
-            world.with_resource_mut::<InputManager, _>(|input_manager| {
-                let mut velocity = entity.get_mut::<Velocity>().unwrap();
-                let mut transform = entity.get_mut::<Transform>().unwrap();
+            world.with_resources::<(InputManager, CursorManager), _, _>(
+                |(input_manager, cursor_manager)| {
+                    let mut velocity = entity.get_mut::<Velocity>().unwrap();
+                    let mut transform = entity.get_mut::<Transform>().unwrap();
 
-                let direction = transform.rotation
-                    * input_vector_3d(
-                        input_manager,
-                        "right",
-                        "left",
-                        "up",
-                        "down",
-                        "backward",
-                        "forward",
-                    );
-                add_velocity(&mut velocity, direction * delta_time);
+                    if cursor_manager.is_grabbed {
+                        let direction = transform.rotation
+                            * input_vector_3d(
+                                input_manager,
+                                "right",
+                                "left",
+                                "up",
+                                "down",
+                                "backward",
+                                "forward",
+                            );
+                        add_velocity(&mut velocity, direction * delta_time);
 
-                apply_velocity(&velocity, &mut transform);
+                        apply_velocity(&velocity, &mut transform);
 
-                transform.yaw += -input_manager.mouse_delta.0 as f32;
-                transform.pitch += input_manager.mouse_delta.1 as f32;
+                        transform.yaw += -input_manager.mouse_delta.0 as f32;
+                        transform.pitch += input_manager.mouse_delta.1 as f32;
 
-                calculate_rotation(&mut transform);
+                        calculate_rotation(&mut transform);
 
-                velocity.direction = Vector3::zero();
+                        velocity.direction = Vector3::zero();
+                    }
 
-                if is_keybind_active(input_manager, "pause") {
-                    pausing = true;
-                }
-            });
+                    if is_keybind_active(input_manager, "pause") {
+                        pausing = true;
+                    }
+                },
+            );
 
             if pausing {
                 world.with_resources::<(WindowManager, CursorManager), _, _>(
                     |(window_manager, cursor_manager)| {
-                        grab_cursor(cursor_manager, window_manager);
+                        if cursor_manager.is_grabbed {
+                            ungrab_cursor(cursor_manager, window_manager);
+                        } else {
+                            grab_cursor(cursor_manager, window_manager);
+                        }
                     },
                 );
             }

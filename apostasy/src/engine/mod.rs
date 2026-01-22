@@ -15,6 +15,7 @@ use winit::{
 use crate::engine::{
     ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
     rendering::{
+        model::Model,
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -196,7 +197,10 @@ impl Engine {
                         if let Some(renderer) = self.renderers.get_mut(&window_id)
                             && let Some(window) = window_manager.windows.get_mut(&window_id)
                         {
-                            let _ = renderer.render(&self.world, window);
+                            self.world.query().include::<Model>().build().run(|entity| {
+                                let model = entity.get::<Model>().unwrap();
+                                let _ = renderer.render(&self.world, window, &model);
+                            });
                         }
                     }
 
