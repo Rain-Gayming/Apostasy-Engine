@@ -171,7 +171,7 @@ impl Engine {
                 if let Some(renderer) = self.renderers.get_mut(&window_id)
                     && let Some(window) = window_manager.windows.get_mut(&window_id)
                 {
-                    renderer.window_event(event_loop, window_id, event.clone(), window);
+                    renderer.window_event(event_loop, window_id, event.clone());
                 }
 
                 match event.clone() {
@@ -197,10 +197,10 @@ impl Engine {
                         if let Some(renderer) = self.renderers.get_mut(&window_id)
                             && let Some(window) = window_manager.windows.get_mut(&window_id)
                         {
-                            self.world.query().include::<Model>().build().run(|entity| {
-                                let model = entity.get::<Model>().unwrap();
-                                let _ = renderer.render(&self.world, window, &model);
-                            });
+                            // self.world.query().include::<Model>().build().run(|entity| {
+                            //     let model = entity.get::<Model>().unwrap();
+                            //     // let _ = renderer.render(&self.world, window, &model);
+                            // });
                         }
                     }
 

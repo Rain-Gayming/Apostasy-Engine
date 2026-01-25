@@ -11,7 +11,7 @@ use apostasy::engine::{
             InputManager, KeyAction, KeyBind, input_vector_3d, is_keybind_active, register_keybind,
         },
     },
-    rendering::model::{Model, load_model},
+    rendering::model::{Model, ModelRenderer, load_model},
     start_app,
     windowing::{
         WindowManager,
@@ -37,6 +37,9 @@ fn main() {
 pub fn start(world: &mut World) {
     let rotation = Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(35.0));
 
+    world.insert_resource::<InputManager>(InputManager::default());
+    world.insert_resource::<CursorManager>(CursorManager::default());
+
     world
         .spawn()
         .insert(Camera::default())
@@ -46,11 +49,8 @@ pub fn start(world: &mut World) {
             rotation,
             ..Default::default()
         })
-        .insert(load_model("scene.gltf"))
+        .insert(ModelRenderer("model".to_string()))
         .insert(Controllable);
-
-    world.insert_resource::<InputManager>(InputManager::default());
-    world.insert_resource::<CursorManager>(CursorManager::default());
 }
 
 #[start]

@@ -13,6 +13,7 @@ use winit::{
 };
 
 use crate::engine::rendering::{
+    model::Vertex,
     physical_device::PhysicalDevice,
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
     surface::Surface,
@@ -288,6 +289,93 @@ impl RenderingContext {
             )?;
             Ok(image)
         }
+    }
+
+    /// Creates a vertex buffer from a slice of vertices
+    pub fn create_vertex_buffer(
+        &self,
+        vertices: &[Vertex],
+    ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
+        let buffer_size = (std::mem::size_of::<Vertex>() * vertices.len()) as vk::DeviceSize;
+
+        let buffer_info = vk::BufferCreateInfo::default()
+            .size(buffer_size)
+            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+        let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
+
+        let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
+
+        let memory_type_index = self.find_memory_type(
+            mem_requirements.memory_type_bits,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+        )?;
+
+        let alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_requirements.size)
+            .memory_type_index(memory_type_index);
+
+        let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
+
+        unsafe {
+            self.device.bind_buffer_memory(buffer, buffer_memory, 0)?;
+
+            let data_ptr = self.device.map_memory(
+                buffer_memory,
+                0,
+                buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )? as *mut Vertex;
+
+            data_ptr.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
+
+            self.device.unmap_memory(buffer_memory);
+        }
+
+        Ok((buffer, buffer_memory))
+    }
+
+    /// Creates an index buffer from a slice of indices
+    pub fn create_index_buffer(&self, indices: &[u32]) -> Result<(vk::Buffer, vk::DeviceMemory)> {
+        let buffer_size = (std::mem::size_of::<u32>() * indices.len()) as vk::DeviceSize;
+
+        let buffer_info = vk::BufferCreateInfo::default()
+            .size(buffer_size)
+            .usage(vk::BufferUsageFlags::INDEX_BUFFER)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+        let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
+
+        let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
+
+        let memory_type_index = self.find_memory_type(
+            mem_requirements.memory_type_bits,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+        )?;
+
+        let alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_requirements.size)
+            .memory_type_index(memory_type_index);
+
+        let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
+
+        unsafe {
+            self.device.bind_buffer_memory(buffer, buffer_memory, 0)?;
+
+            let data_ptr = self.device.map_memory(
+                buffer_memory,
+                0,
+                buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )? as *mut u32;
+
+            data_ptr.copy_from_nonoverlapping(indices.as_ptr(), indices.len());
+
+            self.device.unmap_memory(buffer_memory);
+        }
+
+        Ok((buffer, buffer_memory))
     }
 
     /// Creates a shader module
