@@ -49,7 +49,6 @@ pub fn start(world: &mut World) {
             rotation,
             ..Default::default()
         })
-        .insert(ModelRenderer("model".to_string()))
         .insert(Controllable);
 }
 

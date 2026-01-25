@@ -269,45 +269,6 @@ impl Renderer {
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
 
-            let raw_input = self.egui_state.take_egui_input(&window);
-            let output = self.egui_ctx.run(raw_input, |ctx| {
-                egui::Window::new("Debug").show(ctx, |ui| {
-                    ui.label("Hello egui!");
-                });
-            });
-
-            // Handle platform output
-            self.egui_state
-                .handle_platform_output(&window, output.platform_output);
-
-            let mut vertices = vec![
-                Vertex::default(),
-                Vertex::default(),
-                Vertex::default(),
-                Vertex::default(),
-            ];
-
-            vertices[0].pos = Pos2::new(0.0, 0.0);
-            vertices[1].pos = Pos2::new(1024.0, 0.0);
-            vertices[2].pos = Pos2::new(0.0, 1024.0);
-            vertices[3].pos = Pos2::new(1024.0, 1024.0);
-            self.egui_renderer.cmd_draw(
-                frame.command_buffer,
-                self.swapchain.extent,
-                8.0,
-                &[egui::ClippedPrimitive {
-                    clip_rect: egui::Rect::from_min_size(
-                        egui::pos2(0.0, 0.0),
-                        egui::vec2(1024.0, 1024.0),
-                    ),
-                    primitive: egui::epaint::Primitive::Mesh(egui::epaint::Mesh {
-                        vertices,
-                        indices: vec![0, 1, 2, 2, 3, 0],
-                        texture_id: egui::TextureId::User(0),
-                    }),
-                }],
-            )?;
-
             self.context.device.cmd_bind_pipeline(
                 frame.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,

@@ -197,9 +197,9 @@ impl Engine {
                         if let Some(renderer) = self.renderers.get_mut(&window_id)
                             && let Some(window) = window_manager.windows.get_mut(&window_id)
                         {
+                            let _ = renderer.render(&self.world, window);
                             // self.world.query().include::<Model>().build().run(|entity| {
                             //     let model = entity.get::<Model>().unwrap();
-                            //     // let _ = renderer.render(&self.world, window, &model);
                             // });
                         }
                     }
