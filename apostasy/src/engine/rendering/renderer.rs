@@ -1,10 +1,13 @@
-use crate::engine::ecs::{
-    World,
-    components::{
-        camera::{Camera, get_perspective_projection},
-        transform::{Transform, calculate_forward, calculate_up},
+use crate::engine::{
+    ecs::{
+        World,
+        components::{
+            camera::{Camera, get_perspective_projection},
+            transform::{Transform, calculate_forward, calculate_up},
+        },
+        entity::EntityView,
     },
-    entity::EntityView,
+    rendering::model::{Mesh, Model},
 };
 use std::sync::Arc;
 

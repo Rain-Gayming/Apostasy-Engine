@@ -11,7 +11,7 @@ use apostasy::engine::{
             InputManager, KeyAction, KeyBind, input_vector_3d, is_keybind_active, register_keybind,
         },
     },
-    rendering::model::{Model, ModelRenderer, load_model},
+    rendering::model::{Model, ModelLoader, ModelRenderer, load_model},
     start_app,
     windowing::{
         WindowManager,
@@ -39,6 +39,7 @@ pub fn start(world: &mut World) {
 
     world.insert_resource::<InputManager>(InputManager::default());
     world.insert_resource::<CursorManager>(CursorManager::default());
+    world.insert_resource::<ModelLoader>(ModelLoader::default());
 
     world
         .spawn()
@@ -50,6 +51,14 @@ pub fn start(world: &mut World) {
             ..Default::default()
         })
         .insert(Controllable);
+
+    world
+        .spawn()
+        .insert(ModelRenderer("scene.gltf".to_string()))
+        .insert(Transform {
+            position: Vector3::new(0.0, 0.0, 0.0),
+            ..Default::default()
+        });
 }
 
 #[start]

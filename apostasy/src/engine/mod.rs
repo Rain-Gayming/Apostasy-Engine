@@ -15,10 +15,10 @@ use winit::{
 use crate::engine::{
     ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
     rendering::{
-        model::Model,
+        model::{Model, ModelLoader, ModelRenderer, get_model, load_model, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
-        rendering_context::{RenderingContext, RenderingContextAttributes},
+        rendering_context::{self, RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
     windowing::WindowManager,
@@ -147,6 +147,10 @@ impl Engine {
                 .insert(primary_window_id, primary_window.clone());
         });
 
+        world.with_resource_mut::<ModelLoader, _>(|model_loader| {
+            load_models(model_loader, &rendering_context);
+        });
+
         Ok(Self {
             renderers,
             rendering_context,
@@ -198,9 +202,6 @@ impl Engine {
                             && let Some(window) = window_manager.windows.get_mut(&window_id)
                         {
                             let _ = renderer.render(&self.world, window);
-                            // self.world.query().include::<Model>().build().run(|entity| {
-                            //     let model = entity.get::<Model>().unwrap();
-                            // });
                         }
                     }
 

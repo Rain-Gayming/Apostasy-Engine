@@ -1,15 +1,17 @@
+use std::fs;
+
 use crate::{
     self as apostasy,
     engine::{ecs::World, rendering::rendering_context::RenderingContext},
 };
 use anyhow::Result;
-use apostasy_macros::{Component, Resource, update};
+use apostasy_macros::{Component, Resource, start};
 use ash::vk;
 use egui::ahash::HashMap;
 
 const MODEL_LOCATION: &str = "res/models/";
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct ModelLoader {
     pub models: HashMap<String, Model>,
 }
@@ -35,23 +37,30 @@ pub fn get_model(name: &str, model_loader: &ModelLoader) -> Model {
     model_loader.models.get(name).unwrap().clone()
 }
 
-#[update]
-pub fn load_models(world: &mut World) {
-    world
-        .query()
-        .include::<ModelRenderer>()
-        .build()
-        .run(|entity| {
-            world.with_resource_mut::<ModelLoader, _>(|model_loader| {
-                let model = get_model(&entity.get::<ModelRenderer>().unwrap().0, model_loader);
-                println!("{:?}", model);
-            });
-        });
+pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext) {
+    for entry in fs::read_dir(MODEL_LOCATION).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+
+        // TODO: impliment recursive loading
+        if path.is_dir() {
+            continue;
+        }
+        if let Some(extension) = path.extension() {
+            let ext = extension.to_str().unwrap_or("");
+            if ext == "gltf" || ext == "glb" {
+                let path = path.to_str().unwrap();
+                model_loader
+                    .models
+                    .insert(path.to_string(), load_model(path, context).unwrap());
+            }
+        }
+    }
 }
 
 /// Loads a model, path should be the file name, default path is "/res/models/"
-pub fn load_model(path: &str, context: RenderingContext) -> Result<Model> {
-    let path = format!("{}{}", MODEL_LOCATION, path);
+pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
+    println!("loading model: {}", path);
     let (gltf, buffers, _images) = gltf::import(path)?;
 
     let mut meshes = Vec::new();
