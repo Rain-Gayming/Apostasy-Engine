@@ -7,7 +7,7 @@ use crate::engine::{
         },
         entity::EntityView,
     },
-    rendering::model::{Mesh, Model},
+    rendering::model::{Mesh, Model, ModelLoader, ModelRenderer},
 };
 use std::sync::Arc;
 
@@ -357,11 +357,13 @@ impl Renderer {
                             &push_constants,
                         );
 
+                        world.with_resource::<ModelLoader, _>(|model_renderer| {
+                            // let model = model_renderer.get_model("scene.gltf");
+                        });
+
                         device.cmd_draw(command_buffer, 36, 1, 0, 0);
                     }
                 });
-
-            // End the render pass
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             // Transition the image layout from color attachment to present

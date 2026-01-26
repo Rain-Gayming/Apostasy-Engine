@@ -370,6 +370,9 @@ impl World {
     /// ```
     pub fn with_resource<T: Resource, F: FnOnce(&T)>(&self, func: F) {
         self.crust.mantle(|mantle| {
+            if mantle.resources.is_locked() {
+                println!("Resources is currently locked");
+            }
             let resources = mantle.resources.read();
             if let Some(resource) = resources.get::<T>() {
                 func(resource);
@@ -398,6 +401,9 @@ impl World {
     /// ```
     pub fn with_resource_mut<T: Resource, F: FnOnce(&mut T)>(&self, func: F) {
         self.crust.mantle(|mantle| {
+            if mantle.resources.is_locked() {
+                println!("Resources is currently locked");
+            }
             let mut resources = mantle.resources.write();
             if let Some(resource) = resources.get_mut::<T>() {
                 func(resource);
@@ -411,6 +417,9 @@ impl World {
         F: FnOnce(T::Output<'_>) -> R,
     {
         self.crust.mantle(|mantle| {
+            if mantle.resources.is_locked() {
+                println!("Resources is currently locked");
+            }
             let mut resources = mantle.resources.write();
             func(T::get(&mut resources))
         })

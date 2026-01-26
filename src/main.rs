@@ -11,7 +11,7 @@ use apostasy::engine::{
             InputManager, KeyAction, KeyBind, input_vector_3d, is_keybind_active, register_keybind,
         },
     },
-    rendering::model::{Model, ModelLoader, ModelRenderer, load_model},
+    rendering::model::{ModelLoader, ModelRenderer},
     start_app,
     windowing::{
         WindowManager,
