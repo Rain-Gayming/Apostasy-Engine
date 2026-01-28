@@ -1,3 +1,4 @@
+#[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
     ecs::{
         World,

@@ -421,8 +421,10 @@ impl RenderingContext {
                         ])
                         .vertex_input_state(
                             &vk::PipelineVertexInputStateCreateInfo::default()
-                                .vertex_binding_descriptions(&[])
-                                .vertex_attribute_descriptions(&[]),
+                                .vertex_binding_descriptions(&[Vertex::get_binding_description()])
+                                .vertex_attribute_descriptions(
+                                    &Vertex::get_attribute_descriptions(),
+                                ),
                         )
                         .input_assembly_state(
                             &vk::PipelineInputAssemblyStateCreateInfo::default()
@@ -430,11 +432,8 @@ impl RenderingContext {
                         )
                         .viewport_state(
                             &vk::PipelineViewportStateCreateInfo::default()
-                                .viewports(&[vk::Viewport::default()
-                                    .width(extent.width as f32)
-                                    .height(extent.height as f32)
-                                    .max_depth(2.0)])
-                                .scissors(&[vk::Rect2D::default().extent(extent)]),
+                                .scissor_count(1)
+                                .viewport_count(1),
                         )
                         .rasterization_state(
                             &vk::PipelineRasterizationStateCreateInfo::default()

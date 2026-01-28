@@ -7,7 +7,7 @@ use crate::engine::{
         },
         entity::EntityView,
     },
-    rendering::model::{Mesh, Model, ModelLoader, ModelRenderer},
+    rendering::model::{Mesh, Model, ModelLoader, ModelRenderer, get_model},
 };
 use std::sync::Arc;
 
@@ -168,7 +168,7 @@ impl Renderer {
     }
 
     /// Renders the world from a perspective of a camera
-    pub fn render(&mut self, world: &World, window: &Window) -> Result<()> {
+    pub fn render(&mut self, world: &World) -> Result<()> {
         let frame = &mut self.frames[self.frame_index];
         unsafe {
             // Wait for the image to be available
@@ -293,6 +293,40 @@ impl Renderer {
                     if let (Some(camera), Some(transform)) =
                         (entity_view.get::<Camera>(), entity_view.get::<Transform>())
                     {
+                        // TODO: Load models
+                        world.query().include::<ModelRenderer>().build().run(
+                            |entity_view: EntityView<'_>| {
+                                world.with_resource::<ModelLoader, _>(|model_loader| {
+                                    let model_renderer =
+                                        entity_view.get::<ModelRenderer>().unwrap();
+                                    let meshes =
+                                        get_model(model_renderer.0.as_str(), model_loader).meshes;
+                                    for mesh in meshes {
+                                        device.cmd_bind_vertex_buffers(
+                                            command_buffer,
+                                            0,
+                                            &[mesh.vertex_buffer],
+                                            &[0],
+                                        );
+                                        device.cmd_bind_index_buffer(
+                                            command_buffer,
+                                            mesh.index_buffer,
+                                            0,
+                                            vk::IndexType::UINT32,
+                                        );
+                                        device.cmd_draw_indexed(
+                                            command_buffer,
+                                            mesh.index_count,
+                                            1,
+                                            0,
+                                            0,
+                                            0,
+                                        );
+                                    }
+                                });
+                            },
+                        );
+
                         let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
 
                         // Model matrix: cube at origin with 45-degree rotations
@@ -356,11 +390,6 @@ impl Renderer {
                             0,
                             &push_constants,
                         );
-
-                        world.with_resource::<ModelLoader, _>(|model_renderer| {
-                            // let model = model_renderer.get_model("scene.gltf");
-                        });
-
                         device.cmd_draw(command_buffer, 36, 1, 0, 0);
                     }
                 });

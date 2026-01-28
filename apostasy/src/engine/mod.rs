@@ -15,10 +15,10 @@ use winit::{
 use crate::engine::{
     ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
     rendering::{
-        model::{Model, ModelLoader, ModelRenderer, get_model, load_model, load_models},
+        model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
-        rendering_context::{self, RenderingContext, RenderingContextAttributes},
+        rendering_context::{RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
     windowing::WindowManager,
@@ -170,44 +170,29 @@ impl Engine {
                 handle_input_event(input_manager, event.clone());
             });
 
-        self.world
-            .with_resource_mut::<WindowManager, _>(|window_manager| {
-                if let Some(renderer) = self.renderers.get_mut(&window_id)
-                    && let Some(window) = window_manager.windows.get_mut(&window_id)
-                {
-                    renderer.window_event(event_loop, window_id, event.clone());
-                }
+        if let Some(renderer) = self.renderers.get_mut(&window_id) {
+            renderer.window_event(event_loop, window_id, event.clone());
+        }
 
-                match event.clone() {
-                    WindowEvent::CloseRequested => {
-                        if window_id == window_manager.primary_window_id {
-                            event_loop.exit();
-                        } else {
-                            window_manager.windows.remove(&window_id);
-                            self.renderers.remove(&window_id);
-                        }
-                    }
-                    WindowEvent::Resized(_size) => {
-                        if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                            renderer.resize().unwrap();
-                        }
-                    }
-                    WindowEvent::ScaleFactorChanged { .. } => {
-                        if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                            renderer.resize().unwrap();
-                        }
-                    }
-                    WindowEvent::RedrawRequested => {
-                        if let Some(renderer) = self.renderers.get_mut(&window_id)
-                            && let Some(window) = window_manager.windows.get_mut(&window_id)
-                        {
-                            let _ = renderer.render(&self.world, window);
-                        }
-                    }
-
-                    _ => (),
+        match event.clone() {
+            WindowEvent::Resized(_size) => {
+                if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    renderer.resize().unwrap();
                 }
-            });
+            }
+            WindowEvent::ScaleFactorChanged { .. } => {
+                if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    renderer.resize().unwrap();
+                }
+            }
+            WindowEvent::RedrawRequested => {
+                if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    let _ = renderer.render(&self.world);
+                }
+            }
+
+            _ => (),
+        }
     }
 
     pub fn device_event(

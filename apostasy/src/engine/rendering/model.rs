@@ -23,17 +23,19 @@ pub struct Model {
 
 #[derive(Debug, Clone)]
 pub struct Mesh {
-    vertex_buffer: vk::Buffer,
-    vertex_buffer_memory: vk::DeviceMemory,
-    index_buffer: vk::Buffer,
-    index_buffer_memory: vk::DeviceMemory,
-    index_count: u32,
+    pub vertex_buffer: vk::Buffer,
+    pub vertex_buffer_memory: vk::DeviceMemory,
+    pub index_buffer: vk::Buffer,
+    pub index_buffer_memory: vk::DeviceMemory,
+    pub index_count: u32,
 }
 
 #[derive(Component)]
 pub struct ModelRenderer(pub String);
 
 pub fn get_model(name: &str, model_loader: &ModelLoader) -> Model {
+    println!("getting model: {}", name);
+    println!("models: {:?}", model_loader.models.keys());
     model_loader.models.get(name).unwrap().clone()
 }
 
@@ -49,10 +51,11 @@ pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext) {
         if let Some(extension) = path.extension() {
             let ext = extension.to_str().unwrap_or("");
             if ext == "gltf" || ext == "glb" {
+                let name = path.file_name().unwrap().to_str().unwrap().to_string();
                 let path = path.to_str().unwrap();
                 model_loader
                     .models
-                    .insert(path.to_string(), load_model(path, context).unwrap());
+                    .insert(name, load_model(path, context).unwrap());
             }
         }
     }
@@ -114,4 +117,35 @@ pub struct Vertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
     pub tex_coord: [f32; 2],
+}
+impl Vertex {
+    pub fn get_binding_description() -> vk::VertexInputBindingDescription {
+        vk::VertexInputBindingDescription::default()
+            .binding(0)
+            .stride(std::mem::size_of::<Vertex>() as u32)
+            .input_rate(vk::VertexInputRate::VERTEX)
+    }
+
+    pub fn get_attribute_descriptions() -> [vk::VertexInputAttributeDescription; 3] {
+        [
+            // Position
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32G32B32_SFLOAT)
+                .offset(0),
+            // Normal
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(1)
+                .format(vk::Format::R32G32B32_SFLOAT)
+                .offset(12), // 3 floats * 4 bytes
+            // Tex Coord
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(2)
+                .format(vk::Format::R32G32_SFLOAT)
+                .offset(24), // 6 floats * 4 bytes
+        ]
+    }
 }
