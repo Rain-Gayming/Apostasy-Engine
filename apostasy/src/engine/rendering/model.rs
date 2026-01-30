@@ -34,8 +34,8 @@ pub struct Mesh {
 pub struct ModelRenderer(pub String);
 
 pub fn get_model(name: &str, model_loader: &ModelLoader) -> Model {
-    println!("getting model: {}", name);
-    println!("models: {:?}", model_loader.models.keys());
+    // println!("getting model: {}", name);
+    // println!("models: {:?}", model_loader.models.keys());
     model_loader.models.get(name).unwrap().clone()
 }
 

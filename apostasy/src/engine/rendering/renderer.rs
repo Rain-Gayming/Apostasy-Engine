@@ -68,13 +68,24 @@ impl Renderer {
         let fragment_shader = load_engine_shader_module(context.as_ref(), "frag.spv")?;
 
         unsafe {
+            let ubo_binding = vk::DescriptorSetLayoutBinding::default()
+                .binding(0)
+                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::VERTEX);
+
+            let descriptor_set_layout = context.device.create_descriptor_set_layout(
+                &vk::DescriptorSetLayoutCreateInfo::default().bindings(&[ubo_binding]),
+                None,
+            )?;
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX)
                 .offset(0)
-                .size((std::mem::size_of::<[f32; 16]>() * 2) as u32); // MVP + model matrix
+                .size(128);
 
             let pipeline_layout = context.device.create_pipeline_layout(
                 &vk::PipelineLayoutCreateInfo::default()
+                    .set_layouts(&[descriptor_set_layout])
                     .push_constant_ranges(&[push_constant_range]),
                 None,
             )?;

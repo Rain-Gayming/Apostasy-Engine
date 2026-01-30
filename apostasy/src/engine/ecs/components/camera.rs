@@ -19,13 +19,16 @@ impl Default for Camera {
         }
     }
 }
-
 pub fn get_perspective_projection(camera: &Camera, aspect: f32) -> Matrix4<f32> {
-    PerspectiveFov::to_perspective(&PerspectiveFov {
+    let mut proj: Matrix4<f32> = PerspectiveFov::to_perspective(&PerspectiveFov {
         fovy: Deg(camera.fov_y).into(),
         aspect,
         near: camera.near,
         far: camera.far,
     })
-    .into()
+    .into();
+
+    proj[1][1] *= -1.0;
+
+    proj
 }

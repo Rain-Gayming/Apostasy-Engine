@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use ash::{
     khr::{surface, swapchain},
     vk::{
@@ -6,7 +6,7 @@ use ash::{
         PhysicalDeviceBufferDeviceAddressFeatures, PhysicalDeviceDynamicRenderingFeatures, Queue,
     },
 };
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, ffi::CStr, sync::Arc};
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -50,13 +50,16 @@ impl RenderingContext {
                 .compatability_window
                 .window_handle()?
                 .as_raw();
-
+            let layer_names = [CStr::from_bytes_with_nul_unchecked(
+                b"VK_LAYER_KHRONOS_validation\0",
+            )];
             let instance = entry.create_instance(
                 &InstanceCreateInfo::default()
                     .application_info(&ApplicationInfo::default().api_version(vk::API_VERSION_1_3))
                     .enabled_extension_names(ash_window::enumerate_required_extensions(
                         raw_display_handle,
-                    )?),
+                    )?)
+                    .enabled_layer_names(&layer_names.map(|s| s.as_ptr())),
                 None,
             )?;
 
@@ -138,7 +141,10 @@ impl RenderingContext {
                 &vk::DeviceCreateInfo::default()
                     .queue_create_infos(&queue_create_infos)
                     .enabled_extension_names(&[swapchain::NAME.as_ptr()])
-                    .push_next(&mut PhysicalDeviceDynamicRenderingFeatures::default())
+                    .push_next(
+                        &mut PhysicalDeviceDynamicRenderingFeatures::default()
+                            .dynamic_rendering(true),
+                    )
                     .push_next(
                         &mut PhysicalDeviceBufferDeviceAddressFeatures::default()
                             .buffer_device_address(true),
@@ -404,7 +410,7 @@ impl RenderingContext {
         let entry_point = std::ffi::CString::new("main").unwrap();
 
         unsafe {
-            Ok(self
+            let pipeline = Ok(self
                 .device
                 .create_graphics_pipelines(
                     pipeline_cache,
@@ -473,10 +479,15 @@ impl RenderingContext {
                         )],
                     None,
                 )
-                .unwrap()
+                .map_err(|e| anyhow!("Pipeline creation failed: {:?}", e))?
                 .into_iter()
                 .next()
-                .unwrap())
+                .unwrap());
+
+            println!("{:?}", vertex_shader);
+            println!("{:?}", fragment_shader);
+
+            pipeline
         }
     }
 
