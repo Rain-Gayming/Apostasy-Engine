@@ -55,7 +55,7 @@ pub fn start(world: &mut World) {
 
     world
         .spawn()
-        .insert(ModelRenderer("scene.gltf".to_string()))
+        .insert(ModelRenderer("cube.glb".to_string()))
         .insert(Transform {
             position: Vector3::new(0.0, 0.0, 0.0),
             ..Default::default()
@@ -134,7 +134,7 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
                         apply_velocity(&velocity, &mut transform);
 
                         transform.yaw += -input_manager.mouse_delta.0 as f32;
-                        transform.pitch += input_manager.mouse_delta.1 as f32;
+                        transform.pitch += -input_manager.mouse_delta.1 as f32;
 
                         calculate_rotation(&mut transform);
 

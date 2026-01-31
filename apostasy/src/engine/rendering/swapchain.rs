@@ -79,6 +79,7 @@ impl Swapchain {
         }
 
         unsafe {
+            self.context.device.device_wait_idle()?;
             let new_swapchain = self.context.swapchain_extensions.create_swapchain(
                 &vk::SwapchainCreateInfoKHR::default()
                     .surface(self.surface.handle)

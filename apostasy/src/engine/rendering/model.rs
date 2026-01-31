@@ -113,6 +113,7 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
     Ok(Model { meshes })
 }
 
+#[repr(C)]
 pub struct Vertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],

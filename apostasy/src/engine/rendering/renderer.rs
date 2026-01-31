@@ -111,7 +111,7 @@ impl Renderer {
                 None,
             )?;
 
-            let inflight_frames_count = 1;
+            let inflight_frames_count = swapchain.images.len() as u32;
             let command_buffers = context.device.allocate_command_buffers(
                 &vk::CommandBufferAllocateInfo::default()
                     .command_buffer_count(inflight_frames_count)
@@ -295,6 +295,7 @@ impl Renderer {
             let swapchain_extent = self.swapchain.extent;
 
             // Query for entities with Camera and Transform components
+            // Query for entities with Camera and Transform components
             world
                 .query()
                 .include::<Camera>()
@@ -304,7 +305,64 @@ impl Renderer {
                     if let (Some(camera), Some(transform)) =
                         (entity_view.get::<Camera>(), entity_view.get::<Transform>())
                     {
-                        // TODO: Load models
+                        let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
+                        let rotation_y =
+                            Quaternion::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), Deg(45.0));
+                        let rotation_x =
+                            Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(30.0));
+                        let combined_rotation = rotation_y * rotation_x;
+
+                        let model = Matrix4::from_scale(1.0);
+                        // Cameras position as a point
+                        let camera_eye = Point3::new(
+                            transform.position.x,
+                            transform.position.y,
+                            transform.position.z,
+                        );
+
+                        // Forward direction from the camera
+                        let rotated_forward = calculate_forward(&transform);
+
+                        // Look point of the camera
+                        let look_at = Point3::new(
+                            camera_eye.x + rotated_forward.x,
+                            camera_eye.y + rotated_forward.y,
+                            camera_eye.z + rotated_forward.z,
+                        );
+
+                        // Get the up direction
+                        let rotated_up = calculate_up(&transform);
+
+                        let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
+
+                        let projection = get_perspective_projection(&camera, aspect);
+                        // Compute Projection * View * Model
+                        let mvp = projection * view * model;
+
+                        // Convert matrices to bytes for push constant (both mvp and model)
+                        let mvp_bytes: [u8; 64] = unsafe { std::mem::transmute(mvp) };
+                        let model_bytes: [u8; 64] = unsafe { std::mem::transmute(model) };
+
+                        let mut push_constants = [0u8; 128];
+                        push_constants[0..64].copy_from_slice(&mvp_bytes);
+                        push_constants[64..128].copy_from_slice(&model_bytes);
+
+                        device.cmd_push_constants(
+                            command_buffer,
+                            pipeline_layout,
+                            vk::ShaderStageFlags::VERTEX,
+                            0,
+                            &push_constants,
+                        );
+
+                        device.cmd_push_constants(
+                            command_buffer,
+                            pipeline_layout,
+                            vk::ShaderStageFlags::VERTEX,
+                            0,
+                            &push_constants,
+                        );
+
                         world.query().include::<ModelRenderer>().build().run(
                             |entity_view: EntityView<'_>| {
                                 world.with_resource::<ModelLoader, _>(|model_loader| {
@@ -338,70 +396,7 @@ impl Renderer {
                             },
                         );
 
-                        let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
-
-                        // Model matrix: cube at origin with 45-degree rotations
-                        let rotation_y =
-                            Quaternion::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), Deg(45.0));
-                        let rotation_x =
-                            Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(30.0));
-                        let combined_rotation = rotation_y * rotation_x;
-
-                        let model = Matrix4::from(combined_rotation);
-
-                        // Cameras position as a point
-                        let camera_eye = Point3::new(
-                            transform.position.x,
-                            transform.position.y,
-                            transform.position.z,
-                        );
-
-                        // Forward direction from the camera
-                        let rotated_forward = calculate_forward(&transform);
-
-                        // Look point of the camera
-                        let look_at = Point3::new(
-                            camera_eye.x + rotated_forward.x,
-                            camera_eye.y + rotated_forward.y,
-                            camera_eye.z + rotated_forward.z,
-                        );
-
-                        // Get the up direction
-                        let rotated_up = calculate_up(&transform);
-
-                        let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
-
-                        let projection = get_perspective_projection(&camera, aspect);
-
-                        // Compute Projection * View * Model
-                        let mvp = projection * view * model;
-
-                        // Convert matrices to bytes for push constant (both mvp and model)
-                        let mvp_array: [f32; 16] = std::mem::transmute(mvp);
-                        let model_array: [f32; 16] = std::mem::transmute(model);
-
-                        let mut push_constants = Vec::new();
-                        push_constants.extend_from_slice(
-                            &mvp_array
-                                .iter()
-                                .flat_map(|f| f.to_le_bytes().to_vec())
-                                .collect::<Vec<u8>>(),
-                        );
-                        push_constants.extend_from_slice(
-                            &model_array
-                                .iter()
-                                .flat_map(|f| f.to_le_bytes().to_vec())
-                                .collect::<Vec<u8>>(),
-                        );
-
-                        device.cmd_push_constants(
-                            command_buffer,
-                            pipeline_layout,
-                            vk::ShaderStageFlags::VERTEX,
-                            0,
-                            &push_constants,
-                        );
-                        device.cmd_draw(command_buffer, 36, 1, 0, 0);
+                        // device.cmd_draw(command_buffer, 36, 1, 0, 0);
                     }
                 });
             self.context.device.cmd_end_rendering(frame.command_buffer);
