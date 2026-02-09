@@ -50,7 +50,7 @@
         - [x] mouse input
 
 **Rendering:**
-
+ 
 - [x] windowing
     - [x] window creation
     - [x] window titles 
