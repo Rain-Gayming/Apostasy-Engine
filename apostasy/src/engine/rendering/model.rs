@@ -157,7 +157,7 @@ pub struct Mesh {
     pub index_buffer: vk::Buffer,
     pub index_buffer_memory: vk::DeviceMemory,
     pub index_count: u32,
-    pub material: Material,
+    // pub material: Material,
 }
 
 #[derive(Component)]
@@ -226,29 +226,6 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
                 .into_u32()
                 .collect::<Vec<_>>();
 
-            // Load material
-            // let gltf_material = primitive.material();
-            // let pbr = gltf_material.pbr_metallic_roughness();
-            //
-            // let material = Material {
-            //     base_color: pbr.base_color_factor(),
-            //     metallic: pbr.metallic_factor(),
-            //     roughness: pbr.roughness_factor(),
-            //     emissive: gltf_material.emissive_factor(),
-            //     alpha_mode: gltf_material.alpha_mode(),
-            //     alpha_cutoff: gltf_material.alpha_cutoff().unwrap_or(0.5),
-            //     double_sided: gltf_material.double_sided(),
-            //     texture_indices: [],
-            //     base_color_texture: pbr.base_color_texture().map(|t| t.texture().index()),
-            //     metallic_roughness_texture: pbr
-            //         .metallic_roughness_texture()
-            //         .map(|t| t.texture().index()),
-            //     normal_texture: gltf_material.normal_texture().map(|t| t.texture().index()),
-            //     emissive_texture: gltf_material
-            //         .emissive_texture()
-            //         .map(|t| t.texture().index()),
-            // };
-
             // Create buffers
             let vertex_buffer = context.create_vertex_buffer(vertices.as_slice())?;
             let index_buffer = context.create_index_buffer(&indices)?;
@@ -259,7 +236,7 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
                 index_buffer: index_buffer.0,
                 index_buffer_memory: index_buffer.1,
                 index_count: indices.len() as u32,
-                material,
+                // material,
             });
         }
     }
