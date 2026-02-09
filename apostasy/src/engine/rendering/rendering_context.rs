@@ -13,7 +13,7 @@ use winit::{
 };
 
 use crate::engine::rendering::{
-    model::Vertex,
+    model::{Texture, Vertex},
     physical_device::PhysicalDevice,
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
     surface::Surface,
@@ -393,6 +393,127 @@ impl RenderingContext {
             let shader_module = self.device.create_shader_module(&create_info, None)?;
             Ok(shader_module)
         }
+    }
+
+    pub fn create_texture(&self, pixels: &[u8], width: u32, height: u32) -> Result<Texture> {
+        let image_size = (width * height * 4) as vk::DeviceSize;
+
+        // Create staging buffer
+        let (staging_buffer, staging_memory) = self.create_buffer(
+            image_size,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+        )?;
+
+        // Copy pixel data to staging buffer
+        unsafe {
+            let data = self.device.map_memory(
+                staging_memory,
+                0,
+                image_size,
+                vk::MemoryMapFlags::empty(),
+            )?;
+            std::ptr::copy_nonoverlapping(pixels.as_ptr(), data as *mut u8, pixels.len());
+            self.device.unmap_memory(staging_memory);
+        }
+
+        // Create image
+        let image_info = vk::ImageCreateInfo::default()
+            .image_type(vk::ImageType::TYPE_2D)
+            .extent(vk::Extent3D {
+                width,
+                height,
+                depth: 1,
+            })
+            .mip_levels(1)
+            .array_layers(1)
+            .format(vk::Format::R8G8B8A8_SRGB)
+            .tiling(vk::ImageTiling::OPTIMAL)
+            .initial_layout(vk::ImageLayout::UNDEFINED)
+            .usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE)
+            .samples(vk::SampleCountFlags::TYPE_1);
+
+        let image = unsafe { self.device.create_image(&image_info, None)? };
+
+        let mem_requirements = unsafe { self.device.get_image_memory_requirements(image) };
+        let alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_requirements.size)
+            .memory_type_index(self.find_memory_type(
+                mem_requirements.memory_type_bits,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            )?);
+
+        let image_memory = unsafe {
+            let mem = self.device.allocate_memory(&alloc_info, None)?;
+            self.device.bind_image_memory(image, mem, 0)?;
+            mem
+        };
+        //
+        // // Transition image layout and copy buffer to image
+        // self.transition_image_layout(
+        //     image,
+        //     vk::ImageLayout::UNDEFINED,
+        //     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        // )?;
+        //
+        // self.copy_buffer_to_image(staging_buffer, image, width, height)?;
+        //
+        // self.transition_image_layout(
+        //     image,
+        //     vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        //     vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        // )?;
+
+        // Cleanup staging buffer
+        unsafe {
+            self.device.destroy_buffer(staging_buffer, None);
+            self.device.free_memory(staging_memory, None);
+        }
+
+        // Create image view
+        let view_info = vk::ImageViewCreateInfo::default()
+            .image(image)
+            .view_type(vk::ImageViewType::TYPE_2D)
+            .format(vk::Format::R8G8B8A8_SRGB)
+            .subresource_range(vk::ImageSubresourceRange {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            });
+
+        let image_view = unsafe { self.device.create_image_view(&view_info, None)? };
+
+        // Create sampler
+        let sampler_info = vk::SamplerCreateInfo::default()
+            .mag_filter(vk::Filter::LINEAR)
+            .min_filter(vk::Filter::LINEAR)
+            .address_mode_u(vk::SamplerAddressMode::REPEAT)
+            .address_mode_v(vk::SamplerAddressMode::REPEAT)
+            .address_mode_w(vk::SamplerAddressMode::REPEAT)
+            .anisotropy_enable(true)
+            .max_anisotropy(16.0)
+            .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
+            .unnormalized_coordinates(false)
+            .compare_enable(false)
+            .compare_op(vk::CompareOp::ALWAYS)
+            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+            .mip_lod_bias(0.0)
+            .min_lod(0.0)
+            .max_lod(0.0);
+
+        let sampler = unsafe { self.device.create_sampler(&sampler_info, None)? };
+
+        Ok(Texture {
+            image,
+            image_memory,
+            image_view,
+            sampler,
+            width,
+            height,
+        })
     }
 
     /// Creates a graphics pipeline

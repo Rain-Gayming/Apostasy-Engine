@@ -66,3 +66,4 @@
     - [x] pipeline creation
     - [x] image creation
     - [x] rendering
+    - [ ] texture creation
