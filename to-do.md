@@ -48,7 +48,7 @@
         - [x] key bind activation
         - [x] key bind registering
         - [x] mouse input
-
+ 
 **Rendering:**
  
 - [x] windowing
