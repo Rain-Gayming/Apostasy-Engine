@@ -1,6 +1,9 @@
 use std::fs;
 
-use crate::{self as apostasy, engine::rendering::rendering_context::RenderingContext};
+use crate::{
+    self as apostasy,
+    engine::rendering::{rendering_context::RenderingContext, vertex::Vertex},
+};
 use anyhow::Result;
 use apostasy_macros::{Component, Resource};
 use ash::vk;
@@ -41,113 +44,6 @@ pub struct Texture {
     pub sampler: vk::Sampler,
     pub width: u32,
     pub height: u32,
-}
-
-fn load_material(gltf_material: &gltf::Material, textures: &[Option<Texture>]) -> Result<Material> {
-    let pbr = gltf_material.pbr_metallic_roughness();
-
-    let base_color_texture = pbr
-        .base_color_texture()
-        .and_then(|info| textures.get(info.texture().index()))
-        .and_then(|t| t.clone());
-
-    let metallic_roughness_texture = pbr
-        .metallic_roughness_texture()
-        .and_then(|info| textures.get(info.texture().index()))
-        .and_then(|t| t.clone());
-
-    let normal_texture = gltf_material
-        .normal_texture()
-        .and_then(|info| textures.get(info.texture().index()))
-        .and_then(|t| t.clone());
-
-    let emissive_texture = gltf_material
-        .emissive_texture()
-        .and_then(|info| textures.get(info.texture().index()))
-        .and_then(|t| t.clone());
-
-    Ok(Material {
-        base_color: pbr.base_color_factor(),
-        metallic: pbr.metallic_factor(),
-        roughness: pbr.roughness_factor(),
-        emissive: gltf_material.emissive_factor(),
-        alpha_mode: gltf_material.alpha_mode(),
-        alpha_cutoff: gltf_material.alpha_cutoff().unwrap_or(0.5),
-        double_sided: gltf_material.double_sided(),
-        base_color_texture,
-        metallic_roughness_texture,
-        normal_texture,
-        emissive_texture,
-    })
-}
-
-fn load_texture(image: &gltf::image::Data, context: &RenderingContext) -> Result<Texture> {
-    let width = image.width;
-    let height = image.height;
-    let pixels = &image.pixels;
-
-    // Convert image format to RGBA if needed
-    let rgba_pixels = match image.format {
-        gltf::image::Format::R8G8B8A8 => pixels.clone(),
-        gltf::image::Format::R8G8B8 => {
-            // Convert RGB to RGBA
-            let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
-            for chunk in pixels.chunks(3) {
-                rgba.push(chunk[0]);
-                rgba.push(chunk[1]);
-                rgba.push(chunk[2]);
-                rgba.push(255); // Alpha
-            }
-            rgba
-        }
-        gltf::image::Format::R8G8 => {
-            // Convert RG to RGBA
-            let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
-            for chunk in pixels.chunks(2) {
-                rgba.push(chunk[0]);
-                rgba.push(chunk[1]);
-                rgba.push(0);
-                rgba.push(255);
-            }
-            rgba
-        }
-        gltf::image::Format::R8 => {
-            // Convert R to RGBA
-            let mut rgba = Vec::with_capacity(width as usize * height as usize * 4);
-            for &r in pixels {
-                rgba.push(r);
-                rgba.push(r);
-                rgba.push(r);
-                rgba.push(255);
-            }
-            rgba
-        }
-        _ => {
-            return Err(anyhow::anyhow!("Unsupported image format"));
-        }
-    };
-
-    // Create texture using your rendering context
-    // You'll need to add this method to RenderingContext
-    context.create_texture(&rgba_pixels, width, height)
-}
-
-impl Default for Material {
-    fn default() -> Self {
-        Self {
-            base_color: [1.0, 1.0, 1.0, 1.0],
-            metallic: 0.0,
-            roughness: 1.0,
-            emissive: [0.0, 0.0, 0.0],
-            alpha_mode: AlphaMode::Opaque,
-            alpha_cutoff: 0.5,
-            double_sided: false,
-            base_color_texture: None,
-            metallic_roughness_texture: None,
-            normal_texture: None,
-            emissive_texture: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -242,42 +138,4 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
     }
 
     Ok(Model { meshes })
-}
-
-#[repr(C)]
-pub struct Vertex {
-    pub position: [f32; 3],
-    pub normal: [f32; 3],
-    pub tex_coord: [f32; 2],
-}
-impl Vertex {
-    pub fn get_binding_description() -> vk::VertexInputBindingDescription {
-        vk::VertexInputBindingDescription::default()
-            .binding(0)
-            .stride(std::mem::size_of::<Vertex>() as u32)
-            .input_rate(vk::VertexInputRate::VERTEX)
-    }
-
-    pub fn get_attribute_descriptions() -> [vk::VertexInputAttributeDescription; 3] {
-        [
-            // Position
-            vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(0)
-                .format(vk::Format::R32G32B32_SFLOAT)
-                .offset(0),
-            // Normal
-            vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(1)
-                .format(vk::Format::R32G32B32_SFLOAT)
-                .offset(12), // 3 floats * 4 bytes
-            // Tex Coord
-            vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(2)
-                .format(vk::Format::R32G32_SFLOAT)
-                .offset(24), // 6 floats * 4 bytes
-        ]
-    }
 }

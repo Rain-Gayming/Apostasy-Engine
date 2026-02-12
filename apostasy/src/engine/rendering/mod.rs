@@ -6,3 +6,4 @@ pub mod renderer;
 pub mod rendering_context;
 pub mod surface;
 pub mod swapchain;
+pub mod vertex;
