@@ -1,4 +1,6 @@
+use crate as apostasy;
 use anyhow::{Result, anyhow};
+use apostasy_macros::Resource;
 use ash::{
     khr::{surface, swapchain},
     vk::{
@@ -13,13 +15,14 @@ use winit::{
 };
 
 use crate::engine::rendering::{
+    models::vertex::{Vertex, VertexDefinition, VoxelVertex},
     physical_device::PhysicalDevice,
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
     surface::Surface,
-    vertex::{Vertex, VertexDefinition, VoxelVertex},
 };
 
 /// A set of data required for a renderer
+#[derive(Resource)]
 pub struct RenderingContext {
     pub queues: Vec<vk::Queue>,
     pub device: ash::Device,
@@ -397,7 +400,6 @@ impl RenderingContext {
         &self,
         vertex_shader: vk::ShaderModule,
         fragment_shader: vk::ShaderModule,
-        extent: vk::Extent2D,
         format: vk::Format,
         depth_format: vk::Format,
         pipeline_layout: vk::PipelineLayout,

@@ -150,6 +150,7 @@ impl Clone for Query {
             components: self.components.clone(),
             world: World {
                 crust: self.world.crust.clone(),
+                rendering_context: self.world.rendering_context.clone(),
             },
         }
     }

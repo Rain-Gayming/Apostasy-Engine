@@ -1,3 +1,6 @@
+use apostasy::engine::rendering::{
+    models::model::MeshRenderer, rendering_context::RenderingContext,
+};
 #[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
     ecs::{
@@ -12,7 +15,7 @@ use apostasy::engine::{
             InputManager, KeyAction, KeyBind, input_vector_3d, is_keybind_active, register_keybind,
         },
     },
-    rendering::model::{ModelLoader, ModelRenderer},
+    rendering::models::model::{ModelLoader, ModelRenderer},
     start_app,
     windowing::{
         WindowManager,
@@ -23,15 +26,17 @@ use apostasy_macros::{Resource, fixed_update, start};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
+use crate::world::chunk::create_chunk;
+
+pub mod world;
+
 #[derive(Resource)]
 pub struct MyResource {
     pub value: i32,
 }
 
 fn main() {
-    let world = World::new();
-
-    start_app(world).unwrap();
+    start_app().unwrap();
 }
 
 #[start(priority = 1)]
@@ -41,6 +46,13 @@ pub fn start(world: &mut World) {
     world.insert_resource::<InputManager>(InputManager::default());
     world.insert_resource::<CursorManager>(CursorManager::default());
     world.insert_resource::<ModelLoader>(ModelLoader::default());
+    world
+        .spawn()
+        .insert(MeshRenderer(create_chunk(&world.rendering_context.clone())))
+        .insert(Transform {
+            position: Vector3::new(0.0, 0.0, 0.0),
+            ..Default::default()
+        });
 
     world
         .spawn()
@@ -52,14 +64,6 @@ pub fn start(world: &mut World) {
             ..Default::default()
         })
         .insert(Controllable);
-
-    world
-        .spawn()
-        .insert(ModelRenderer("cube.glb".to_string()))
-        .insert(Transform {
-            position: Vector3::new(0.0, 0.0, 0.0),
-            ..Default::default()
-        });
 }
 
 #[start]

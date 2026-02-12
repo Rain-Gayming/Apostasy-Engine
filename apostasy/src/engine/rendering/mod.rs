@@ -1,4 +1,4 @@
-pub mod model;
+pub mod models;
 pub mod physical_device;
 pub mod queue_families;
 pub mod render_engine;
@@ -6,4 +6,3 @@ pub mod renderer;
 pub mod rendering_context;
 pub mod surface;
 pub mod swapchain;
-pub mod vertex;

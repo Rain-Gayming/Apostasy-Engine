@@ -2,7 +2,7 @@ use std::fs;
 
 use crate::{
     self as apostasy,
-    engine::rendering::{rendering_context::RenderingContext, vertex::Vertex},
+    engine::rendering::{models::vertex::Vertex, rendering_context::RenderingContext},
 };
 use anyhow::Result;
 use apostasy_macros::{Component, Resource};
@@ -55,6 +55,9 @@ pub struct Mesh {
     pub index_count: u32,
     // pub material: Material,
 }
+
+#[derive(Component)]
+pub struct MeshRenderer(pub Mesh);
 
 #[derive(Component)]
 pub struct ModelRenderer(pub String);

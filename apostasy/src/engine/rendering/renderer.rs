@@ -7,14 +7,13 @@ use crate::engine::{
         },
         entity::EntityView,
     },
-    rendering::model::{Mesh, Model, ModelLoader, ModelRenderer, get_model},
+    rendering::models::model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
 };
 use std::sync::Arc;
 
 use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
-use cgmath::{Deg, Matrix4, Point3, Quaternion, Rotation3, Vector3};
-use egui::{Pos2, epaint::Vertex, pos2};
+use cgmath::{Matrix4, Point3};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{
     event::WindowEvent,
@@ -93,7 +92,6 @@ impl Renderer {
             let pipeline = context.create_graphics_pipeline(
                 vertex_shader,
                 fragment_shader,
-                swapchain.extent,
                 swapchain.format,
                 swapchain.depth_format,
                 pipeline_layout,
@@ -141,7 +139,7 @@ impl Renderer {
             }
 
             swapchain.resize().unwrap();
-            let mut egui_state = egui_winit::State::new(
+            let egui_state = egui_winit::State::new(
                 egui::Context::default(),
                 egui::ViewportId::ROOT,
                 &window,
@@ -306,11 +304,6 @@ impl Renderer {
                         (entity_view.get::<Camera>(), entity_view.get::<Transform>())
                     {
                         let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
-                        let rotation_y =
-                            Quaternion::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), Deg(45.0));
-                        let rotation_x =
-                            Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(30.0));
-                        let combined_rotation = rotation_y * rotation_x;
 
                         let model = Matrix4::from_scale(1.0);
                         // Cameras position as a point
@@ -339,9 +332,9 @@ impl Renderer {
                         // Compute Projection * View * Model
                         let mvp = projection * view * model;
 
-                        // Convert matrices to bytes for push constant (both mvp and model)
-                        let mvp_bytes: [u8; 64] = unsafe { std::mem::transmute(mvp) };
-                        let model_bytes: [u8; 64] = unsafe { std::mem::transmute(model) };
+                        // Convert matrices to bytes for push constant
+                        let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
+                        let model_bytes: [u8; 64] = std::mem::transmute(model);
 
                         let mut push_constants = [0u8; 128];
                         push_constants[0..64].copy_from_slice(&mvp_bytes);
@@ -392,6 +385,33 @@ impl Renderer {
                                             0,
                                         );
                                     }
+                                });
+                            },
+                        );
+                        world.query().include::<MeshRenderer>().build().run(
+                            |entity_view: EntityView<'_>| {
+                                world.with_resource::<ModelLoader, _>(|model_loader| {
+                                    let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
+                                    device.cmd_bind_vertex_buffers(
+                                        command_buffer,
+                                        0,
+                                        &[mesh.vertex_buffer],
+                                        &[0],
+                                    );
+                                    device.cmd_bind_index_buffer(
+                                        command_buffer,
+                                        mesh.index_buffer,
+                                        0,
+                                        vk::IndexType::UINT32,
+                                    );
+                                    device.cmd_draw_indexed(
+                                        command_buffer,
+                                        mesh.index_count,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                    );
                                 });
                             },
                         );

@@ -15,7 +15,7 @@ use winit::{
 use crate::engine::{
     ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
     rendering::{
-        model::{ModelLoader, load_models},
+        models::model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -47,9 +47,7 @@ impl Application {
 
 impl ApplicationHandler for Application {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        if let Some(world) = self.world.take() {
-            self.render_engine = Some(Engine::new(event_loop, world).unwrap());
-        }
+        self.render_engine = Some(Engine::new(event_loop).unwrap());
     }
 
     fn window_event(
@@ -85,14 +83,12 @@ impl ApplicationHandler for Application {
     }
 }
 
-pub fn start_app(world: World) -> Result<()> {
+pub fn start_app() -> Result<()> {
     tracing_subscriber::fmt::init();
     let mut app = Application {
         render_engine: None,
-        world: Some(world),
+        world: None,
     };
-
-    app.start();
 
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -103,13 +99,13 @@ pub fn start_app(world: World) -> Result<()> {
 /// The render engine, contains all the data for rendering, windowing and their logic
 pub struct Engine {
     pub renderers: HashMap<WindowId, Renderer>,
-    pub rendering_context: Arc<RenderingContext>,
     pub world: World,
+    pub rendering_context: Arc<RenderingContext>,
     pub timer: EngineTimer,
 }
 
 impl Engine {
-    pub fn new(event_loop: &ActiveEventLoop, world: World) -> Result<Self> {
+    pub fn new(event_loop: &ActiveEventLoop) -> Result<Self> {
         let primary_window = Arc::new(
             event_loop.create_window(
                 Window::default_attributes()
@@ -125,6 +121,9 @@ impl Engine {
             queue_family_picker: single_queue_family,
         })?);
 
+        let mut world = World::new(rendering_context.clone());
+        world.start();
+
         let renderers = windows
             .iter()
             .map(|(id, window)| {
@@ -132,9 +131,6 @@ impl Engine {
                 (*id, renderer)
             })
             .collect::<HashMap<WindowId, Renderer>>();
-
-        // let model_loader = ModelLoader::default();
-        // load_models_from_dir(main_renderer, Path::new("apostasy/res/models/"));
 
         let timer = EngineTimer::new();
 
@@ -153,8 +149,8 @@ impl Engine {
 
         Ok(Self {
             renderers,
-            rendering_context,
             world,
+            rendering_context,
             timer,
         })
     }

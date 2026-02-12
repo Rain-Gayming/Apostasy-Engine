@@ -9,14 +9,17 @@ use std::{
 use parking_lot::RwLock;
 use thread_local::ThreadLocal;
 
-use crate::engine::ecs::{
-    command::Command,
-    component::COMPONENT_ENTRIES,
-    core::Core,
-    entity::{Entity, EntityLocation, EntityView},
-    query::QueryBuilder,
-    resource::{Resource, ResourceMap, ResourcesGetter},
-    system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
+use crate::engine::{
+    ecs::{
+        command::Command,
+        component::COMPONENT_ENTRIES,
+        core::Core,
+        entity::{Entity, EntityLocation, EntityView},
+        query::QueryBuilder,
+        resource::{Resource, ResourceMap, ResourcesGetter},
+        system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
+    },
+    rendering::rendering_context::RenderingContext,
 };
 
 pub mod archetype;
@@ -33,6 +36,7 @@ pub mod system;
 /// Wrapper for the Crust
 pub struct World {
     pub crust: Arc<Crust>,
+    pub rendering_context: Arc<RenderingContext>,
 }
 
 /// Container for the Mantle
@@ -152,7 +156,7 @@ impl World {
     ///         let world = World::new();
     ///     }
     /// ```
-    pub fn new() -> Self {
+    pub fn new(rendering_context: Arc<RenderingContext>) -> Self {
         let mut world = Self {
             crust: Arc::new(Crust {
                 flush_guard: AtomicUsize::new(0),
@@ -162,6 +166,7 @@ impl World {
                     resources: Default::default(),
                 }),
             }),
+            rendering_context,
         };
 
         for init in COMPONENT_ENTRIES {
@@ -448,6 +453,7 @@ impl World {
     pub fn query(&self) -> QueryBuilder {
         QueryBuilder::new(World {
             crust: self.crust.clone(),
+            rendering_context: self.rendering_context.clone(),
         })
     }
 }
