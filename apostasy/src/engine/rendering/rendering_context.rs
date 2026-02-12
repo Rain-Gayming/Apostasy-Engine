@@ -394,9 +394,10 @@ impl RenderingContext {
         }
     }
 
-    /// Creates a graphics pipeline
+    /// Creates a graphics pipeline for non voxel rendering
     #[allow(clippy::too_many_arguments)]
-    pub fn create_graphics_pipeline(
+    #[allow(clippy::let_and_return)]
+    pub fn create_model_graphics_pipeline(
         &self,
         vertex_shader: vk::ShaderModule,
         fragment_shader: vk::ShaderModule,
@@ -406,17 +407,11 @@ impl RenderingContext {
         pipeline_cache: vk::PipelineCache,
     ) -> Result<vk::Pipeline> {
         let entry_point = std::ffi::CString::new("main").unwrap();
-
-        let bindings = vec![
-            Vertex::get_binding_description(),
-            VoxelVertex::get_binding_description(),
-        ];
-
-        let mut attributes = Vertex::get_attribute_descriptions();
-        attributes.extend(VoxelVertex::get_attribute_descriptions());
+        let bindings = vec![Vertex::get_binding_description()];
+        let attributes = Vertex::get_attribute_descriptions();
 
         unsafe {
-            let pipeline = Ok(self
+            let pipelines = self
                 .device
                 .create_graphics_pipelines(
                     pipeline_cache,
@@ -483,15 +478,99 @@ impl RenderingContext {
                         )],
                     None,
                 )
-                .map_err(|e| anyhow!("Pipeline creation failed: {:?}", e))?
-                .into_iter()
-                .next()
-                .unwrap());
+                .map_err(|e| anyhow!("Pipeline creation failed: {:?}", e))?;
 
-            println!("{:?}", vertex_shader);
-            println!("{:?}", fragment_shader);
+            Ok(pipelines[0])
+        }
+    }
 
-            pipeline
+    /// Creates a graphics pipeline for voxel rendering
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::let_and_return)]
+    pub fn create_voxel_graphics_pipeline(
+        &self,
+        vertex_shader: vk::ShaderModule,
+        fragment_shader: vk::ShaderModule,
+        format: vk::Format,
+        depth_format: vk::Format,
+        pipeline_layout: vk::PipelineLayout,
+        pipeline_cache: vk::PipelineCache,
+    ) -> Result<vk::Pipeline> {
+        let entry_point = std::ffi::CString::new("main").unwrap();
+        let bindings = vec![VoxelVertex::get_binding_description()];
+        let attributes = VoxelVertex::get_attribute_descriptions();
+
+        unsafe {
+            let pipelines = self
+                .device
+                .create_graphics_pipelines(
+                    pipeline_cache,
+                    &[vk::GraphicsPipelineCreateInfo::default()
+                        .stages(&[
+                            vk::PipelineShaderStageCreateInfo::default()
+                                .stage(vk::ShaderStageFlags::VERTEX)
+                                .module(vertex_shader)
+                                .name(&entry_point),
+                            vk::PipelineShaderStageCreateInfo::default()
+                                .stage(vk::ShaderStageFlags::FRAGMENT)
+                                .module(fragment_shader)
+                                .name(&entry_point),
+                        ])
+                        .vertex_input_state(
+                            &vk::PipelineVertexInputStateCreateInfo::default()
+                                .vertex_binding_descriptions(&bindings)
+                                .vertex_attribute_descriptions(&attributes),
+                        )
+                        .input_assembly_state(
+                            &vk::PipelineInputAssemblyStateCreateInfo::default()
+                                .topology(vk::PrimitiveTopology::TRIANGLE_LIST),
+                        )
+                        .viewport_state(
+                            &vk::PipelineViewportStateCreateInfo::default()
+                                .scissor_count(1)
+                                .viewport_count(1),
+                        )
+                        .rasterization_state(
+                            &vk::PipelineRasterizationStateCreateInfo::default()
+                                .polygon_mode(vk::PolygonMode::FILL)
+                                .cull_mode(vk::CullModeFlags::NONE)
+                                .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
+                                .line_width(1.0),
+                        )
+                        .multisample_state(
+                            &vk::PipelineMultisampleStateCreateInfo::default()
+                                .rasterization_samples(vk::SampleCountFlags::TYPE_1),
+                        )
+                        .color_blend_state(
+                            &vk::PipelineColorBlendStateCreateInfo::default().attachments(&[
+                                vk::PipelineColorBlendAttachmentState::default()
+                                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+                                    .blend_enable(false),
+                            ]),
+                        )
+                        .depth_stencil_state(
+                            &vk::PipelineDepthStencilStateCreateInfo::default()
+                                .depth_test_enable(true)
+                                .depth_write_enable(true)
+                                .depth_compare_op(vk::CompareOp::LESS),
+                        )
+                        .dynamic_state(
+                            &vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&[
+                                vk::DynamicState::VIEWPORT,
+                                vk::DynamicState::SCISSOR,
+                            ]),
+                        )
+                        .layout(pipeline_layout)
+                        .push_next(
+                            &mut vk::PipelineRenderingCreateInfo::default()
+                                .color_attachment_formats(&[format])
+                                .depth_attachment_format(depth_format),
+                        )],
+                    None,
+                )
+                .map_err(|e| anyhow!("Pipeline creation failed: {:?}", e))?;
+
+            Ok(pipelines[0])
         }
     }
 

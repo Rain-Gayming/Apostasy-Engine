@@ -1,5 +1,11 @@
 use ash::vk;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum VertexType {
+    Model,
+    Voxel,
+}
+
 #[repr(C)]
 pub struct Vertex {
     pub position: [f32; 3],
@@ -36,6 +42,10 @@ impl VertexDefinition for Vertex {
                 .offset(24),
         ]
     }
+
+    fn get_vertex_type() -> VertexType {
+        VertexType::Model
+    }
 }
 
 #[repr(C)]
@@ -54,14 +64,18 @@ impl VertexDefinition for VoxelVertex {
         vec![
             vk::VertexInputAttributeDescription::default()
                 .binding(1)
-                .location(3)
+                .location(0)
                 .format(vk::Format::R32_UINT)
                 .offset(0),
         ]
+    }
+    fn get_vertex_type() -> VertexType {
+        VertexType::Voxel
     }
 }
 
 pub trait VertexDefinition {
     fn get_binding_description() -> vk::VertexInputBindingDescription;
     fn get_attribute_descriptions() -> Vec<vk::VertexInputAttributeDescription>;
+    fn get_vertex_type() -> VertexType;
 }

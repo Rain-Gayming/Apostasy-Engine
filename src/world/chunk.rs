@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use apostasy::engine::rendering::{
-    models::{model::Mesh, vertex::VoxelVertex},
+    models::{
+        model::Mesh,
+        vertex::{VertexType, VoxelVertex},
+    },
     rendering_context::RenderingContext,
 };
 
@@ -26,22 +29,27 @@ pub fn create_chunk(context: &Arc<RenderingContext>) -> Mesh {
         index_buffer: index_buffer.0,
         index_buffer_memory: index_buffer.1,
         index_count: indices.len() as u32,
+        vertex_type: VertexType::Voxel,
         // material,
     }
 }
-
 static CUBE_VERTICES: [[u32; 3]; 8] = [
-    [0, 0, 0],
-    [1, 0, 0],
-    [1, 1, 0],
-    [0, 1, 0],
-    [0, 0, 1],
-    [1, 0, 1],
-    [1, 1, 1],
-    [0, 1, 1],
+    [0, 0, 0], // 0
+    [1, 0, 0], // 1
+    [1, 1, 0], // 2
+    [0, 1, 0], // 3
+    [0, 0, 1], // 4
+    [1, 0, 1], // 5
+    [1, 1, 1], // 6
+    [0, 1, 1], // 7
 ];
 
 static CUBE_INDICES: [u32; 36] = [
-    0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18,
-    16, 18, 19, 20, 21, 22, 20, 22, 23,
+    // Front face (z = 0) - looking at -Z
+    0, 2, 1, 0, 3, 2, // Back face (z = 1) - looking at +Z
+    4, 5, 6, 4, 6, 7, // Left face (x = 0) - looking at -X
+    0, 4, 7, 0, 7, 3, // Right face (x = 1) - looking at +X
+    1, 2, 6, 1, 6, 5, // Bottom face (y = 0) - looking at -Y
+    0, 1, 5, 0, 5, 4, // Top face (y = 1) - looking at +Y
+    3, 7, 6, 3, 6, 2,
 ];

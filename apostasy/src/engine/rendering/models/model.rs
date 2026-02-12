@@ -2,7 +2,10 @@ use std::fs;
 
 use crate::{
     self as apostasy,
-    engine::rendering::{models::vertex::Vertex, rendering_context::RenderingContext},
+    engine::rendering::{
+        models::vertex::{Vertex, VertexType},
+        rendering_context::RenderingContext,
+    },
 };
 use anyhow::Result;
 use apostasy_macros::{Component, Resource};
@@ -53,6 +56,7 @@ pub struct Mesh {
     pub index_buffer: vk::Buffer,
     pub index_buffer_memory: vk::DeviceMemory,
     pub index_count: u32,
+    pub vertex_type: VertexType,
     // pub material: Material,
 }
 
@@ -135,6 +139,7 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
                 index_buffer: index_buffer.0,
                 index_buffer_memory: index_buffer.1,
                 index_count: indices.len() as u32,
+                vertex_type: VertexType::Model,
                 // material,
             });
         }

@@ -7,7 +7,10 @@ use crate::engine::{
         },
         entity::EntityView,
     },
-    rendering::models::model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
+    rendering::models::{
+        model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
+        vertex::VertexType,
+    },
 };
 use std::sync::Arc;
 
@@ -41,7 +44,8 @@ pub struct Renderer {
     pub frame_index: usize,
     pub frames: Vec<Frame>,
     pub command_pool: vk::CommandPool,
-    pub pipeline: vk::Pipeline,
+    pub model_pipeline: vk::Pipeline,
+    pub voxel_pipeline: vk::Pipeline,
     pub pipeline_layout: vk::PipelineLayout,
     pub swapchain: Swapchain,
     pub context: Arc<RenderingContext>,
@@ -63,8 +67,11 @@ impl Renderer {
         let mut swapchain = Swapchain::new(context.clone(), window.clone())?;
         swapchain.resize().unwrap();
 
-        let vertex_shader = load_engine_shader_module(context.as_ref(), "vert.spv")?;
-        let fragment_shader = load_engine_shader_module(context.as_ref(), "frag.spv")?;
+        let model_vertex_shader = load_engine_shader_module(context.as_ref(), "model_vert.spv")?;
+        let model_fragment_shader = load_engine_shader_module(context.as_ref(), "model_frag.spv")?;
+
+        let voxel_vertex_shader = load_engine_shader_module(context.as_ref(), "voxel_vert.spv")?;
+        let voxel_fragment_shader = load_engine_shader_module(context.as_ref(), "voxel_frag.spv")?;
 
         unsafe {
             let ubo_binding = vk::DescriptorSetLayoutBinding::default()
@@ -80,7 +87,7 @@ impl Renderer {
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX)
                 .offset(0)
-                .size(128);
+                .size(140);
 
             let pipeline_layout = context.device.create_pipeline_layout(
                 &vk::PipelineLayoutCreateInfo::default()
@@ -89,18 +96,36 @@ impl Renderer {
                 None,
             )?;
 
-            let pipeline = context.create_graphics_pipeline(
-                vertex_shader,
-                fragment_shader,
+            let model_pipeline = context.create_model_graphics_pipeline(
+                model_vertex_shader,
+                model_fragment_shader,
                 swapchain.format,
                 swapchain.depth_format,
                 pipeline_layout,
                 Default::default(),
             )?;
 
-            context.device.destroy_shader_module(vertex_shader, None);
+            let voxel_pipeline = context.create_voxel_graphics_pipeline(
+                voxel_vertex_shader,
+                voxel_fragment_shader,
+                swapchain.format,
+                swapchain.depth_format,
+                pipeline_layout,
+                Default::default(),
+            )?;
 
-            context.device.destroy_shader_module(fragment_shader, None);
+            context
+                .device
+                .destroy_shader_module(model_vertex_shader, None);
+            context
+                .device
+                .destroy_shader_module(model_fragment_shader, None);
+            context
+                .device
+                .destroy_shader_module(voxel_vertex_shader, None);
+            context
+                .device
+                .destroy_shader_module(voxel_fragment_shader, None);
 
             let command_pool = context.device.create_command_pool(
                 &vk::CommandPoolCreateInfo::default()
@@ -165,7 +190,8 @@ impl Renderer {
                 frame_index: 0,
                 frames,
                 command_pool,
-                pipeline,
+                model_pipeline,
+                voxel_pipeline,
                 pipeline_layout,
                 swapchain,
                 context,
@@ -175,7 +201,6 @@ impl Renderer {
             })
         }
     }
-
     /// Renders the world from a perspective of a camera
     pub fn render(&mut self, world: &World) -> Result<()> {
         let frame = &mut self.frames[self.frame_index];
@@ -236,7 +261,7 @@ impl Renderer {
                 queue_family_index: vk::QUEUE_FAMILY_IGNORED,
             };
 
-            // Transtion the image layout from undefined to color attachment
+            // Transition the image layout from undefined to color attachment
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
@@ -281,18 +306,11 @@ impl Renderer {
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
 
-            self.context.device.cmd_bind_pipeline(
-                frame.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline,
-            );
-
             let command_buffer = frame.command_buffer;
             let device = &self.context.device;
             let pipeline_layout = self.pipeline_layout;
             let swapchain_extent = self.swapchain.extent;
 
-            // Query for entities with Camera and Transform components
             // Query for entities with Camera and Transform components
             world
                 .query()
@@ -306,7 +324,7 @@ impl Renderer {
                         let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
 
                         let model = Matrix4::from_scale(1.0);
-                        // Cameras position as a point
+                        // Camera's position as a point
                         let camera_eye = Point3::new(
                             transform.position.x,
                             transform.position.y,
@@ -329,6 +347,7 @@ impl Renderer {
                         let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
 
                         let projection = get_perspective_projection(&camera, aspect);
+
                         // Compute Projection * View * Model
                         let mvp = projection * view * model;
 
@@ -336,16 +355,15 @@ impl Renderer {
                         let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
                         let model_bytes: [u8; 64] = std::mem::transmute(model);
 
-                        let mut push_constants = [0u8; 128];
+                        let mut push_constants = [0u8; 140];
                         push_constants[0..64].copy_from_slice(&mvp_bytes);
                         push_constants[64..128].copy_from_slice(&model_bytes);
 
-                        device.cmd_push_constants(
+                        // Render Model pipeline objects
+                        device.cmd_bind_pipeline(
                             command_buffer,
-                            pipeline_layout,
-                            vk::ShaderStageFlags::VERTEX,
-                            0,
-                            &push_constants,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            self.model_pipeline,
                         );
 
                         device.cmd_push_constants(
@@ -356,9 +374,26 @@ impl Renderer {
                             &push_constants,
                         );
 
-                        world.query().include::<ModelRenderer>().build().run(
-                            |entity_view: EntityView<'_>| {
+                        // Render ModelRenderer entities
+                        world
+                            .query()
+                            .include::<ModelRenderer>()
+                            .include::<Transform>()
+                            .build()
+                            .run(|entity_view: EntityView<'_>| {
                                 world.with_resource::<ModelLoader, _>(|model_loader| {
+                                    // Add position offset
+                                    if let Some(transform) = entity_view.get::<Transform>() {
+                                        // Add position offset
+                                        let offset = [
+                                            transform.position.x,
+                                            transform.position.y,
+                                            transform.position.z,
+                                        ];
+                                        let offset_bytes: [u8; 12] = std::mem::transmute(offset);
+                                        push_constants[128..140].copy_from_slice(&offset_bytes);
+                                    }
+
                                     let model_renderer =
                                         entity_view.get::<ModelRenderer>().unwrap();
                                     let meshes =
@@ -386,12 +421,29 @@ impl Renderer {
                                         );
                                     }
                                 });
-                            },
-                        );
-                        world.query().include::<MeshRenderer>().build().run(
-                            |entity_view: EntityView<'_>| {
-                                world.with_resource::<ModelLoader, _>(|model_loader| {
-                                    let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
+                            });
+
+                        // Render MeshRenderer entities with Model vertex type
+                        world
+                            .query()
+                            .include::<MeshRenderer>()
+                            .include::<Transform>()
+                            .build()
+                            .run(|entity_view: EntityView<'_>| {
+                                if let Some(transform) = entity_view.get::<Transform>() {
+                                    // Add position offset
+                                    let offset = [
+                                        transform.position.x,
+                                        transform.position.y,
+                                        transform.position.z,
+                                    ];
+                                    let offset_bytes: [u8; 12] = std::mem::transmute(offset);
+                                    push_constants[128..140].copy_from_slice(&offset_bytes);
+                                }
+
+                                let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
+
+                                if mesh.vertex_type == VertexType::Model {
                                     device.cmd_bind_vertex_buffers(
                                         command_buffer,
                                         0,
@@ -412,13 +464,70 @@ impl Renderer {
                                         0,
                                         0,
                                     );
-                                });
-                            },
+                                }
+                            });
+
+                        // Render Voxel pipeline objects
+                        device.cmd_bind_pipeline(
+                            command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            self.voxel_pipeline,
                         );
 
-                        // device.cmd_draw(command_buffer, 36, 1, 0, 0);
+                        device.cmd_push_constants(
+                            command_buffer,
+                            pipeline_layout,
+                            vk::ShaderStageFlags::VERTEX,
+                            0,
+                            &push_constants,
+                        );
+
+                        // Render MeshRenderer entities with Voxel vertex type
+                        world
+                            .query()
+                            .include::<MeshRenderer>()
+                            .include::<Transform>()
+                            .build()
+                            .run(|entity_view: EntityView<'_>| {
+                                // Add position offset
+                                if let Some(transform) = entity_view.get::<Transform>() {
+                                    // Add position offset
+                                    let offset = [
+                                        transform.position.x,
+                                        transform.position.y,
+                                        transform.position.z,
+                                    ];
+                                    let offset_bytes: [u8; 12] = std::mem::transmute(offset);
+                                    push_constants[128..140].copy_from_slice(&offset_bytes);
+                                }
+
+                                let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
+                                if mesh.vertex_type == VertexType::Voxel {
+                                    device.cmd_bind_vertex_buffers(
+                                        command_buffer,
+                                        1,
+                                        &[mesh.vertex_buffer],
+                                        &[0],
+                                    );
+                                    device.cmd_bind_index_buffer(
+                                        command_buffer,
+                                        mesh.index_buffer,
+                                        0,
+                                        vk::IndexType::UINT32,
+                                    );
+                                    device.cmd_draw_indexed(
+                                        command_buffer,
+                                        mesh.index_count,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                    );
+                                }
+                            });
                     }
                 });
+
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             // Transition the image layout from color attachment to present
@@ -488,7 +597,12 @@ impl Drop for Renderer {
             self.context
                 .device
                 .destroy_command_pool(self.command_pool, None);
-            self.context.device.destroy_pipeline(self.pipeline, None);
+            self.context
+                .device
+                .destroy_pipeline(self.model_pipeline, None);
+            self.context
+                .device
+                .destroy_pipeline(self.voxel_pipeline, None);
             self.context
                 .device
                 .destroy_pipeline_layout(self.pipeline_layout, None);

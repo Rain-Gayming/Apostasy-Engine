@@ -23,7 +23,7 @@ use apostasy::engine::{
     },
 };
 use apostasy_macros::{Resource, fixed_update, start};
-use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero};
+use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero, num_traits::clamp};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 use crate::world::chunk::create_chunk;
@@ -50,10 +50,17 @@ pub fn start(world: &mut World) {
         .spawn()
         .insert(MeshRenderer(create_chunk(&world.rendering_context.clone())))
         .insert(Transform {
-            position: Vector3::new(0.0, 0.0, 0.0),
+            position: Vector3::new(10.0, 0.0, 0.0),
             ..Default::default()
         });
 
+    world
+        .spawn()
+        .insert(ModelRenderer("cube.glb".to_string()))
+        .insert(Transform {
+            position: Vector3::new(10.0, 0.0, 0.0),
+            ..Default::default()
+        });
     world
         .spawn()
         .insert(Camera::default())
@@ -140,6 +147,7 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
                         transform.yaw += -input_manager.mouse_delta.0 as f32;
                         transform.pitch += -input_manager.mouse_delta.1 as f32;
 
+                        transform.pitch = clamp(transform.pitch, -89.0, 89.0);
                         calculate_rotation(&mut transform);
 
                         velocity.direction = Vector3::zero();
