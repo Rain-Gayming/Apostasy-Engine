@@ -51,41 +51,6 @@ pub fn start(world: &mut World) {
     world.with_resource_mut::<VoxelRegistry, _>(|registry| {
         registry.load_from_directory("res/assets/voxels/").unwrap();
     });
-
-    world
-        .spawn()
-        .insert(VoxelChunk::default())
-        .insert(VoxelChunkTransform {
-            position: Vector3::new(32, 0, 0),
-        });
-
-    world
-        .spawn()
-        .insert(VoxelChunk::default())
-        .insert(VoxelChunkTransform {
-            position: Vector3::new(64, 0, 0),
-        });
-
-    world
-        .spawn()
-        .insert(VoxelChunk::default())
-        .insert(VoxelChunkTransform {
-            position: Vector3::new(96, 0, 0),
-        });
-    world
-        .spawn()
-        .insert(VoxelChunk::default())
-        .insert(VoxelChunkTransform {
-            position: Vector3::new(0, 0, 0),
-        });
-
-    world
-        .spawn()
-        .insert(ModelRenderer("cube.glb".to_string()))
-        .insert(Transform {
-            position: Vector3::new(10.0, 0.0, 0.0),
-            ..Default::default()
-        });
     world
         .spawn()
         .insert(Camera::default())

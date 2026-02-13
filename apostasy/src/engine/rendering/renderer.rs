@@ -367,14 +367,6 @@ impl Renderer {
                             self.model_pipeline,
                         );
 
-                        device.cmd_push_constants(
-                            command_buffer,
-                            pipeline_layout,
-                            vk::ShaderStageFlags::VERTEX,
-                            0,
-                            &push_constants,
-                        );
-
                         // Render ModelRenderer entities
                         world
                             .query()
@@ -394,6 +386,13 @@ impl Renderer {
                                         let offset_bytes: [u8; 12] = std::mem::transmute(offset);
                                         push_constants[128..140].copy_from_slice(&offset_bytes);
                                     }
+                                    device.cmd_push_constants(
+                                        command_buffer,
+                                        pipeline_layout,
+                                        vk::ShaderStageFlags::VERTEX,
+                                        0,
+                                        &push_constants,
+                                    );
 
                                     let model_renderer =
                                         entity_view.get::<ModelRenderer>().unwrap();
@@ -440,6 +439,13 @@ impl Renderer {
                                     ];
                                     let offset_bytes: [u8; 12] = std::mem::transmute(offset);
                                     push_constants[128..140].copy_from_slice(&offset_bytes);
+                                    device.cmd_push_constants(
+                                        command_buffer,
+                                        pipeline_layout,
+                                        vk::ShaderStageFlags::VERTEX,
+                                        0,
+                                        &push_constants,
+                                    );
                                 }
 
                                 let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
@@ -494,14 +500,20 @@ impl Renderer {
                                 if let Some(transform) = entity_view.get::<VoxelChunkTransform>() {
                                     // Add position offset
                                     let offset = [
-                                        transform.position.x,
-                                        transform.position.y,
-                                        transform.position.z,
+                                        transform.position.x as f32,
+                                        transform.position.y as f32,
+                                        transform.position.z as f32,
                                     ];
                                     let offset_bytes: [u8; 12] = std::mem::transmute(offset);
                                     push_constants[128..140].copy_from_slice(&offset_bytes);
+                                    device.cmd_push_constants(
+                                        command_buffer,
+                                        pipeline_layout,
+                                        vk::ShaderStageFlags::VERTEX,
+                                        0,
+                                        &push_constants,
+                                    );
                                 }
-
                                 let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
                                 if mesh.vertex_type == VertexType::Voxel {
                                     device.cmd_bind_vertex_buffers(
