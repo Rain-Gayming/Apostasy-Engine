@@ -73,3 +73,30 @@ fn default_false() -> bool {
 fn default_hardness() -> f32 {
     1.0
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A single voxel
+/// Contains a VoxelType and a metadata byte
+/// Metadata is used for rotation, state, etc.
+pub struct Voxel {
+    pub voxel_type: VoxelType,
+    pub metadata: u8,
+}
+
+impl Voxel {
+    pub const EMPTY: Self = Self {
+        voxel_type: VoxelType::AIR,
+        metadata: 0,
+    };
+
+    pub fn new(voxel_type: VoxelType) -> Self {
+        Self {
+            voxel_type,
+            metadata: 0,
+        }
+    }
+
+    pub fn is_air(&self) -> bool {
+        self.voxel_type == VoxelType::AIR
+    }
+}

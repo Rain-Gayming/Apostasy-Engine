@@ -533,8 +533,8 @@ impl RenderingContext {
                         .rasterization_state(
                             &vk::PipelineRasterizationStateCreateInfo::default()
                                 .polygon_mode(vk::PolygonMode::FILL)
-                                .cull_mode(vk::CullModeFlags::NONE)
-                                .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
+                                .cull_mode(vk::CullModeFlags::BACK)
+                                .front_face(vk::FrontFace::CLOCKWISE)
                                 .line_width(1.0),
                         )
                         .multisample_state(

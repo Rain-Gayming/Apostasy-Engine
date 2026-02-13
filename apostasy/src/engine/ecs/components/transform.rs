@@ -52,3 +52,8 @@ pub fn calculate_forward(transform: &Transform) -> Vector3<f32> {
 pub fn calculate_right(transform: &Transform) -> Vector3<f32> {
     transform.rotation.rotate_vector(transform.right)
 }
+
+#[derive(Component)]
+pub struct VoxelChunkTransform {
+    pub position: Vector3<i32>,
+}

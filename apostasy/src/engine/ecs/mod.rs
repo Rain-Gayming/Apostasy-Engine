@@ -71,6 +71,7 @@ impl Mantle {
         for cell in self.commands.iter_mut() {
             for command in cell.get_mut().drain(..) {
                 command.apply(&mut self.core);
+                println!("Applied command");
             }
         }
     }
@@ -280,6 +281,7 @@ impl World {
 
         for system in systems {
             (system.func)(self);
+            self.flush();
         }
     }
 

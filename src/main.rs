@@ -1,3 +1,6 @@
+use apostasy::engine::{
+    ecs::components::transform::VoxelChunkTransform, voxels::voxel_registry::*,
+};
 #[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
     ecs::{
@@ -19,14 +22,11 @@ use apostasy::engine::{
         cursor_manager::{CursorManager, grab_cursor, ungrab_cursor},
     },
 };
-use apostasy::engine::{
-    rendering::models::model::MeshRenderer, voxels::voxel_registry::VoxelRegistry,
-};
 use apostasy_macros::{Resource, fixed_update, start};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero, num_traits::clamp};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
-use crate::world::chunk::create_chunk;
+use crate::world::chunk::VoxelChunk;
 
 pub mod world;
 
@@ -54,10 +54,9 @@ pub fn start(world: &mut World) {
 
     world
         .spawn()
-        .insert(MeshRenderer(create_chunk(&world.rendering_context.clone())))
-        .insert(Transform {
-            position: Vector3::new(10.0, 0.0, 0.0),
-            ..Default::default()
+        .insert(VoxelChunk::default())
+        .insert(VoxelChunkTransform {
+            position: Vector3::new(10, 0, 0),
         });
 
     world

@@ -3,7 +3,7 @@ use crate::engine::{
         World,
         components::{
             camera::{Camera, get_perspective_projection},
-            transform::{Transform, calculate_forward, calculate_up},
+            transform::{Transform, VoxelChunkTransform, calculate_forward, calculate_up},
         },
         entity::EntityView,
     },
@@ -487,11 +487,11 @@ impl Renderer {
                         world
                             .query()
                             .include::<MeshRenderer>()
-                            .include::<Transform>()
+                            .include::<VoxelChunkTransform>()
                             .build()
                             .run(|entity_view: EntityView<'_>| {
                                 // Add position offset
-                                if let Some(transform) = entity_view.get::<Transform>() {
+                                if let Some(transform) = entity_view.get::<VoxelChunkTransform>() {
                                     // Add position offset
                                     let offset = [
                                         transform.position.x,

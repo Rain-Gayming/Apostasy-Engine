@@ -319,8 +319,25 @@ impl Core {
         };
         new_archetype.entity_index.insert(updated_location, entity);
         entity_index[entity] = updated_location;
+
+        // FIX: Update the entity_index mapping for the swapped entity
         if *old_location.row < old_archetype.entities.len() {
-            entity_index[old_archetype.entities[*old_location.row]].row = old_location.row;
+            let swapped_entity = old_archetype.entities[*old_location.row];
+
+            // The swapped entity's old location (before the swap)
+            let swapped_old_location = EntityLocation {
+                archetype: old_location.archetype,
+                row: RowIndex(old_archetype.entities.len()), // Last position before swap_remove
+            };
+
+            // Remove the old mapping and insert the new one
+            old_archetype.entity_index.remove(&swapped_old_location);
+            old_archetype
+                .entity_index
+                .insert(old_location, swapped_entity);
+
+            // Update global entity_index (this was already there)
+            entity_index[swapped_entity].row = old_location.row;
         }
 
         for column in old_archetype.columns.iter() {

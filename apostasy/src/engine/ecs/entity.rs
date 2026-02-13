@@ -79,7 +79,6 @@ impl EntityView<'_> {
         self.world.crust.mantle(|mantle| {
             mantle.queue_command(Command::insert(component, self.entity));
         });
-        self.world.flush();
         self
     }
 
@@ -87,7 +86,6 @@ impl EntityView<'_> {
         self.world.crust.mantle(|mantle| {
             mantle.queue_command(Command::remove(component.into(), self.entity));
         });
-        self.world.flush();
         self
     }
 

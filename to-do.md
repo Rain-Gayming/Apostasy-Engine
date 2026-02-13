@@ -67,3 +67,32 @@
     - [x] image creation
     - [x] rendering
     - [ ] texture creation
+
+- [x] voxels
+    - [x] voxel registry
+    - [x] voxel definition
+    - [x] voxel properties
+    - [x] voxel components
+    - [x] voxel loading from YAML
+
+- [-] voxel chunk 
+    - [x] voxel chunk creation
+    - [-] voxel chunk rendering
+        - [x] per chunk culling
+        - [-] neighboring chunk culling
+    - [-] voxel chunk generation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
