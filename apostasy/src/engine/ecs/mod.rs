@@ -279,7 +279,6 @@ impl World {
         systems.reverse();
 
         for system in systems {
-            println!("running start system");
             (system.func)(self);
         }
     }

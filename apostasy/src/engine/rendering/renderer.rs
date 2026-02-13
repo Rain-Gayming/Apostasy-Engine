@@ -24,7 +24,7 @@ use winit::{
     window::{Window, WindowId},
 };
 
-const ENGINE_SHADER_DIR: &str = "apostasy/res/shaders/";
+const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
 use crate::engine::rendering::{
     rendering_context::{ImageLayoutState, RenderingContext},
@@ -62,6 +62,7 @@ pub fn load_engine_shader_module(
     let code = std::fs::read(format!("{}{}", ENGINE_SHADER_DIR, path))?;
     context.create_shader_module(&code)
 }
+
 impl Renderer {
     pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
         let mut swapchain = Swapchain::new(context.clone(), window.clone())?;

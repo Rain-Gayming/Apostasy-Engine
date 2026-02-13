@@ -1,6 +1,3 @@
-use apostasy::engine::rendering::{
-    models::model::MeshRenderer, rendering_context::RenderingContext,
-};
 #[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
     ecs::{
@@ -21,6 +18,9 @@ use apostasy::engine::{
         WindowManager,
         cursor_manager::{CursorManager, grab_cursor, ungrab_cursor},
     },
+};
+use apostasy::engine::{
+    rendering::models::model::MeshRenderer, voxels::voxel_registry::VoxelRegistry,
 };
 use apostasy_macros::{Resource, fixed_update, start};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero, num_traits::clamp};
@@ -46,6 +46,12 @@ pub fn start(world: &mut World) {
     world.insert_resource::<InputManager>(InputManager::default());
     world.insert_resource::<CursorManager>(CursorManager::default());
     world.insert_resource::<ModelLoader>(ModelLoader::default());
+    world.insert_resource::<VoxelRegistry>(VoxelRegistry::default());
+
+    world.with_resource_mut::<VoxelRegistry, _>(|registry| {
+        registry.load_from_directory("res/assets/voxels/").unwrap();
+    });
+
     world
         .spawn()
         .insert(MeshRenderer(create_chunk(&world.rendering_context.clone())))

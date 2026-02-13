@@ -1,0 +1,11 @@
+name: "apostasy:voxel:dirt"
+is_solid: true
+is_transparent: false
+hardness: 0.5
+drops: "apostasy:item:dirt"
+
+components:
+  transitionable:
+    transitions:
+      - from: "apostasy:voxel:dirt"
+        to: "apostasy:voxel:air"

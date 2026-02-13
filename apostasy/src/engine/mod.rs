@@ -13,9 +13,9 @@ use winit::{
 };
 
 use crate::engine::{
-    ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
+    ecs::resources::input_manager::{handle_device_event, handle_input_event, InputManager},
     rendering::{
-        models::model::{ModelLoader, load_models},
+        models::model::{load_models, ModelLoader},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -29,6 +29,7 @@ use crate::engine::ecs::World;
 pub mod ecs;
 pub mod rendering;
 pub mod timer;
+pub mod voxels;
 pub mod windowing;
 
 /// Render application
