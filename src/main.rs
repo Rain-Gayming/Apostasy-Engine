@@ -56,7 +56,27 @@ pub fn start(world: &mut World) {
         .spawn()
         .insert(VoxelChunk::default())
         .insert(VoxelChunkTransform {
-            position: Vector3::new(10, 0, 0),
+            position: Vector3::new(32, 0, 0),
+        });
+
+    world
+        .spawn()
+        .insert(VoxelChunk::default())
+        .insert(VoxelChunkTransform {
+            position: Vector3::new(64, 0, 0),
+        });
+
+    world
+        .spawn()
+        .insert(VoxelChunk::default())
+        .insert(VoxelChunkTransform {
+            position: Vector3::new(96, 0, 0),
+        });
+    world
+        .spawn()
+        .insert(VoxelChunk::default())
+        .insert(VoxelChunkTransform {
+            position: Vector3::new(0, 0, 0),
         });
 
     world

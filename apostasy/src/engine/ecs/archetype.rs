@@ -230,8 +230,11 @@ impl Column {
     /// used to easily truncate the buffer
     fn swap_with_last(&mut self, RowIndex(row): RowIndex) {
         if row + 1 < self.no_chunks() {
+            let last_row = self.no_chunks() - 1;
             let (left, right) = self.buffer.split_at_mut((row + 1) * self.info.size);
-            left[row * self.info.size..].swap_with_slice(right);
+            let current_chunk = &mut left[row * self.info.size..];
+            let last_chunk = &mut right[(last_row - row - 1) * self.info.size..][..self.info.size];
+            current_chunk.swap_with_slice(last_chunk);
         }
     }
 }
