@@ -13,7 +13,7 @@ impl Default for Camera {
     fn default() -> Self {
         Self {
             fov_y: 90.0,
-            far: 100.0,
+            far: 10000.0,
             near: 0.001,
             projection: Matrix4::<f32>::zero(),
         }

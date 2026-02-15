@@ -148,9 +148,11 @@ pub fn start(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 /// Registers a fixed update system, Fixed updates run a specific amount of times per second
 #[proc_macro_attribute]
-pub fn fixed_update(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn fixed_update(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
+    let args = parse_macro_input!(attr as StartArgs);
     let fn_name = &input_fn.sig.ident;
+    let priority = args.priority.unwrap_or(0);
 
     // Generate an inventory registration
     let expanded = quote! {
@@ -160,6 +162,7 @@ pub fn fixed_update(_attr: TokenStream, item: TokenStream) -> TokenStream {
             apostasy::engine::ecs::system::FixedUpdateSystem {
                 name: stringify!(#fn_name),
                 func: #fn_name,
+                priority: #priority,
             }
         }
     };
@@ -169,9 +172,11 @@ pub fn fixed_update(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Registers an update system, Update systems run every frame
 #[proc_macro_attribute]
-pub fn update(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
+    let args = parse_macro_input!(attr as StartArgs);
+    let priority = args.priority.unwrap_or(0);
 
     // Generate an inventory registration
     let expanded = quote! {
@@ -181,6 +186,7 @@ pub fn update(_attr: TokenStream, item: TokenStream) -> TokenStream {
             apostasy::engine::ecs::system::UpdateSystem {
                 name: stringify!(#fn_name),
                 func: #fn_name,
+                priority: #priority,
             }
         }
     };
@@ -190,9 +196,11 @@ pub fn update(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Registers an late update system, Update systems run at the end of every frame
 #[proc_macro_attribute]
-pub fn late_update(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn late_update(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
+    let args = parse_macro_input!(attr as StartArgs);
+    let priority = args.priority.unwrap_or(0);
 
     // Generate an inventory registration
     let expanded = quote! {
@@ -202,6 +210,7 @@ pub fn late_update(_attr: TokenStream, item: TokenStream) -> TokenStream {
             apostasy::engine::ecs::system::LateUpdateSystem {
                 name: stringify!(#fn_name),
                 func: #fn_name,
+                priority: #priority,
             }
         }
     };

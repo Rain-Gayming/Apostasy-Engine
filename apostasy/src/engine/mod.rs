@@ -13,9 +13,9 @@ use winit::{
 };
 
 use crate::engine::{
-    ecs::resources::input_manager::{handle_device_event, handle_input_event, InputManager},
+    ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
     rendering::{
-        models::model::{load_models, ModelLoader},
+        models::model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -205,6 +205,7 @@ impl Engine {
     }
 
     pub fn request_redraw(&mut self) {
+        self.world.update();
         self.world.fixed_update(self.timer.tick().fixed_dt);
 
         self.world

@@ -71,7 +71,6 @@ impl Mantle {
         for cell in self.commands.iter_mut() {
             for command in cell.get_mut().drain(..) {
                 command.apply(&mut self.core);
-                println!("Applied command");
             }
         }
     }
@@ -233,8 +232,13 @@ impl World {
     ///     }
     /// ```
     pub fn update(&mut self) {
-        for system in inventory::iter::<UpdateSystem> {
+        let mut systems: Vec<&UpdateSystem> = inventory::iter::<UpdateSystem>.into_iter().collect();
+        systems.sort_by_key(|s| s.priority);
+        systems.reverse();
+
+        for system in systems {
             (system.func)(self);
+            self.flush();
         }
     }
 
@@ -247,8 +251,13 @@ impl World {
     ///     }
     /// ```
     pub fn fixed_update(&mut self, tick: f32) {
-        for system in inventory::iter::<FixedUpdateSystem> {
+        let mut systems: Vec<&FixedUpdateSystem> =
+            inventory::iter::<FixedUpdateSystem>.into_iter().collect();
+        systems.sort_by_key(|s| s.priority);
+        systems.reverse();
+        for system in systems {
             (system.func)(self, tick);
+            self.flush();
         }
     }
 
@@ -261,8 +270,13 @@ impl World {
     ///     }
     /// ```
     pub fn late_update(&mut self) {
-        for system in inventory::iter::<LateUpdateSystem> {
+        let mut systems: Vec<&LateUpdateSystem> =
+            inventory::iter::<LateUpdateSystem>.into_iter().collect();
+        systems.sort_by_key(|s| s.priority);
+        systems.reverse();
+        for system in systems {
             (system.func)(self);
+            self.flush();
         }
     }
 

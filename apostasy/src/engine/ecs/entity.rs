@@ -88,6 +88,22 @@ impl EntityView<'_> {
         });
         self
     }
+    /// Get a component on an entity immutably
+    pub fn get_ref<T: Component>(&self) -> Option<&T> {
+        // Open access to the crust
+        Crust::begin_access(&self.world.crust.flush_guard);
+
+        let core = unsafe { &self.world.crust.mantle.get().as_ref().unwrap().core };
+        let location = core.get_entity_location_locking(self.entity).unwrap();
+        let out = core
+            .get_bytes(T::id().into(), location)
+            .map(|bytes| unsafe { (bytes.as_ptr() as *const T).as_ref() }.unwrap());
+
+        // Close access to the crust
+        Crust::end_access(&self.world.crust.flush_guard);
+
+        out
+    }
 
     /// Get a component on an entity immutably
     pub fn get<T: Component>(&self) -> Option<ColumnReadGuard<'_, T>> {

@@ -3,6 +3,7 @@ use crate::engine::ecs::World;
 pub struct UpdateSystem {
     pub name: &'static str,
     pub func: fn(&mut World),
+    pub priority: u32,
 }
 
 inventory::collect!(UpdateSystem);
@@ -18,11 +19,13 @@ inventory::collect!(StartSystem);
 pub struct FixedUpdateSystem {
     pub name: &'static str,
     pub func: fn(&mut World, delta: f32),
+    pub priority: u32,
 }
 inventory::collect!(FixedUpdateSystem);
 
 pub struct LateUpdateSystem {
     pub name: &'static str,
     pub func: fn(&mut World),
+    pub priority: u32,
 }
 inventory::collect!(LateUpdateSystem);

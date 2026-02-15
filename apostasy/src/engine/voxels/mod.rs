@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::engine::voxels::voxel_components::VoxelComponents;
 
+pub mod chunk_loader;
+pub mod voxel_chunk;
 pub mod voxel_components;
 pub mod voxel_properties;
 pub mod voxel_registry;

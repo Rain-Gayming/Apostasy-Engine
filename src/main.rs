@@ -1,5 +1,10 @@
 use apostasy::engine::{
-    ecs::components::transform::VoxelChunkTransform, voxels::voxel_registry::*,
+    ecs::components::transform::VoxelChunkTransform,
+    voxels::{
+        chunk_loader::{ChunkLoaderFlag, ChunkStorage},
+        voxel_chunk::{UnmeshedVoxelChunk, VoxelChunk},
+        voxel_registry::*,
+    },
 };
 #[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
@@ -26,8 +31,6 @@ use apostasy_macros::{Resource, fixed_update, start};
 use cgmath::{Deg, Quaternion, Rotation3, Vector3, Zero, num_traits::clamp};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
-use crate::world::chunk::VoxelChunk;
-
 pub mod world;
 
 #[derive(Resource)]
@@ -39,7 +42,7 @@ fn main() {
     start_app().unwrap();
 }
 
-#[start(priority = 1)]
+#[start(priority = 100)]
 pub fn start(world: &mut World) {
     let rotation = Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(35.0));
 
@@ -47,10 +50,19 @@ pub fn start(world: &mut World) {
     world.insert_resource::<CursorManager>(CursorManager::default());
     world.insert_resource::<ModelLoader>(ModelLoader::default());
     world.insert_resource::<VoxelRegistry>(VoxelRegistry::default());
+    world.insert_resource::<ChunkStorage>(ChunkStorage::default());
 
     world.with_resource_mut::<VoxelRegistry, _>(|registry| {
         registry.load_from_directory("res/assets/voxels/").unwrap();
     });
+
+    world
+        .spawn()
+        .insert(VoxelChunk::default())
+        .insert(VoxelChunkTransform {
+            position: Vector3::new(0, 0, 0),
+        });
+
     world
         .spawn()
         .insert(Camera::default())
@@ -60,6 +72,7 @@ pub fn start(world: &mut World) {
             rotation,
             ..Default::default()
         })
+        .insert(ChunkLoaderFlag)
         .insert(Controllable);
 }
 

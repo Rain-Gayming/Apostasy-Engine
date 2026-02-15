@@ -22,6 +22,7 @@ aligned-vec = "0.6.4"
 apostasy-macros.workspace = true
 bytemuck = {version = "1.19.0", features = ["derive"]}
 cgmath = "0.18.0"
+crossbeam-channel = "0.5.8"
 derive_more = { version  = "2.0.1", features = ["deref", "deref_mut", "from"] }
 downcast = "0.11.0"
 egui = "0.33.3"
