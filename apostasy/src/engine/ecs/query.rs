@@ -199,6 +199,7 @@ impl Clone for Query {
             world: World {
                 crust: self.world.crust.clone(),
                 rendering_context: self.world.rendering_context.clone(),
+                packages: self.world.packages.clone(),
             },
         }
     }

@@ -1,4 +1,4 @@
-use crate::engine::ecs::entity::{ColumnReadGuard, Entity, EntityView};
+use crate::engine::ecs::entity::Entity;
 use crate::engine::voxels::chunk_loader::ChunkStorage;
 use crate::{self as apostasy, engine::ecs::component::Component};
 
@@ -83,8 +83,9 @@ pub fn generate_chunk_meshes(world: &mut World) {
             let neighbour_chunks: Vec<_> = neighbor_entity_ids
                 .iter()
                 .map(|entity_id| {
-                    if let Some(id) = entity_id {
-                        world.entity(*id).get_ref::<VoxelChunk>()
+                    if let Some(_id) = entity_id {
+                        None
+                        // world.entity(*id).get_ref::<VoxelChunk>()
                     } else {
                         None
                     }
@@ -117,7 +118,7 @@ pub fn generate_chunk_meshes(world: &mut World) {
 
 pub const CHUNK_SIZE: usize = 32;
 
-pub fn generate_chunk(registry: &VoxelRegistry, chunk_pos: Vector3<i32>) -> Vec<Voxel> {
+pub fn generate_chunk(registry: &VoxelRegistry, _chunk_pos: Vector3<i32>) -> Vec<Voxel> {
     let stone_id = registry
         .get_numeric_id(&VoxelTypeId::from_str("apostasy:voxel:dirt"))
         .unwrap();

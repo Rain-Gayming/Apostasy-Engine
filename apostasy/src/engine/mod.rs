@@ -35,15 +35,7 @@ pub mod windowing;
 /// Render application
 pub struct Application {
     render_engine: Option<Engine>,
-    world: Option<World>,
-}
-
-impl Application {
-    fn start(&mut self) {
-        if let Some(world) = self.world.as_mut() {
-            world.start();
-        }
-    }
+    _world: Option<World>,
 }
 
 impl ApplicationHandler for Application {
@@ -88,7 +80,7 @@ pub fn start_app() -> Result<()> {
     tracing_subscriber::fmt::init();
     let mut app = Application {
         render_engine: None,
-        world: None,
+        _world: None,
     };
 
     let event_loop = EventLoop::new()?;

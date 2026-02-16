@@ -1,11 +1,4 @@
-use apostasy::engine::{
-    ecs::components::transform::VoxelChunkTransform,
-    voxels::{
-        chunk_loader::{ChunkLoaderFlag, ChunkStorage},
-        voxel_chunk::{UnmeshedVoxelChunk, VoxelChunk},
-        voxel_registry::*,
-    },
-};
+use apostasy::engine::voxels::chunk_loader::ChunkLoaderFlag;
 #[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
     ecs::{
@@ -49,19 +42,17 @@ pub fn start(world: &mut World) {
     world.insert_resource::<InputManager>(InputManager::default());
     world.insert_resource::<CursorManager>(CursorManager::default());
     world.insert_resource::<ModelLoader>(ModelLoader::default());
-    world.insert_resource::<VoxelRegistry>(VoxelRegistry::default());
-    world.insert_resource::<ChunkStorage>(ChunkStorage::default());
 
-    world.with_resource_mut::<VoxelRegistry, _>(|registry| {
-        registry.load_from_directory("res/assets/voxels/").unwrap();
-    });
-
-    world
-        .spawn()
-        .insert(VoxelChunk::default())
-        .insert(VoxelChunkTransform {
-            position: Vector3::new(0, 0, 0),
-        });
+    // world.with_resource_mut::<VoxelRegistry, _>(|registry| {
+    //     registry.load_from_directory("res/assets/voxels/").unwrap();
+    // });
+    //
+    // world
+    //     .spawn()
+    //     .insert(VoxelChunk::default())
+    //     .insert(VoxelChunkTransform {
+    //         position: Vector3::new(0, 0, 0),
+    //     });
 
     world
         .spawn()

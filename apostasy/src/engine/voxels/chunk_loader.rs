@@ -7,7 +7,7 @@ use crate::{
     self as apostasy,
     engine::{
         ecs::{
-            World,
+            Package, World,
             components::transform::{Transform, VoxelChunkTransform},
             entity::Entity,
         },
@@ -25,6 +25,9 @@ pub struct ChunkStorage {
 
 #[update(priority = 1)]
 pub fn load_chunks(world: &mut World) {
+    if !world.packages.contains(&Package::Voxels) {
+        return;
+    }
     world
         .query()
         .include::<ChunkLoaderFlag>()

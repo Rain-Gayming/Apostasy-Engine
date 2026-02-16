@@ -20,6 +20,7 @@ use crate::engine::{
         system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
     },
     rendering::rendering_context::RenderingContext,
+    voxels::{chunk_loader::ChunkStorage, voxel_registry::VoxelRegistry},
 };
 
 pub mod archetype;
@@ -33,10 +34,29 @@ pub mod resource;
 pub mod resources;
 pub mod system;
 
+/// A package that can be implimented into the world
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub enum Package {
+    /// Used for voxels and voxel rendering
+    /// Adds the following resources:
+    /// - ChunkStorage
+    /// - VoxelRegistry
+    /// Requires you to pass the VoxelRegistry location with:
+    /// ```rust
+    ///      world.with_resource_mut::<VoxelRegistry, _>(|registry| {
+    ///         registry.load_from_directory("path").unwrap();j
+    ///     });
+    ///
+    /// ```
+    /// path is recomended to be "res/assets/voxels/"
+    Voxels,
+}
+
 /// Wrapper for the Crust
 pub struct World {
     pub crust: Arc<Crust>,
     pub rendering_context: Arc<RenderingContext>,
+    pub packages: Vec<Package>,
 }
 
 /// Container for the Mantle
@@ -167,6 +187,7 @@ impl World {
                 }),
             }),
             rendering_context,
+            packages: Vec::new(),
         };
 
         for init in COMPONENT_ENTRIES {
@@ -176,6 +197,24 @@ impl World {
         world.flush();
 
         world
+    }
+
+    /// Adds a package to the world and it's required resources, use:
+    /// ```rust
+    ///     fn foo(){
+    ///         let world = World::new();
+    ///
+    ///         world.with_package(Package::Voxels);
+    ///     }
+    /// ```
+    pub fn with_package(&mut self, package: Package) {
+        self.packages.push(package);
+        match package {
+            Package::Voxels => {
+                self.insert_resource::<ChunkStorage>(ChunkStorage::default());
+                self.insert_resource::<VoxelRegistry>(VoxelRegistry::default());
+            }
+        }
     }
 
     /// Takes in an entity and returns it's EntityView, use:
@@ -191,7 +230,16 @@ impl World {
         self.get_entity(entity).unwrap()
     }
 
-    /// Gets an option of EntityView
+    /// Gets an option of EntityView, use:
+    /// ```rust
+    ///     fn foo(){
+    ///         let world = World::new();
+    ///
+    ///         let entity = world.spawn();
+    ///
+    ///         let entity_view = world.get_entity(entity);
+    ///     }
+    /// ```
     pub fn get_entity(&self, entity: Entity) -> Option<EntityView<'_>> {
         self.crust.mantle(|mantle| {
             mantle
@@ -469,6 +517,7 @@ impl World {
         QueryBuilder::new(World {
             crust: self.crust.clone(),
             rendering_context: self.rendering_context.clone(),
+            packages: Vec::new(),
         })
     }
 }
