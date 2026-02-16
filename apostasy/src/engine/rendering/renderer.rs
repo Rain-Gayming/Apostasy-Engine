@@ -680,6 +680,26 @@ impl Renderer {
 }
 
 #[ui]
+fn test_2(context: &mut Context, world: &mut World) {
+    egui::Window::new("Debug Info 2")
+        .default_pos([10.0, 10.0])
+        .show(&context, |ui| {
+            ui.heading("Engine Stats");
+            ui.separator();
+            ui.label(format!(
+                "Entity Count: {}",
+                world
+                    .crust
+                    .mantle(|mantle| mantle.core.entity_index.lock().len())
+            ));
+            ui.label(format!(
+                "FPS: {}",
+                world.with_resource(|fps: &FPSCounter| fps.fps())
+            ));
+            ui.separator();
+        });
+}
+#[ui]
 fn test(context: &mut Context, world: &mut World) {
     egui::Window::new("Debug Info")
         .default_pos([10.0, 10.0])

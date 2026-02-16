@@ -68,6 +68,10 @@
     - [x] rendering
     - [ ] texture creation
 
+- [x] ui 
+    - [x] egui renderer
+    - [x] ui system
+
 - [x] voxels
     - [x] voxel registry
     - [x] voxel definition
