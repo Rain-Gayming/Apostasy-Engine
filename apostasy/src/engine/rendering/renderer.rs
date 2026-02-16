@@ -12,17 +12,14 @@ use crate::engine::{
         vertex::VertexType,
     },
 };
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
 use cgmath::{Matrix4, Point3};
+use egui::FontFamily;
 use egui_ash_renderer::{DynamicRendering, Options};
-use winit::{
-    event::WindowEvent,
-    event_loop::ActiveEventLoop,
-    window::{Window, WindowId},
-};
+use winit::{event::WindowEvent, window::Window};
 
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
@@ -186,7 +183,23 @@ impl Renderer {
             )?;
             egui_renderer.add_user_texture(DescriptorSet::default());
 
+            let mut fonts = egui::FontDefinitions::default();
+            let mut new_font_family = BTreeMap::new();
+            new_font_family.insert(
+                FontFamily::Name("fantasy".into()),
+                vec!["fantasy".to_owned()],
+            );
+            fonts.families.append(&mut new_font_family);
+
+            fonts.font_data.insert(
+                "fantasy".to_owned(),
+                Arc::new(egui::FontData::from_static(include_bytes!(
+                    "../../../res/fonts/FantasyFont.ttf"
+                ))),
+            );
+
             let egui_ctx = egui::Context::default();
+            egui_ctx.set_fonts(fonts);
             Ok(Self {
                 frame_index: 0,
                 frames,
@@ -543,6 +556,23 @@ impl Renderer {
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
+            let full_output = self.egui_ctx.end_pass();
+            let clipped_primitives = self
+                .egui_ctx
+                .tessellate(full_output.shapes, full_output.pixels_per_point);
+            let texture_updates: Vec<(egui::TextureId, egui::epaint::ImageDelta)> = full_output
+                .textures_delta
+                .set
+                .iter()
+                .map(|(id, delta)| (*id, delta.clone()))
+                .collect();
+            if !texture_updates.is_empty() {
+                self.egui_renderer.set_textures(
+                    self.context.queues[self.context.queue_families.graphics as usize],
+                    self.command_pool,
+                    &texture_updates,
+                )?;
+            }
             // Transition the image layout from color attachment to present
             self.context.transition_image_layout(
                 frame.command_buffer,
@@ -551,6 +581,51 @@ impl Renderer {
                 present_image_state,
                 vk::ImageAspectFlags::COLOR,
             );
+
+            // Render egui
+
+            // Begin rendering again for egui
+            let color_attachment = vk::RenderingAttachmentInfo::default()
+                .image_view(self.swapchain.image_views[image_index as usize])
+                .image_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .load_op(vk::AttachmentLoadOp::LOAD) // Load existing content
+                .store_op(vk::AttachmentStoreOp::STORE);
+
+            let rendering_info = vk::RenderingInfo::default()
+                .render_area(vk::Rect2D::default().extent(self.swapchain.extent))
+                .layer_count(1)
+                .color_attachments(std::slice::from_ref(&color_attachment));
+
+            self.context
+                .device
+                .cmd_begin_rendering(frame.command_buffer, &rendering_info);
+
+            // Set viewport and scissor for egui
+            self.context.device.cmd_set_viewport(
+                frame.command_buffer,
+                0,
+                &[vk::Viewport::default()
+                    .width(self.swapchain.extent.width as f32)
+                    .height(self.swapchain.extent.height as f32)
+                    .min_depth(0.0)
+                    .max_depth(1.0)],
+            );
+
+            self.context.device.cmd_set_scissor(
+                frame.command_buffer,
+                0,
+                &[vk::Rect2D::default().extent(self.swapchain.extent)],
+            );
+
+            // Render egui
+            self.egui_renderer.cmd_draw(
+                frame.command_buffer,
+                self.swapchain.extent,
+                full_output.pixels_per_point,
+                &clipped_primitives,
+            )?;
+
+            // egui render end
 
             // End the render commands
             self.context
@@ -574,16 +649,29 @@ impl Renderer {
         }
     }
 
-    pub fn window_event(
-        &mut self,
-        _event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
-        _event: WindowEvent,
-    ) {
+    pub fn window_event(&mut self, window: &Window, event: WindowEvent) -> bool {
+        let response = self.egui_state.on_window_event(window, &event);
+
+        response.consumed
     }
 
     pub fn resize(&mut self) -> Result<()> {
         self.swapchain.resize()
+    }
+
+    /// Prepares egui for rendering
+    pub fn prepare_egui(&mut self, window: &Window) {
+        // Collect input for egui
+        let raw_input = self.egui_state.take_egui_input(window);
+        self.egui_ctx.begin_pass(raw_input);
+
+        egui::Window::new("Debug Info")
+            .default_pos([10.0, 10.0])
+            .show(&self.egui_ctx, |ui| {
+                ui.heading("Engine Stats");
+                ui.label(format!("Frame: {}", self.frame_index));
+                ui.separator();
+            });
     }
 }
 

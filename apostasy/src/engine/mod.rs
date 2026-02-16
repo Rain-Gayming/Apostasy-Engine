@@ -150,7 +150,7 @@ impl Engine {
 
     pub fn window_event(
         &mut self,
-        event_loop: &ActiveEventLoop,
+        _event_loop: &ActiveEventLoop,
         window_id: WindowId,
         event: WindowEvent,
     ) {
@@ -159,9 +159,15 @@ impl Engine {
                 handle_input_event(input_manager, event.clone());
             });
 
-        if let Some(renderer) = self.renderers.get_mut(&window_id) {
-            renderer.window_event(event_loop, window_id, event.clone());
-        }
+        self.world
+            .with_resource_mut::<WindowManager, _>(|window_manager| {
+                if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    renderer.window_event(
+                        window_manager.windows.get(&window_id).unwrap(),
+                        event.clone(),
+                    );
+                }
+            });
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -176,6 +182,12 @@ impl Engine {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
+                    self.world
+                        .with_resource_mut::<WindowManager, _>(|window_manager| {
+                            window_manager.windows.values_mut().for_each(|window| {
+                                renderer.prepare_egui(window);
+                            });
+                        });
                     let _ = renderer.render(&self.world);
                 }
             }
