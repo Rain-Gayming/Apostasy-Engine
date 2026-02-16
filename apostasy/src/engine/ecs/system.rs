@@ -1,3 +1,5 @@
+use egui::Context;
+
 use crate::engine::ecs::World;
 
 pub struct UpdateSystem {
@@ -29,3 +31,10 @@ pub struct LateUpdateSystem {
     pub priority: u32,
 }
 inventory::collect!(LateUpdateSystem);
+
+pub struct UIFunction {
+    pub name: &'static str,
+    pub func: fn(&mut Context, &mut World),
+    pub priority: u32,
+}
+inventory::collect!(UIFunction);

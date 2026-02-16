@@ -1,4 +1,6 @@
-use apostasy::engine::voxels::chunk_loader::ChunkLoaderFlag;
+use apostasy::engine::{
+    ecs::resources::frame_counter::FPSCounter, voxels::chunk_loader::ChunkLoaderFlag,
+};
 #[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
     ecs::{
@@ -42,6 +44,7 @@ pub fn start(world: &mut World) {
     world.insert_resource::<InputManager>(InputManager::default());
     world.insert_resource::<CursorManager>(CursorManager::default());
     world.insert_resource::<ModelLoader>(ModelLoader::default());
+    world.insert_resource::<FPSCounter>(FPSCounter::default());
 
     // world.with_resource_mut::<VoxelRegistry, _>(|registry| {
     //     registry.load_from_directory("res/assets/voxels/").unwrap();
@@ -69,7 +72,7 @@ pub fn start(world: &mut World) {
 
 #[start]
 pub fn keybind_registration(world: &mut World) {
-    world.with_resource_mut::<InputManager, _>(|input_manager| {
+    world.with_resource_mut(|input_manager: &mut InputManager| {
         register_keybind(
             input_manager,
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold),
@@ -118,7 +121,7 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
         .include::<Velocity>()
         .build()
         .run(|entity| {
-            world.with_resources::<(InputManager, CursorManager), _, _>(
+            world.with_resources::<(InputManager, CursorManager), _>(
                 |(input_manager, cursor_manager)| {
                     let mut velocity = entity.get_mut::<Velocity>().unwrap();
                     let mut transform = entity.get_mut::<Transform>().unwrap();
@@ -154,7 +157,7 @@ pub fn input_handle(world: &mut World, delta_time: f32) {
             );
 
             if pausing {
-                world.with_resources::<(WindowManager, CursorManager), _, _>(
+                world.with_resources::<(WindowManager, CursorManager), _>(
                     |(window_manager, cursor_manager)| {
                         if cursor_manager.is_grabbed {
                             ungrab_cursor(cursor_manager, window_manager);

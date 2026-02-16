@@ -36,7 +36,7 @@ pub fn create_chunks(world: &mut World) {
             let transform = entity.get_mut::<VoxelChunkTransform>().unwrap();
             let mut chunk = entity.get_mut::<VoxelChunk>().unwrap();
 
-            world.with_resource::<VoxelRegistry, _>(|registry| {
+            world.with_resource(|registry: &VoxelRegistry| {
                 let voxels = generate_chunk(registry, transform.position);
                 chunk.voxels = voxels;
             });
@@ -61,7 +61,7 @@ pub fn generate_chunk_meshes(world: &mut World) {
 
             // First, get neighbor entity IDs WITHOUT locking resources
             let mut neighbor_entity_ids: Vec<Option<Entity>> = Vec::new();
-            world.with_resource::<ChunkStorage, _>(|storage| {
+            world.with_resource(|storage: &ChunkStorage| {
                 let negative_z = chunk_pos + Vector3::new(0, 0, -1);
                 let positive_z = chunk_pos + Vector3::new(0, 0, 1);
                 let positive_x = chunk_pos + Vector3::new(1, 0, 0);

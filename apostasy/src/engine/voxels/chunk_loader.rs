@@ -34,7 +34,7 @@ pub fn load_chunks(world: &mut World) {
         .include::<Transform>()
         .build()
         .run(|entity| {
-            world.with_resource_mut::<ChunkStorage, _>(|storage| {
+            world.with_resource_mut::<ChunkStorage, _, _>(|storage| {
                 let transform = entity.get::<Transform>().unwrap();
                 let transform_chunk = Vector3::new(
                     transform.position.x.floor() as i32,

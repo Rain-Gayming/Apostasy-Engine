@@ -431,21 +431,24 @@ impl World {
     ///         let world = World::new();
     ///
     ///         world.insert_resource::<MyResource>(MyResource { value: 42 });
-    ///         world.with_resource::<MyResource, _>(|time| {
+    ///         world.with_resource>(|time: MyResource| {
     ///             println!("Delta: {}", time.value);
     ///         });
     ///     }
     /// ```
-    pub fn with_resource<T: Resource, F: FnOnce(&T)>(&self, func: F) {
+    pub fn with_resource<T: Resource, F, R>(&self, func: F) -> R
+    where
+        F: FnOnce(&T) -> R,
+    {
         self.crust.mantle(|mantle| {
             if mantle.resources.is_locked() {
                 println!("Resources is currently locked");
             }
             let resources = mantle.resources.read();
             if let Some(resource) = resources.get::<T>() {
-                func(resource);
+                func(resource)
             } else {
-                println!("resource ({}) not found", T::name());
+                panic!("resource ({}) not found", T::name());
             }
         })
     }
@@ -461,29 +464,45 @@ impl World {
     ///         let world = World::new();
     ///
     ///         world.insert_resource::<MyResource>(MyResource { value: 42 });
-    ///         world.with_resource_mut::<MyResource, _>(|time| {
+    ///         world.with_resource_mut(|time: MyResource| {
     ///             time.value += 1;
     ///             println!("Delta: {}", time.value);
     ///         });
     ///     }
     /// ```
-    pub fn with_resource_mut<T: Resource, F: FnOnce(&mut T)>(&self, func: F) {
+    pub fn with_resource_mut<T: Resource, F, R>(&self, func: F) -> R
+    where
+        F: FnOnce(&mut T) -> R,
+    {
         self.crust.mantle(|mantle| {
             if mantle.resources.is_locked() {
                 println!("Resources is currently locked");
             }
             let mut resources = mantle.resources.write();
             if let Some(resource) = resources.get_mut::<T>() {
-                func(resource);
+                func(resource)
             } else {
-                println!("resource ({}) not found", T::name());
+                panic!("resource ({}) not found", T::name());
             }
         })
     }
-    pub fn with_resources<T: ResourcesGetter, F, R>(&self, func: F) -> R
-    where
-        F: FnOnce(T::Output<'_>) -> R,
-    {
+    /// Runs a function with a resource, use:
+    /// ```rust
+    ///     #[derive(Resource)]
+    ///     struct MyResource {
+    ///         pub value: i32,
+    ///     }
+    ///
+    ///     fn foo(){
+    ///         world.with_resources::<MyResource, _>(|time| {
+    ///             println!("Delta: {}", time.value);
+    ///         });
+    ///     }
+    /// ```
+    pub fn with_resources<T: ResourcesGetter, R>(
+        &self,
+        func: impl FnOnce(T::Output<'_>) -> R,
+    ) -> R {
         self.crust.mantle(|mantle| {
             if mantle.resources.is_locked() {
                 println!("Resources is currently locked");

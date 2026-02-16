@@ -1,3 +1,5 @@
+use crate as apostasy;
+use crate::engine::ecs::resources::frame_counter::FPSCounter;
 use crate::engine::{
     ecs::{
         World,
@@ -6,6 +8,7 @@ use crate::engine::{
             transform::{Transform, VoxelChunkTransform, calculate_forward, calculate_up},
         },
         entity::EntityView,
+        system::UIFunction,
     },
     rendering::models::{
         model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
@@ -15,9 +18,10 @@ use crate::engine::{
 use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
+use apostasy_macros::ui;
 use ash::vk::{self, DescriptorSet};
 use cgmath::{Matrix4, Point3};
-use egui::FontFamily;
+use egui::{Context, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
@@ -387,7 +391,7 @@ impl Renderer {
                             .include::<Transform>()
                             .build()
                             .run(|entity_view: EntityView<'_>| {
-                                world.with_resource::<ModelLoader, _>(|model_loader| {
+                                world.with_resource::<ModelLoader, _, _>(|model_loader| {
                                     // Add position offset
                                     if let Some(transform) = entity_view.get::<Transform>() {
                                         // Add position offset
@@ -660,19 +664,40 @@ impl Renderer {
     }
 
     /// Prepares egui for rendering
-    pub fn prepare_egui(&mut self, window: &Window) {
+    pub fn prepare_egui(&mut self, window: &Window, world: &mut World) {
         // Collect input for egui
         let raw_input = self.egui_state.take_egui_input(window);
         self.egui_ctx.begin_pass(raw_input);
 
-        egui::Window::new("Debug Info")
-            .default_pos([10.0, 10.0])
-            .show(&self.egui_ctx, |ui| {
-                ui.heading("Engine Stats");
-                ui.label(format!("Frame: {}", self.frame_index));
-                ui.separator();
-            });
+        let mut systems: Vec<&UIFunction> = inventory::iter::<UIFunction>.into_iter().collect();
+        systems.sort_by_key(|s| s.priority);
+        systems.reverse();
+
+        for system in systems {
+            (system.func)(&mut self.egui_ctx, world);
+        }
     }
+}
+
+#[ui]
+fn test(context: &mut Context, world: &mut World) {
+    egui::Window::new("Debug Info")
+        .default_pos([10.0, 10.0])
+        .show(&context, |ui| {
+            ui.heading("Engine Stats");
+            ui.separator();
+            ui.label(format!(
+                "Entity Count: {}",
+                world
+                    .crust
+                    .mantle(|mantle| mantle.core.entity_index.lock().len())
+            ));
+            ui.label(format!(
+                "FPS: {}",
+                world.with_resource(|fps: &FPSCounter| fps.fps())
+            ));
+            ui.separator();
+        });
 }
 
 impl Drop for Renderer {

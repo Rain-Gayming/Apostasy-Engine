@@ -44,7 +44,7 @@ pub struct InputManager {
 
 /// Rebinds a key, use:
 /// ```rust
-///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///     world.with_resource_mut(|input_manager: &mut InputManager| {
 ///         rebind_key(input_manager, KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold), "forward");
 ///     });
 /// ```
@@ -55,7 +55,7 @@ pub fn rebind_key(input_manager: &mut InputManager, key: KeyBind, name: &str) {
 
 /// Registers a key, use:
 /// ```rust
-///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///     world.with_resource_mut(|input_manager: &mut InputManager| {
 ///         register_key(input_manager, KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold), "forward");
 ///     });
 /// ```
@@ -66,7 +66,7 @@ pub fn register_keybind(input_manager: &mut InputManager, key: KeyBind, name: &s
 
 /// Checks if a key is active, use:
 /// ```rust
-///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///     world.with_resource_mut(|input_manager: &mut InputManager| {
 ///         if is_keybind_active(input_manager, "forward") {
 ///             println!("forward is active");
 ///         }
@@ -87,7 +87,7 @@ pub fn is_keybind_active(input_manager: &InputManager, name: &str) -> bool {
 
 #[late_update]
 pub fn clear_actions(world: &mut World) {
-    world.with_resource_mut::<InputManager, _>(|input_manager| {
+    world.with_resource_mut(|input_manager: &mut InputManager| {
         input_manager.keys_pressed.clear();
         input_manager.keys_released.clear();
         input_manager.mouse_pressed.clear();
@@ -98,7 +98,7 @@ pub fn clear_actions(world: &mut World) {
 
 /// Calculates the input vector for 2D movement, use:
 /// ```rust
-///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///     world.with_resource_mut(|input_manager: &mut InputManager| {
 ///         let direction = input_vector_2d(
 ///             input_manager,
 ///             "left",
@@ -134,7 +134,7 @@ pub fn input_vector_2d(
 
 /// Calculates the input vector for 3D movement, use:
 /// ```rust
-///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///     world.with_resource_mut(|input_manager: &mut InputManager| {
 ///         let direction = input_vector_3d(
 ///             input_manager,
 ///             "right",

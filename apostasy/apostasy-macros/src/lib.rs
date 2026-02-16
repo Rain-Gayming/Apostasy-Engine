@@ -99,15 +99,15 @@ pub fn resource_derive(input: TokenStream) -> TokenStream {
     output.into()
 }
 
-struct StartArgs {
+struct SystemArgs {
     priority: Option<u32>,
 }
 
 /// Parser for the attribute arguments
-impl Parse for StartArgs {
+impl Parse for SystemArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.is_empty() {
-            return Ok(StartArgs { priority: None });
+            return Ok(SystemArgs { priority: None });
         }
 
         let name: syn::Ident = input.parse()?;
@@ -119,7 +119,7 @@ impl Parse for StartArgs {
         let priority_lit: LitInt = input.parse()?;
         let priority: u32 = priority_lit.base10_parse()?;
 
-        Ok(StartArgs {
+        Ok(SystemArgs {
             priority: Some(priority),
         })
     }
@@ -128,7 +128,7 @@ impl Parse for StartArgs {
 /// Registers a start system, Start systems run once at the start of the game
 #[proc_macro_attribute]
 pub fn start(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(attr as StartArgs);
+    let args = parse_macro_input!(attr as SystemArgs);
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
 
@@ -150,7 +150,7 @@ pub fn start(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn fixed_update(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
-    let args = parse_macro_input!(attr as StartArgs);
+    let args = parse_macro_input!(attr as SystemArgs);
     let fn_name = &input_fn.sig.ident;
     let priority = args.priority.unwrap_or(0);
 
@@ -175,7 +175,7 @@ pub fn fixed_update(attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
-    let args = parse_macro_input!(attr as StartArgs);
+    let args = parse_macro_input!(attr as SystemArgs);
     let priority = args.priority.unwrap_or(0);
 
     // Generate an inventory registration
@@ -199,7 +199,7 @@ pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn late_update(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
-    let args = parse_macro_input!(attr as StartArgs);
+    let args = parse_macro_input!(attr as SystemArgs);
     let priority = args.priority.unwrap_or(0);
 
     // Generate an inventory registration
@@ -215,5 +215,27 @@ pub fn late_update(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    TokenStream::from(expanded)
+}
+
+/// Registers a start system, Start systems run once at the start of the game
+#[proc_macro_attribute]
+pub fn ui(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as SystemArgs);
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+
+    let priority = args.priority.unwrap_or(0);
+
+    let expanded = quote! {
+        #input_fn
+        inventory::submit! {
+            apostasy::engine::ecs::system::UIFunction{
+                name: stringify!(#fn_name),
+                func: #fn_name,
+                priority: #priority,
+            }
+        }
+    };
     TokenStream::from(expanded)
 }

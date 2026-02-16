@@ -129,14 +129,14 @@ impl Engine {
 
         world.insert_resource::<WindowManager>(WindowManager::default());
 
-        world.with_resource_mut::<WindowManager, _>(|window_manager| {
+        world.with_resource_mut(|window_manager: &mut WindowManager| {
             window_manager.primary_window_id = primary_window_id;
             window_manager
                 .windows
                 .insert(primary_window_id, primary_window.clone());
         });
 
-        world.with_resource_mut::<ModelLoader, _>(|model_loader| {
+        world.with_resource_mut(|model_loader: &mut ModelLoader| {
             load_models(model_loader, &rendering_context);
         });
 
@@ -155,12 +155,12 @@ impl Engine {
         event: WindowEvent,
     ) {
         self.world
-            .with_resource_mut::<InputManager, _>(|input_manager| {
+            .with_resource_mut(|input_manager: &mut InputManager| {
                 handle_input_event(input_manager, event.clone());
             });
 
         self.world
-            .with_resource_mut::<WindowManager, _>(|window_manager| {
+            .with_resource_mut(|window_manager: &mut WindowManager| {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     renderer.window_event(
                         window_manager.windows.get(&window_id).unwrap(),
@@ -182,12 +182,15 @@ impl Engine {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    self.world
-                        .with_resource_mut::<WindowManager, _>(|window_manager| {
-                            window_manager.windows.values_mut().for_each(|window| {
-                                renderer.prepare_egui(window);
-                            });
+                    let windows: Vec<Arc<Window>> =
+                        self.world.with_resource(|window_manager: &WindowManager| {
+                            window_manager.windows.values().cloned().collect()
                         });
+
+                    for window in &windows {
+                        renderer.prepare_egui(window, &mut self.world);
+                    }
+
                     let _ = renderer.render(&self.world);
                 }
             }
@@ -203,7 +206,7 @@ impl Engine {
         event: DeviceEvent,
     ) {
         self.world
-            .with_resource_mut::<InputManager, _>(|input_manager| {
+            .with_resource_mut(|input_manager: &mut InputManager| {
                 handle_device_event(input_manager, event.clone());
             });
     }
@@ -213,7 +216,7 @@ impl Engine {
         self.world.fixed_update(self.timer.tick().fixed_dt);
 
         self.world
-            .with_resource_mut::<WindowManager, _>(|window_manager| {
+            .with_resource_mut(|window_manager: &mut WindowManager| {
                 for window in window_manager.windows.values() {
                     window.request_redraw();
                 }
@@ -231,7 +234,7 @@ impl Engine {
         let window_id = window.id();
 
         self.world
-            .with_resource_mut::<WindowManager, _>(|window_manager| {
+            .with_resource_mut::<WindowManager, _, _>(|window_manager| {
                 window_manager.windows.insert(window_id, window.clone());
             });
 

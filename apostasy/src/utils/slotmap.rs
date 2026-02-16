@@ -80,6 +80,9 @@ where
     K: Copy + From<Key>,
     Key: From<K>,
 {
+    pub fn len(&self) -> usize {
+        self.slots.len()
+    }
     /// Returns `None` if there are no more slots left
     pub fn insert(&mut self, data: T) -> K {
         let slot_index = if let Some(index) = self.available.pop() {
