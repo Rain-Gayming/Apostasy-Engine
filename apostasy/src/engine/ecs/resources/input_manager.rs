@@ -42,11 +42,36 @@ pub struct InputManager {
     mouse_released: HashSet<MouseButton>,
 }
 
+/// Rebinds a key, use:
+/// ```rust
+///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///         rebind_key(input_manager, KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold), "forward");
+///     });
+/// ```
+pub fn rebind_key(input_manager: &mut InputManager, key: KeyBind, name: &str) {
+    input_manager.keybinds.remove(name);
+    input_manager.keybinds.insert(name.to_string(), key);
+}
+
+/// Registers a key, use:
+/// ```rust
+///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///         register_key(input_manager, KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold), "forward");
+///     });
+/// ```
 pub fn register_keybind(input_manager: &mut InputManager, key: KeyBind, name: &str) {
     println!("registering keybind: {}", name);
     input_manager.keybinds.insert(name.to_string(), key);
 }
 
+/// Checks if a key is active, use:
+/// ```rust
+///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///         if is_keybind_active(input_manager, "forward") {
+///             println!("forward is active");
+///         }
+///     });
+/// ```
 pub fn is_keybind_active(input_manager: &InputManager, name: &str) -> bool {
     let key = input_manager.keybinds.get(name);
     if key.is_none() {
@@ -71,16 +96,28 @@ pub fn clear_actions(world: &mut World) {
     });
 }
 
+/// Calculates the input vector for 2D movement, use:
+/// ```rust
+///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///         let direction = input_vector_2d(
+///             input_manager,
+///             "left",
+///             "right",
+///             "up",
+///             "down",
+///         );
+///     });
+/// ```
 pub fn input_vector_2d(
     input_manager: &InputManager,
-    forward: &str,
+    left: &str,
     right: &str,
     up: &str,
     down: &str,
 ) -> Vector2<f32> {
     let mut x = 0.0;
     let mut y = 0.0;
-    if is_keybind_active(input_manager, forward) {
+    if is_keybind_active(input_manager, left) {
         x += 1.0;
     }
     if is_keybind_active(input_manager, right) {
@@ -95,6 +132,20 @@ pub fn input_vector_2d(
     Vector2::new(x, y)
 }
 
+/// Calculates the input vector for 3D movement, use:
+/// ```rust
+///     world.with_resource_mut::<InputManager, _>(|input_manager| {
+///         let direction = input_vector_3d(
+///             input_manager,
+///             "right",
+///             "left",
+///             "up",
+///             "down",
+///             "backward",
+///             "forward",
+///         );
+///     });
+/// ```
 pub fn input_vector_3d(
     input_manager: &InputManager,
     x_pos: &str,
