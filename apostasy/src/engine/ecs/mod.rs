@@ -17,10 +17,12 @@ use crate::engine::{
         entity::{Entity, EntityLocation, EntityView},
         query::QueryBuilder,
         resource::{Resource, ResourceMap, ResourcesGetter},
+        resources::{frame_counter::FPSCounter, input_manager::InputManager},
         system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
     },
-    rendering::rendering_context::RenderingContext,
+    rendering::{models::model::ModelLoader, rendering_context::RenderingContext},
     voxels::{chunk_loader::ChunkStorage, voxel_registry::VoxelRegistry},
+    windowing::cursor_manager::CursorManager,
 };
 
 pub mod archetype;
@@ -50,6 +52,16 @@ pub enum Package {
     /// ```
     /// path is recomended to be "res/assets/voxels/"
     Voxels,
+    /// Default package
+    /// Includes:
+    /// - InputManager
+    /// - CursorManager
+    /// - ModelLoader
+    Default,
+    /// Debug package
+    /// Includes:
+    /// - FPSCounter
+    Debug,
 }
 
 /// Wrapper for the Crust
@@ -213,6 +225,14 @@ impl World {
             Package::Voxels => {
                 self.insert_resource::<ChunkStorage>(ChunkStorage::default());
                 self.insert_resource::<VoxelRegistry>(VoxelRegistry::default());
+            }
+            Package::Default => {
+                self.insert_resource::<InputManager>(InputManager::default());
+                self.insert_resource::<CursorManager>(CursorManager::default());
+                self.insert_resource::<ModelLoader>(ModelLoader::default());
+            }
+            Package::Debug => {
+                self.insert_resource::<FPSCounter>(FPSCounter::default());
             }
         }
     }

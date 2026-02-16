@@ -1,5 +1,6 @@
 use apostasy::engine::{
-    ecs::resources::frame_counter::FPSCounter, voxels::chunk_loader::ChunkLoaderFlag,
+    ecs::{Package, resources::frame_counter::FPSCounter},
+    voxels::chunk_loader::ChunkLoaderFlag,
 };
 #[allow(dead_code, unused, unused_imports)]
 use apostasy::engine::{
@@ -41,10 +42,8 @@ fn main() {
 pub fn start(world: &mut World) {
     let rotation = Quaternion::from_axis_angle(Vector3::new(1.0, 0.0, 0.0), Deg(35.0));
 
-    world.insert_resource::<InputManager>(InputManager::default());
-    world.insert_resource::<CursorManager>(CursorManager::default());
-    world.insert_resource::<ModelLoader>(ModelLoader::default());
-    world.insert_resource::<FPSCounter>(FPSCounter::default());
+    world.with_package(Package::Default);
+    world.with_package(Package::Debug);
 
     // world.with_resource_mut::<VoxelRegistry, _>(|registry| {
     //     registry.load_from_directory("res/assets/voxels/").unwrap();

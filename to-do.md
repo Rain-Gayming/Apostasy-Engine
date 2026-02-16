@@ -1,11 +1,11 @@
 
-**Entity Component System:**
+**ECS:**
 
-- [-] components
+- [x] components
     - [x] component macro
     - [x] component info 
 
-- [-] world
+- [x] world
     - [x] component registering
     - [x] entities
         - [x] entity adding
