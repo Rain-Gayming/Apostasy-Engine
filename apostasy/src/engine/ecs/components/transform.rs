@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate as apostasy;
 use apostasy_macros::Component;
 use cgmath::{Deg, Euler, One, Quaternion, Rotation, Vector3};
@@ -12,6 +14,21 @@ pub struct Transform {
     pub up: Vector3<f32>,
     pub forward: Vector3<f32>,
     pub right: Vector3<f32>,
+}
+
+impl Debug for Transform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Transform")
+            .field("position", &self.position)
+            .field("rotation", &self.rotation)
+            .field("yaw", &self.yaw)
+            .field("pitch", &self.pitch)
+            .field("scale", &self.scale)
+            .field("up", &self.up)
+            .field("forward", &self.forward)
+            .field("right", &self.right)
+            .finish()
+    }
 }
 
 impl Default for Transform {

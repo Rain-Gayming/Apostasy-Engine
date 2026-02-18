@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{collections::HashMap, fmt::Debug, mem::MaybeUninit};
 
 use aligned_vec::{AVec, RuntimeAlign};
@@ -8,10 +9,11 @@ use smallvec::SmallVec;
 use crate::{
     engine::ecs::{
         Entity,
-        component::{ComponentId, ComponentInfo},
+        component::{Component, ComponentId, ComponentInfo},
+        core::Core,
         entity::EntityLocation,
     },
-    utils::slotmap::{Key, Slot},
+    utils::slotmap::{Key, Slot, SlotMap},
 };
 
 /// A data type that contains
@@ -32,6 +34,91 @@ impl Debug for Slot<Archetype> {
         f.debug_struct("Archetype")
             .field("signature", &self.data.as_ref().unwrap().signature)
             .field("entities", &self.data.as_ref().unwrap().entities)
+            .finish()
+    }
+}
+
+impl Debug for SlotMap<ArchetypeId, Archetype> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ArchetypeMap")
+            .field("slots", &self.slots)
+            .field("available", &self.available)
+            .finish()
+    }
+}
+
+pub struct ArchetypeDebug<'a> {
+    pub archetype: &'a Archetype,
+    pub core: &'a Core,
+}
+impl Debug for ArchetypeDebug<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let archetype = self.archetype;
+
+        // Collect full ComponentInfo for each component in the signature
+        let component_infos: Vec<ComponentInfo> = archetype
+            .signature
+            .iter()
+            .filter_map(|component_id| component_id.as_entity())
+            .filter_map(|entity| {
+                let component_info_locations =
+                    self.core.component_index.get(&ComponentInfo::id().into())?;
+
+                let entity_index = self.core.entity_index.lock();
+                let comp_location = entity_index.get_ignore_generation(entity).copied()?;
+                drop(entity_index);
+
+                let col_index = *component_info_locations.get(&comp_location.archetype)?;
+
+                let archetype = self.core.archetypes.get(comp_location.archetype)?;
+                let column = archetype.columns.get(*col_index)?.read();
+                let bytes = column.get_chunk(comp_location.row);
+
+                Some(unsafe { std::ptr::read(bytes.as_ptr() as *const ComponentInfo) })
+            })
+            .collect();
+
+        // Signature as names
+        let signature_names: Vec<&str> = component_infos.iter().map(|i| i.name).collect();
+
+        // Per-entity data
+        struct FmtWrapper<'a> {
+            bytes: &'a [MaybeUninit<u8>],
+            fmt_fn: fn(&[MaybeUninit<u8>], &mut fmt::Formatter<'_>) -> fmt::Result,
+        }
+        impl fmt::Debug for FmtWrapper<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                (self.fmt_fn)(self.bytes, f)
+            }
+        }
+
+        let entity_data: Vec<String> = archetype
+            .entities
+            .iter()
+            .enumerate()
+            .map(|(row, entity)| {
+                let components: Vec<String> = archetype
+                    .columns
+                    .iter()
+                    .zip(component_infos.iter())
+                    .map(|(col, info)| {
+                        let col = col.read();
+                        let bytes = col.get_chunk(RowIndex(row));
+                        let value = match info.fmt {
+                            Some(fmt_fn) => format!("{:?}", FmtWrapper { bytes, fmt_fn }),
+                            None => "(no Debug impl)".to_string(),
+                        };
+                        format!("{}: {}", info.name, value)
+                    })
+                    .collect();
+
+                format!("{:?} => {{ {} }}", entity, components.join(", "))
+            })
+            .collect();
+
+        f.debug_struct("Archetype")
+            .field("signature", &signature_names)
+            .field("entities", &entity_data)
             .finish()
     }
 }

@@ -27,6 +27,7 @@ use crate::engine::{
 use crate::engine::ecs::World;
 
 pub mod ecs;
+pub mod editor;
 pub mod rendering;
 pub mod timer;
 pub mod voxels;

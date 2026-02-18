@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Debug,
     marker::PhantomData,
     mem::{ManuallyDrop, MaybeUninit},
 };
@@ -122,6 +123,32 @@ pub unsafe trait Component: Sized {
         impl<T> NoImpl<T> for Getter<T> {}
         Getter::<Self>::get()
     }
+    fn get_erased_fmt()
+    -> Option<fn(&[MaybeUninit<u8>], &mut std::fmt::Formatter<'_>) -> std::fmt::Result> {
+        struct Getter<T>(PhantomData<T>);
+
+        impl<T: std::fmt::Debug> Getter<T> {
+            #[allow(dead_code)]
+            fn get()
+            -> Option<fn(&[MaybeUninit<u8>], &mut std::fmt::Formatter<'_>) -> std::fmt::Result>
+            {
+                Some(|bytes, f| {
+                    let val = unsafe { (bytes.as_ptr() as *const T).as_ref().unwrap() };
+                    write!(f, "{:?}", val)
+                })
+            }
+        }
+
+        trait NoImpl<T> {
+            fn get()
+            -> Option<fn(&[MaybeUninit<u8>], &mut std::fmt::Formatter<'_>) -> std::fmt::Result>
+            {
+                None
+            }
+        }
+        impl<T> NoImpl<T> for Getter<T> {}
+        Getter::<Self>::get()
+    }
 }
 
 pub trait OnInsert {
@@ -144,6 +171,7 @@ pub struct ComponentInfo {
     pub default: Option<fn() -> &'static [MaybeUninit<u8>]>,
     pub on_insert: Option<fn(EntityView<'_>)>,
     pub on_remove: Option<fn(EntityView<'_>)>,
+    pub fmt: Option<fn(&[MaybeUninit<u8>], &mut std::fmt::Formatter<'_>) -> std::fmt::Result>,
 }
 
 #[derive(Deref, DerefMut, Default, Debug)]

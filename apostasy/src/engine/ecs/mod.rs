@@ -11,8 +11,9 @@ use thread_local::ThreadLocal;
 
 use crate::engine::{
     ecs::{
+        archetype::ArchetypeDebug,
         command::Command,
-        component::COMPONENT_ENTRIES,
+        component::{COMPONENT_ENTRIES, Component, ComponentInfo},
         core::Core,
         entity::{Entity, EntityLocation, EntityView},
         query::QueryBuilder,
@@ -559,4 +560,92 @@ impl World {
             packages: Vec::new(),
         })
     }
+
+    pub fn debug_archetypes(&self) -> String {
+        self.crust.mantle(|mantle| {
+            let mut string = String::new();
+            for archetype in mantle.core.archetypes.slots.iter().skip(2) {
+                if let Some(data) = &archetype.data {
+                    string.push_str(&format!(
+                        "{:#?}\n",
+                        ArchetypeDebug {
+                            archetype: data,
+                            core: &mantle.core,
+                        }
+                    ));
+                }
+            }
+            string
+        })
+    }
+}
+
+pub fn entity_components_to_string(world: &World, entity: Entity) -> String {
+    let mut result = String::new();
+
+    world.crust.mantle(|mantle| {
+        let core = &mantle.core;
+
+        // Get entity location
+        let location = match core.get_entity_location_locking(entity) {
+            Some(loc) => loc,
+            None => {
+                result = "Entity not found".to_string();
+                return;
+            }
+        };
+
+        // Get the archetype
+        let archetype = match core.archetypes.get(location.archetype) {
+            Some(a) => a,
+            None => {
+                result = "Archetype not found".to_string();
+                return;
+            }
+        };
+
+        result.push_str(&format!("Entity {:?}:\n", entity));
+
+        // Iterate over each component in the signature
+        for (col_idx, component_id) in archetype.signature.iter().enumerate() {
+            // Try to get ComponentInfo for this component
+            let component_entity = match component_id.as_entity() {
+                Some(e) => e,
+                None => continue,
+            };
+
+            // Look up component info from the component_info archetype
+            let info = core
+                .component_index
+                .get(&ComponentInfo::id().into())
+                .and_then(|locations| {
+                    let comp_location = core
+                        .entity_index
+                        .lock()
+                        .get_ignore_generation(component_entity)
+                        .copied()?;
+                    let col_index = *locations.get(&comp_location.archetype)?;
+                    let column = archetype.columns.get(*col_index)?.read();
+                    // Read ComponentInfo bytes
+                    let bytes = column.get_chunk(comp_location.row);
+                    Some(unsafe { std::ptr::read(bytes.as_ptr() as *const ComponentInfo) })
+                });
+
+            match info {
+                Some(comp_info) => {
+                    let column = archetype.columns[col_idx].read();
+                    let bytes = column.get_chunk(location.row);
+                    result.push_str(&format!(
+                        "  Component '{}' (size: {} bytes, align: {}): {:?}\n",
+                        comp_info.name, comp_info.size, comp_info.align, bytes
+                    ));
+                }
+                None => {
+                    result.push_str(&format!("  ComponentId {:?}: (no info)\n", component_id));
+                }
+            }
+        }
+    });
+
+    result
 }
