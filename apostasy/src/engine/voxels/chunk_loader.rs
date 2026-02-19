@@ -1,3 +1,4 @@
+use crate::log;
 use std::collections::HashMap;
 
 use apostasy_macros::{Component, Resource, update};
@@ -60,7 +61,7 @@ pub fn load_chunks(world: &mut World) {
                                     .insert(UngeneratedVoxelChunk)
                                     .insert(UnmeshedVoxelChunk);
                                 storage.loaded_chunks.insert(chunk_pos, entity.entity);
-                                println!("Loaded chunk at {:?}", chunk_pos);
+                                log!("Loaded chunk at {:?}", chunk_pos);
                             }
                         }
                     }

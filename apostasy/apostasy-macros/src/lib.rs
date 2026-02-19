@@ -33,7 +33,7 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
             }
 
             fn init(world: &apostasy::engine::ecs::World) {
-                // println!("initalizing for: {}", std::any::type_name::<#struct_name>());
+                // log!("initalizing for: {}", std::any::type_name::<#struct_name>());
                 world.entity(#struct_name::id()).insert(#struct_name::info());
             }
 

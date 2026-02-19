@@ -1,9 +1,9 @@
-use std::collections::HashSet;
-
+use crate::log;
 use crate::{self as apostasy, engine::ecs::World};
 use apostasy_macros::{Resource, late_update};
 use cgmath::{Vector2, Vector3};
 use egui::ahash::HashMap;
+use std::collections::HashSet;
 use winit::{
     dpi::PhysicalPosition,
     event::{DeviceEvent, MouseButton, WindowEvent},
@@ -60,7 +60,7 @@ pub fn rebind_key(input_manager: &mut InputManager, key: KeyBind, name: &str) {
 ///     });
 /// ```
 pub fn register_keybind(input_manager: &mut InputManager, key: KeyBind, name: &str) {
-    println!("registering keybind: {}", name);
+    log!("registering keybind: {}", name);
     input_manager.keybinds.insert(name.to_string(), key);
 }
 
@@ -68,7 +68,7 @@ pub fn register_keybind(input_manager: &mut InputManager, key: KeyBind, name: &s
 /// ```rust
 ///     world.with_resource_mut(|input_manager: &mut InputManager| {
 ///         if is_keybind_active(input_manager, "forward") {
-///             println!("forward is active");
+///             log!("forward is active");
 ///         }
 ///     });
 /// ```

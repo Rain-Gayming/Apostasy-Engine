@@ -108,7 +108,7 @@ impl Query {
     ///             .run_with_resources(|entity, mantle| {
     ///                 let resources = mantle.resources.read();
     ///                 if let Some(my_resource) = resources.get::<MyResource>() {
-    ///                     println!("Time: {}, ", my_resource.value,);
+    ///                     log!("Time: {}, ", my_resource.value,);
     ///                 }
     ///             });
     ///     }

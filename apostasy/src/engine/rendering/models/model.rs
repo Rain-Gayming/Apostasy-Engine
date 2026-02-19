@@ -1,5 +1,6 @@
 use std::fs;
 
+use crate::log;
 use crate::{
     self as apostasy,
     engine::rendering::{
@@ -73,8 +74,8 @@ impl Default for ModelRenderer {
 }
 
 pub fn get_model(name: &str, model_loader: &ModelLoader) -> Model {
-    // println!("getting model: {}", name);
-    // println!("models: {:?}", model_loader.models.keys());
+    // log!("getting model: {}", name);
+    // log!("models: {:?}", model_loader.models.keys());
     model_loader.models.get(name).unwrap().clone()
 }
 
@@ -102,7 +103,7 @@ pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext) {
 
 /// Loads a model, path should be the file name, default path is "/res/models/"
 pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
-    println!("loading model: {}", path);
+    log!("loading model: {}", path);
     let (gltf, buffers, _images) = gltf::import(path)?;
 
     let mut meshes = Vec::new();

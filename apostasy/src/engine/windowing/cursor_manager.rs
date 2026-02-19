@@ -1,3 +1,4 @@
+use crate::log;
 use crate::{self as apostasy, engine::windowing::WindowManager};
 use apostasy_macros::Resource;
 use winit::window::CursorGrabMode;
@@ -9,7 +10,7 @@ pub struct CursorManager {
 }
 
 pub fn grab_cursor(cursor_manager: &mut CursorManager, window_manager: &mut WindowManager) {
-    println!("grabbing cursor");
+    log!("grabbing cursor");
     cursor_manager.is_grabbed = true;
     cursor_manager.is_hidden = true;
 

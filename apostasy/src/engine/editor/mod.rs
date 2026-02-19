@@ -1,7 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::OnceLock,
-};
+use std::path::{Path, PathBuf};
 
 use crate::{
     self as apostasy,
@@ -16,11 +13,12 @@ use crate::{
         },
         rendering::models::model::ModelRenderer,
     },
+    get_log_buffer, log,
 };
 use apostasy_macros::{Resource, ui};
 use egui::{
     Align2, CentralPanel, CollapsingHeader, Color32, Context, CursorIcon, FontFamily, FontId,
-    Frame, Id, Rect, RichText, ScrollArea, Sense, Stroke, Ui, UiBuilder, mutex::Mutex, pos2, vec2,
+    Frame, Id, Rect, RichText, ScrollArea, Sense, Stroke, Ui, UiBuilder, pos2, vec2,
 };
 
 /// Storage for all information needed by the editor
@@ -43,20 +41,6 @@ impl Default for EditorStorage {
     }
 }
 
-static LOG_BUFFER: OnceLock<parking_lot::Mutex<Vec<String>>> = OnceLock::new();
-
-pub fn get_log_buffer() -> &'static parking_lot::Mutex<Vec<String>> {
-    LOG_BUFFER.get_or_init(|| parking_lot::Mutex::new(Vec::new()))
-}
-
-#[macro_export]
-macro_rules! log {
-    ($($arg:tt)*) => {{
-        let msg = format!($($arg)*);
-        println!("{}", msg);
-        $crate::get_log_buffer().lock().push(msg);
-    }};
-}
 /// A node in the file tree
 pub struct FileNode {
     pub name: String,
@@ -152,7 +136,7 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize) {
             };
             let label = ui.selectable_label(false, format!("{} {}", icon, node.name));
             if label.double_clicked() {
-                println!("Open: {:?}", node.path); // hook into your editor's open-file logic
+                log!("Open: {:?}", node.path); // hook into your editor's open-file logic
             }
             label.on_hover_text(node.path.to_string_lossy());
         });

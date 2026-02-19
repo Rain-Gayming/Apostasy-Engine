@@ -1,3 +1,4 @@
+use crate::{log, log_error};
 use std::{path::Path, sync::Arc};
 
 use apostasy_macros::Resource;
@@ -64,13 +65,13 @@ impl VoxelRegistry {
             id
         };
 
-        println!("Registering voxel: {}", definition.name.0);
+        log!("Registering voxel: {}", definition.name.0);
 
         // Build components list
         let mut components: Vec<Arc<dyn VoxelComponent>> = Vec::new();
 
         if let Some(trans) = definition.components.transitionable {
-            println!("Voxel: {} is transitionable", definition.name.0);
+            log!("Voxel: {} is transitionable", definition.name.0);
             components.push(Arc::new(trans));
         }
 
@@ -136,7 +137,7 @@ impl VoxelRegistry {
             {
                 match self.load_from_yaml(&path) {
                     Ok(id) => loaded.push(id),
-                    Err(e) => eprintln!("Warning: Failed to load {:?}: {}", path, e),
+                    Err(e) => log_error!("Warning: Failed to load {:?}: {}", path, e),
                 }
             }
         }

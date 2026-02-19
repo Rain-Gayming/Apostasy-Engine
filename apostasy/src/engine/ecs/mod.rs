@@ -1,3 +1,4 @@
+use crate::log;
 use std::fmt;
 use std::{
     cell::{Cell, UnsafeCell},
@@ -387,7 +388,6 @@ impl World {
                 .unwrap();
 
             if archetype.entity_index.get(&entity_location).is_none() {
-                println!("Entity not found");
                 return None;
             }
 
@@ -467,7 +467,7 @@ impl World {
     ///
     ///         world.insert_resource::<MyResource>(MyResource { value: 42 });
     ///         world.with_resource>(|time: MyResource| {
-    ///             println!("Delta: {}", time.value);
+    ///             log!("Delta: {}", time.value);
     ///         });
     ///     }
     /// ```
@@ -477,7 +477,7 @@ impl World {
     {
         self.crust.mantle(|mantle| {
             if mantle.resources.is_locked() {
-                println!("Resources is currently locked");
+                log!("Resources is currently locked");
             }
             let resources = mantle.resources.read();
             if let Some(resource) = resources.get::<T>() {
@@ -501,7 +501,7 @@ impl World {
     ///         world.insert_resource::<MyResource>(MyResource { value: 42 });
     ///         world.with_resource_mut(|time: MyResource| {
     ///             time.value += 1;
-    ///             println!("Delta: {}", time.value);
+    ///             log!("Delta: {}", time.value);
     ///         });
     ///     }
     /// ```
@@ -511,7 +511,7 @@ impl World {
     {
         self.crust.mantle(|mantle| {
             if mantle.resources.is_locked() {
-                println!("Resources is currently locked");
+                log!("Resources is currently locked");
             }
             let mut resources = mantle.resources.write();
             if let Some(resource) = resources.get_mut::<T>() {
@@ -530,7 +530,7 @@ impl World {
     ///
     ///     fn foo(){
     ///         world.with_resources::<MyResource, _>(|time| {
-    ///             println!("Delta: {}", time.value);
+    ///             log!("Delta: {}", time.value);
     ///         });
     ///     }
     /// ```
@@ -540,7 +540,7 @@ impl World {
     ) -> R {
         self.crust.mantle(|mantle| {
             if mantle.resources.is_locked() {
-                println!("Resources is currently locked");
+                log!("Resources is currently locked");
             }
             let mut resources = mantle.resources.write();
             func(T::get(&mut resources))
@@ -719,7 +719,7 @@ impl World {
             return false;
         };
         let Some(default_fn) = info.default else {
-            eprintln!("Component '{}' has no Default impl", name);
+            log!("Component '{}' has no Default impl", name);
             return false;
         };
 
