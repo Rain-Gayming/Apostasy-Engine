@@ -56,7 +56,7 @@ impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
         });
 
         for entity_location in entity_locations {
-            let mut entity_view = query.world.entity_from_location(entity_location);
+            let entity_view = query.world.entity_from_location(entity_location);
 
             if entity_view.is_some() {
                 query.world.crust.mantle(|mantle| {

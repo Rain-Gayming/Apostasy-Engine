@@ -284,11 +284,6 @@ pub fn editor_ui(context: &mut Context, world: &mut World) {
                 world.spawn();
             }
 
-            // get all entity locations
-            let entity_locations = world
-                .crust
-                .mantle(|mantle| mantle.core.entity_index.lock().clone());
-
             world.with_resource_mut(|editor_storage: &mut EditorStorage| {
                 ScrollArea::vertical()
                     .id_salt("entities_scroll")
@@ -298,7 +293,8 @@ pub fn editor_ui(context: &mut Context, world: &mut World) {
 
                         for entity in world.get_all_entities() {
                             let world_entity = world.entity(entity);
-                            let mut name = String::new();
+                            #[allow(unused_assignments)]
+                            let name;
                             // if the entity has a name component, use that
                             // otherwise use the entity id
                             if let Some(name_component) = world_entity.get_ref::<Name>() {
