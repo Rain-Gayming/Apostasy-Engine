@@ -1,9 +1,8 @@
 use crate as apostasy;
 use crate::engine::ecs::component::Component;
-use crate::engine::ecs::entity::{EntityLocation, EntityView};
+use crate::engine::ecs::entity::EntityView;
 use crate::engine::ecs::{Mantle, World};
 use apostasy_macros::Component;
-use rayon::prelude::*;
 
 /// What the query is to do with the specific component
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -35,7 +34,7 @@ pub struct Query {
     pub components: Vec<QueryComponent>,
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 struct QueryState {}
 
 #[allow(private_bounds)]
@@ -57,28 +56,30 @@ impl<F: FnMut(EntityView<'_>)> QueryClosure for F {
         });
 
         for entity_location in entity_locations {
-            let entity_view = query.world.entity_from_location(entity_location);
+            let mut entity_view = query.world.entity_from_location(entity_location);
 
-            query.world.crust.mantle(|mantle| {
-                let archetype = mantle
-                    .core
-                    .archetypes
-                    .get(entity_location.archetype)
-                    .unwrap();
-            });
-            // Check if entity matches the query
-            let matches = query.components.iter().all(|qc| {
-                let has_component = entity_view.get_id(qc.id).is_some();
+            if entity_view.is_some() {
+                query.world.crust.mantle(|mantle| {
+                    let archetype = mantle
+                        .core
+                        .archetypes
+                        .get(entity_location.archetype)
+                        .unwrap();
+                });
+                // Check if entity matches the query
+                let matches = query.components.iter().all(|qc| {
+                    let has_component = entity_view.unwrap().get_id(qc.id).is_some();
 
-                match qc.access {
-                    QueryAccess::Include => has_component,
-                    QueryAccess::Exclude => !has_component,
-                    QueryAccess::Noop => true,
+                    match qc.access {
+                        QueryAccess::Include => has_component,
+                        QueryAccess::Exclude => !has_component,
+                        QueryAccess::Noop => true,
+                    }
+                });
+
+                if matches {
+                    self(entity_view.unwrap());
                 }
-            });
-
-            if matches {
-                self(entity_view);
             }
         }
     }
@@ -127,68 +128,23 @@ impl Query {
         for entity_location in entity_locations {
             let entity_view = self.world.entity_from_location(entity_location);
 
-            let matches = self.components.iter().all(|qc| {
-                let has_component = entity_view.get_id(qc.id).is_some();
-                match qc.access {
-                    QueryAccess::Include => has_component,
-                    QueryAccess::Exclude => !has_component,
-                    QueryAccess::Noop => true,
-                }
-            });
-
-            if matches {
-                self.world.crust.mantle(|mantle| {
-                    func(entity_view, mantle);
-                });
-            }
-        }
-    }
-
-    /// Collects entity locations that match the query for parallel processing
-    pub fn collect_locations(&self) -> Vec<EntityLocation> {
-        let entity_locations: Vec<_> = self.world.crust.mantle(|mantle| {
-            mantle
-                .core
-                .entity_index
-                .lock()
-                .slots
-                .iter()
-                .filter_map(|slot| slot.data)
-                .collect()
-        });
-
-        entity_locations
-            .into_iter()
-            .filter(|&entity_location| {
-                let entity_view = self.world.entity_from_location(entity_location);
-
-                self.components.iter().all(|qc| {
-                    let has_component = entity_view.get_id(qc.id).is_some();
+            if entity_view.is_some() {
+                let matches = self.components.iter().all(|qc| {
+                    let has_component = entity_view.unwrap().get_id(qc.id).is_some();
                     match qc.access {
                         QueryAccess::Include => has_component,
                         QueryAccess::Exclude => !has_component,
                         QueryAccess::Noop => true,
                     }
-                })
-            })
-            .collect()
-    }
+                });
 
-    /// Parallel query execution
-    pub fn run_parallel<F, T>(&self, func: F) -> Vec<T>
-    where
-        F: Fn(EntityView<'_>) -> T + Send + Sync,
-        T: Send,
-    {
-        let entity_locations = self.collect_locations();
-
-        entity_locations
-            .par_iter()
-            .map(|&entity_location| {
-                let entity_view = self.world.entity_from_location(entity_location);
-                func(entity_view)
-            })
-            .collect()
+                if matches {
+                    self.world.crust.mantle(|mantle| {
+                        func(entity_view.unwrap(), mantle);
+                    });
+                }
+            }
+        }
     }
 }
 

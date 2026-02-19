@@ -13,9 +13,9 @@ use crate::engine::{
 use apostasy_macros::{Component, update};
 use cgmath::Vector3;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct UnmeshedVoxelChunk;
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct UngeneratedVoxelChunk;
 
 #[derive(Component, Default)]

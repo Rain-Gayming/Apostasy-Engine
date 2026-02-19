@@ -1,5 +1,7 @@
+use std::fmt;
 use std::{
     cell::{Cell, UnsafeCell},
+    mem::MaybeUninit,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -9,9 +11,10 @@ use std::{
 use parking_lot::RwLock;
 use thread_local::ThreadLocal;
 
+use crate::engine::editor::EditorStorage;
 use crate::engine::{
     ecs::{
-        archetype::ArchetypeDebug,
+        archetype::{ArchetypeDebug, RowIndex},
         command::Command,
         component::{COMPONENT_ENTRIES, Component, ComponentInfo},
         core::Core,
@@ -63,6 +66,10 @@ pub enum Package {
     /// Includes:
     /// - FPSCounter
     Debug,
+    /// Editor package
+    /// Includes:
+    /// - EditorStorage
+    Editor,
 }
 
 /// Wrapper for the Crust
@@ -224,16 +231,19 @@ impl World {
         self.packages.push(package);
         match package {
             Package::Voxels => {
-                self.insert_resource::<ChunkStorage>(ChunkStorage::default());
-                self.insert_resource::<VoxelRegistry>(VoxelRegistry::default());
+                self.insert_resource(ChunkStorage::default());
+                self.insert_resource(VoxelRegistry::default());
             }
             Package::Default => {
-                self.insert_resource::<InputManager>(InputManager::default());
-                self.insert_resource::<CursorManager>(CursorManager::default());
-                self.insert_resource::<ModelLoader>(ModelLoader::default());
+                self.insert_resource(InputManager::default());
+                self.insert_resource(CursorManager::default());
+                self.insert_resource(ModelLoader::default());
             }
             Package::Debug => {
-                self.insert_resource::<FPSCounter>(FPSCounter::default());
+                self.insert_resource(FPSCounter::default());
+            }
+            Package::Editor => {
+                self.insert_resource(EditorStorage::default());
             }
         }
     }
@@ -368,13 +378,18 @@ impl World {
         }
     }
 
-    pub fn entity_from_location(&self, entity_location: EntityLocation) -> EntityView<'_> {
+    pub fn entity_from_location(&self, entity_location: EntityLocation) -> Option<EntityView<'_>> {
         self.crust.mantle(|mantle| {
             let archetype = mantle
                 .core
                 .archetypes
                 .get(entity_location.archetype)
                 .unwrap();
+
+            if archetype.entity_index.get(&entity_location).is_none() {
+                println!("Entity not found");
+                return None;
+            }
 
             self.get_entity(
                 archetype
@@ -383,7 +398,6 @@ impl World {
                     .unwrap()
                     .to_owned(),
             )
-            .unwrap()
         })
     }
 
@@ -561,6 +575,104 @@ impl World {
         })
     }
 
+    pub fn get_all_entities(&self) -> Vec<Entity> {
+        self.crust.mantle(|mantle| {
+            let mut entities: Vec<Entity> = Vec::new();
+
+            for archetype in mantle.core.archetypes.slots.iter() {
+                if archetype
+                    .data
+                    .as_ref()
+                    .unwrap()
+                    .entities
+                    .contains(&ComponentInfo::id())
+                {
+                    continue;
+                }
+                if let Some(data) = &archetype.data {
+                    for entity in data.entities.iter() {
+                        entities.push(*entity);
+                    }
+                }
+            }
+
+            entities
+        })
+    }
+
+    /// Returns an entities component information as a string from a location
+    /// primary used for debugging
+    pub fn get_component_info(&self, entity_location: EntityLocation) -> String {
+        let mut string = String::new();
+        let entity = self.entity_from_location(entity_location);
+        self.crust.mantle(|mantle| {
+            let core = &mantle.core;
+            let archetype = core.archetypes.get(entity_location.archetype).unwrap();
+            if archetype.entities.contains(&ComponentInfo::id()) {
+                return;
+            }
+
+            let component_infos: Vec<ComponentInfo> = archetype
+                .signature
+                .iter()
+                .filter_map(|component_id| component_id.as_entity())
+                .filter_map(|entity| {
+                    let component_info_locations = core
+                        .component_index
+                        .get(&ComponentInfo::id().into())
+                        .unwrap();
+
+                    let entity_index = core.entity_index.lock();
+                    let comp_location = entity_index.get_ignore_generation(entity).copied()?;
+                    drop(entity_index);
+
+                    let col_index = *component_info_locations.get(&comp_location.archetype)?;
+
+                    let archetype = core.archetypes.get(comp_location.archetype).unwrap();
+                    let column = archetype.columns.get(*col_index)?.read();
+                    let bytes = column.get_chunk(comp_location.row);
+
+                    Some(unsafe { std::ptr::read(bytes.as_ptr() as *const ComponentInfo) })
+                })
+                .collect();
+
+            struct FmtWrapper<'a> {
+                bytes: &'a [MaybeUninit<u8>],
+                fmt_fn: fn(&[MaybeUninit<u8>], &mut fmt::Formatter) -> fmt::Result,
+            }
+            impl fmt::Debug for FmtWrapper<'_> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    (self.fmt_fn)(self.bytes, f)
+                }
+            }
+
+            let components: Vec<String> = archetype
+                .columns
+                .iter()
+                .zip(component_infos.iter())
+                .map(|(col, info)| {
+                    let col = col.read();
+                    let bytes = col.get_chunk(RowIndex(entity_location.row.0));
+                    let value = match info.fmt {
+                        Some(fmt_fn) => format!("{:?}", FmtWrapper { bytes, fmt_fn }),
+                        None => "(no Debug impl)".to_string(),
+                    };
+                    format!("{}: {}", info.name, value)
+                })
+                .collect();
+
+            if entity.is_some() {
+                string = format!(
+                    "{:?} => {{ {} }}",
+                    entity.unwrap().entity,
+                    components.join(", ")
+                );
+            }
+        });
+        string
+    }
+
+    /// Returns a string of all archetypes and their components
     pub fn debug_archetypes(&self) -> String {
         self.crust.mantle(|mantle| {
             let mut string = String::new();
@@ -578,8 +690,49 @@ impl World {
             string
         })
     }
+
+    pub fn get_component_info_by_name(&self, name: &str) -> Option<ComponentInfo> {
+        self.crust.mantle(|mantle| {
+            let core = &mantle.core;
+            let component_info_locations = core.component_index.get(&ComponentInfo::id().into())?;
+
+            // There's only one archetype holding ComponentInfos
+            let (archetype_id, col_index) = component_info_locations.iter().next()?;
+            let archetype = core.archetypes.get(*archetype_id)?;
+            let column = archetype.columns.get(**col_index)?.read();
+
+            // Linear scan through all ComponentInfos looking for a name match
+            let num_entities = archetype.entities.len();
+            for row in 0..num_entities {
+                let bytes = column.get_chunk(RowIndex(row));
+                let info = unsafe { std::ptr::read(bytes.as_ptr() as *const ComponentInfo) };
+                if info.name == name || info.name.ends_with(&format!("::{}", name)) {
+                    return Some(info);
+                }
+            }
+            None
+        })
+    }
+
+    pub fn add_default_component_by_name(&self, entity: Entity, name: &str) -> bool {
+        let Some(info) = self.get_component_info_by_name(name) else {
+            return false;
+        };
+        let Some(default_fn) = info.default else {
+            eprintln!("Component '{}' has no Default impl", name);
+            return false;
+        };
+
+        let default_bytes: Box<[MaybeUninit<u8>]> = default_fn().into();
+        self.crust.mantle(|mantle| unsafe {
+            mantle.queue_command(Command::insert_bytes(info, default_bytes, entity));
+        });
+        true
+    }
 }
 
+/// Returns a string of all entities and their components
+/// primary used for debugging and the editor
 pub fn entity_components_to_string(world: &World, entity: Entity) -> String {
     let mut result = String::new();
 

@@ -34,7 +34,7 @@ impl EntityLocation {
 
 /// They key for an entity
 #[derive(Clone, Copy, Hash, Debug, From, PartialEq, Eq)]
-pub struct Entity(Key);
+pub struct Entity(pub Key);
 
 impl From<Entity> for Key {
     fn from(value: Entity) -> Self {

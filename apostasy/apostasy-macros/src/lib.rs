@@ -11,7 +11,7 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
     ast.generics
         .make_where_clause()
         .predicates
-        .push(parse_quote! { Self: Sized + Send + Sync + 'static });
+        .push(parse_quote! { Self: Sized + Send + Sync + Default + 'static });
 
     let struct_name = &ast.ident;
     let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();

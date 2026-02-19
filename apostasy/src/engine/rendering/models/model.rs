@@ -49,7 +49,7 @@ pub struct Texture {
     pub height: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Mesh {
     pub vertex_buffer: vk::Buffer,
     pub vertex_buffer_memory: vk::DeviceMemory,
@@ -60,11 +60,17 @@ pub struct Mesh {
     // pub material: Material,
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct MeshRenderer(pub Mesh);
 
 #[derive(Component)]
 pub struct ModelRenderer(pub String);
+
+impl Default for ModelRenderer {
+    fn default() -> Self {
+        Self("cube.glb".to_string())
+    }
+}
 
 pub fn get_model(name: &str, model_loader: &ModelLoader) -> Model {
     // println!("getting model: {}", name);

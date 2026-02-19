@@ -37,7 +37,7 @@ impl ComponentId {
 }
 
 #[allow(clippy::type_complexity, clippy::missing_safety_doc)]
-pub unsafe trait Component: Sized {
+pub unsafe trait Component: Sized + Default {
     fn id() -> Entity;
     fn info() -> ComponentInfo;
     fn init(_: &World);
@@ -64,25 +64,11 @@ pub unsafe trait Component: Sized {
     }
 
     fn get_erased_default() -> Option<fn() -> &'static [MaybeUninit<u8>]> {
-        struct Getter<T>(PhantomData<T>);
-        impl<T: Default> Getter<T> {
-            #[allow(dead_code)]
-            fn get() -> Option<fn() -> &'static [MaybeUninit<u8>]> {
-                Some(|| {
-                    let leaked = ManuallyDrop::new(T::default());
-                    unsafe {
-                        std::slice::from_raw_parts((&raw const leaked).cast(), size_of::<Self>())
-                    }
-                })
-            }
-        }
-        trait NoImpl<T> {
-            fn get() -> Option<fn() -> &'static [MaybeUninit<u8>]> {
-                None
-            }
-        }
-        impl<T> NoImpl<T> for Getter<T> {}
-        Getter::<Self>::get()
+        let f: fn() -> &'static [MaybeUninit<u8>] = || {
+            let leaked = ManuallyDrop::new(Self::default());
+            unsafe { std::slice::from_raw_parts((&raw const leaked).cast(), size_of::<Self>()) }
+        };
+        Some(f)
     }
 
     #[allow(clippy::missing_safety_doc)]
@@ -172,6 +158,23 @@ pub struct ComponentInfo {
     pub on_insert: Option<fn(EntityView<'_>)>,
     pub on_remove: Option<fn(EntityView<'_>)>,
     pub fmt: Option<fn(&[MaybeUninit<u8>], &mut std::fmt::Formatter<'_>) -> std::fmt::Result>,
+}
+
+impl Default for ComponentInfo {
+    fn default() -> Self {
+        Self {
+            name: "",
+            id: Entity::from_raw(0),
+            size: 0,
+            align: 0,
+            drop: |_| {},
+            clone: None,
+            default: None,
+            on_insert: None,
+            on_remove: None,
+            fmt: None,
+        }
+    }
 }
 
 #[derive(Deref, DerefMut, Default, Debug)]

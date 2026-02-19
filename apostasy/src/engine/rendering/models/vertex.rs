@@ -6,6 +6,12 @@ pub enum VertexType {
     Voxel,
 }
 
+impl Default for VertexType {
+    fn default() -> Self {
+        Self::Model
+    }
+}
+
 #[repr(C)]
 pub struct Vertex {
     pub position: [f32; 3],

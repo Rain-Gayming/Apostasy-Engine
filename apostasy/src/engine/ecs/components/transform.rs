@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, i32};
 
 use crate as apostasy;
 use apostasy_macros::Component;
@@ -73,4 +73,12 @@ pub fn calculate_right(transform: &Transform) -> Vector3<f32> {
 #[derive(Component)]
 pub struct VoxelChunkTransform {
     pub position: Vector3<i32>,
+}
+
+impl Default for VoxelChunkTransform {
+    fn default() -> Self {
+        Self {
+            position: Vector3::new(0, 0, 0),
+        }
+    }
 }

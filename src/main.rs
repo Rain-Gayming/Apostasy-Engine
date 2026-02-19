@@ -1,5 +1,6 @@
 use apostasy::engine::{
     ecs::{Package, resources::frame_counter::FPSCounter},
+    editor::EditorStorage,
     voxels::chunk_loader::ChunkLoaderFlag,
 };
 #[allow(dead_code, unused, unused_imports)]
@@ -44,6 +45,7 @@ pub fn start(world: &mut World) {
 
     world.with_package(Package::Default);
     world.with_package(Package::Debug);
+    world.with_package(Package::Editor);
 
     // world.with_resource_mut::<VoxelRegistry, _>(|registry| {
     //     registry.load_from_directory("res/assets/voxels/").unwrap();
