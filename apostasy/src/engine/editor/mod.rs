@@ -413,6 +413,10 @@ pub fn editor_ui(context: &mut Context, world: &mut World) {
                     if let Some(mut model_renderer) = entity.get_mut::<ModelRenderer>() {
                         insp_ui.label("MODEL RENDERER");
                         insp_ui.label(format!("Model: {}", model_renderer.0));
+                        insp_ui.text_edit_singleline(&mut model_renderer.1);
+                        if insp_ui.button("Load Model").clicked() {
+                            model_renderer.0 = model_renderer.1.clone();
+                        }
                         insp_ui.separator();
                     }
                 }

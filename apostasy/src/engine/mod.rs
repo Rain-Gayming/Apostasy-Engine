@@ -72,8 +72,8 @@ impl ApplicationHandler for Application {
         }
     }
 
-    fn suspended(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
-        self.render_engine = None;
+    fn suspended(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        event_loop.exit();
     }
 }
 

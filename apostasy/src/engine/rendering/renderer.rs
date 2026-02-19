@@ -1,5 +1,3 @@
-use crate as apostasy;
-use crate::engine::ecs::resources::frame_counter::FPSCounter;
 use crate::engine::{
     ecs::{
         World,
@@ -18,10 +16,9 @@ use crate::engine::{
 use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
-use apostasy_macros::ui;
 use ash::vk::{self, DescriptorSet};
 use cgmath::{Matrix4, Point3};
-use egui::{Context, FontFamily};
+use egui::FontFamily;
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
@@ -235,6 +232,26 @@ impl Renderer {
             if self.swapchain.is_dirty {
                 self.swapchain.resize()?;
             }
+
+            let full_output = self.egui_ctx.end_pass();
+            let clipped_primitives = self
+                .egui_ctx
+                .tessellate(full_output.shapes, full_output.pixels_per_point);
+            let texture_updates: Vec<(egui::TextureId, egui::epaint::ImageDelta)> = full_output
+                .textures_delta
+                .set
+                .iter()
+                .map(|(id, delta)| (*id, delta.clone()))
+                .collect();
+            if !texture_updates.is_empty() {
+                self.egui_renderer.set_textures(
+                    self.context.queues[self.context.queue_families.graphics as usize],
+                    self.command_pool,
+                    &texture_updates,
+                )?;
+            }
+
+            let frame = &mut self.frames[self.frame_index];
 
             // Acquire next image
             let image_index = self
@@ -560,32 +577,6 @@ impl Renderer {
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
-            let full_output = self.egui_ctx.end_pass();
-            let clipped_primitives = self
-                .egui_ctx
-                .tessellate(full_output.shapes, full_output.pixels_per_point);
-            let texture_updates: Vec<(egui::TextureId, egui::epaint::ImageDelta)> = full_output
-                .textures_delta
-                .set
-                .iter()
-                .map(|(id, delta)| (*id, delta.clone()))
-                .collect();
-            if !texture_updates.is_empty() {
-                self.egui_renderer.set_textures(
-                    self.context.queues[self.context.queue_families.graphics as usize],
-                    self.command_pool,
-                    &texture_updates,
-                )?;
-            }
-            // Transition the image layout from color attachment to present
-            self.context.transition_image_layout(
-                frame.command_buffer,
-                self.swapchain.images[image_index as usize],
-                render_image_state,
-                present_image_state,
-                vk::ImageAspectFlags::COLOR,
-            );
-
             // Render egui
 
             // Begin rendering again for egui
@@ -628,8 +619,16 @@ impl Renderer {
                 full_output.pixels_per_point,
                 &clipped_primitives,
             )?;
-
+            self.context.device.cmd_end_rendering(frame.command_buffer);
             // egui render end
+            // Transition the image layout from color attachment to present
+            self.context.transition_image_layout(
+                frame.command_buffer,
+                self.swapchain.images[image_index as usize],
+                render_image_state,
+                present_image_state,
+                vk::ImageAspectFlags::COLOR,
+            );
 
             // End the render commands
             self.context

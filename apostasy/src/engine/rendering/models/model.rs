@@ -64,11 +64,11 @@ pub struct Mesh {
 pub struct MeshRenderer(pub Mesh);
 
 #[derive(Component)]
-pub struct ModelRenderer(pub String);
+pub struct ModelRenderer(pub String, pub String);
 
 impl Default for ModelRenderer {
     fn default() -> Self {
-        Self("cube.glb".to_string())
+        Self("cube.glb".to_string(), String::new())
     }
 }
 
