@@ -46,7 +46,7 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
                         id: #struct_name::id(),
                         drop: #struct_name::erased_drop,
                         clone: #struct_name::get_erased_clone(),
-                        default: #struct_name::get_erased_default(),
+                        default: Some(#struct_name::get_erased_default()),
                         on_insert: #struct_name::get_on_insert(),
                         on_remove: #struct_name::get_on_remove(),
                         fmt: #struct_name::get_erased_fmt(),

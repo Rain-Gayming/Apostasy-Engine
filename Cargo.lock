@@ -103,6 +103,7 @@ dependencies = [
  "egui",
  "egui-ash-renderer",
  "egui-winit",
+ "epaint",
  "gltf",
  "inventory",
  "linkme",

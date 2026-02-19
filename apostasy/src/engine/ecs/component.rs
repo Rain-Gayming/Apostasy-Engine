@@ -62,13 +62,20 @@ pub unsafe trait Component: Sized + Default {
         impl<T> NoImpl<T> for Getter<T> {}
         Getter::<Self>::get()
     }
-
-    fn get_erased_default() -> Option<fn() -> &'static [MaybeUninit<u8>]> {
-        let f: fn() -> &'static [MaybeUninit<u8>] = || {
-            let leaked = ManuallyDrop::new(Self::default());
-            unsafe { std::slice::from_raw_parts((&raw const leaked).cast(), size_of::<Self>()) }
-        };
-        Some(f)
+    fn get_erased_default() -> fn() -> &'static [MaybeUninit<u8>] {
+        || {
+            let val = Self::default();
+            let mut bytes = vec![MaybeUninit::<u8>::uninit(); size_of::<Self>()];
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    &val as *const Self as *const MaybeUninit<u8>,
+                    bytes.as_mut_ptr(),
+                    size_of::<Self>(),
+                );
+            }
+            std::mem::forget(val);
+            Box::leak(bytes.into_boxed_slice())
+        }
     }
 
     #[allow(clippy::missing_safety_doc)]
