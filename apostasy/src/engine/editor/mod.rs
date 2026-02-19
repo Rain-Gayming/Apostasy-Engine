@@ -364,8 +364,12 @@ pub fn editor_ui(context: &mut Context, world: &mut World) {
 
             world.with_resource_mut(|editor_storage: &mut EditorStorage| {
                 if editor_storage.selected_entity != Entity::from_raw(0) {
-                    insp_ui.text_edit_singleline(&mut editor_storage.component_text_edit);
-                    if insp_ui.button("Add Component").clicked() {
+                    let text_edit =
+                        insp_ui.text_edit_singleline(&mut editor_storage.component_text_edit);
+
+                    if text_edit.lost_focus() && insp_ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        || insp_ui.button("Add Component").clicked()
+                    {
                         if world
                             .get_component_info_by_name(&editor_storage.component_text_edit)
                             .is_some()
@@ -412,8 +416,11 @@ pub fn editor_ui(context: &mut Context, world: &mut World) {
                     if let Some(mut model_renderer) = entity.get_mut::<ModelRenderer>() {
                         insp_ui.label("MODEL RENDERER");
                         insp_ui.label(format!("Model: {}", model_renderer.0));
-                        insp_ui.text_edit_singleline(&mut model_renderer.1);
-                        if insp_ui.button("Load Model").clicked() {
+                        let text_edit = insp_ui.text_edit_singleline(&mut model_renderer.1);
+                        if text_edit.lost_focus()
+                            && insp_ui.input(|i| i.key_pressed(egui::Key::Enter))
+                            || insp_ui.button("Load Model").clicked()
+                        {
                             model_renderer.0 = model_renderer.1.clone();
                         }
                         insp_ui.separator();
