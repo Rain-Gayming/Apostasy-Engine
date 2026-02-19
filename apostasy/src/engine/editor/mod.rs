@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
 use crate::{
     self as apostasy,
@@ -17,7 +20,7 @@ use crate::{
 use apostasy_macros::{Resource, ui};
 use egui::{
     Align2, CentralPanel, CollapsingHeader, Color32, Context, CursorIcon, FontFamily, FontId,
-    Frame, Id, Rect, RichText, ScrollArea, Sense, Stroke, Ui, UiBuilder, pos2, vec2,
+    Frame, Id, Rect, RichText, ScrollArea, Sense, Stroke, Ui, UiBuilder, mutex::Mutex, pos2, vec2,
 };
 
 /// Storage for all information needed by the editor
@@ -26,6 +29,7 @@ pub struct EditorStorage {
     pub selected_entity: Entity,
     pub component_text_edit: String,
     pub file_tree: Option<FileNode>,
+    pub console_log: Vec<String>,
 }
 
 impl Default for EditorStorage {
@@ -34,10 +38,25 @@ impl Default for EditorStorage {
             selected_entity: Entity::from_raw(0),
             component_text_edit: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
+            console_log: Vec::new(),
         }
     }
 }
 
+static LOG_BUFFER: OnceLock<parking_lot::Mutex<Vec<String>>> = OnceLock::new();
+
+pub fn get_log_buffer() -> &'static parking_lot::Mutex<Vec<String>> {
+    LOG_BUFFER.get_or_init(|| parking_lot::Mutex::new(Vec::new()))
+}
+
+#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) => {{
+        let msg = format!($($arg)*);
+        println!("{}", msg);
+        $crate::get_log_buffer().lock().push(msg);
+    }};
+}
 /// A node in the file tree
 pub struct FileNode {
     pub name: String,
@@ -462,11 +481,33 @@ pub fn editor_ui(context: &mut Context, world: &mut World) {
             }
 
             // Console
-            let mut console_ui = ui.new_child(UiBuilder::new().max_rect(console_rect));
-            console_ui
-                .painter()
-                .rect_filled(console_rect, 0.0, Color32::from_rgb(150, 50, 40));
-            console_ui.label("Console");
+            world.with_resource_mut(|editor_storage: &mut EditorStorage| {
+                // get all logs
+                let new_logs: Vec<String> = get_log_buffer().lock().drain(..).collect();
+                editor_storage.console_log.extend(new_logs);
+
+                let mut console_ui = ui.new_child(UiBuilder::new().max_rect(console_rect));
+                console_ui
+                    .painter()
+                    .rect_filled(console_rect, 0.0, Color32::from_rgb(150, 50, 40));
+                console_ui.label("Console");
+                ScrollArea::vertical()
+                    .stick_to_bottom(true)
+                    .id_salt("ConsoleScroll")
+                    .show(&mut console_ui, |ui| {
+                        for line in &editor_storage.console_log {
+                            // Color code by prefix
+                            let (color, text) = if line.starts_with("[ERROR]") {
+                                (Color32::from_rgb(220, 80, 80), line.as_str())
+                            } else if line.starts_with("[WARN]") {
+                                (Color32::from_rgb(220, 180, 80), line.as_str())
+                            } else {
+                                (Color32::from_gray(200), line.as_str())
+                            };
+                            ui.label(RichText::new(text).size(11.0).color(color).monospace());
+                        }
+                    });
+            });
         });
 
     // Persist ratios
