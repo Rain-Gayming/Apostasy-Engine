@@ -767,7 +767,48 @@ impl RenderingContext {
         unsafe { self.device.create_sampler(&sampler_info, None).unwrap() }
     }
 
-    pub fn load_texture(&self, path: &str, command_pool: vk::CommandPool) -> Result<Texture> {
+    /// Creates a texture descriptor set
+    pub fn create_texture_descriptor_set(
+        &self,
+        descriptor_pool: vk::DescriptorPool,
+        descriptor_set_layout: vk::DescriptorSetLayout,
+        image_view: vk::ImageView,
+        sampler: vk::Sampler,
+    ) -> vk::DescriptorSet {
+        unsafe {
+            let set = self
+                .device
+                .allocate_descriptor_sets(
+                    &vk::DescriptorSetAllocateInfo::default()
+                        .descriptor_pool(descriptor_pool)
+                        .set_layouts(&[descriptor_set_layout]),
+                )
+                .unwrap()[0];
+
+            let image_info = vk::DescriptorImageInfo::default()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .image_view(image_view)
+                .sampler(sampler);
+
+            self.device.update_descriptor_sets(
+                &[vk::WriteDescriptorSet::default()
+                    .dst_set(set)
+                    .dst_binding(1)
+                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                    .image_info(&[image_info])],
+                &[],
+            );
+
+            set
+        }
+    }
+    pub fn load_texture(
+        &self,
+        path: &str,
+        command_pool: vk::CommandPool,
+        descriptor_pool: vk::DescriptorPool,
+        descriptor_set_layout: vk::DescriptorSetLayout,
+    ) -> Result<Texture> {
         let path = format!("res/assets/textures/{}", path);
 
         // Load as u8 RGBA
@@ -841,11 +882,19 @@ impl RenderingContext {
 
         let sampler = self.create_sampler();
 
+        let descriptor_set = self.create_texture_descriptor_set(
+            descriptor_pool,
+            descriptor_set_layout,
+            image_view,
+            sampler,
+        );
+
         Ok(Texture {
             image: vk_image,
             image_view,
             memory: image_memory,
             sampler,
+            descriptor_set,
         })
     }
 

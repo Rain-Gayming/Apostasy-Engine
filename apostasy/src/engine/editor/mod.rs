@@ -142,7 +142,7 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize) {
         });
     }
 }
-#[ui]
+// #[ui]
 pub fn editor_ui(context: &mut Context, world: &mut World) {
     // --- Persistent layout ratios ---
     let left_ratio_id = Id::new("left_panel_ratio"); // left panel width ratio

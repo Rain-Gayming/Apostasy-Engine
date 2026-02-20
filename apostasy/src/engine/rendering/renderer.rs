@@ -47,6 +47,8 @@ pub struct Renderer {
     pub pipeline_layout: vk::PipelineLayout,
     pub swapchain: Swapchain,
     pub context: Arc<RenderingContext>,
+    pub descriptor_pool: vk::DescriptorPool,
+    pub descriptor_set_layout: vk::DescriptorSetLayout,
 
     pub egui_state: egui_winit::State,
     pub egui_renderer: egui_ash_renderer::Renderer,
@@ -78,9 +80,15 @@ impl Renderer {
                 .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
                 .descriptor_count(1)
                 .stage_flags(vk::ShaderStageFlags::VERTEX);
+            let sampler_binding = vk::DescriptorSetLayoutBinding::default()
+                .binding(1)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT);
 
             let descriptor_set_layout = context.device.create_descriptor_set_layout(
-                &vk::DescriptorSetLayoutCreateInfo::default().bindings(&[ubo_binding]),
+                &vk::DescriptorSetLayoutCreateInfo::default()
+                    .bindings(&[ubo_binding, sampler_binding]),
                 None,
             )?;
             let push_constant_range = vk::PushConstantRange::default()
@@ -199,6 +207,16 @@ impl Renderer {
                 ))),
             );
 
+            let descriptor_pool = context.device.create_descriptor_pool(
+                &vk::DescriptorPoolCreateInfo::default()
+                    .max_sets(100)
+                    .pool_sizes(&[vk::DescriptorPoolSize {
+                        ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                        descriptor_count: 100,
+                    }]),
+                None,
+            )?;
+
             let egui_ctx = egui::Context::default();
             egui_ctx.set_fonts(fonts);
             Ok(Self {
@@ -210,6 +228,8 @@ impl Renderer {
                 pipeline_layout,
                 swapchain,
                 context,
+                descriptor_pool,
+                descriptor_set_layout,
                 egui_state,
                 egui_renderer,
                 egui_ctx,
@@ -443,7 +463,12 @@ impl Renderer {
                                         {
                                             let texture = self
                                                 .context
-                                                .load_texture(&texture_name, self.command_pool)
+                                                .load_texture(
+                                                    &texture_name,
+                                                    self.command_pool,
+                                                    self.descriptor_pool,
+                                                    self.descriptor_set_layout,
+                                                )
                                                 .unwrap();
 
                                             mesh.material.base_color_texture = Some(texture);
@@ -451,6 +476,18 @@ impl Renderer {
                                             println!(
                                                 "{}",
                                                 mesh.material.base_color_texture.is_some()
+                                            );
+                                        }
+
+                                        if let Some(ref texture) = mesh.material.base_color_texture
+                                        {
+                                            device.cmd_bind_descriptor_sets(
+                                                command_buffer,
+                                                vk::PipelineBindPoint::GRAPHICS,
+                                                pipeline_layout,
+                                                0, // first set
+                                                &[texture.descriptor_set],
+                                                &[],
                                             );
                                         }
 

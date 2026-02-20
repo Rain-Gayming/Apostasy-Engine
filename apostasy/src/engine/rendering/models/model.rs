@@ -67,6 +67,7 @@ pub struct Texture {
     pub image_view: vk::ImageView,
     pub memory: vk::DeviceMemory,
     pub sampler: vk::Sampler,
+    pub descriptor_set: vk::DescriptorSet,
 }
 
 #[derive(Debug, Clone, Default)]

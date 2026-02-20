@@ -53,6 +53,15 @@ pub fn start(world: &mut World) {
     //     .insert(VoxelChunkTransform {
     //         position: Vector3::new(0, 0, 0),
     //     });
+    //
+    world
+        .spawn()
+        .insert(Transform {
+            position: Vector3::new(0.0, 0.0, 0.0),
+            rotation: Quaternion::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), Deg(90.0)),
+            ..Default::default()
+        })
+        .insert(ModelRenderer::default());
 
     world
         .spawn()
