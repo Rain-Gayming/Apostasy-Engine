@@ -9,7 +9,7 @@ use crate::engine::{
         system::UIFunction,
     },
     rendering::models::{
-        model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
+        model::{MeshRenderer, ModelLoader, ModelRenderer, Texture, get_model},
         vertex::VertexType,
     },
 };
@@ -408,7 +408,7 @@ impl Renderer {
                             .include::<Transform>()
                             .build()
                             .run(|entity_view: EntityView<'_>| {
-                                world.with_resource::<ModelLoader, _, _>(|model_loader| {
+                                world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
                                     // Add position offset
                                     if let Some(transform) = entity_view.get::<Transform>() {
                                         // Add position offset
@@ -420,6 +420,7 @@ impl Renderer {
                                         let offset_bytes: [u8; 12] = std::mem::transmute(offset);
                                         push_constants[128..140].copy_from_slice(&offset_bytes);
                                     }
+
                                     device.cmd_push_constants(
                                         command_buffer,
                                         pipeline_layout,
@@ -430,9 +431,29 @@ impl Renderer {
 
                                     let model_renderer =
                                         entity_view.get::<ModelRenderer>().unwrap();
-                                    let meshes =
-                                        get_model(model_renderer.0.as_str(), model_loader).meshes;
-                                    for mesh in meshes {
+
+                                    let mut model_name = model_renderer.0.clone();
+                                    model_name.push_str(".glb");
+
+                                    let model = get_model(&model_name, model_loader);
+                                    for mesh in &mut model.meshes {
+                                        if mesh.material.base_color_texture.is_none()
+                                            && let Some(ref texture_name) =
+                                                mesh.material.texture_name.clone()
+                                        {
+                                            let texture = self
+                                                .context
+                                                .load_texture(&texture_name, self.command_pool)
+                                                .unwrap();
+
+                                            mesh.material.base_color_texture = Some(texture);
+                                            println!("texture loaded");
+                                            println!(
+                                                "{}",
+                                                mesh.material.base_color_texture.is_some()
+                                            );
+                                        }
+
                                         device.cmd_bind_vertex_buffers(
                                             command_buffer,
                                             0,

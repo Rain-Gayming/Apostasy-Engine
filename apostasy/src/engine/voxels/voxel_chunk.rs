@@ -1,4 +1,5 @@
 use crate::engine::ecs::entity::Entity;
+use crate::engine::rendering::models::model::Material;
 use crate::engine::voxels::chunk_loader::ChunkStorage;
 use crate::{self as apostasy, engine::ecs::component::Component};
 
@@ -107,6 +108,7 @@ pub fn generate_chunk_meshes(world: &mut World) {
                     index_buffer_memory: index_buffer.1,
                     index_count: indices.len() as u32,
                     vertex_type: VertexType::Voxel,
+                    material: Material::default(),
                 };
 
                 entity.insert(MeshRenderer(mesh.clone()));

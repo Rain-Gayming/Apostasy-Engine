@@ -35,19 +35,38 @@ pub struct Material {
     pub alpha_mode: AlphaMode,
     pub alpha_cutoff: f32,
     pub double_sided: bool,
+    pub texture_name: Option<String>,
     pub base_color_texture: Option<Texture>,
     pub metallic_roughness_texture: Option<Texture>,
     pub normal_texture: Option<Texture>,
     pub emissive_texture: Option<Texture>,
 }
+
+impl Default for Material {
+    fn default() -> Self {
+        Self {
+            base_color: [0.0, 0.0, 0.0, 1.0],
+            metallic: 0.0,
+            roughness: 0.0,
+            emissive: [0.0, 0.0, 0.0],
+            alpha_mode: AlphaMode::Opaque,
+            alpha_cutoff: 0.5,
+            double_sided: false,
+            texture_name: Some("temp.png".to_string()),
+            base_color_texture: None,
+            metallic_roughness_texture: None,
+            normal_texture: None,
+            emissive_texture: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Texture {
     pub image: vk::Image,
-    pub image_memory: vk::DeviceMemory,
     pub image_view: vk::ImageView,
+    pub memory: vk::DeviceMemory,
     pub sampler: vk::Sampler,
-    pub width: u32,
-    pub height: u32,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -58,7 +77,7 @@ pub struct Mesh {
     pub index_buffer_memory: vk::DeviceMemory,
     pub index_count: u32,
     pub vertex_type: VertexType,
-    // pub material: Material,
+    pub material: Material,
 }
 
 #[derive(Component, Default)]
@@ -69,14 +88,12 @@ pub struct ModelRenderer(pub String, pub String);
 
 impl Default for ModelRenderer {
     fn default() -> Self {
-        Self("cube.glb".to_string(), String::new())
+        Self("cube".to_string(), String::new())
     }
 }
 
-pub fn get_model(name: &str, model_loader: &ModelLoader) -> Model {
-    // log!("getting model: {}", name);
-    // log!("models: {:?}", model_loader.models.keys());
-    model_loader.models.get(name).unwrap().clone()
+pub fn get_model<'a>(name: &'a str, model_loader: &'a mut ModelLoader) -> &'a mut Model {
+    model_loader.models.get_mut(name).unwrap()
 }
 
 pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext) {
@@ -140,6 +157,8 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
             let vertex_buffer = context.create_vertex_buffer(vertices.as_slice())?;
             let index_buffer = context.create_index_buffer(&indices)?;
 
+            let material = Material::default();
+
             meshes.push(Mesh {
                 vertex_buffer: vertex_buffer.0,
                 vertex_buffer_memory: vertex_buffer.1,
@@ -147,7 +166,7 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
                 index_buffer_memory: index_buffer.1,
                 index_count: indices.len() as u32,
                 vertex_type: VertexType::Model,
-                // material,
+                material,
             });
         }
     }
