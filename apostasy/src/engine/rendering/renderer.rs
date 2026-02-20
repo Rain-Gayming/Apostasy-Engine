@@ -251,6 +251,7 @@ impl Renderer {
 
             if self.swapchain.is_dirty {
                 self.swapchain.resize()?;
+                println!("Swapchain resized");
             }
 
             let full_output = self.egui_ctx.end_pass();
@@ -465,6 +466,7 @@ impl Renderer {
                                                 .context
                                                 .load_texture(
                                                     &texture_name,
+                                                    frame.command_buffer,
                                                     self.command_pool,
                                                     self.descriptor_pool,
                                                     self.descriptor_set_layout,

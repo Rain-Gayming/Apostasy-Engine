@@ -525,62 +525,6 @@ impl RenderingContext {
             );
         }
     }
-    pub fn transition_image_layouts(
-        &self,
-        command_pool: vk::CommandPool,
-        queue: vk::Queue,
-        image: vk::Image,
-        old_layout: vk::ImageLayout,
-        new_layout: vk::ImageLayout,
-    ) {
-        let cmd_buf = self.begin_single_time_commands(command_pool);
-
-        let (src_access, dst_access, src_stage, dst_stage) = match (old_layout, new_layout) {
-            (vk::ImageLayout::UNDEFINED, vk::ImageLayout::TRANSFER_DST_OPTIMAL) => (
-                vk::AccessFlags::empty(),
-                vk::AccessFlags::TRANSFER_WRITE,
-                vk::PipelineStageFlags::TOP_OF_PIPE,
-                vk::PipelineStageFlags::TRANSFER,
-            ),
-            (vk::ImageLayout::TRANSFER_DST_OPTIMAL, vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL) => (
-                vk::AccessFlags::TRANSFER_WRITE,
-                vk::AccessFlags::SHADER_READ,
-                vk::PipelineStageFlags::TRANSFER,
-                vk::PipelineStageFlags::FRAGMENT_SHADER,
-            ),
-            _ => panic!("Unsupported layout transition"),
-        };
-
-        let barrier = vk::ImageMemoryBarrier::default()
-            .old_layout(old_layout)
-            .new_layout(new_layout)
-            .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-            .image(image)
-            .subresource_range(vk::ImageSubresourceRange {
-                aspect_mask: vk::ImageAspectFlags::COLOR,
-                base_mip_level: 0,
-                level_count: 1,
-                base_array_layer: 0,
-                layer_count: 1,
-            })
-            .src_access_mask(src_access)
-            .dst_access_mask(dst_access);
-
-        unsafe {
-            self.device.cmd_pipeline_barrier(
-                cmd_buf,
-                src_stage,
-                dst_stage,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[barrier],
-            );
-        }
-
-        self.end_single_time_commands(cmd_buf, queue, command_pool);
-    }
 
     /// Creates an image for rendering
     pub fn create_image(
@@ -802,13 +746,18 @@ impl RenderingContext {
             set
         }
     }
+
+    /// Loads a texture from a file and passes it to a buffer
     pub fn load_texture(
         &self,
         path: &str,
+        command_buffer: vk::CommandBuffer,
         command_pool: vk::CommandPool,
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
     ) -> Result<Texture> {
+        let count = LOAD_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        println!("load_texture call #{} for path: {}", count, path);
         let path = format!("res/assets/textures/{}", path);
 
         // Load as u8 RGBA
@@ -847,28 +796,48 @@ impl RenderingContext {
 
         let queue = self.queues[self.queue_families.graphics as usize];
 
-        // 1. Prepare image to receive data
-        self.transition_image_layouts(
-            command_pool,
-            queue,
+        let undefined_image_state = ImageLayoutState {
+            layout: vk::ImageLayout::UNDEFINED,
+            access: vk::AccessFlags::empty(),
+            stage: vk::PipelineStageFlags::TOP_OF_PIPE,
+            queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+        };
+
+        let transfer_dst_optimal_image_state = ImageLayoutState {
+            layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            access: vk::AccessFlags::TRANSFER_WRITE,
+            stage: vk::PipelineStageFlags::TRANSFER,
+            queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+        };
+
+        let shader_read_only_optimal_image_state = ImageLayoutState {
+            layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            access: vk::AccessFlags::SHADER_READ,
+            stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
+            queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+        };
+
+        // Prepare image to receive data
+        self.transition_image_layout(
+            command_buffer,
             vk_image,
-            vk::ImageLayout::UNDEFINED,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            undefined_image_state,
+            transfer_dst_optimal_image_state,
+            vk::ImageAspectFlags::COLOR,
         );
 
-        // 2. Copy staging buffer into image
+        //  Copy staging buffer into image
         self.copy_buffer_to_image(staging_buffer, vk_image, width, height, command_pool, queue);
 
-        // 3. Prepare image for shader reads
-        self.transition_image_layouts(
-            command_pool,
-            queue,
+        //  Prepare image for shader reads
+        self.transition_image_layout(
+            command_buffer,
             vk_image,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-            vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+            undefined_image_state,
+            shader_read_only_optimal_image_state,
+            vk::ImageAspectFlags::COLOR,
         );
 
-        // Safe to destroy staging buffer now (after queue_wait_idle in above calls)
         unsafe {
             self.device.destroy_buffer(staging_buffer, None);
             self.device.free_memory(staging_buffer_memory, None);
@@ -982,3 +951,4 @@ pub struct ImageLayoutState {
     pub stage: vk::PipelineStageFlags,
     pub queue_family_index: u32,
 }
+static LOAD_COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
