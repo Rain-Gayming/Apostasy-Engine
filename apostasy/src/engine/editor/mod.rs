@@ -30,6 +30,7 @@ pub struct EditorStorage {
     pub component_text_edit: String,
     pub file_tree: Option<FileNode>,
 
+    pub is_console_open: bool,
     pub console_log: Vec<String>,
     pub console_size: Vec2,
     pub console_filter: String,
@@ -43,6 +44,7 @@ impl Default for EditorStorage {
             component_text_edit: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
 
+            is_console_open: false,
             console_log: Vec::new(),
             console_size: Vec2::new(100.0, 100.0),
             console_filter: String::new(),

@@ -1,4 +1,6 @@
 use crate::engine::ecs::entity::Entity;
+use crate::engine::ecs::resources::input_manager::InputManager;
+use crate::engine::ecs::resources::input_manager::is_keybind_active;
 use crate::log;
 use crate::log_warn;
 use crate::{self as apostasy, engine::editor::EditorStorage, get_log_buffer};
@@ -53,7 +55,14 @@ pub fn console_ui(context: &mut Context, world: &mut World) {
     let mut command_to_execute: Option<String> = None;
     let mut command_inputs: Vec<String> = Vec::new();
 
-    world.with_resource_mut(|editor_storage: &mut EditorStorage| {
+    world.with_resources::<(EditorStorage, InputManager), _>(|(editor_storage, input_manager)| {
+        if is_keybind_active(input_manager, "console_toggle") {
+            editor_storage.is_console_open = !editor_storage.is_console_open;
+        }
+        if !editor_storage.is_console_open {
+            return;
+        }
+
         // Drain new logs once
         let new_logs: Vec<String> = get_log_buffer().lock().drain(..).collect();
         editor_storage.console_log.extend(new_logs);
@@ -70,7 +79,7 @@ pub fn console_ui(context: &mut Context, world: &mut World) {
                 .collect()
         };
 
-        let row_height = 14.0; // approximate height for size(11.0) monospace
+        let row_height = 14.0;
         let num_rows = filtered.len();
 
         Window::new("Console")
@@ -84,7 +93,6 @@ pub fn console_ui(context: &mut Context, world: &mut World) {
 
                 ScrollArea::vertical()
                     .stick_to_bottom(true)
-                    .auto_shrink([false, false])
                     .id_salt("ConsoleScroll")
                     .show_rows(ui, row_height, num_rows, |ui, row_range| {
                         for i in row_range {
@@ -100,8 +108,6 @@ pub fn console_ui(context: &mut Context, world: &mut World) {
                         }
                     });
 
-                // Command input lives outside the scroll area so it's always visible
-                // and doesn't interfere with stick_to_bottom
                 let command_text_edit = ui.add(
                     egui::TextEdit::singleline(&mut editor_storage.console_command)
                         .hint_text("Command..."),
@@ -120,6 +126,8 @@ pub fn console_ui(context: &mut Context, world: &mut World) {
                     editor_storage.console_command = String::new();
                     command_text_edit.request_focus();
                 }
+
+                ui.allocate_space(ui.available_size());
             });
     });
 

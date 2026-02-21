@@ -4,6 +4,7 @@ use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId},
     event_loop::{ControlFlow, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
 };
 
 use winit::{
@@ -13,7 +14,9 @@ use winit::{
 };
 
 use crate::engine::{
-    ecs::resources::input_manager::{InputManager, handle_device_event, handle_input_event},
+    ecs::resources::input_manager::{
+        InputManager, KeyAction, KeyBind, handle_device_event, handle_input_event, register_keybind,
+    },
     rendering::{
         models::model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
@@ -139,6 +142,14 @@ impl Engine {
 
         world.with_resource_mut(|model_loader: &mut ModelLoader| {
             load_models(model_loader, &rendering_context);
+        });
+
+        world.with_resource_mut(|input_manager: &mut InputManager| {
+            register_keybind(
+                input_manager,
+                KeyBind::new(PhysicalKey::Code(KeyCode::Backquote), KeyAction::Press),
+                "console_toggle",
+            );
         });
 
         Ok(Self {
