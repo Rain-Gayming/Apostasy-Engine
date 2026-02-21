@@ -93,6 +93,10 @@ impl Default for ModelRenderer {
     }
 }
 
+pub fn does_model_exist(name: &str, model_loader: &ModelLoader) -> bool {
+    model_loader.models.contains_key(name)
+}
+
 pub fn get_model<'a>(name: &'a str, model_loader: &'a mut ModelLoader) -> &'a mut Model {
     model_loader.models.get_mut(name).unwrap()
 }

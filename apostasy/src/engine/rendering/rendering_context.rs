@@ -535,34 +535,32 @@ impl RenderingContext {
         usage: vk::ImageUsageFlags,
         properties: vk::MemoryPropertyFlags,
     ) -> Result<(vk::Image, vk::DeviceMemory)> {
-        unsafe {
-            let image_info = vk::ImageCreateInfo::default()
-                .image_type(vk::ImageType::TYPE_2D)
-                .extent(vk::Extent3D {
-                    width: extent.width,
-                    height: extent.height,
-                    depth: 1,
-                })
-                .mip_levels(1)
-                .array_layers(1)
-                .format(format)
-                .tiling(tiling)
-                .initial_layout(vk::ImageLayout::UNDEFINED)
-                .usage(usage)
-                .samples(vk::SampleCountFlags::TYPE_1)
-                .sharing_mode(vk::SharingMode::EXCLUSIVE);
+        let image_info = vk::ImageCreateInfo::default()
+            .image_type(vk::ImageType::TYPE_2D)
+            .extent(vk::Extent3D {
+                width: extent.width,
+                height: extent.height,
+                depth: 1,
+            })
+            .mip_levels(1)
+            .array_layers(1)
+            .format(format)
+            .tiling(tiling)
+            .initial_layout(vk::ImageLayout::UNDEFINED)
+            .usage(usage)
+            .samples(vk::SampleCountFlags::TYPE_1)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
-            let image = unsafe { self.device.create_image(&image_info, None).unwrap() };
-            let mem_reqs = unsafe { self.device.get_image_memory_requirements(image) };
+        let image = unsafe { self.device.create_image(&image_info, None).unwrap() };
+        let mem_reqs = unsafe { self.device.get_image_memory_requirements(image) };
 
-            let alloc_info = vk::MemoryAllocateInfo::default()
-                .allocation_size(mem_reqs.size)
-                .memory_type_index(self.find_memory_type(mem_reqs.memory_type_bits, properties)?);
+        let alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_reqs.size)
+            .memory_type_index(self.find_memory_type(mem_reqs.memory_type_bits, properties)?);
 
-            let memory = unsafe { self.device.allocate_memory(&alloc_info, None).unwrap() };
-            unsafe { self.device.bind_image_memory(image, memory, 0).unwrap() };
-            Ok((image, memory))
-        }
+        let memory = unsafe { self.device.allocate_memory(&alloc_info, None).unwrap() };
+        unsafe { self.device.bind_image_memory(image, memory, 0).unwrap() };
+        Ok((image, memory))
     }
 
     pub fn create_image_view(
@@ -594,47 +592,6 @@ impl RenderingContext {
             )?;
             Ok(image)
         }
-    }
-
-    fn copy_buffer_to_image(
-        &self,
-        buffer: vk::Buffer,
-        image: vk::Image,
-        width: u32,
-        height: u32,
-        command_pool: vk::CommandPool,
-        queue: vk::Queue,
-    ) {
-        let cmd_buf = self.begin_single_time_commands(command_pool);
-
-        let region = vk::BufferImageCopy::default()
-            .buffer_offset(0)
-            .buffer_row_length(0)
-            .buffer_image_height(0)
-            .image_subresource(vk::ImageSubresourceLayers {
-                aspect_mask: vk::ImageAspectFlags::COLOR,
-                mip_level: 0,
-                base_array_layer: 0,
-                layer_count: 1,
-            })
-            .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
-            .image_extent(vk::Extent3D {
-                width,
-                height,
-                depth: 1,
-            });
-
-        unsafe {
-            self.device.cmd_copy_buffer_to_image(
-                cmd_buf,
-                buffer,
-                image,
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                &[region],
-            );
-        }
-
-        self.end_single_time_commands(cmd_buf, queue, command_pool);
     }
 
     fn begin_single_time_commands(&self, command_pool: vk::CommandPool) -> vk::CommandBuffer {
@@ -974,4 +931,3 @@ pub struct ImageLayoutState {
     pub stage: vk::PipelineStageFlags,
     pub queue_family_index: u32,
 }
-static LOAD_COUNT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);

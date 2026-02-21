@@ -9,7 +9,7 @@ use crate::engine::{
         system::UIFunction,
     },
     rendering::models::{
-        model::{MeshRenderer, ModelLoader, ModelRenderer, Texture, get_model},
+        model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
         vertex::VertexType,
     },
 };
