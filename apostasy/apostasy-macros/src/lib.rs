@@ -219,7 +219,7 @@ pub fn late_update(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Registers a start system, Start systems run once at the start of the game
+/// Registers a ui system, UI systems run every frame, allowing for custom UI elements
 #[proc_macro_attribute]
 pub fn ui(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as SystemArgs);
@@ -235,6 +235,24 @@ pub fn ui(attr: TokenStream, item: TokenStream) -> TokenStream {
                 name: stringify!(#fn_name),
                 func: #fn_name,
                 priority: #priority,
+            }
+        }
+    };
+    TokenStream::from(expanded)
+}
+
+/// Registers a console command
+#[proc_macro_attribute]
+pub fn console_command(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+
+    let expanded = quote! {
+        #input_fn
+        inventory::submit! {
+            apostasy::engine::editor::console_commands::ConsoleCommand{
+                name: stringify!(#fn_name),
+                func: #fn_name,
             }
         }
     };

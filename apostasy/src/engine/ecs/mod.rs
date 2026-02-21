@@ -706,7 +706,12 @@ impl World {
             for row in 0..num_entities {
                 let bytes = column.get_chunk(RowIndex(row));
                 let info = unsafe { std::ptr::read(bytes.as_ptr() as *const ComponentInfo) };
-                if info.name == name || info.name.ends_with(&format!("::{}", name)) {
+                if info.name.to_lowercase() == name.to_lowercase()
+                    || info
+                        .name
+                        .to_lowercase()
+                        .ends_with(&format!("::{}", name.to_lowercase()))
+                {
                     return Some(info);
                 }
             }
@@ -715,7 +720,7 @@ impl World {
     }
 
     pub fn add_default_component_by_name(&self, entity: Entity, name: &str) -> bool {
-        let Some(info) = self.get_component_info_by_name(name) else {
+        let Some(info) = self.get_component_info_by_name(name.to_lowercase().as_str()) else {
             return false;
         };
         let Some(default_fn) = info.default else {

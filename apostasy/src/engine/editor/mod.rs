@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    cell::Cell,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     self as apostasy,
@@ -13,13 +16,15 @@ use crate::{
         },
         rendering::models::model::{ModelLoader, ModelRenderer, does_model_exist},
     },
-    get_log_buffer, log,
+    log,
 };
 use apostasy_macros::{Resource, ui};
 use egui::{
     Align2, CollapsingHeader, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense,
     Stroke, Ui, Vec2, Window, pos2, vec2,
 };
+
+pub mod console_commands;
 
 /// Storage for all information needed by the editor
 #[derive(Resource)]
@@ -336,66 +341,6 @@ pub fn file_tree_ui(context: &mut Context, world: &mut World) {
                     });
             });
         });
-}
-
-#[ui]
-pub fn console_ui(context: &mut Context, world: &mut World) {
-    world.with_resource_mut(|editor_storage: &mut EditorStorage| {
-        let new_logs: Vec<String> = get_log_buffer().lock().drain(..).collect();
-        editor_storage.console_log.extend(new_logs);
-
-        let filter_place_holder = "Console filter...".to_string();
-        let command_place_holder = "Command...".to_string();
-
-        Window::new("Console")
-            .resizable(true)
-            .default_size([400.0, 300.0])
-            .show(context, |ui| {
-                let filter_text_edit = ui.text_edit_singleline(&mut editor_storage.console_filter);
-
-                ScrollArea::vertical()
-                    .stick_to_bottom(true)
-                    .auto_shrink([false, false])
-                    .id_salt("ConsoleScroll")
-                    .show(ui, |ui| {
-                        for line in &editor_storage.console_log {
-                            // if the filter is empty and the text edit has focus, set it to the placeholder
-                            if editor_storage.console_filter.is_empty()
-                                && !filter_text_edit.has_focus()
-                            {
-                                editor_storage.console_filter = filter_place_holder.clone();
-                            }
-
-                            // if the log doesn't contain the filter,  skip it
-                            if !line.contains(&editor_storage.console_filter)
-                                && editor_storage.console_filter != filter_place_holder
-                            {
-                                continue;
-                            }
-
-                            // color code by prefix
-                            let (color, text) = if line.starts_with("[ERROR]") {
-                                (Color32::from_rgb(220, 80, 80), line.as_str())
-                            } else if line.starts_with("[WARN]") {
-                                (Color32::from_rgb(220, 180, 80), line.as_str())
-                            } else {
-                                (Color32::from_gray(200), line.as_str())
-                            };
-                            ui.label(RichText::new(text).size(11.0).color(color).monospace());
-                        }
-
-                        let command_text_edit =
-                            ui.text_edit_singleline(&mut editor_storage.console_command);
-                        // if the command is empty and the text edit has focus, set it to the placeholder
-                        if editor_storage.console_command.is_empty()
-                            && !command_text_edit.has_focus()
-                        {
-                            editor_storage.console_command = command_place_holder.clone();
-                        }
-                        ui.allocate_space(ui.available_size());
-                    });
-            });
-    });
 }
 
 pub fn get_all_entities(world: &World) -> Vec<Entity> {
