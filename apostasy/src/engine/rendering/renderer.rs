@@ -91,6 +91,17 @@ impl Renderer {
                     .bindings(&[ubo_binding, sampler_binding]),
                 None,
             )?;
+
+            let descriptor_pool = context.device.create_descriptor_pool(
+                &vk::DescriptorPoolCreateInfo::default()
+                    .max_sets(100)
+                    .pool_sizes(&[vk::DescriptorPoolSize {
+                        ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                        descriptor_count: 100,
+                    }]),
+                None,
+            )?;
+
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX)
                 .offset(0)
@@ -206,16 +217,6 @@ impl Renderer {
                     "../../../res/fonts/FantasyFont.ttf"
                 ))),
             );
-
-            let descriptor_pool = context.device.create_descriptor_pool(
-                &vk::DescriptorPoolCreateInfo::default()
-                    .max_sets(100)
-                    .pool_sizes(&[vk::DescriptorPoolSize {
-                        ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                        descriptor_count: 100,
-                    }]),
-                None,
-            )?;
 
             let egui_ctx = egui::Context::default();
             egui_ctx.set_fonts(fonts);
@@ -334,6 +335,42 @@ impl Renderer {
                 depth_attachment_state,
                 vk::ImageAspectFlags::DEPTH,
             );
+
+            // Texture loading
+            world
+                .query()
+                .include::<ModelRenderer>()
+                .include::<Transform>()
+                .build()
+                .run(|entity_view: EntityView<'_>| {
+                    world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
+                        let model_renderer = entity_view.get::<ModelRenderer>().unwrap();
+
+                        let mut model_name = model_renderer.0.clone();
+                        model_name.push_str(".glb");
+
+                        let model = get_model(&model_name, model_loader);
+                        for mesh in &mut model.meshes {
+                            if mesh.material.base_color_texture.is_none()
+                                && let Some(ref texture_name) = mesh.material.texture_name.clone()
+                            {
+                                let texture = self
+                                    .context
+                                    .load_texture(
+                                        &texture_name,
+                                        self.command_pool,
+                                        self.descriptor_pool,
+                                        self.descriptor_set_layout,
+                                    )
+                                    .unwrap();
+
+                                mesh.material.base_color_texture = Some(texture);
+                                println!("texture loaded");
+                                println!("{}", mesh.material.base_color_texture.is_some());
+                            }
+                        }
+                    });
+                });
 
             // Begin rendering
             self.context.begin_rendering(
@@ -458,36 +495,13 @@ impl Renderer {
 
                                     let model = get_model(&model_name, model_loader);
                                     for mesh in &mut model.meshes {
-                                        if mesh.material.base_color_texture.is_none()
-                                            && let Some(ref texture_name) =
-                                                mesh.material.texture_name.clone()
-                                        {
-                                            let texture = self
-                                                .context
-                                                .load_texture(
-                                                    &texture_name,
-                                                    frame.command_buffer,
-                                                    self.command_pool,
-                                                    self.descriptor_pool,
-                                                    self.descriptor_set_layout,
-                                                )
-                                                .unwrap();
-
-                                            mesh.material.base_color_texture = Some(texture);
-                                            println!("texture loaded");
-                                            println!(
-                                                "{}",
-                                                mesh.material.base_color_texture.is_some()
-                                            );
-                                        }
-
                                         if let Some(ref texture) = mesh.material.base_color_texture
                                         {
                                             device.cmd_bind_descriptor_sets(
                                                 command_buffer,
                                                 vk::PipelineBindPoint::GRAPHICS,
                                                 pipeline_layout,
-                                                0, // first set
+                                                0,
                                                 &[texture.descriptor_set],
                                                 &[],
                                             );

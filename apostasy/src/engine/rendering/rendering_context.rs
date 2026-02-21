@@ -751,29 +751,22 @@ impl RenderingContext {
     pub fn load_texture(
         &self,
         path: &str,
-        command_buffer: vk::CommandBuffer,
         command_pool: vk::CommandPool,
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
     ) -> Result<Texture> {
-        let count = LOAD_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        println!("load_texture call #{} for path: {}", count, path);
         let path = format!("res/assets/textures/{}", path);
-
-        // Load as u8 RGBA
         let image = image::open(&path).expect("Failed to load image").to_rgba8();
         let (width, height) = image.dimensions();
         let pixels: Vec<u8> = image.into_raw();
-        let image_size = pixels.len() as vk::DeviceSize; // w * h * 4
+        let image_size = pixels.len() as vk::DeviceSize;
 
-        // Create staging buffer
         let (staging_buffer, staging_buffer_memory) = self.create_buffer(
             image_size,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )?;
 
-        // Upload pixel data to staging buffer
         unsafe {
             let data_ptr = self.device.map_memory(
                 staging_buffer_memory,
@@ -786,71 +779,101 @@ impl RenderingContext {
         }
 
         let extent = vk::Extent2D { width, height };
+
+        // Create the image
         let (vk_image, image_memory) = self.create_image(
             extent,
-            vk::Format::R8G8B8A8_SRGB, // use SRGB for color textures
+            vk::Format::R8G8B8A8_SRGB,
             vk::ImageTiling::OPTIMAL,
             vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
         )?;
 
-        let queue = self.queues[self.queue_families.graphics as usize];
+        // Queue for image transfer
+        let queue = self.queues[self.queue_families.transfer as usize];
+        let cmd = self.begin_single_time_commands(command_pool);
 
-        let undefined_image_state = ImageLayoutState {
+        // Create image state layouts
+        let undefined_state = ImageLayoutState {
             layout: vk::ImageLayout::UNDEFINED,
             access: vk::AccessFlags::empty(),
             stage: vk::PipelineStageFlags::TOP_OF_PIPE,
             queue_family_index: vk::QUEUE_FAMILY_IGNORED,
         };
-
-        let transfer_dst_optimal_image_state = ImageLayoutState {
+        let transfer_dst_state = ImageLayoutState {
             layout: vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             access: vk::AccessFlags::TRANSFER_WRITE,
             stage: vk::PipelineStageFlags::TRANSFER,
             queue_family_index: vk::QUEUE_FAMILY_IGNORED,
         };
-
-        let shader_read_only_optimal_image_state = ImageLayoutState {
+        let shader_read_state = ImageLayoutState {
             layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
             access: vk::AccessFlags::SHADER_READ,
             stage: vk::PipelineStageFlags::FRAGMENT_SHADER,
             queue_family_index: vk::QUEUE_FAMILY_IGNORED,
         };
 
-        // Prepare image to receive data
+        // Transition UNDEFINED -> TRANSFER_DST
         self.transition_image_layout(
-            command_buffer,
+            cmd,
             vk_image,
-            undefined_image_state,
-            transfer_dst_optimal_image_state,
+            undefined_state,
+            transfer_dst_state,
             vk::ImageAspectFlags::COLOR,
         );
 
-        //  Copy staging buffer into image
-        self.copy_buffer_to_image(staging_buffer, vk_image, width, height, command_pool, queue);
+        // Copy buffer into image
+        let region = vk::BufferImageCopy::default()
+            .buffer_offset(0)
+            .buffer_row_length(0)
+            .buffer_image_height(0)
+            .image_subresource(vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                mip_level: 0,
+                base_array_layer: 0,
+                layer_count: 1,
+            })
+            .image_offset(vk::Offset3D { x: 0, y: 0, z: 0 })
+            .image_extent(vk::Extent3D {
+                width,
+                height,
+                depth: 1,
+            });
 
-        //  Prepare image for shader reads
+        unsafe {
+            self.device.cmd_copy_buffer_to_image(
+                cmd,
+                staging_buffer,
+                vk_image,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[region],
+            );
+        }
+
+        // Transition TRANSFER_DST -> SHADER_READ_ONLY
         self.transition_image_layout(
-            command_buffer,
+            cmd,
             vk_image,
-            undefined_image_state,
-            shader_read_only_optimal_image_state,
+            transfer_dst_state,
+            shader_read_state,
             vk::ImageAspectFlags::COLOR,
         );
+
+        // Submit the commands
+        self.end_single_time_commands(cmd, queue, command_pool);
 
         unsafe {
             self.device.destroy_buffer(staging_buffer, None);
             self.device.free_memory(staging_buffer_memory, None);
         }
 
+        // Create texture information
         let image_view = self.create_image_view(
             vk_image,
             vk::Format::R8G8B8A8_SRGB,
             vk::ImageAspectFlags::COLOR,
         )?;
-
         let sampler = self.create_sampler();
-
         let descriptor_set = self.create_texture_descriptor_set(
             descriptor_pool,
             descriptor_set_layout,

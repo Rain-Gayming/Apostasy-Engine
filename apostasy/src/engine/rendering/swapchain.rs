@@ -137,19 +137,16 @@ impl Swapchain {
             }
 
             // Create depth buffer
-            self.depth_image = self
-                .context
-                .create_image(
-                    self.extent,
-                    self.depth_format,
-                    vk::ImageTiling::OPTIMAL,
-                    vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                    vk::MemoryPropertyFlags::DEVICE_LOCAL | vk::MemoryPropertyFlags::HOST_VISIBLE,
-                )?
-                .0;
-            self.depth_memory = self
-                .context
-                .allocate_image_memory(self.depth_image, vk::MemoryPropertyFlags::DEVICE_LOCAL)?;
+            //
+            let (depth_image, depth_memory) = self.context.create_image(
+                self.extent,
+                self.depth_format,
+                vk::ImageTiling::OPTIMAL,
+                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL | vk::MemoryPropertyFlags::HOST_VISIBLE,
+            )?;
+            self.depth_image = depth_image;
+            self.depth_memory = depth_memory;
             self.depth_image_view = self.context.create_image_view(
                 self.depth_image,
                 self.depth_format,
