@@ -6,7 +6,7 @@ use crate::engine::{
             transform::{Transform, VoxelChunkTransform, calculate_forward, calculate_up},
         },
         entity::EntityView,
-        system::UIFunction,
+        system::{EguiRenderer, UIFunction},
     },
     rendering::models::{
         model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
@@ -50,9 +50,7 @@ pub struct Renderer {
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
 
-    pub egui_state: egui_winit::State,
-    pub egui_renderer: egui_ash_renderer::Renderer,
-    pub egui_ctx: egui::Context,
+    pub egui_renderer: EguiRenderer,
 }
 
 pub fn load_engine_shader_module(
@@ -182,44 +180,9 @@ impl Renderer {
             }
 
             swapchain.resize().unwrap();
-            let egui_state = egui_winit::State::new(
-                egui::Context::default(),
-                egui::ViewportId::ROOT,
-                &window,
-                None,
-                None,
-                None,
-            );
 
-            let mut egui_renderer = egui_ash_renderer::Renderer::with_default_allocator(
-                &context.instance,
-                context.physical_device.handle,
-                context.device.clone(),
-                DynamicRendering {
-                    color_attachment_format: swapchain.format,
-                    depth_attachment_format: Some(swapchain.depth_format),
-                },
-                Options::default(),
-            )?;
-            egui_renderer.add_user_texture(DescriptorSet::default());
+            let egui_renderer = EguiRenderer::new(&context, &swapchain, &window);
 
-            let mut fonts = egui::FontDefinitions::default();
-            let mut new_font_family = BTreeMap::new();
-            new_font_family.insert(
-                FontFamily::Name("fantasy".into()),
-                vec!["fantasy".to_owned()],
-            );
-            fonts.families.append(&mut new_font_family);
-
-            fonts.font_data.insert(
-                "fantasy".to_owned(),
-                Arc::new(egui::FontData::from_static(include_bytes!(
-                    "../../../res/fonts/FantasyFont.ttf"
-                ))),
-            );
-
-            let egui_ctx = egui::Context::default();
-            egui_ctx.set_fonts(fonts);
             Ok(Self {
                 frame_index: 0,
                 frames,
@@ -231,9 +194,7 @@ impl Renderer {
                 context,
                 descriptor_pool,
                 descriptor_set_layout,
-                egui_state,
                 egui_renderer,
-                egui_ctx,
             })
         }
     }
@@ -255,8 +216,9 @@ impl Renderer {
                 println!("Swapchain resized");
             }
 
-            let full_output = self.egui_ctx.end_pass();
+            let full_output = self.egui_renderer.egui_ctx.end_pass();
             let clipped_primitives = self
+                .egui_renderer
                 .egui_ctx
                 .tessellate(full_output.shapes, full_output.pixels_per_point);
             let texture_updates: Vec<(egui::TextureId, egui::epaint::ImageDelta)> = full_output
@@ -266,7 +228,7 @@ impl Renderer {
                 .map(|(id, delta)| (*id, delta.clone()))
                 .collect();
             if !texture_updates.is_empty() {
-                self.egui_renderer.set_textures(
+                self.egui_renderer.egui_renderer.set_textures(
                     self.context.queues[self.context.queue_families.graphics as usize],
                     self.command_pool,
                     &texture_updates,
@@ -687,7 +649,7 @@ impl Renderer {
             );
 
             // Render egui
-            self.egui_renderer.cmd_draw(
+            self.egui_renderer.egui_renderer.cmd_draw(
                 frame.command_buffer,
                 self.swapchain.extent,
                 full_output.pixels_per_point,
@@ -727,7 +689,10 @@ impl Renderer {
     }
 
     pub fn window_event(&mut self, window: &Window, event: WindowEvent) -> bool {
-        let response = self.egui_state.on_window_event(window, &event);
+        let response = self
+            .egui_renderer
+            .egui_state
+            .on_window_event(window, &event);
 
         response.consumed
     }
@@ -738,16 +703,11 @@ impl Renderer {
 
     /// Prepares egui for rendering
     pub fn prepare_egui(&mut self, window: &Window, world: &mut World) {
-        // Collect input for egui
-        let raw_input = self.egui_state.take_egui_input(window);
-        self.egui_ctx.begin_pass(raw_input);
+        let raw_input = self.egui_renderer.egui_state.take_egui_input(window);
+        self.egui_renderer.egui_ctx.begin_pass(raw_input);
 
-        let mut systems: Vec<&UIFunction> = inventory::iter::<UIFunction>.into_iter().collect();
-        systems.sort_by_key(|s| s.priority);
-        systems.reverse();
-
-        for system in systems {
-            (system.func)(&mut self.egui_ctx, world);
+        for system in &self.egui_renderer.sorted_ui_systems {
+            (system.func)(&mut self.egui_renderer.egui_ctx, world);
         }
     }
 }
