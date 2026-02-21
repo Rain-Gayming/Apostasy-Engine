@@ -691,6 +691,7 @@ impl World {
         })
     }
 
+    /// Gets a component info by name
     pub fn get_component_info_by_name(&self, name: &str) -> Option<ComponentInfo> {
         self.crust.mantle(|mantle| {
             let core = &mantle.core;
@@ -719,6 +720,7 @@ impl World {
         })
     }
 
+    /// Adds a default component to an entity via it's name
     pub fn add_default_component_by_name(&self, entity: Entity, name: &str) -> bool {
         let Some(info) = self.get_component_info_by_name(name.to_lowercase().as_str()) else {
             return false;

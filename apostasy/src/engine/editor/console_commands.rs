@@ -1,3 +1,6 @@
+use crate::engine::ecs::entity::Entity;
+use crate::log;
+use crate::log_warn;
 use crate::{self as apostasy, engine::editor::EditorStorage, get_log_buffer};
 use apostasy_macros::{console_command, ui};
 use egui::{Color32, Context, RichText, ScrollArea, Window};
@@ -13,10 +16,37 @@ inventory::collect!(ConsoleCommand);
 
 #[console_command]
 pub fn spawn(world: &mut World, inputs: Vec<String>) {
+    log!("Spawning entity");
     let entity = world.spawn();
     for input in inputs {
-        world.add_default_component_by_name(entity.entity, input.as_str());
+        log!("Adding component: {}", input);
+        let added = world.add_default_component_by_name(entity.entity, input.as_str());
+        if !added {
+            log_warn!("Component ({}) not found", input);
+        }
     }
+}
+
+#[console_command]
+pub fn insert(world: &mut World, inputs: Vec<String>) {
+    let entity = inputs[0].parse::<usize>().unwrap();
+    let component = inputs[1].clone();
+
+    let entities = world.get_all_entities();
+    for index_entity in entities {
+        if index_entity.0.index == entity as u32 {
+            let added = world.add_default_component_by_name(index_entity, component.as_str());
+
+            log!("Inserted component {} into entity {}", component, entity);
+
+            if !added {
+                log_warn!("Component ({}) not found", component);
+            }
+
+            return;
+        }
+    }
+    log_warn!("Entity ({}) not found", entity);
 }
 
 #[ui]
