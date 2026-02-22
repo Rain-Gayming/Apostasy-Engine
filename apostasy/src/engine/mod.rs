@@ -4,7 +4,6 @@ use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId},
     event_loop::{ControlFlow, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
 };
 
 use winit::{
@@ -14,32 +13,22 @@ use winit::{
 };
 
 use crate::engine::{
-    ecs::resources::input_manager::{
-        InputManager, KeyAction, KeyBind, handle_device_event, handle_input_event, register_keybind,
-    },
     rendering::{
-        models::model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
-    windowing::WindowManager,
 };
 
-use crate::engine::ecs::World;
-
-pub mod ecs;
 pub mod editor;
 pub mod rendering;
 pub mod timer;
-pub mod voxels;
 pub mod windowing;
 
 /// Render application
 pub struct Application {
     render_engine: Option<Engine>,
-    _world: Option<World>,
 }
 
 impl ApplicationHandler for Application {
@@ -84,7 +73,6 @@ pub fn start_app() -> Result<()> {
     tracing_subscriber::fmt::init();
     let mut app = Application {
         render_engine: None,
-        _world: None,
     };
 
     let event_loop = EventLoop::new()?;
@@ -96,7 +84,6 @@ pub fn start_app() -> Result<()> {
 /// The render engine, contains all the data for rendering, windowing and their logic
 pub struct Engine {
     pub renderers: HashMap<WindowId, Renderer>,
-    pub world: World,
     pub rendering_context: Arc<RenderingContext>,
     pub timer: EngineTimer,
 }
@@ -118,9 +105,6 @@ impl Engine {
             queue_family_picker: single_queue_family,
         })?);
 
-        let mut world = World::new(rendering_context.clone());
-        world.start();
-
         let renderers = windows
             .iter()
             .map(|(id, window)| {
@@ -131,30 +115,8 @@ impl Engine {
 
         let timer = EngineTimer::new();
 
-        world.insert_resource::<WindowManager>(WindowManager::default());
-
-        world.with_resource_mut(|window_manager: &mut WindowManager| {
-            window_manager.primary_window_id = primary_window_id;
-            window_manager
-                .windows
-                .insert(primary_window_id, primary_window.clone());
-        });
-
-        world.with_resource_mut(|model_loader: &mut ModelLoader| {
-            load_models(model_loader, &rendering_context);
-        });
-
-        world.with_resource_mut(|input_manager: &mut InputManager| {
-            register_keybind(
-                input_manager,
-                KeyBind::new(PhysicalKey::Code(KeyCode::Backquote), KeyAction::Press),
-                "console_toggle",
-            );
-        });
-
         Ok(Self {
             renderers,
-            world,
             rendering_context,
             timer,
         })
@@ -166,20 +128,20 @@ impl Engine {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        self.world
-            .with_resource_mut(|input_manager: &mut InputManager| {
-                handle_input_event(input_manager, event.clone());
-            });
-
-        self.world
-            .with_resource_mut(|window_manager: &mut WindowManager| {
-                if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    renderer.window_event(
-                        window_manager.windows.get(&window_id).unwrap(),
-                        event.clone(),
-                    );
-                }
-            });
+        // self.world
+        //     .with_resource_mut(|input_manager: &mut InputManager| {
+        //         handle_input_event(input_manager, event.clone());
+        //     });
+        //
+        // self.world
+        //     .with_resource_mut(|window_manager: &mut WindowManager| {
+        //         if let Some(renderer) = self.renderers.get_mut(&window_id) {
+        //             renderer.window_event(
+        //                 window_manager.windows.get(&window_id).unwrap(),
+        //                 event.clone(),
+        //             );
+        //         }
+        //     });
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -194,16 +156,16 @@ impl Engine {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    let windows: Vec<Arc<Window>> =
-                        self.world.with_resource(|window_manager: &WindowManager| {
-                            window_manager.windows.values().cloned().collect()
-                        });
-
-                    for window in &windows {
-                        renderer.prepare_egui(window, &mut self.world);
-                    }
-
-                    let _ = renderer.render(&self.world);
+                    // let windows: Vec<Arc<Window>> =
+                    //     self.world.with_resource(|window_manager: &WindowManager| {
+                    //         window_manager.windows.values().cloned().collect()
+                    //     });
+                    //
+                    // for window in &windows {
+                    //     renderer.prepare_egui(window, &mut self.world);
+                    // }
+                    //
+                    // let _ = renderer.render(&self.world);
                 }
             }
 
@@ -217,24 +179,24 @@ impl Engine {
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
-        self.world
-            .with_resource_mut(|input_manager: &mut InputManager| {
-                handle_device_event(input_manager, event.clone());
-            });
+        // self.world
+        //     .with_resource_mut(|input_manager: &mut InputManager| {
+        //         handle_device_event(input_manager, event.clone());
+        //     });
     }
 
     pub fn request_redraw(&mut self) {
-        self.world.update();
-        self.world.fixed_update(self.timer.tick().fixed_dt);
-
-        self.world
-            .with_resource_mut(|window_manager: &mut WindowManager| {
-                for window in window_manager.windows.values() {
-                    window.request_redraw();
-                }
-            });
-
-        self.world.late_update();
+        // self.world.update();
+        // self.world.fixed_update(self.timer.tick().fixed_dt);
+        //
+        // self.world
+        //     .with_resource_mut(|window_manager: &mut WindowManager| {
+        //         for window in window_manager.windows.values() {
+        //             window.request_redraw();
+        //         }
+        //     });
+        //
+        // self.world.late_update();
     }
 
     pub fn create_window(
@@ -245,10 +207,10 @@ impl Engine {
         let window = Arc::new(event_loop.create_window(attributes)?);
         let window_id = window.id();
 
-        self.world
-            .with_resource_mut::<WindowManager, _, _>(|window_manager| {
-                window_manager.windows.insert(window_id, window.clone());
-            });
+        // self.world
+        //     .with_resource_mut::<WindowManager, _, _>(|window_manager| {
+        //         window_manager.windows.insert(window_id, window.clone());
+        //     });
 
         let renderer = Renderer::new(self.rendering_context.clone(), window)?;
         self.renderers.insert(window_id, renderer);

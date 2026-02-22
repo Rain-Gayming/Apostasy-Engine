@@ -1,22 +1,18 @@
 use std::fs;
 
-use crate::log;
-use crate::{
-    self as apostasy,
-    engine::rendering::{
-        models::vertex::{Vertex, VertexType},
-        rendering_context::RenderingContext,
-    },
+use crate::engine::rendering::{
+    models::vertex::{Vertex, VertexType},
+    rendering_context::RenderingContext,
 };
+use crate::log;
 use anyhow::Result;
-use apostasy_macros::{Component, Resource};
 use ash::vk;
 use egui::ahash::HashMap;
 use gltf::material::AlphaMode;
 
 const MODEL_LOCATION: &str = "res/models/";
 
-#[derive(Resource, Default)]
+#[derive(Default)]
 pub struct ModelLoader {
     pub models: HashMap<String, Model>,
 }
@@ -81,10 +77,7 @@ pub struct Mesh {
     pub material: Material,
 }
 
-#[derive(Component, Default)]
 pub struct MeshRenderer(pub Mesh);
-
-#[derive(Component)]
 pub struct ModelRenderer(pub String, pub String);
 
 impl Default for ModelRenderer {

@@ -1,9 +1,7 @@
+use crate::engine::windowing::WindowManager;
 use crate::log;
-use crate::{self as apostasy, engine::windowing::WindowManager};
-use apostasy_macros::Resource;
 use winit::window::CursorGrabMode;
 
-#[derive(Resource, Default)]
 pub struct CursorManager {
     pub is_hidden: bool,
     pub is_grabbed: bool,
