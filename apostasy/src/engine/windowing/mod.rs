@@ -3,6 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use winit::window::{Window, WindowId};
 
 pub mod cursor_manager;
+pub mod input_manager;
+
 pub struct WindowManager {
     pub windows: HashMap<WindowId, Arc<Window>>,
     pub primary_window_id: WindowId,

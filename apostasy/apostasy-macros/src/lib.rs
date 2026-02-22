@@ -158,7 +158,7 @@ pub fn ui(attr: TokenStream, item: TokenStream) -> TokenStream {
     let expanded = quote! {
         #input_fn
         inventory::submit! {
-            apostasy::engine::ecs::system::UIFunction{
+            apostasy::engine::rendering::renderer::UIFunction{
                 name: stringify!(#fn_name),
                 func: #fn_name,
                 priority: #priority,

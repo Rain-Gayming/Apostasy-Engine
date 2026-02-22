@@ -21,7 +21,10 @@ use crate::engine::{
         rendering_context::{RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
-    windowing::WindowManager,
+    windowing::{
+        WindowManager,
+        input_manager::{InputManager, handle_device_event, handle_input_event},
+    },
 };
 
 pub mod editor;
@@ -90,6 +93,7 @@ pub struct Engine {
     pub window_manager: WindowManager,
     pub timer: EngineTimer,
     pub world: World,
+    pub input_manager: InputManager,
     pub editor: EditorStorage,
 }
 
@@ -119,13 +123,14 @@ impl Engine {
 
         let timer = EngineTimer::new();
 
-        let mut world = World::new();
+        let world = World::new();
         let editor = EditorStorage::default();
 
         let window_manager = WindowManager {
             windows,
             primary_window_id,
         };
+        let input_manager = InputManager::default();
 
         Ok(Self {
             renderers,
@@ -133,6 +138,7 @@ impl Engine {
             window_manager,
             timer,
             world,
+            input_manager,
             editor,
         })
     }
@@ -143,20 +149,11 @@ impl Engine {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        // self.world
-        //     .with_resource_mut(|input_manager: &mut InputManager| {
-        //         handle_input_event(input_manager, event.clone());
-        //     });
-        //
-        // self.world
-        //     .with_resource_mut(|window_manager: &mut WindowManager| {
-        //         if let Some(renderer) = self.renderers.get_mut(&window_id) {
-        //             renderer.window_event(
-        //                 window_manager.windows.get(&window_id).unwrap(),
-        //                 event.clone(),
-        //             );
-        //         }
-        //     });
+        handle_input_event(&mut self.input_manager, event.clone());
+        if let Some(renderer) = self.renderers.get_mut(&window_id) {
+            let window = self.window_manager.windows.get(&window_id).unwrap();
+            renderer.window_event(window, event.clone());
+        }
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -189,24 +186,10 @@ impl Engine {
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
-        // self.world
-        //     .with_resource_mut(|input_manager: &mut InputManager| {
-        //         handle_device_event(input_manager, event.clone());
-        //     });
+        handle_device_event(&mut self.input_manager, event.clone());
     }
 
     pub fn request_redraw(&mut self) {
-        // self.world.update();
-        // self.world.fixed_update(self.timer.tick().fixed_dt);
-        //
-        // self.world
-        //     .with_resource_mut(|window_manager: &mut WindowManager| {
-        //         for window in window_manager.windows.values() {
-        //             window.request_redraw();
-        //         }
-        //     });
-        //
-        // self.world.late_update();
         for window in &self.window_manager.windows {
             window.1.request_redraw();
         }
@@ -219,11 +202,6 @@ impl Engine {
     ) -> Result<WindowId> {
         let window = Arc::new(event_loop.create_window(attributes)?);
         let window_id = window.id();
-
-        // self.world
-        //     .with_resource_mut::<WindowManager, _, _>(|window_manager| {
-        //         window_manager.windows.insert(window_id, window.clone());
-        //     });
 
         let renderer = Renderer::new(self.rendering_context.clone(), window)?;
         self.renderers.insert(window_id, renderer);
