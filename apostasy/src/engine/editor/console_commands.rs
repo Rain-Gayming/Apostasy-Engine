@@ -1,4 +1,3 @@
-use crate::engine::ecs::entity::Entity;
 use crate::engine::ecs::resources::input_manager::InputManager;
 use crate::engine::ecs::resources::input_manager::is_keybind_active;
 use crate::log;
@@ -31,7 +30,20 @@ pub fn spawn(world: &mut World, inputs: Vec<String>) {
 
 #[console_command]
 pub fn insert(world: &mut World, inputs: Vec<String>) {
-    let entity = inputs[0].parse::<usize>().unwrap();
+    if inputs.len() < 2 {
+        log_warn!("Not enough arguments, command needs 2 arguments (entity, component)");
+        return;
+    }
+
+    let entity = inputs[0].clone();
+
+    if entity.parse::<u32>().is_err() {
+        log_warn!("Entity ({}) is not a number", entity);
+        return;
+    }
+
+    let entity = entity.parse::<u32>().unwrap();
+
     let component = inputs[1].clone();
 
     let entities = world.get_all_entities();

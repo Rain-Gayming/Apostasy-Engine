@@ -243,7 +243,7 @@ pub fn ui(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Registers a console command
 #[proc_macro_attribute]
-pub fn console_command(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn console_command(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
 

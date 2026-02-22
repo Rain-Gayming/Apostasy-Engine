@@ -61,7 +61,7 @@ pub fn start(world: &mut World) {
             rotation: Quaternion::from_axis_angle(Vector3::new(0.0, 1.0, 0.0), Deg(90.0)),
             ..Default::default()
         })
-        .insert(ModelRenderr::default());
+        .insert(ModelRenderer::default());
 
     world
         .spawn()

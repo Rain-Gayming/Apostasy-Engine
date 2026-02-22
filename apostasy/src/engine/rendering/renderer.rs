@@ -6,20 +6,18 @@ use crate::engine::{
             transform::{Transform, VoxelChunkTransform, calculate_forward, calculate_up},
         },
         entity::EntityView,
-        system::{EguiRenderer, UIFunction},
+        system::EguiRenderer,
     },
     rendering::models::{
         model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
         vertex::VertexType,
     },
 };
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Result;
-use ash::vk::{self, DescriptorSet};
+use ash::vk::{self};
 use cgmath::{Matrix4, Point3};
-use egui::FontFamily;
-use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
 const ENGINE_SHADER_DIR: &str = "res/shaders/";

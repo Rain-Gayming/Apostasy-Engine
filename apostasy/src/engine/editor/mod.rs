@@ -288,7 +288,8 @@ pub fn inspector_ui(context: &mut Context, world: &mut World) {
                                 && ui.input(|i| i.key_pressed(egui::Key::Enter))
                                 || ui.button("Load Model").clicked()
                             {
-                                if does_model_exist(model_renderer.1.as_str(), model_loader) {
+                                let name = model_renderer.1.clone() + ".glb";
+                                if does_model_exist(name.as_str(), model_loader) {
                                     model_renderer.0 = model_renderer.1.clone();
                                 } else {
                                     let attempted_model = model_renderer.1.clone();
