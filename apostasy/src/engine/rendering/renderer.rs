@@ -2,15 +2,24 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
+use cgmath::{Matrix4, Point3};
 use egui::{Context, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
-use crate::engine::rendering::{
-    rendering_context::{ImageLayoutState, RenderingContext},
-    swapchain::Swapchain,
+use crate::engine::{
+    nodes::{
+        Node, World,
+        camera::{Camera, get_perspective_projection},
+        transform::{Transform, calculate_forward, calculate_up},
+    },
+    rendering::{
+        models::model::{ModelLoader, ModelRenderer, get_model},
+        rendering_context::{ImageLayoutState, RenderingContext},
+        swapchain::Swapchain,
+    },
 };
 
 /// A frame of the renderer
@@ -174,7 +183,7 @@ impl Renderer {
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX)
                 .offset(0)
-                .size(140);
+                .size(144);
 
             let pipeline_layout = context.device.create_pipeline_layout(
                 &vk::PipelineLayoutCreateInfo::default()
@@ -270,7 +279,7 @@ impl Renderer {
         }
     }
     /// Renders the world from a perspective of a camera
-    pub fn render(&mut self) -> Result<()> {
+    pub fn render(&mut self, world: &World, model_loader: &mut ModelLoader) -> Result<()> {
         let frame = &mut self.frames[self.frame_index];
         unsafe {
             // Wait for the image to be available
@@ -437,6 +446,135 @@ impl Renderer {
             let pipeline_layout = self.pipeline_layout;
             let swapchain_extent = self.swapchain.extent;
 
+            let mut camera_node: Option<&Node> = None;
+            for node in world.get_all_nodes() {
+                if let Some(camera) = node.get_component::<Camera>() {
+                    camera_node = Some(node);
+                }
+            }
+
+            if !camera_node.is_some() {
+                panic!("No camera found");
+            }
+            let camera_node = camera_node.unwrap();
+            let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
+
+            let transform = camera_node.get_component::<Transform>().unwrap();
+            let camera = camera_node.get_component::<Camera>().unwrap();
+            let model = Matrix4::from_scale(1.0);
+            // Camera's position as a point
+            let camera_eye = Point3::new(
+                transform.position.x,
+                transform.position.y,
+                transform.position.z,
+            );
+
+            // Forward direction from the camera
+            let rotated_forward = calculate_forward(&transform);
+
+            // Look point of the camera
+            let look_at = Point3::new(
+                camera_eye.x + rotated_forward.x,
+                camera_eye.y + rotated_forward.y,
+                camera_eye.z + rotated_forward.z,
+            );
+
+            // Get the up direction
+            let rotated_up = calculate_up(&transform);
+
+            let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
+
+            let projection = get_perspective_projection(&camera, aspect);
+
+            // Compute Projection * View * Model
+            let mvp = projection * view * model;
+
+            // Convert matrices to bytes for push constant
+            let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
+            let model_bytes: [u8; 64] = std::mem::transmute(model);
+
+            let mut push_constants = [0u8; 144];
+            push_constants[0..64].copy_from_slice(&mvp_bytes);
+            push_constants[64..128].copy_from_slice(&model_bytes);
+
+            // Render Model pipeline objects
+            device.cmd_bind_pipeline(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.model_pipeline,
+            );
+
+            for node in world.get_all_nodes() {
+                if let Some(transform) = node.get_component::<Transform>()
+                    && let Some(model_renderer) = node.get_component::<ModelRenderer>()
+                {
+                    // Add position offset
+                    let offset = [
+                        transform.position.x,
+                        transform.position.y,
+                        transform.position.z,
+                    ];
+                    let offset_bytes: [u8; 12] = std::mem::transmute(offset);
+                    push_constants[128..140].copy_from_slice(&offset_bytes);
+
+                    device.cmd_push_constants(
+                        command_buffer,
+                        pipeline_layout,
+                        vk::ShaderStageFlags::VERTEX,
+                        0,
+                        &push_constants,
+                    );
+
+                    let mut model_name = model_renderer.0.clone();
+                    model_name.push_str(".glb");
+
+                    let model = get_model(&model_name, model_loader);
+                    for mesh in &mut model.meshes {
+                        if mesh.material.base_color_texture.is_none()
+                            && let Some(ref texture_name) = mesh.material.texture_name.clone()
+                        {
+                            let texture = self
+                                .context
+                                .load_texture(
+                                    &texture_name,
+                                    self.command_pool,
+                                    self.descriptor_pool,
+                                    self.descriptor_set_layout,
+                                )
+                                .unwrap();
+
+                            mesh.material.base_color_texture = Some(texture);
+                            println!("texture loaded");
+                            println!("{}", mesh.material.base_color_texture.is_some());
+                        }
+
+                        if let Some(ref texture) = mesh.material.base_color_texture {
+                            device.cmd_bind_descriptor_sets(
+                                command_buffer,
+                                vk::PipelineBindPoint::GRAPHICS,
+                                pipeline_layout,
+                                0,
+                                &[texture.descriptor_set],
+                                &[],
+                            );
+                        }
+
+                        device.cmd_bind_vertex_buffers(
+                            command_buffer,
+                            0,
+                            &[mesh.vertex_buffer],
+                            &[0],
+                        );
+                        device.cmd_bind_index_buffer(
+                            command_buffer,
+                            mesh.index_buffer,
+                            0,
+                            vk::IndexType::UINT32,
+                        );
+                        device.cmd_draw_indexed(command_buffer, mesh.index_count, 1, 0, 0, 0);
+                    }
+                }
+            }
             // Query for entities with Camera and Transform components
             // world
             //     .query()
@@ -447,50 +585,6 @@ impl Renderer {
             //         if let (Some(camera), Some(transform)) =
             //             (entity_view.get::<Camera>(), entity_view.get::<Transform>())
             //         {
-            //             let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
-            //
-            //             let model = Matrix4::from_scale(1.0);
-            //             // Camera's position as a point
-            //             let camera_eye = Point3::new(
-            //                 transform.position.x,
-            //                 transform.position.y,
-            //                 transform.position.z,
-            //             );
-            //
-            //             // Forward direction from the camera
-            //             let rotated_forward = calculate_forward(&transform);
-            //
-            //             // Look point of the camera
-            //             let look_at = Point3::new(
-            //                 camera_eye.x + rotated_forward.x,
-            //                 camera_eye.y + rotated_forward.y,
-            //                 camera_eye.z + rotated_forward.z,
-            //             );
-            //
-            //             // Get the up direction
-            //             let rotated_up = calculate_up(&transform);
-            //
-            //             let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
-            //
-            //             let projection = get_perspective_projection(&camera, aspect);
-            //
-            //             // Compute Projection * View * Model
-            //             let mvp = projection * view * model;
-            //
-            //             // Convert matrices to bytes for push constant
-            //             let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
-            //             let model_bytes: [u8; 64] = std::mem::transmute(model);
-            //
-            //             let mut push_constants = [0u8; 140];
-            //             push_constants[0..64].copy_from_slice(&mvp_bytes);
-            //             push_constants[64..128].copy_from_slice(&model_bytes);
-            //
-            //             // Render Model pipeline objects
-            //             device.cmd_bind_pipeline(
-            //                 command_buffer,
-            //                 vk::PipelineBindPoint::GRAPHICS,
-            //                 self.model_pipeline,
-            //             );
             //
             //             // Render ModelRenderer entities
             //             world
@@ -501,66 +595,7 @@ impl Renderer {
             //                 .run(|entity_view: EntityView<'_>| {
             //                     world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
             //                         // Add position offset
-            //                         if let Some(transform) = entity_view.get::<Transform>() {
-            //                             // Add position offset
-            //                             let offset = [
-            //                                 transform.position.x,
-            //                                 transform.position.y,
-            //                                 transform.position.z,
-            //                             ];
-            //                             let offset_bytes: [u8; 12] = std::mem::transmute(offset);
-            //                             push_constants[128..140].copy_from_slice(&offset_bytes);
-            //                         }
             //
-            //                         device.cmd_push_constants(
-            //                             command_buffer,
-            //                             pipeline_layout,
-            //                             vk::ShaderStageFlags::VERTEX,
-            //                             0,
-            //                             &push_constants,
-            //                         );
-            //
-            //                         let model_renderer =
-            //                             entity_view.get::<ModelRenderer>().unwrap();
-            //
-            //                         let mut model_name = model_renderer.0.clone();
-            //                         model_name.push_str(".glb");
-            //
-            //                         let model = get_model(&model_name, model_loader);
-            //                         for mesh in &mut model.meshes {
-            //                             if let Some(ref texture) = mesh.material.base_color_texture
-            //                             {
-            //                                 device.cmd_bind_descriptor_sets(
-            //                                     command_buffer,
-            //                                     vk::PipelineBindPoint::GRAPHICS,
-            //                                     pipeline_layout,
-            //                                     0,
-            //                                     &[texture.descriptor_set],
-            //                                     &[],
-            //                                 );
-            //                             }
-            //
-            //                             device.cmd_bind_vertex_buffers(
-            //                                 command_buffer,
-            //                                 0,
-            //                                 &[mesh.vertex_buffer],
-            //                                 &[0],
-            //                             );
-            //                             device.cmd_bind_index_buffer(
-            //                                 command_buffer,
-            //                                 mesh.index_buffer,
-            //                                 0,
-            //                                 vk::IndexType::UINT32,
-            //                             );
-            //                             device.cmd_draw_indexed(
-            //                                 command_buffer,
-            //                                 mesh.index_count,
-            //                                 1,
-            //                                 0,
-            //                                 0,
-            //                                 0,
-            //                             );
-            //                         }
             //                     });
             //                 });
             //

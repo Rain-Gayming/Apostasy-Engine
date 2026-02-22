@@ -1,9 +1,11 @@
 use anyhow::Result;
+use cgmath::{Vector3, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId},
     event_loop::{ControlFlow, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
 };
 
 use winit::{
@@ -14,8 +16,14 @@ use winit::{
 
 use crate::engine::{
     editor::EditorStorage,
-    nodes::World,
+    nodes::{
+        Node, World,
+        camera::Camera,
+        transform::{Transform, calculate_rotation},
+        velocity::{Velocity, add_velocity, apply_velocity},
+    },
     rendering::{
+        models::model::{ModelLoader, ModelRenderer, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -23,7 +31,10 @@ use crate::engine::{
     timer::EngineTimer,
     windowing::{
         WindowManager,
-        input_manager::{InputManager, handle_device_event, handle_input_event},
+        input_manager::{
+            self, InputManager, KeyAction, KeyBind, clear_actions, handle_device_event,
+            handle_input_event, input_vector_3d, is_keybind_active, register_keybind,
+        },
     },
 };
 
@@ -95,6 +106,7 @@ pub struct Engine {
     pub world: World,
     pub input_manager: InputManager,
     pub editor: EditorStorage,
+    pub model_loader: ModelLoader,
 }
 
 impl Engine {
@@ -123,14 +135,60 @@ impl Engine {
 
         let timer = EngineTimer::new();
 
-        let world = World::new();
+        let mut world = World::new();
         let editor = EditorStorage::default();
+
+        let mut camera = Node::new();
+        camera.add_component(Camera::default());
+        camera.add_component(Transform::default());
+        camera.add_component(Velocity::default());
+        camera.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, -10.0);
+
+        let mut cube = Node::new();
+        cube.add_component(Transform::default());
+        cube.add_component(ModelRenderer::default());
+        cube.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, 0.0);
+
+        world.add_node(camera);
+        world.add_node(cube);
 
         let window_manager = WindowManager {
             windows,
             primary_window_id,
         };
-        let input_manager = InputManager::default();
+        let mut input_manager = InputManager::default();
+        register_keybind(
+            &mut input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold),
+            "forward",
+        );
+        register_keybind(
+            &mut input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyS), KeyAction::Hold),
+            "backward",
+        );
+        register_keybind(
+            &mut input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyA), KeyAction::Hold),
+            "left",
+        );
+        register_keybind(
+            &mut input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyD), KeyAction::Hold),
+            "right",
+        );
+        register_keybind(
+            &mut input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyE), KeyAction::Hold),
+            "up",
+        );
+        register_keybind(
+            &mut input_manager,
+            KeyBind::new(PhysicalKey::Code(KeyCode::KeyQ), KeyAction::Hold),
+            "down",
+        );
+        let mut model_loader = ModelLoader::default();
+        load_models(&mut model_loader, &rendering_context);
 
         Ok(Self {
             renderers,
@@ -140,6 +198,7 @@ impl Engine {
             world,
             input_manager,
             editor,
+            model_loader,
         })
     }
 
@@ -150,6 +209,7 @@ impl Engine {
         event: WindowEvent,
     ) {
         handle_input_event(&mut self.input_manager, event.clone());
+
         if let Some(renderer) = self.renderers.get_mut(&window_id) {
             let window = self.window_manager.windows.get(&window_id).unwrap();
             renderer.window_event(window, event.clone());
@@ -172,9 +232,10 @@ impl Engine {
                         renderer.prepare_egui(window.1);
                     }
 
-                    let _ = renderer.render();
+                    let _ = renderer.render(&self.world, &mut self.model_loader);
                 }
             }
+            WindowEvent::KeyboardInput { .. } => {}
 
             _ => (),
         }
@@ -190,9 +251,11 @@ impl Engine {
     }
 
     pub fn request_redraw(&mut self) {
+        input_handle(&mut self.world, &mut self.input_manager);
         for window in &self.window_manager.windows {
             window.1.request_redraw();
         }
+        clear_actions(&mut self.input_manager);
     }
 
     pub fn create_window(
@@ -207,4 +270,44 @@ impl Engine {
         self.renderers.insert(window_id, renderer);
         Ok(window_id)
     }
+}
+
+pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
+    let mut nodes = world.get_all_nodes_mut();
+
+    let mut camera: Option<&mut Node> = None;
+    for node in nodes {
+        if let Some(_) = node.get_component::<Camera>() {
+            camera = Some(node);
+        }
+    }
+
+    if camera.is_none() {
+        return;
+    }
+    let mut camera = camera.unwrap();
+    let (transform, velocity) =
+        camera.get_components_mut::<(Option<&mut Transform>, Option<&mut Velocity>)>();
+    let mut velocity = velocity.unwrap();
+    let mut transform = transform.unwrap();
+    let direction = transform.rotation
+        * input_vector_3d(
+            input_manager,
+            "right",
+            "left",
+            "up",
+            "down",
+            "backward",
+            "forward",
+        );
+    add_velocity(velocity, direction * 0.01);
+
+    transform.yaw += -input_manager.mouse_delta.0 as f32;
+    transform.pitch += -input_manager.mouse_delta.1 as f32;
+
+    transform.pitch = clamp(transform.pitch, -89.0, 89.0);
+    calculate_rotation(transform);
+
+    apply_velocity(velocity, transform);
+    velocity.direction = Vector3::new(0.0, 0.0, 0.0);
 }

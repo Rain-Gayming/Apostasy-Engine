@@ -1,3 +1,4 @@
+use crate as apostasy;
 use std::fs;
 
 use crate::engine::rendering::{
@@ -6,6 +7,7 @@ use crate::engine::rendering::{
 };
 use crate::log;
 use anyhow::Result;
+use apostasy_macros::Component;
 use ash::vk;
 use egui::ahash::HashMap;
 use gltf::material::AlphaMode;
@@ -77,7 +79,7 @@ pub struct Mesh {
     pub material: Material,
 }
 
-pub struct MeshRenderer(pub Mesh);
+#[derive(Component, Clone)]
 pub struct ModelRenderer(pub String, pub String);
 
 impl Default for ModelRenderer {
