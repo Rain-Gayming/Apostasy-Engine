@@ -3,100 +3,27 @@ use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::{DeriveInput, ItemFn, LitInt, parse_macro_input, parse_quote};
 
-/// Registers a component, Components are used to store data that is in an entity
 #[proc_macro_derive(Component)]
 pub fn component_derive(input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
-
     ast.generics
         .make_where_clause()
         .predicates
-        .push(parse_quote! { Self: Sized + Send + Sync + Default + 'static });
-
+        .push(parse_quote! { Self: Clone + Send + Sync + 'static });
     let struct_name = &ast.ident;
     let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
-
     let output = quote! {
-        unsafe impl #impl_generics apostasy::engine::ecs::component::Component for #struct_name #type_generics
+        impl #impl_generics apostasy::engine::nodes::component::Component for #struct_name #type_generics
         #where_clause
         {
-            fn id() -> apostasy::engine::ecs::entity::Entity {
-                #[linkme::distributed_slice(apostasy::engine::ecs::component::COMPONENT_ENTRIES)]
-                static ENTRY: apostasy::engine::ecs::component::ComponentEntry = #struct_name::init;
-                let begin = apostasy::engine::ecs::component::COMPONENT_ENTRIES[..].as_ptr() as u32;
-                let end = &raw const ENTRY as u32;
-                unsafe {
-                    apostasy::engine::ecs::entity::Entity::from_offset(
-                        (end - begin) / size_of::<apostasy::engine::ecs::component::ComponentEntry>() as u32,
-                    )
-                }
-            }
-
-            fn init(world: &apostasy::engine::ecs::World) {
-                // log!("initalizing for: {}", std::any::type_name::<#struct_name>());
-                world.entity(#struct_name::id()).insert(#struct_name::info());
-            }
-
-            fn info() -> apostasy::engine::ecs::component::ComponentInfo {
-                unsafe {
-                    apostasy::engine::ecs::component::ComponentInfo {
-                        name: std::any::type_name::<#struct_name>(),
-                        align: std::mem::align_of::<#struct_name>(),
-                        size: std::mem::size_of::<#struct_name>(),
-                        id: #struct_name::id(),
-                        drop: #struct_name::erased_drop,
-                        clone: #struct_name::get_erased_clone(),
-                        default: Some(#struct_name::get_erased_default()),
-                        on_insert: #struct_name::get_on_insert(),
-                        on_remove: #struct_name::get_on_remove(),
-                        fmt: #struct_name::get_erased_fmt(),
-                    }
-                }
-            }
-        }
-    };
-
-    output.into()
-}
-
-/// Registers a resource, Resources are used to store data that is shared between systems
-#[proc_macro_derive(Resource)]
-pub fn resource_derive(input: TokenStream) -> TokenStream {
-    let mut ast = parse_macro_input!(input as DeriveInput);
-
-    ast.generics
-        .make_where_clause()
-        .predicates
-        .push(parse_quote! { Self: Sized + Send + Sync + 'static });
-
-    let struct_name = &ast.ident;
-    let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
-
-    let output = quote! {
-        unsafe impl #impl_generics apostasy::engine::ecs::resource::Resource for #struct_name #type_generics
-        #where_clause
-        {
-            fn id() -> apostasy::engine::ecs::entity::Entity {
-                #[linkme::distributed_slice(apostasy::engine::ecs::resource::RESOURCE_ENTRIES)]
-                static ENTRY: apostasy::engine::ecs::resource::ResourceEntry = #struct_name::init;
-                let begin = apostasy::engine::ecs::resource::RESOURCE_ENTRIES[..].as_ptr() as u32;
-                let end = &raw const ENTRY as u32;
-                unsafe {
-                    apostasy::engine::ecs::entity::Entity::from_offset(
-                        (end - begin) / size_of::<apostasy::engine::ecs::resource::ResourceEntry>() as u32,
-                    )
-                }
-            }
-
-            fn name() -> &'static str {
+            fn name() -> &'static str where Self: Sized {
                 std::any::type_name::<#struct_name>()
             }
-
-            fn init(world: &mut apostasy::engine::ecs::World) {
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
             }
         }
     };
-
     output.into()
 }
 

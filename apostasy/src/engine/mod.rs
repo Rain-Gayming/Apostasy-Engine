@@ -13,27 +13,31 @@ use winit::{
 };
 
 use crate::engine::{
+    editor::EditorStorage,
+    nodes::World,
     rendering::{
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
+    windowing::WindowManager,
 };
 
 pub mod editor;
+pub mod nodes;
 pub mod rendering;
 pub mod timer;
 pub mod windowing;
 
 /// Render application
 pub struct Application {
-    render_engine: Option<Engine>,
+    engine: Option<Engine>,
 }
 
 impl ApplicationHandler for Application {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        self.render_engine = Some(Engine::new(event_loop).unwrap());
+        self.engine = Some(Engine::new(event_loop).unwrap());
     }
 
     fn window_event(
@@ -42,7 +46,7 @@ impl ApplicationHandler for Application {
         window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        if let Some(engine) = self.render_engine.as_mut() {
+        if let Some(engine) = self.engine.as_mut() {
             engine.window_event(event_loop, window_id, event.clone());
         }
     }
@@ -53,13 +57,13 @@ impl ApplicationHandler for Application {
         device_id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
-        if let Some(engine) = self.render_engine.as_mut() {
+        if let Some(engine) = self.engine.as_mut() {
             engine.device_event(event_loop, device_id, event.clone());
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
-        if let Some(engine) = &mut self.render_engine {
+        if let Some(engine) = &mut self.engine {
             engine.request_redraw();
         }
     }
@@ -71,9 +75,7 @@ impl ApplicationHandler for Application {
 
 pub fn start_app() -> Result<()> {
     tracing_subscriber::fmt::init();
-    let mut app = Application {
-        render_engine: None,
-    };
+    let mut app = Application { engine: None };
 
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -85,7 +87,10 @@ pub fn start_app() -> Result<()> {
 pub struct Engine {
     pub renderers: HashMap<WindowId, Renderer>,
     pub rendering_context: Arc<RenderingContext>,
+    pub window_manager: WindowManager,
     pub timer: EngineTimer,
+    pub world: World,
+    pub editor: EditorStorage,
 }
 
 impl Engine {
@@ -104,7 +109,6 @@ impl Engine {
             compatability_window: &primary_window,
             queue_family_picker: single_queue_family,
         })?);
-
         let renderers = windows
             .iter()
             .map(|(id, window)| {
@@ -115,10 +119,21 @@ impl Engine {
 
         let timer = EngineTimer::new();
 
+        let mut world = World::new();
+        let editor = EditorStorage::default();
+
+        let window_manager = WindowManager {
+            windows,
+            primary_window_id,
+        };
+
         Ok(Self {
             renderers,
             rendering_context,
+            window_manager,
             timer,
+            world,
+            editor,
         })
     }
 
@@ -156,16 +171,11 @@ impl Engine {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    // let windows: Vec<Arc<Window>> =
-                    //     self.world.with_resource(|window_manager: &WindowManager| {
-                    //         window_manager.windows.values().cloned().collect()
-                    //     });
-                    //
-                    // for window in &windows {
-                    //     renderer.prepare_egui(window, &mut self.world);
-                    // }
-                    //
-                    // let _ = renderer.render(&self.world);
+                    for window in &self.window_manager.windows {
+                        renderer.prepare_egui(window.1);
+                    }
+
+                    let _ = renderer.render();
                 }
             }
 
@@ -197,6 +207,9 @@ impl Engine {
         //     });
         //
         // self.world.late_update();
+        for window in &self.window_manager.windows {
+            window.1.request_redraw();
+        }
     }
 
     pub fn create_window(
