@@ -1,8 +1,14 @@
 use std::any::TypeId;
 
+use anyhow::{Error, Result};
+
 use crate::engine::{
     nodes::{
         component::Component,
+        scene::Scene,
+        scene_serialization::{
+            SerializedScene, debug_registered_components, deserialize_node, serialize_node,
+        },
         system::{FixedUpdateSystem, InputSystem, LateUpdateSystem, StartSystem, UpdateSystem},
     },
     windowing::input_manager::InputManager,
@@ -10,6 +16,8 @@ use crate::engine::{
 
 pub mod camera;
 pub mod component;
+pub mod scene;
+pub mod scene_serialization;
 pub mod system;
 pub mod transform;
 pub mod velocity;
@@ -104,7 +112,7 @@ impl_components_mut!(A, B, C);
 impl_components_mut!(A, B, C, D);
 
 pub struct World {
-    pub root: Box<Node>,
+    pub scene: Scene,
     pub global_nodes: Vec<Box<Node>>,
 }
 
@@ -117,7 +125,7 @@ impl Default for World {
 impl World {
     pub fn new() -> Self {
         Self {
-            root: Box::new(Node::new()),
+            scene: Scene::new(),
             global_nodes: Vec::new(),
         }
     }
@@ -126,18 +134,19 @@ impl World {
         self.global_nodes.push(node);
     }
     pub fn add_node(&mut self, node: Node) -> &mut Self {
-        self.root.add_child(node);
+        self.scene.root_node.add_child(node);
         self
     }
 
     pub fn add_new_node(&mut self) -> &mut Self {
         self.add_node(Node::new());
+
         self
     }
 
     pub fn get_all_nodes(&self) -> Vec<&Node> {
         let mut nodes = Vec::new();
-        for node in self.root.children.iter() {
+        for node in self.scene.root_node.children.iter() {
             nodes.push(node);
             nodes.extend(node.children.iter());
         }
@@ -146,7 +155,7 @@ impl World {
 
     pub fn get_all_nodes_mut(&mut self) -> Vec<&mut Node> {
         let mut nodes = Vec::new();
-        for node in self.root.children.iter_mut() {
+        for node in self.scene.root_node.children.iter_mut() {
             let node_ptr = node as *mut Node;
             unsafe {
                 nodes.push(&mut *node_ptr);
@@ -242,4 +251,31 @@ impl World {
         }
         node.unwrap()
     }
+
+    pub fn serialize_scene(&self) -> Result<(), std::io::Error> {
+        let serialized = SerializedScene {
+            root_children: self
+                .scene
+                .root_node
+                .children
+                .iter()
+                .map(serialize_node)
+                .collect(),
+        };
+        let path = format!("{}/{}.yaml", ENGINE_SAVE_PATH, self.scene.name);
+        std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
+    }
+
+    pub fn deserialize_scene(&mut self, scene: String) -> Result<(), serde_yaml::Error> {
+        let path = format!("{}/{}.yaml", ENGINE_SAVE_PATH, scene);
+        let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
+        let serialized: SerializedScene = serde_yaml::from_str(&contents)?;
+        self.scene.root_node.children = serialized
+            .root_children
+            .into_iter()
+            .map(deserialize_node)
+            .collect();
+        Ok(())
+    }
 }
+const ENGINE_SAVE_PATH: &str = "res/scenes";

@@ -521,7 +521,7 @@ impl Renderer {
                         &push_constants,
                     );
 
-                    let mut model_name = model_renderer.0.clone();
+                    let mut model_name = model_renderer.loaded_model.clone();
                     model_name.push_str(".glb");
 
                     let model = get_model(&model_name, model_loader);

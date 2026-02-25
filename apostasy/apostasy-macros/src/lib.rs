@@ -13,6 +13,7 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
         .predicates
         .push(parse_quote! { Self: Clone + Send + Sync + 'static });
     let struct_name = &ast.ident;
+    let type_name_str = struct_name.to_string(); // "Camera", "Transform" etc
     let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
     let output = quote! {
         impl #impl_generics apostasy::engine::nodes::component::Component for #struct_name #type_generics
@@ -27,11 +28,41 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
                 self
             }
+            fn type_name(&self) -> &'static str {
+                #type_name_str
+            }
         }
     };
     output.into()
 }
+#[proc_macro_derive(SerializableComponent)]
+pub fn serializable_component_derive(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    let struct_name = &ast.ident;
+    let type_name = struct_name.to_string();
 
+    let output = quote! {
+        inventory::submit! {
+            apostasy::engine::nodes::scene_serialization::ComponentRegistrator{
+                type_name: #type_name,
+                serialize: |component| {
+                    let concrete = component
+                        .as_any()
+                        .downcast_ref::<#struct_name>()
+                        .expect(concat!("Serialize: failed to downcast to ", stringify!(#struct_name)));
+                    serde_yaml::to_value(concrete)
+                        .expect(concat!("Serialize: failed to serialize ", stringify!(#struct_name)))
+                },
+                deserialize: |value| {
+                    let concrete: #struct_name = serde_yaml::from_value(value)
+                        .expect(concat!("Deserialize: failed to deserialize ", stringify!(#struct_name)));
+                    Box::new(concrete)
+                },
+            }
+        }
+    };
+    output.into()
+}
 struct SystemArgs {
     priority: Option<u32>,
 }

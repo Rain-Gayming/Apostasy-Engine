@@ -1,9 +1,10 @@
 use crate::engine::editor::inspectable::Inspectable;
 use crate::{self as apostasy};
-use apostasy_macros::{Component, Inspectable};
+use apostasy_macros::{Component, Inspectable, SerializableComponent};
 use cgmath::{Deg, Matrix4, PerspectiveFov};
+use serde::{Deserialize, Serialize};
 
-#[derive(Component, Clone, Inspectable)]
+#[derive(Component, Clone, Inspectable, SerializableComponent, Serialize, Deserialize)]
 pub struct Camera {
     pub fov_y: f32,
     pub near: f32,

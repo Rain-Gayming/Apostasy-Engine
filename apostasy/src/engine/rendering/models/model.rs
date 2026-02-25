@@ -7,10 +7,11 @@ use crate::engine::rendering::{
 };
 use crate::log;
 use anyhow::Result;
-use apostasy_macros::Component;
+use apostasy_macros::{Component, Inspectable, SerializableComponent};
 use ash::vk;
 use egui::ahash::HashMap;
 use gltf::material::AlphaMode;
+use serde::{Deserialize, Serialize};
 
 const MODEL_LOCATION: &str = "res/models/";
 
@@ -79,12 +80,19 @@ pub struct Mesh {
     pub material: Material,
 }
 
-#[derive(Component, Clone)]
-pub struct ModelRenderer(pub String, pub String);
+use crate::engine::editor::inspectable::Inspectable;
+#[derive(Component, Clone, Inspectable, Serialize, Deserialize, SerializableComponent)]
+pub struct ModelRenderer {
+    pub loading_model: String,
+    pub loaded_model: String,
+}
 
 impl Default for ModelRenderer {
     fn default() -> Self {
-        Self("cube".to_string(), String::new())
+        Self {
+            loading_model: "cube".to_string(),
+            loaded_model: "cube".to_string(),
+        }
     }
 }
 

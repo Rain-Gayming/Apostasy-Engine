@@ -161,6 +161,12 @@ pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &m
             if ui.button("New Entity").clicked() {
                 world.add_new_node();
             }
+            if ui.button("Save Scene").clicked() {
+                world.serialize_scene().unwrap();
+            }
+            if ui.button("Load Scene").clicked() {
+                world.deserialize_scene("Scene".to_string()).unwrap();
+            }
 
             ScrollArea::vertical()
                 .id_salt("entities_scroll")

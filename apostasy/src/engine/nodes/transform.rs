@@ -1,10 +1,11 @@
 use crate::engine::editor::inspectable::Inspectable;
 use crate::{self as apostasy};
-use apostasy_macros::{Component, Inspectable};
+use apostasy_macros::{Component, Inspectable, SerializableComponent};
 use cgmath::{Deg, Euler, One, Quaternion, Rotation, Vector3};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-#[derive(Component, Clone, Inspectable)]
+#[derive(Component, Clone, Inspectable, Serialize, Deserialize, SerializableComponent)]
 pub struct Transform {
     pub position: Vector3<f32>,
     pub rotation: Quaternion<f32>,

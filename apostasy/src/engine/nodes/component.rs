@@ -1,10 +1,17 @@
-use std::any::Any;
+use std::{
+    any::Any,
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+
+use once_cell::sync::Lazy;
 pub trait Component: ComponentClone {
     fn name() -> &'static str
     where
         Self: Sized;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn type_name(&self) -> &'static str;
 }
 
 pub trait ComponentClone {

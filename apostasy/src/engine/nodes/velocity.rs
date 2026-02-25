@@ -1,8 +1,10 @@
+use crate::engine::editor::inspectable::Inspectable;
 use crate::{self as apostasy, engine::nodes::transform::Transform};
-use apostasy_macros::Component;
+use apostasy_macros::{Component, Inspectable, SerializableComponent};
 use cgmath::Vector3;
+use serde::{Deserialize, Serialize};
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Inspectable, SerializableComponent, Serialize, Deserialize)]
 pub struct Velocity {
     pub direction: Vector3<f32>,
 }
