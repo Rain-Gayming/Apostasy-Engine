@@ -283,23 +283,9 @@ impl Engine {
 
 #[input]
 pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
-    let nodes = world.get_all_nodes_mut();
+    let camera = world.get_node_with_component_mut::<Camera>();
 
-    let mut camera: Option<&mut Node> = None;
-    for node in nodes {
-        if node.get_component::<Camera>().is_some() {
-            camera = Some(node);
-        }
-    }
-
-    if camera.is_none() {
-        return;
-    }
-    let camera = camera.unwrap();
-    let (transform, velocity) =
-        camera.get_components_mut::<(Option<&mut Transform>, Option<&mut Velocity>)>();
-    let velocity = velocity.unwrap();
-    let transform = transform.unwrap();
+    let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
 
     let direction = transform.rotation
         * input_vector_3d(
@@ -321,13 +307,10 @@ pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
 }
 
 #[fixed_update]
-pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
+pub fn fixed_update_handle(world: &mut World, _delta_time: f32) {
     let camera = world.get_node_with_component_mut::<Camera>();
 
-    let (transform, velocity) =
-        camera.get_components_mut::<(Option<&mut Transform>, Option<&mut Velocity>)>();
-    let velocity = velocity.unwrap();
-    let transform = transform.unwrap();
+    let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
 
     apply_velocity(velocity, transform);
     velocity.direction = Vector3::new(0.0, 0.0, 0.0);

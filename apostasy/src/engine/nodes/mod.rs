@@ -66,10 +66,9 @@ impl Node {
 pub trait ComponentsMut<'a> {
     fn from_node(node: &'a mut Node) -> Self;
 }
-
 macro_rules! impl_components_mut {
     ($($T:ident),+) => {
-        impl<'a, $($T: Component + 'static),+> ComponentsMut<'a> for ($(Option<&'a mut $T>),+) {
+        impl<'a, $($T: Component + 'static),+> ComponentsMut<'a> for ($(&'a mut $T),+) {
             fn from_node(node: &'a mut Node) -> Self {
                 $(let mut $T: Option<*mut $T> = None;)+
 
@@ -87,13 +86,15 @@ macro_rules! impl_components_mut {
                 }
 
                 unsafe {
-                    ($($T.map(|p| &mut *p)),+)
+                    ($(
+                        $T.map(|p| &mut *p)
+                            .unwrap_or_else(|| panic!("Error: Component ({}) not found on node", std::any::type_name::<$T>()))
+                    ),+)
                 }
             }
         }
     };
 }
-
 impl_components_mut!(a, b);
 impl_components_mut!(a, b, c);
 impl_components_mut!(a, b, c, d);
