@@ -1,14 +1,13 @@
 use crate::engine::editor::inspectable::Inspectable;
-use crate::{self as apostasy, engine::editor::inspectable::InspectValue};
+use crate::{self as apostasy};
 use apostasy_macros::{Component, Inspectable};
-use cgmath::{Deg, Matrix4, PerspectiveFov, Zero};
+use cgmath::{Deg, Matrix4, PerspectiveFov};
 
 #[derive(Component, Clone, Inspectable)]
 pub struct Camera {
     pub fov_y: f32,
     pub near: f32,
     pub far: f32,
-    projection: Matrix4<f32>,
 }
 
 impl Default for Camera {
@@ -17,7 +16,6 @@ impl Default for Camera {
             fov_y: 90.0,
             far: 10000.0,
             near: 0.001,
-            projection: Matrix4::<f32>::zero(),
         }
     }
 }

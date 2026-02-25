@@ -1,9 +1,8 @@
 use crate::{
     self as apostasy,
     engine::{
-        editor::{self, inspectable::InspectValue},
+        editor::inspectable::InspectValue,
         nodes::{
-            Node,
             camera::Camera,
             transform::{Transform, calculate_rotation},
         },
@@ -12,12 +11,11 @@ use crate::{
 use std::path::{Path, PathBuf};
 
 use crate::{engine::nodes::World, log};
-use apostasy_macros::{editor_ui, ui};
+use apostasy_macros::editor_ui;
 use egui::{
     Align2, CollapsingHeader, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense,
     Stroke, Ui, Vec2, Window, pos2,
 };
-use rayon::string;
 
 pub mod console_commands;
 pub mod inspectable;
@@ -277,8 +275,9 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
 
                 if let Some(mut transform) = node.get_component_mut::<Transform>() {
                     transform.inspect_value(ui);
+                    calculate_rotation(&mut transform);
                 }
-                if let Some(mut camera) = node.get_component_mut::<Camera>() {
+                if let Some(camera) = node.get_component_mut::<Camera>() {
                     camera.inspect_value(ui);
                 }
 
@@ -288,7 +287,7 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
 }
 
 #[editor_ui]
-pub fn file_tree_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+pub fn file_tree_ui(context: &mut Context, _world: &mut World, editor_storage: &mut EditorStorage) {
     Window::new("Files")
         .default_size([100.0, 300.0])
         .show(context, |ui| {

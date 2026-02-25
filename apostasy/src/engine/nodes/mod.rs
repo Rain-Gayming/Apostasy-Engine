@@ -70,6 +70,8 @@ pub trait ComponentsMut<'a> {
 }
 macro_rules! impl_components_mut {
     ($($T:ident),+) => {
+
+        #[allow(nonstandard_style)]
         impl<'a, $($T: Component + 'static),+> ComponentsMut<'a> for ($(&'a mut $T),+) {
             fn from_node(node: &'a mut Node) -> Self {
                 $(let mut $T: Option<*mut $T> = None;)+
@@ -97,9 +99,9 @@ macro_rules! impl_components_mut {
         }
     };
 }
-impl_components_mut!(a, b);
-impl_components_mut!(a, b, c);
-impl_components_mut!(a, b, c, d);
+impl_components_mut!(A, B);
+impl_components_mut!(A, B, C);
+impl_components_mut!(A, B, C, D);
 
 pub struct World {
     pub root: Box<Node>,

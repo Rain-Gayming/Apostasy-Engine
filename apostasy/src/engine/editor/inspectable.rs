@@ -1,15 +1,23 @@
-use cgmath::{Matrix, Quaternion, Vector3};
+use cgmath::{Quaternion, Vector3};
 use egui::DragValue;
 
+/// Implemented by structs that can be inspected
+/// Impliment via ```#[derive(Inspectable)]```
 pub trait Inspectable {
     fn inspect(&mut self, ui: &mut egui::Ui);
 }
 
+/// Implemented by types that can be inspected
+/// Impliment via ```impl InspectValue for YourType {
+///     fn inspect_value(&mut self, ui: &mut egui::Ui) {
+///         // egui values needed
+///         //ui.add(egui::DragValue::new(self).speed(0.1));
+///     
+/// }```
 pub trait InspectValue {
     fn inspect_value(&mut self, ui: &mut egui::Ui);
 }
 
-// Implement InspectValue for ALL common types
 impl InspectValue for f32 {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
         ui.add(egui::DragValue::new(self).speed(0.1));

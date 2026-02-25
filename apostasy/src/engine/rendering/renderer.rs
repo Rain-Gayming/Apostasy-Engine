@@ -444,7 +444,7 @@ impl Renderer {
 
             let mut camera_node: Option<&Node> = None;
             for node in world.get_all_nodes() {
-                if let Some(camera) = node.get_component::<Camera>() {
+                if let Some(_) = node.get_component::<Camera>() {
                     camera_node = Some(node);
                 }
             }

@@ -1,5 +1,5 @@
 use crate::engine::editor::inspectable::Inspectable;
-use crate::{self as apostasy, engine::editor::inspectable::InspectValue};
+use crate::{self as apostasy};
 use apostasy_macros::{Component, Inspectable};
 use cgmath::{Deg, Euler, One, Quaternion, Rotation, Vector3};
 use std::fmt::Debug;
@@ -11,9 +11,9 @@ pub struct Transform {
     pub yaw: f32,
     pub pitch: f32,
     pub scale: Vector3<f32>,
-    pub up: Vector3<f32>,
-    pub forward: Vector3<f32>,
-    pub right: Vector3<f32>,
+    up: Vector3<f32>,
+    forward: Vector3<f32>,
+    right: Vector3<f32>,
 }
 
 impl Debug for Transform {

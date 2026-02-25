@@ -1,14 +1,10 @@
 use crate::{
     self as apostasy,
-    engine::{
-        nodes::system::EditorUIFunction,
-        windowing::input_manager::{KeyAction, KeyBind, handle_input_event, register_keybind},
-    },
+    engine::windowing::input_manager::{KeyAction, KeyBind, handle_input_event, register_keybind},
 };
 use anyhow::Result;
 use apostasy_macros::{fixed_update, input};
 use cgmath::{Vector3, num_traits::clamp};
-use egui::Context;
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
