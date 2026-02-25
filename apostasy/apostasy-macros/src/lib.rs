@@ -68,7 +68,7 @@ pub fn start(attr: TokenStream, item: TokenStream) -> TokenStream {
     let expanded = quote! {
         #input_fn
         inventory::submit! {
-            apostasy::engine::ecs::system::StartSystem{
+            apostasy::engine::nodes::system::StartSystem{
                 name: stringify!(#fn_name),
                 func: #fn_name,
                 priority: #priority,
@@ -90,7 +90,30 @@ pub fn fixed_update(attr: TokenStream, item: TokenStream) -> TokenStream {
         #input_fn
 
         inventory::submit! {
-            apostasy::engine::ecs::system::FixedUpdateSystem {
+            apostasy::engine::nodes::system::FixedUpdateSystem {
+                name: stringify!(#fn_name),
+                func: #fn_name,
+                priority: #priority,
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+#[proc_macro_attribute]
+pub fn input(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let args = parse_macro_input!(attr as SystemArgs);
+    let fn_name = &input_fn.sig.ident;
+    let priority = args.priority.unwrap_or(0);
+
+    // Generate an inventory registration
+    let expanded = quote! {
+        #input_fn
+
+        inventory::submit! {
+            apostasy::engine::nodes::system::InputSystem {
                 name: stringify!(#fn_name),
                 func: #fn_name,
                 priority: #priority,
@@ -114,7 +137,7 @@ pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
         #input_fn
 
         inventory::submit! {
-            apostasy::engine::ecs::system::UpdateSystem {
+            apostasy::engine::nodes::system::UpdateSystem {
                 name: stringify!(#fn_name),
                 func: #fn_name,
                 priority: #priority,
@@ -138,7 +161,7 @@ pub fn late_update(attr: TokenStream, item: TokenStream) -> TokenStream {
         #input_fn
 
         inventory::submit! {
-            apostasy::engine::ecs::system::LateUpdateSystem {
+            apostasy::engine::nodes::system::LateUpdateSystem {
                 name: stringify!(#fn_name),
                 func: #fn_name,
                 priority: #priority,

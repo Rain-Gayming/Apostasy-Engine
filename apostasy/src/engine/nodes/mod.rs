@@ -1,9 +1,16 @@
 use std::any::TypeId;
 
-use crate::engine::nodes::component::Component;
+use crate::engine::{
+    nodes::{
+        component::Component,
+        system::{FixedUpdateSystem, InputSystem, LateUpdateSystem, StartSystem, UpdateSystem},
+    },
+    windowing::input_manager::InputManager,
+};
 
 pub mod camera;
 pub mod component;
+pub mod system;
 pub mod transform;
 pub mod velocity;
 
@@ -46,6 +53,7 @@ impl Node {
     pub fn get_components_mut<'a, T: ComponentsMut<'a>>(&'a mut self) -> T {
         T::from_node(self)
     }
+
     pub fn add_component<T: Component + 'static>(&mut self, component: T) -> &mut Self {
         self.components.push(Box::new(component));
         self
@@ -86,9 +94,10 @@ macro_rules! impl_components_mut {
     };
 }
 
-impl_components_mut!(A, B);
-impl_components_mut!(A, B, C);
-impl_components_mut!(A, B, C, D);
+impl_components_mut!(a, b);
+impl_components_mut!(a, b, c);
+impl_components_mut!(a, b, c, d);
+
 pub struct World {
     pub root: Box<Node>,
     pub global_nodes: Vec<Box<Node>>,
@@ -137,5 +146,59 @@ impl World {
             }
         }
         nodes
+    }
+
+    pub fn start(&mut self) {
+        let mut systems = inventory::iter::<StartSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self);
+        }
+    }
+    pub fn update(&mut self) {
+        let mut systems = inventory::iter::<UpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self);
+        }
+    }
+
+    pub fn fixed_update(&mut self, delta: f32) {
+        let mut systems = inventory::iter::<FixedUpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self, delta);
+        }
+    }
+    pub fn late_update(&mut self) {
+        let mut systems = inventory::iter::<LateUpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self);
+        }
+    }
+    pub fn input(&mut self, input_manager: &mut InputManager) {
+        let mut systems = inventory::iter::<InputSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self, input_manager);
+        }
+    }
+
+    pub fn get_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
+        self.get_all_nodes()
+            .into_iter()
+            .find(|node| node.get_component::<T>().is_some())
+    }
+
+    pub fn get_node_with_component_mut<T: Component + 'static>(&mut self) -> Option<&mut Node> {
+        self.get_all_nodes_mut()
+            .into_iter()
+            .find(|node| node.get_component::<T>().is_some())
     }
 }

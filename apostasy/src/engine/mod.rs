@@ -1,4 +1,9 @@
+use crate::{
+    self as apostasy,
+    engine::windowing::input_manager::{KeyAction, KeyBind, handle_input_event, register_keybind},
+};
 use anyhow::Result;
+use apostasy_macros::{fixed_update, input};
 use cgmath::{Vector3, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
@@ -31,10 +36,7 @@ use crate::engine::{
     timer::EngineTimer,
     windowing::{
         WindowManager,
-        input_manager::{
-            self, InputManager, KeyAction, KeyBind, clear_actions, handle_device_event,
-            handle_input_event, input_vector_3d, is_keybind_active, register_keybind,
-        },
+        input_manager::{InputManager, clear_actions, handle_device_event, input_vector_3d},
     },
 };
 
@@ -104,9 +106,9 @@ pub struct Engine {
     pub window_manager: WindowManager,
     pub timer: EngineTimer,
     pub world: World,
-    pub input_manager: InputManager,
     pub editor: EditorStorage,
     pub model_loader: ModelLoader,
+    pub input_manager: InputManager,
 }
 
 impl Engine {
@@ -136,7 +138,6 @@ impl Engine {
         let timer = EngineTimer::new();
 
         let mut world = World::new();
-        let editor = EditorStorage::default();
 
         let mut camera = Node::new();
         camera.add_component(Camera::default());
@@ -156,6 +157,11 @@ impl Engine {
             windows,
             primary_window_id,
         };
+
+        let mut model_loader = ModelLoader::default();
+        let editor = EditorStorage::default();
+
+        load_models(&mut model_loader, &rendering_context);
         let mut input_manager = InputManager::default();
         register_keybind(
             &mut input_manager,
@@ -187,8 +193,6 @@ impl Engine {
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyQ), KeyAction::Hold),
             "down",
         );
-        let mut model_loader = ModelLoader::default();
-        load_models(&mut model_loader, &rendering_context);
 
         Ok(Self {
             renderers,
@@ -196,9 +200,9 @@ impl Engine {
             window_manager,
             timer,
             world,
-            input_manager,
             editor,
             model_loader,
+            input_manager,
         })
     }
 
@@ -208,12 +212,12 @@ impl Engine {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        handle_input_event(&mut self.input_manager, event.clone());
-
         if let Some(renderer) = self.renderers.get_mut(&window_id) {
             let window = self.window_manager.windows.get(&window_id).unwrap();
             renderer.window_event(window, event.clone());
         }
+
+        handle_input_event(&mut self.input_manager, event.clone());
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -235,7 +239,9 @@ impl Engine {
                     let _ = renderer.render(&self.world, &mut self.model_loader);
                 }
             }
-            WindowEvent::KeyboardInput { .. } => {}
+            WindowEvent::KeyboardInput { .. } => {
+                self.world.input(&mut self.input_manager);
+            }
 
             _ => (),
         }
@@ -248,14 +254,17 @@ impl Engine {
         event: DeviceEvent,
     ) {
         handle_device_event(&mut self.input_manager, event.clone());
+        self.world.input(&mut self.input_manager);
     }
 
     pub fn request_redraw(&mut self) {
-        input_handle(&mut self.world, &mut self.input_manager);
+        self.world.update();
+        self.world.fixed_update(self.timer.tick().fixed_dt);
         for window in &self.window_manager.windows {
             window.1.request_redraw();
         }
         clear_actions(&mut self.input_manager);
+        self.world.late_update();
     }
 
     pub fn create_window(
@@ -272,12 +281,13 @@ impl Engine {
     }
 }
 
+#[input]
 pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
-    let mut nodes = world.get_all_nodes_mut();
+    let nodes = world.get_all_nodes_mut();
 
     let mut camera: Option<&mut Node> = None;
     for node in nodes {
-        if let Some(_) = node.get_component::<Camera>() {
+        if node.get_component::<Camera>().is_some() {
             camera = Some(node);
         }
     }
@@ -285,11 +295,12 @@ pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
     if camera.is_none() {
         return;
     }
-    let mut camera = camera.unwrap();
+    let camera = camera.unwrap();
     let (transform, velocity) =
         camera.get_components_mut::<(Option<&mut Transform>, Option<&mut Velocity>)>();
-    let mut velocity = velocity.unwrap();
-    let mut transform = transform.unwrap();
+    let velocity = velocity.unwrap();
+    let transform = transform.unwrap();
+
     let direction = transform.rotation
         * input_vector_3d(
             input_manager,
@@ -300,13 +311,26 @@ pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
             "backward",
             "forward",
         );
-    add_velocity(velocity, direction * 0.01);
 
+    add_velocity(velocity, direction * 0.01);
     transform.yaw += -input_manager.mouse_delta.0 as f32;
     transform.pitch += -input_manager.mouse_delta.1 as f32;
 
-    transform.pitch = clamp(transform.pitch, -89.0, 89.0);
     calculate_rotation(transform);
+    transform.pitch = clamp(transform.pitch, -89.0, 89.0);
+}
+
+#[fixed_update]
+pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
+    let mut camera = world.get_node_with_component_mut::<Camera>();
+    if camera.is_none() {
+        return;
+    }
+    let camera = camera.unwrap();
+    let (transform, velocity) =
+        camera.get_components_mut::<(Option<&mut Transform>, Option<&mut Velocity>)>();
+    let velocity = velocity.unwrap();
+    let transform = transform.unwrap();
 
     apply_velocity(velocity, transform);
     velocity.direction = Vector3::new(0.0, 0.0, 0.0);
