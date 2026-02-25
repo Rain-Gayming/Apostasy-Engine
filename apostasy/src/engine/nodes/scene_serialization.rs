@@ -5,6 +5,7 @@ use super::Node;
 use crate::engine::nodes::component::Component;
 
 #[derive(Serialize, Deserialize)]
+/// A serialized component, contains the type name and data
 pub struct SerializedComponent {
     #[serde(rename = "type")]
     type_name: String,
@@ -12,6 +13,7 @@ pub struct SerializedComponent {
 }
 
 #[derive(Serialize, Deserialize)]
+/// A serialized node, contains a list of components and children
 pub struct SerializedNode {
     name: String,
     components: Vec<SerializedComponent>,
@@ -19,10 +21,12 @@ pub struct SerializedNode {
 }
 
 #[derive(Serialize, Deserialize)]
+/// A serialized scene, contains a list of root children
 pub struct SerializedScene {
     pub root_children: Vec<SerializedNode>,
 }
 
+/// A component registrator, used to serialize and deserialize components
 pub struct ComponentRegistrator {
     pub type_name: &'static str,
     pub serialize: fn(&dyn Component) -> serde_yaml::Value,
@@ -34,6 +38,7 @@ pub fn find_registration(type_name: &str) -> Option<&'static ComponentRegistrato
     inventory::iter::<ComponentRegistrator>().find(|r| r.type_name == type_name)
 }
 
+/// Serializes a node, returns a serialized node
 pub fn serialize_node(node: &Node) -> SerializedNode {
     let components: Vec<SerializedComponent> = node
         .components
@@ -73,6 +78,7 @@ pub fn serialize_node(node: &Node) -> SerializedNode {
     }
 }
 
+/// Deserializes a serialized node, returns a node
 pub fn deserialize_node(serialized: SerializedNode) -> Node {
     let components: Vec<Box<dyn Component>> = serialized
         .components
@@ -96,6 +102,7 @@ pub fn deserialize_node(serialized: SerializedNode) -> Node {
     }
 }
 
+/// Prints the registered components
 pub fn debug_registered_components() {
     let registrations: Vec<_> = inventory::iter::<ComponentRegistrator>().collect();
     println!("Registered components ({}):", registrations.len());
