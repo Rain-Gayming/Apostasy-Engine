@@ -1,6 +1,7 @@
 use crate as apostasy;
 use std::fs;
 
+use crate::engine::editor::inspectable::Inspectable;
 use crate::engine::rendering::{
     models::vertex::{Vertex, VertexType},
     rendering_context::RenderingContext,
@@ -80,7 +81,6 @@ pub struct Mesh {
     pub material: Material,
 }
 
-use crate::engine::editor::inspectable::Inspectable;
 #[derive(Component, Clone, Inspectable, Serialize, Deserialize, SerializableComponent)]
 pub struct ModelRenderer {
     pub loading_model: String,
@@ -100,8 +100,8 @@ pub fn does_model_exist(name: &str, model_loader: &ModelLoader) -> bool {
     model_loader.models.contains_key(name)
 }
 
-pub fn get_model<'a>(name: &'a str, model_loader: &'a mut ModelLoader) -> &'a mut Model {
-    model_loader.models.get_mut(name).unwrap()
+pub fn get_model<'a>(name: &'a str, model_loader: &'a mut ModelLoader) -> Option<&'a mut Model> {
+    model_loader.models.get_mut(name)
 }
 
 pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext) {

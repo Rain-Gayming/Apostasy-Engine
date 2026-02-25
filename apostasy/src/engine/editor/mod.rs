@@ -5,7 +5,9 @@ use crate::{
         nodes::{
             camera::Camera,
             transform::{Transform, calculate_rotation},
+            velocity::Velocity,
         },
+        rendering::models::model::ModelRenderer,
     },
 };
 use std::path::{Path, PathBuf};
@@ -285,6 +287,12 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
                 }
                 if let Some(camera) = node.get_component_mut::<Camera>() {
                     camera.inspect_value(ui);
+                }
+                if let Some(model) = node.get_component_mut::<ModelRenderer>() {
+                    model.inspect_value(ui);
+                }
+                if let Some(velocity) = node.get_component_mut::<Velocity>() {
+                    velocity.inspect_value(ui);
                 }
 
                 ui.allocate_space(ui.available_size());

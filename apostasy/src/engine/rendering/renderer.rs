@@ -525,49 +525,51 @@ impl Renderer {
                     model_name.push_str(".glb");
 
                     let model = get_model(&model_name, model_loader);
-                    for mesh in &mut model.meshes {
-                        if mesh.material.base_color_texture.is_none()
-                            && let Some(ref texture_name) = mesh.material.texture_name.clone()
-                        {
-                            let texture = self
-                                .context
-                                .load_texture(
-                                    &texture_name,
-                                    self.command_pool,
-                                    self.descriptor_pool,
-                                    self.descriptor_set_layout,
-                                )
-                                .unwrap();
+                    if let Some(model) = model {
+                        for mesh in &mut model.meshes {
+                            if mesh.material.base_color_texture.is_none()
+                                && let Some(ref texture_name) = mesh.material.texture_name.clone()
+                            {
+                                let texture = self
+                                    .context
+                                    .load_texture(
+                                        &texture_name,
+                                        self.command_pool,
+                                        self.descriptor_pool,
+                                        self.descriptor_set_layout,
+                                    )
+                                    .unwrap();
 
-                            mesh.material.base_color_texture = Some(texture);
-                            println!("texture loaded");
-                            println!("{}", mesh.material.base_color_texture.is_some());
-                        }
+                                mesh.material.base_color_texture = Some(texture);
+                                println!("texture loaded");
+                                println!("{}", mesh.material.base_color_texture.is_some());
+                            }
 
-                        if let Some(ref texture) = mesh.material.base_color_texture {
-                            device.cmd_bind_descriptor_sets(
+                            if let Some(ref texture) = mesh.material.base_color_texture {
+                                device.cmd_bind_descriptor_sets(
+                                    command_buffer,
+                                    vk::PipelineBindPoint::GRAPHICS,
+                                    pipeline_layout,
+                                    0,
+                                    &[texture.descriptor_set],
+                                    &[],
+                                );
+                            }
+
+                            device.cmd_bind_vertex_buffers(
                                 command_buffer,
-                                vk::PipelineBindPoint::GRAPHICS,
-                                pipeline_layout,
                                 0,
-                                &[texture.descriptor_set],
-                                &[],
+                                &[mesh.vertex_buffer],
+                                &[0],
                             );
+                            device.cmd_bind_index_buffer(
+                                command_buffer,
+                                mesh.index_buffer,
+                                0,
+                                vk::IndexType::UINT32,
+                            );
+                            device.cmd_draw_indexed(command_buffer, mesh.index_count, 1, 0, 0, 0);
                         }
-
-                        device.cmd_bind_vertex_buffers(
-                            command_buffer,
-                            0,
-                            &[mesh.vertex_buffer],
-                            &[0],
-                        );
-                        device.cmd_bind_index_buffer(
-                            command_buffer,
-                            mesh.index_buffer,
-                            0,
-                            vk::IndexType::UINT32,
-                        );
-                        device.cmd_draw_indexed(command_buffer, mesh.index_count, 1, 0, 0, 0);
                     }
                 }
             }
