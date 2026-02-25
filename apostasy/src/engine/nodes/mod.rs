@@ -190,15 +190,33 @@ impl World {
         }
     }
 
-    pub fn get_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
-        self.get_all_nodes()
+    pub fn get_node_with_component<T: Component + 'static>(&self) -> &Node {
+        let node = self
+            .get_all_nodes()
             .into_iter()
-            .find(|node| node.get_component::<T>().is_some())
+            .find(|node| node.get_component::<T>().is_some());
+
+        if node.is_none() {
+            panic!(
+                "No node with component ({}) found",
+                std::any::type_name::<T>()
+            );
+        }
+        node.unwrap()
     }
 
-    pub fn get_node_with_component_mut<T: Component + 'static>(&mut self) -> Option<&mut Node> {
-        self.get_all_nodes_mut()
+    pub fn get_node_with_component_mut<T: Component + 'static>(&mut self) -> &mut Node {
+        let node = self
+            .get_all_nodes_mut()
             .into_iter()
-            .find(|node| node.get_component::<T>().is_some())
+            .find(|node| node.get_component::<T>().is_some());
+
+        if node.is_none() {
+            panic!(
+                "No node with component ({}) found",
+                std::any::type_name::<T>()
+            );
+        }
+        node.unwrap()
     }
 }

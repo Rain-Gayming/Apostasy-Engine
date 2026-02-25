@@ -322,11 +322,8 @@ pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
 
 #[fixed_update]
 pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
-    let mut camera = world.get_node_with_component_mut::<Camera>();
-    if camera.is_none() {
-        return;
-    }
-    let camera = camera.unwrap();
+    let camera = world.get_node_with_component_mut::<Camera>();
+
     let (transform, velocity) =
         camera.get_components_mut::<(Option<&mut Transform>, Option<&mut Velocity>)>();
     let velocity = velocity.unwrap();
