@@ -1,5 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::Data;
+use syn::Fields;
 use syn::parse::{Parse, ParseStream};
 use syn::{DeriveInput, ItemFn, LitInt, parse_macro_input, parse_quote};
 
@@ -232,5 +234,58 @@ pub fn console_command(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         }
     };
+    TokenStream::from(expanded)
+}
+#[proc_macro_derive(Inspectable)]
+pub fn inspectable_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    let fields = match &input.data {
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => fields
+                .named
+                .iter()
+                .filter(|f| matches!(f.vis, syn::Visibility::Public(_)))
+                .collect::<Vec<_>>(),
+            _ => panic!("Only named fields supported"),
+        },
+        _ => panic!("Only structs supported"),
+    };
+
+    let field_inspections: Vec<_> = fields
+        .iter()
+        .map(|f| {
+            let field_name = f.ident.as_ref().unwrap();
+            let field_label = field_name.to_string();
+
+            quote! {
+                ui.horizontal(|ui| {
+                    ui.label(#field_label);
+                    apostasy::engine::editor::inspectable::InspectValue::inspect_value(&mut self.#field_name, ui);
+                });
+            }
+        })
+        .collect();
+
+    let expanded = quote! {
+        impl apostasy::engine::editor::inspectable::Inspectable for #name {
+            fn inspect(&mut self, ui: &mut egui::Ui) {
+                egui::CollapsingHeader::new(stringify!(#name))
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        #(#field_inspections)*
+                    });
+                ui.separator();
+            }
+        }
+
+        impl apostasy::engine::editor::inspectable::InspectValue for #name {
+            fn inspect_value(&mut self, ui: &mut egui::Ui) {
+                self.inspect(ui);
+            }
+        }
+    };
+
     TokenStream::from(expanded)
 }

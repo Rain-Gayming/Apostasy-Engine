@@ -1,9 +1,10 @@
 use crate::{
     self as apostasy,
     engine::{
-        editor,
+        editor::{self, inspectable::InspectValue},
         nodes::{
             Node,
+            camera::Camera,
             transform::{Transform, calculate_rotation},
         },
     },
@@ -19,6 +20,7 @@ use egui::{
 use rayon::string;
 
 pub mod console_commands;
+pub mod inspectable;
 
 /// Storage for all information needed by the editor
 pub struct EditorStorage {
@@ -274,19 +276,10 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
                 ui.separator();
 
                 if let Some(mut transform) = node.get_component_mut::<Transform>() {
-                    ui.label("TRANSFORM");
-                    ui.label(format!("Position: {:?}", transform.position));
-                    ui.add_space(4.0);
-                    ui.add(egui::DragValue::new(&mut transform.position.x).speed(1));
-                    ui.add(egui::DragValue::new(&mut transform.position.y).speed(1));
-                    ui.add(egui::DragValue::new(&mut transform.position.z).speed(1));
-                    ui.add_space(4.0);
-                    ui.label(format!("Rotation: {:?}", transform.rotation));
-                    ui.add(egui::DragValue::new(&mut transform.yaw).speed(1));
-                    ui.add(egui::DragValue::new(&mut transform.pitch).speed(1));
-                    ui.add_space(4.0);
-                    calculate_rotation(&mut transform);
-                    ui.separator();
+                    transform.inspect_value(ui);
+                }
+                if let Some(mut camera) = node.get_component_mut::<Camera>() {
+                    camera.inspect_value(ui);
                 }
 
                 ui.allocate_space(ui.available_size());

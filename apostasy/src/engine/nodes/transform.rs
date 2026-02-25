@@ -1,10 +1,10 @@
-use std::{fmt::Debug, i32};
-
-use crate as apostasy;
-use apostasy_macros::Component;
+use crate::engine::editor::inspectable::Inspectable;
+use crate::{self as apostasy, engine::editor::inspectable::InspectValue};
+use apostasy_macros::{Component, Inspectable};
 use cgmath::{Deg, Euler, One, Quaternion, Rotation, Vector3};
+use std::fmt::Debug;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Inspectable)]
 pub struct Transform {
     pub position: Vector3<f32>,
     pub rotation: Quaternion<f32>,
