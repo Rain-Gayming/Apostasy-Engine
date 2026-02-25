@@ -1,10 +1,14 @@
 use crate::{
     self as apostasy,
-    engine::windowing::input_manager::{KeyAction, KeyBind, handle_input_event, register_keybind},
+    engine::{
+        nodes::system::EditorUIFunction,
+        windowing::input_manager::{KeyAction, KeyBind, handle_input_event, register_keybind},
+    },
 };
 use anyhow::Result;
 use apostasy_macros::{fixed_update, input};
 use cgmath::{Vector3, num_traits::clamp};
+use egui::Context;
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
@@ -233,7 +237,7 @@ impl Engine {
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     for window in &self.window_manager.windows {
-                        renderer.prepare_egui(window.1);
+                        renderer.prepare_egui(window.1, &mut self.world, &mut self.editor);
                     }
 
                     let _ = renderer.render(&self.world, &mut self.model_loader);
@@ -260,6 +264,7 @@ impl Engine {
     pub fn request_redraw(&mut self) {
         self.world.update();
         self.world.fixed_update(self.timer.tick().fixed_dt);
+
         for window in &self.window_manager.windows {
             window.1.request_redraw();
         }

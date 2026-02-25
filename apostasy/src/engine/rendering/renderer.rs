@@ -10,9 +10,11 @@ use winit::{event::WindowEvent, window::Window};
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
 use crate::engine::{
+    editor::EditorStorage,
     nodes::{
         Node, World,
         camera::{Camera, get_perspective_projection},
+        system::EditorUIFunction,
         transform::{Transform, calculate_forward, calculate_up},
     },
     rendering::{
@@ -35,6 +37,7 @@ pub struct EguiRenderer {
     pub egui_renderer: egui_ash_renderer::Renderer,
     pub egui_ctx: egui::Context,
     pub sorted_ui_systems: Vec<&'static UIFunction>,
+    pub sorted_editor_ui_systems: Vec<&'static EditorUIFunction>,
 }
 
 impl EguiRenderer {
@@ -87,25 +90,18 @@ impl EguiRenderer {
             inventory::iter::<UIFunction>.into_iter().collect();
         sorted_ui_systems.sort_by_key(|s| s.priority);
         sorted_ui_systems.reverse();
+
+        let mut sorted_editor_ui_systems: Vec<&'static EditorUIFunction> =
+            inventory::iter::<EditorUIFunction>.into_iter().collect();
+        sorted_editor_ui_systems.sort_by_key(|s| s.priority);
+        sorted_editor_ui_systems.reverse();
+
         Self {
             egui_state,
             egui_renderer,
             egui_ctx,
             sorted_ui_systems,
-        }
-    }
-
-    pub fn prepare_egui(&mut self, window: &Window) {
-        // Collect input for egui
-        let raw_input = self.egui_state.take_egui_input(window);
-        self.egui_ctx.begin_pass(raw_input);
-
-        let mut systems: Vec<&UIFunction> = inventory::iter::<UIFunction>.into_iter().collect();
-        systems.sort_by_key(|s| s.priority);
-        systems.reverse();
-
-        for system in systems {
-            (system.func)(&mut self.egui_ctx);
+            sorted_editor_ui_systems,
         }
     }
 }
@@ -808,12 +804,16 @@ impl Renderer {
     }
 
     /// Prepares egui for rendering
-    pub fn prepare_egui(&mut self, window: &Window) {
+    pub fn prepare_egui(&mut self, window: &Window, world: &mut World, editor: &mut EditorStorage) {
         let raw_input = self.egui_renderer.egui_state.take_egui_input(window);
         self.egui_renderer.egui_ctx.begin_pass(raw_input);
 
         for system in &self.egui_renderer.sorted_ui_systems {
             (system.func)(&mut self.egui_renderer.egui_ctx);
+        }
+
+        for system in &self.egui_renderer.sorted_editor_ui_systems {
+            (system.func)(&mut self.egui_renderer.egui_ctx, world, editor);
         }
     }
 }

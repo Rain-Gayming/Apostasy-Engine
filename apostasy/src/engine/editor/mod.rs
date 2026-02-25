@@ -1,9 +1,22 @@
+use crate::{
+    self as apostasy,
+    engine::{
+        editor,
+        nodes::{
+            Node,
+            transform::{Transform, calculate_rotation},
+        },
+    },
+};
 use std::path::{Path, PathBuf};
 
-use crate::log;
+use crate::{engine::nodes::World, log};
+use apostasy_macros::{editor_ui, ui};
 use egui::{
-    CollapsingHeader, Color32, Context, RichText, ScrollArea, Stroke, Ui, Vec2, Window, pos2,
+    Align2, CollapsingHeader, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense,
+    Stroke, Ui, Vec2, Window, pos2,
 };
+use rayon::string;
 
 pub mod console_commands;
 
@@ -17,6 +30,8 @@ pub struct EditorStorage {
     pub console_size: Vec2,
     pub console_filter: String,
     pub console_command: String,
+
+    pub selected_node: String,
 }
 
 impl Default for EditorStorage {
@@ -30,6 +45,7 @@ impl Default for EditorStorage {
             console_size: Vec2::new(100.0, 100.0),
             console_filter: String::new(),
             console_command: String::new(),
+            selected_node: "".to_string(),
         }
     }
 }
@@ -76,6 +92,7 @@ impl FileNode {
         }
     }
 }
+
 fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize) {
     let indent = depth as f32 * 12.0;
 
@@ -135,190 +152,177 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize) {
         });
     }
 }
-// #[ui]
-// pub fn hierarchy_ui(context: &mut Context, world: &mut World) {
-//     Window::new("Hierarchy")
-//         .default_size([100.0, 300.0])
-//         .show(context, |ui| {
-//             if ui.button("New Entity").clicked() {
-//                 world.spawn();
-//             }
-//
-//             world.with_resource_mut(|editor_storage: &mut EditorStorage| {
-//                 ScrollArea::vertical()
-//                     .id_salt("entities_scroll")
-//                     .auto_shrink([false, false])
-//                     .show(ui, |ui| {
-//                         ui.add_space(4.0);
-//                         // iterate over all entities and add buttons for them
-//
-//                         for entity in world.get_all_entities() {
-//                             let world_entity = world.entity(entity);
-//                             #[allow(unused_assignments)]
-//                             let name;
-//                             // if the entity has a name component, use that
-//                             // otherwise use the entity id
-//                             if let Some(name_component) = world_entity.get_ref::<Name>() {
-//                                 name = name_component.0.clone();
-//                             } else {
-//                                 name = format!("{:?}", entity.0.index);
-//                             }
-//                             ui.horizontal(|ui| {
-//                                 ui.add_space(4.0);
-//
-//                                 let desired_size = vec2(ui.available_width() - 5.0, 20.0);
-//                                 let (rect, response) =
-//                                     ui.allocate_exact_size(desired_size, Sense::click());
-//
-//                                 let selected = editor_storage.selected_entity == entity;
-//
-//                                 // hover/click/ignored colors
-//                                 let color = if selected {
-//                                     Color32::from_rgb(0, 120, 215)
-//                                 } else if response.hovered() {
-//                                     Color32::from_gray(70)
-//                                 } else {
-//                                     Color32::TRANSPARENT
-//                                 };
-//
-//                                 // draw a background
-//                                 ui.painter().rect_filled(rect, 0.0, color);
-//                                 // draw the name
-//                                 ui.painter().text(
-//                                     rect.left_center() + vec2(4.0, 0.0),
-//                                     Align2::LEFT_CENTER,
-//                                     name,
-//                                     FontId::new(11.0, FontFamily::Proportional),
-//                                     Color32::WHITE,
-//                                 );
-//                                 if response.clicked() {
-//                                     editor_storage.selected_entity = entity;
-//                                 }
-//                             });
-//                         }
-//
-//                         ui.allocate_space(ui.available_size());
-//                     });
-//             });
-//         });
-// }
-//
-// #[ui]
-// pub fn inspector_ui(context: &mut Context, world: &mut World) {
-//     Window::new("Inspector")
-//         .default_size([100.0, 100.0])
-//         .show(context, |ui| {
-//             world.with_resources::<(EditorStorage, ModelLoader), _>(
-//                 |(editor_storage, model_loader)| {
-//                     if editor_storage.selected_entity != Entity::from_raw(0) {
-//                         let text_edit =
-//                             ui.text_edit_singleline(&mut editor_storage.component_text_edit);
-//
-//                         if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))
-//                             || ui.button("Add Component").clicked()
-//                         {
-//                             if world
-//                                 .get_component_info_by_name(&editor_storage.component_text_edit)
-//                                 .is_some()
-//                             {
-//                                 world.add_default_component_by_name(
-//                                     editor_storage.selected_entity,
-//                                     &editor_storage.component_text_edit,
-//                                 );
-//                             } else {
-//                                 editor_storage.component_text_edit = format!(
-//                                     "Component ({}) not found",
-//                                     editor_storage.component_text_edit
-//                                 );
-//                             }
-//                         }
-//
-//                         ui.separator();
-//
-//                         ui.label("Components");
-//
-//                         let entity = world.entity(editor_storage.selected_entity);
-//
-//                         if let Some(mut name) = entity.get_mut::<Name>() {
-//                             ui.label(format!("Name: {}", name.0));
-//                             ui.text_edit_singleline(&mut name.0);
-//                             ui.separator();
-//                         }
-//
-//                         if let Some(mut transform) = entity.get_mut::<Transform>() {
-//                             ui.label("TRANSFORM");
-//                             ui.label(format!("Position: {:?}", transform.position));
-//                             ui.add_space(4.0);
-//                             ui.add(egui::DragValue::new(&mut transform.position.x).speed(1));
-//                             ui.add(egui::DragValue::new(&mut transform.position.y).speed(1));
-//                             ui.add(egui::DragValue::new(&mut transform.position.z).speed(1));
-//                             ui.add_space(4.0);
-//                             ui.label(format!("Rotation: {:?}", transform.rotation));
-//                             ui.add(egui::DragValue::new(&mut transform.yaw).speed(1));
-//                             ui.add(egui::DragValue::new(&mut transform.pitch).speed(1));
-//                             ui.add_space(4.0);
-//                             calculate_rotation(&mut transform);
-//                             ui.separator();
-//                         }
-//                         if let Some(mut model_renderer) = entity.get_mut::<ModelRenderer>() {
-//                             ui.label("MODEL RENDERER");
-//                             ui.label(format!("Model: {}", model_renderer.0));
-//                             let text_edit = ui.text_edit_singleline(&mut model_renderer.1);
-//                             if text_edit.lost_focus()
-//                                 && ui.input(|i| i.key_pressed(egui::Key::Enter))
-//                                 || ui.button("Load Model").clicked()
-//                             {
-//                                 let name = model_renderer.1.clone() + ".glb";
-//                                 if does_model_exist(name.as_str(), model_loader) {
-//                                     model_renderer.0 = model_renderer.1.clone();
-//                                 } else {
-//                                     let attempted_model = model_renderer.1.clone();
-//                                     model_renderer.1 =
-//                                         format!("Model: ({}) does not exist", attempted_model);
-//                                 }
-//                             }
-//                             ui.separator();
-//                         }
-//
-//                         ui.allocate_space(ui.available_size());
-//                     }
-//                 },
-//             );
-//         });
-// }
-//
-// #[ui]
-pub fn file_tree_ui(context: &mut Context) {
+
+#[editor_ui]
+pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+    Window::new("Hierarchy")
+        .default_size([100.0, 300.0])
+        .show(context, |ui| {
+            if ui.button("New Entity").clicked() {
+                world.add_new_node();
+            }
+
+            ScrollArea::vertical()
+                .id_salt("entities_scroll")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.add_space(4.0);
+                    let mut names = Vec::new();
+                    for node in world.get_all_nodes_mut() {
+                        let base_name = node.name.clone();
+
+                        // check if name already exists
+                        if names.contains(&base_name) {
+                            let mut counter = 1;
+                            let mut new_name = format!("{} ({})", base_name, counter);
+
+                            // keep incrementing until it finds an unused name
+                            while names.contains(&new_name) {
+                                counter += 1;
+                                new_name = format!("{} ({})", base_name, counter);
+                            }
+
+                            node.name = new_name.clone();
+                            names.push(new_name);
+                        } else {
+                            names.push(base_name);
+                        }
+
+                        ui.horizontal(|ui| {
+                            ui.add_space(4.0);
+
+                            let desired_size = Vec2::new(ui.available_width() - 5.0, 20.0);
+                            let (rect, response) =
+                                ui.allocate_exact_size(desired_size, Sense::click());
+
+                            let selected;
+                            if !editor_storage.selected_node.is_empty() {
+                                selected = editor_storage.selected_node == node.name;
+                            } else {
+                                selected = false;
+                            }
+
+                            // hover/click/ignored colors
+                            let color = if selected {
+                                Color32::from_rgb(0, 120, 215)
+                            } else if response.hovered() {
+                                Color32::from_gray(70)
+                            } else {
+                                Color32::TRANSPARENT
+                            };
+
+                            // draw a background
+                            ui.painter().rect_filled(rect, 0.0, color);
+                            // draw the name
+                            ui.painter().text(
+                                rect.left_center() + Vec2::new(4.0, 0.0),
+                                Align2::LEFT_CENTER,
+                                node.name.clone(),
+                                FontId::new(11.0, FontFamily::Proportional),
+                                Color32::WHITE,
+                            );
+                            if response.clicked() {
+                                editor_storage.selected_node = node.name.clone();
+                            }
+                        });
+                    }
+
+                    ui.allocate_space(ui.available_size());
+                });
+        });
+}
+
+#[editor_ui]
+pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+    Window::new("Inspector")
+        .default_size([100.0, 100.0])
+        .show(context, |ui| {
+            if !editor_storage.selected_node.is_empty() {
+                let text_edit = ui.text_edit_singleline(&mut editor_storage.component_text_edit);
+
+                if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                    || ui.button("Add Component").clicked()
+                {
+                    // if world
+                    //     .get_component_info_by_name(&editor_storage.component_text_edit)
+                    //     .is_some()
+                    // {
+                    //     world.add_default_component_by_name(
+                    //         editor_storage.selected_entity,
+                    //         &editor_storage.component_text_edit,
+                    //     );
+                    // } else {
+                    //     editor_storage.component_text_edit = format!(
+                    //         "Component ({}) not found",
+                    //         editor_storage.component_text_edit
+                    //     );
+                    // }
+                }
+
+                ui.separator();
+
+                ui.label("Components");
+
+                let node = world.get_node_with_name_mut(&editor_storage.selected_node);
+
+                ui.label(format!("Name: {}", node.editing_name));
+                let text_edit = ui.text_edit_singleline(&mut node.editing_name);
+                if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    node.name = node.editing_name.clone();
+                    editor_storage.selected_node = node.name.clone();
+                }
+                ui.separator();
+
+                if let Some(mut transform) = node.get_component_mut::<Transform>() {
+                    ui.label("TRANSFORM");
+                    ui.label(format!("Position: {:?}", transform.position));
+                    ui.add_space(4.0);
+                    ui.add(egui::DragValue::new(&mut transform.position.x).speed(1));
+                    ui.add(egui::DragValue::new(&mut transform.position.y).speed(1));
+                    ui.add(egui::DragValue::new(&mut transform.position.z).speed(1));
+                    ui.add_space(4.0);
+                    ui.label(format!("Rotation: {:?}", transform.rotation));
+                    ui.add(egui::DragValue::new(&mut transform.yaw).speed(1));
+                    ui.add(egui::DragValue::new(&mut transform.pitch).speed(1));
+                    ui.add_space(4.0);
+                    calculate_rotation(&mut transform);
+                    ui.separator();
+                }
+
+                ui.allocate_space(ui.available_size());
+            }
+        });
+}
+
+#[editor_ui]
+pub fn file_tree_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
     Window::new("Files")
         .default_size([100.0, 300.0])
         .show(context, |ui| {
             ui.style_mut().visuals.override_text_color = Some(Color32::from_gray(210));
-            // world.with_resource_mut(|editor_storage: &mut EditorStorage| {
-            //     ScrollArea::vertical()
-            //         .id_salt("files_scroll")
-            //         .auto_shrink([false, false])
-            //         .show(ui, |ui| {
-            //             ui.add_space(4.0);
-            //             ui.horizontal(|ui| {
-            //                 ui.add_space(4.0);
-            //                 ui.label(
-            //                     RichText::new("📁 res/")
-            //                         .size(11.0)
-            //                         .color(Color32::from_gray(150)),
-            //                 );
-            //             });
-            //             ui.separator();
-            //             if let Some(tree) = &editor_storage.file_tree {
-            //                 render_file_tree(ui, tree, 0);
-            //             } else {
-            //                 ui.label(
-            //                     RichText::new("res/ not found")
-            //                         .color(Color32::from_rgb(200, 80, 80)),
-            //                 );
-            //             }
-            //
-            //             ui.allocate_space(ui.available_size());
-            //         });
-            // });
+            ScrollArea::vertical()
+                .id_salt("files_scroll")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        ui.add_space(4.0);
+                        ui.label(
+                            RichText::new("📁 res/")
+                                .size(11.0)
+                                .color(Color32::from_gray(150)),
+                        );
+                    });
+                    ui.separator();
+                    if let Some(tree) = &editor_storage.file_tree {
+                        render_file_tree(ui, tree, 0);
+                    } else {
+                        ui.label(
+                            RichText::new("res/ not found").color(Color32::from_rgb(200, 80, 80)),
+                        );
+                    }
+
+                    ui.allocate_space(ui.available_size());
+                });
         });
 }

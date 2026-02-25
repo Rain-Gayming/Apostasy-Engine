@@ -124,6 +124,29 @@ pub fn input(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+#[proc_macro_attribute]
+pub fn editor_ui(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let args = parse_macro_input!(attr as SystemArgs);
+    let fn_name = &input_fn.sig.ident;
+    let priority = args.priority.unwrap_or(0);
+
+    // Generate an inventory registration
+    let expanded = quote! {
+        #input_fn
+
+        inventory::submit! {
+            apostasy::engine::nodes::system::EditorUIFunction{
+                name: stringify!(#fn_name),
+                func: #fn_name,
+                priority: #priority,
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
 /// Registers an update system, Update systems run every frame
 #[proc_macro_attribute]
 pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {

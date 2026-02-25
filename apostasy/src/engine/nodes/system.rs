@@ -1,6 +1,6 @@
 use egui::Context;
 
-use crate::engine::{nodes::World, windowing::input_manager::InputManager};
+use crate::engine::{editor::EditorStorage, nodes::World, windowing::input_manager::InputManager};
 
 pub struct UpdateSystem {
     pub name: &'static str,
@@ -38,6 +38,13 @@ pub struct UIFunction {
     pub priority: u32,
 }
 inventory::collect!(UIFunction);
+
+pub struct EditorUIFunction {
+    pub name: &'static str,
+    pub func: fn(&mut Context, &mut World, &mut EditorStorage),
+    pub priority: u32,
+}
+inventory::collect!(EditorUIFunction);
 
 pub struct InputSystem {
     pub name: &'static str,

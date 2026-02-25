@@ -17,6 +17,7 @@ pub mod velocity;
 #[derive(Clone)]
 pub struct Node {
     pub name: String,
+    pub editing_name: String,
     pub children: Vec<Node>,
     pub parent: Option<Box<Node>>,
     pub components: Vec<Box<dyn Component>>,
@@ -32,6 +33,7 @@ impl Node {
     pub fn new() -> Self {
         Self {
             name: "Node".to_string(),
+            editing_name: "Node".to_string(),
             children: Vec::new(),
             parent: None,
             components: Vec::new(),
@@ -126,6 +128,11 @@ impl World {
         self
     }
 
+    pub fn add_new_node(&mut self) -> &mut Self {
+        self.add_node(Node::new());
+        self
+    }
+
     pub fn get_all_nodes(&self) -> Vec<&Node> {
         let mut nodes = Vec::new();
         for node in self.root.children.iter() {
@@ -149,6 +156,19 @@ impl World {
         nodes
     }
 
+    pub fn get_node_with_name(&self, name: &str) -> &Node {
+        self.get_all_nodes()
+            .into_iter()
+            .find(|node| node.name == name)
+            .unwrap()
+    }
+
+    pub fn get_node_with_name_mut(&mut self, name: &str) -> &mut Node {
+        self.get_all_nodes_mut()
+            .into_iter()
+            .find(|node| node.name == name)
+            .unwrap()
+    }
     pub fn start(&mut self) {
         let mut systems = inventory::iter::<StartSystem>().collect::<Vec<_>>();
         systems.sort_by(|a, b| a.priority.cmp(&b.priority));
