@@ -1,4 +1,4 @@
-use crate::engine::editor::inspectable::Inspectable;
+use crate::engine::editor::inspectable::{InspectValue, Inspectable};
 use crate::engine::nodes::World;
 use crate::{self as apostasy};
 use apostasy_macros::{Component, Inspectable, SerializableComponent, update};
@@ -20,6 +20,14 @@ pub struct Transform {
     pub global_rotation: Quaternion<f32>,
     pub global_scale: Vector3<f32>,
 }
+
+impl InspectValue for Transform {
+    fn inspect_value(&mut self, ui: &mut egui::Ui) {
+        self.inspect(ui);
+        self.calculate_rotation();
+    }
+}
+
 impl Default for Transform {
     fn default() -> Self {
         Self {

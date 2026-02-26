@@ -3,11 +3,14 @@ use crate::engine::nodes::World;
 use crate::log;
 use crate::log_warn;
 use crate::{self as apostasy, engine::nodes::components::velocity::Velocity};
+use apostasy_macros::InspectValue;
 use apostasy_macros::{Component, Inspectable, SerializableComponent, fixed_update};
 use cgmath::Vector3;
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Clone, Inspectable, SerializableComponent, Serialize, Deserialize)]
+#[derive(
+    Component, Clone, Inspectable, InspectValue, SerializableComponent, Serialize, Deserialize,
+)]
 pub struct Physics {
     pub mass: f32,
     pub friction: f32,

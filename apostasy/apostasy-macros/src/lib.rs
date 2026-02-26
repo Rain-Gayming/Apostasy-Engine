@@ -311,6 +311,18 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
             }
         }
 
+    };
+
+    TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(InspectValue)]
+pub fn inspect_value_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    let expanded = quote! {
+
         impl apostasy::engine::editor::inspectable::InspectValue for #name {
             fn inspect_value(&mut self, ui: &mut egui::Ui) {
                 self.inspect(ui);

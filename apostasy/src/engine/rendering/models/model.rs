@@ -8,7 +8,7 @@ use crate::engine::rendering::{
 };
 use crate::log;
 use anyhow::Result;
-use apostasy_macros::{Component, Inspectable, SerializableComponent};
+use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
 use ash::vk;
 use egui::ahash::HashMap;
 use gltf::material::AlphaMode;
@@ -81,7 +81,9 @@ pub struct Mesh {
     pub material: Material,
 }
 
-#[derive(Component, Clone, Inspectable, Serialize, Deserialize, SerializableComponent)]
+#[derive(
+    Component, Clone, Inspectable, InspectValue, Serialize, Deserialize, SerializableComponent,
+)]
 pub struct ModelRenderer {
     pub loading_model: String,
     pub loaded_model: String,

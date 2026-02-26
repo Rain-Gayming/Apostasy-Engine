@@ -8,10 +8,18 @@ pub trait Inspectable {
 }
 
 /// Implemented by types that can be inspected
-/// Impliment via ```impl InspectValue for YourType {
+/// for structs this can be done automatically via `#[derive(InspectValue)]`
+/// but you can implement it manually if you want to add custom functionality
+/// Impliment via
+/// ```
+/// impl InspectValue for YourType {
 ///     fn inspect_value(&mut self, ui: &mut egui::Ui) {
 ///         // egui values needed
 ///         //ui.add(egui::DragValue::new(self).speed(0.1));
+///
+///         // Custom functions called here
+///     }
+/// }
 ///     
 /// }```
 pub trait InspectValue {
@@ -20,13 +28,13 @@ pub trait InspectValue {
 
 impl InspectValue for f32 {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::DragValue::new(self).speed(0.1));
+        ui.add(egui::DragValue::new(self).speed(1));
     }
 }
 
 impl InspectValue for f64 {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::DragValue::new(self).speed(0.1));
+        ui.add(egui::DragValue::new(self).speed(1));
     }
 }
 

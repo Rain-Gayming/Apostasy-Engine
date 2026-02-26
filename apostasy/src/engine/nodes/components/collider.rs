@@ -5,13 +5,15 @@ use crate::engine::{
         components::{transform::Transform, velocity::Velocity},
     },
 };
-use apostasy_macros::{Component, Inspectable, SerializableComponent, update};
+use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent, update};
 use cgmath::{InnerSpace, Vector3, Zero};
 use serde::{Deserialize, Serialize};
 
 use crate as apostasy;
 
-#[derive(Component, Clone, Inspectable, SerializableComponent, Serialize, Deserialize)]
+#[derive(
+    Component, Clone, Inspectable, InspectValue, SerializableComponent, Serialize, Deserialize,
+)]
 pub struct Collider {
     pub half_extents: Vector3<f32>,
     pub offset: Vector3<f32>,
