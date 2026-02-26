@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::Data;
 use syn::Fields;
+use syn::LitStr;
 use syn::parse::{Parse, ParseStream};
 use syn::{DeriveInput, ItemFn, LitInt, parse_macro_input, parse_quote};
 
@@ -63,6 +64,7 @@ pub fn serializable_component_derive(input: TokenStream) -> TokenStream {
     };
     output.into()
 }
+
 struct SystemArgs {
     priority: Option<u32>,
 }
@@ -250,11 +252,41 @@ pub fn ui(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+struct CommandArgs {
+    inputs: Option<String>,
+}
+
+/// Parser for the attribute arguments
+impl Parse for CommandArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.is_empty() {
+            return Ok(CommandArgs { inputs: None });
+        }
+
+        let name: syn::Ident = input.parse()?;
+        if name != "inputs" {
+            return Err(syn::Error::new_spanned(name, "expected `inputs`"));
+        }
+
+        input.parse::<syn::Token![=]>()?;
+        let priority_lit: LitStr = input.parse()?;
+        let priority: String = priority_lit.value();
+
+        Ok(CommandArgs {
+            inputs: Some(priority),
+        })
+    }
+}
+
 /// Registers a console command
 #[proc_macro_attribute]
-pub fn console_command(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn console_command(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as CommandArgs);
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
+
+    let inputs = args.inputs.unwrap_or(String::new());
+    let inputs = inputs.to_string();
 
     let expanded = quote! {
         #input_fn
@@ -262,6 +294,7 @@ pub fn console_command(_attr: TokenStream, item: TokenStream) -> TokenStream {
             apostasy::engine::editor::console_commands::ConsoleCommand{
                 name: stringify!(#fn_name),
                 func: #fn_name,
+                inputs: stringify!(#inputs),
             }
         }
     };

@@ -8,11 +8,12 @@ use egui::{Color32, Context, RichText, ScrollArea, Window};
 pub struct ConsoleCommand {
     pub name: &'static str,
     pub func: fn(world: &mut World, editor_storage: &mut EditorStorage, inputs: Vec<String>),
+    pub inputs: &'static str,
 }
 
 inventory::collect!(ConsoleCommand);
 
-#[console_command]
+#[console_command(inputs = "[on/true|off/false]")]
 pub fn editor_mode(_world: &mut World, editor_storage: &mut EditorStorage, inputs: Vec<String>) {
     if inputs.len() == 1 {
         if inputs[0].to_lowercase() == "on" || inputs[0].to_lowercase() == "true" {
@@ -22,6 +23,23 @@ pub fn editor_mode(_world: &mut World, editor_storage: &mut EditorStorage, input
         }
     } else {
         log_warn!("Usage: editor_mode [on/true|off/false]");
+    }
+}
+
+#[console_command]
+pub fn help(_world: &mut World, editor_storage: &mut EditorStorage, inputs: Vec<String>) {
+    if inputs.len() == 0 {
+        log!("Commands:");
+        for cmd in inventory::iter::<ConsoleCommand> {
+            log!("{} {}", cmd.name, cmd.inputs);
+        }
+    } else {
+        for cmd in inventory::iter::<ConsoleCommand> {
+            if cmd.name.to_lowercase() == inputs[0].to_lowercase() {
+                log!("{} {}", cmd.name, cmd.inputs);
+                break;
+            }
+        }
     }
 }
 
