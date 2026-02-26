@@ -199,35 +199,44 @@ impl Engine {
 
         load_models(&mut model_loader, &rendering_context);
         let mut input_manager = InputManager::default();
-        input_manager.register_keybind(
-            KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold),
-            "forward",
-        );
-        input_manager.register_keybind(
-            KeyBind::new(PhysicalKey::Code(KeyCode::KeyS), KeyAction::Hold),
-            "backward",
-        );
-        input_manager.register_keybind(
-            KeyBind::new(PhysicalKey::Code(KeyCode::KeyA), KeyAction::Hold),
-            "left",
-        );
-        input_manager.register_keybind(
-            KeyBind::new(PhysicalKey::Code(KeyCode::KeyD), KeyAction::Hold),
-            "right",
-        );
-        input_manager.register_keybind(
-            KeyBind::new(PhysicalKey::Code(KeyCode::KeyE), KeyAction::Hold),
-            "up",
-        );
-        input_manager.register_keybind(
-            KeyBind::new(PhysicalKey::Code(KeyCode::KeyQ), KeyAction::Hold),
-            "down",
-        );
+        input_manager.deserialize_input_manager().unwrap();
 
-        input_manager.register_mousebind(
-            MouseBind::new(MouseButton::Right, KeyAction::Hold),
-            "editor_camera_look",
-        );
+        input_manager.register_keybind(KeyBind::new(
+            PhysicalKey::Code(KeyCode::KeyW),
+            KeyAction::Hold,
+            "forward".to_string(),
+        ));
+        input_manager.register_keybind(KeyBind::new(
+            PhysicalKey::Code(KeyCode::KeyS),
+            KeyAction::Hold,
+            "backward".to_string(),
+        ));
+        input_manager.register_keybind(KeyBind::new(
+            PhysicalKey::Code(KeyCode::KeyA),
+            KeyAction::Hold,
+            "left".to_string(),
+        ));
+        input_manager.register_keybind(KeyBind::new(
+            PhysicalKey::Code(KeyCode::KeyD),
+            KeyAction::Hold,
+            "right".to_string(),
+        ));
+        input_manager.register_keybind(KeyBind::new(
+            PhysicalKey::Code(KeyCode::KeyE),
+            KeyAction::Hold,
+            "up".to_string(),
+        ));
+        input_manager.register_keybind(KeyBind::new(
+            PhysicalKey::Code(KeyCode::KeyQ),
+            KeyAction::Hold,
+            "down".to_string(),
+        ));
+
+        input_manager.register_mousebind(MouseBind::new(
+            MouseButton::Right,
+            KeyAction::Hold,
+            "editor_camera_look".to_string(),
+        ));
 
         Ok(Self {
             renderers,
@@ -392,7 +401,9 @@ pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
         unsafe { (&mut *transform, &mut *velocity, &mut *camera_transform) };
 
     if hit.is_some() {
-        velocity.direction.y = 0.0;
+        if velocity.direction.y < 0.0 {
+            velocity.direction.y = 0.0;
+        }
     }
 
     velocity.direction *= delta_time;

@@ -1,35 +1,40 @@
-use crate::log;
+use crate::{log, log_warn};
 use cgmath::{Vector2, Vector3};
 use egui::ahash::HashMap;
-use std::collections::HashSet;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashSet, path::Path};
 use winit::{
     dpi::PhysicalPosition,
     event::{DeviceEvent, MouseButton, WindowEvent},
-    keyboard::PhysicalKey,
+    keyboard::{KeyCode, PhysicalKey},
 };
-
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum KeyAction {
     Press,
     Release,
     Hold,
 }
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyBind {
     pub key: PhysicalKey,
     pub action: KeyAction,
+    pub name: String,
 }
 impl KeyBind {
-    pub fn new(key: PhysicalKey, action: KeyAction) -> Self {
-        Self { key, action }
+    pub fn new(key: PhysicalKey, action: KeyAction, name: String) -> Self {
+        Self { key, action, name }
     }
 }
-
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MouseBind {
     pub key: MouseButton,
     pub action: KeyAction,
+    pub name: String,
 }
 impl MouseBind {
-    pub fn new(key: MouseButton, action: KeyAction) -> Self {
-        Self { key, action }
+    pub fn new(key: MouseButton, action: KeyAction, name: String) -> Self {
+        Self { key, action, name }
     }
 }
 
@@ -60,6 +65,7 @@ impl InputManager {
     pub fn rebind_key(&mut self, key: KeyBind, name: &str) {
         self.keybinds.remove(name);
         self.keybinds.insert(name.to_string(), key);
+        self.serialize_input_manager().unwrap();
     }
 
     /// Registers a key, use:
@@ -68,14 +74,24 @@ impl InputManager {
     ///         register_key(self. KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold), "forward");
     ///     });
     /// ```
-    pub fn register_keybind(&mut self, key: KeyBind, name: &str) {
-        log!("registering keybind: {}", name);
-        self.keybinds.insert(name.to_string(), key);
+    pub fn register_keybind(&mut self, key: KeyBind) {
+        log!("registering keybind: {}", key.name.clone());
+        if self.keybinds.contains_key(&key.name) {
+            log_warn!("keybind already exists: {}", key.name);
+            return;
+        }
+        self.keybinds.insert(key.name.clone(), key);
+        self.serialize_input_manager().unwrap();
     }
 
-    pub fn register_mousebind(&mut self, key: MouseBind, name: &str) {
-        log!("registering mousebind: {}", name);
-        self.mouse_keybinds.insert(name.to_string(), key);
+    pub fn register_mousebind(&mut self, key: MouseBind) {
+        log!("registering mousebind: {}", key.name.clone());
+        if self.mouse_keybinds.contains_key(&key.name) {
+            log_warn!("mousebind already exists: {}", key.name);
+            return;
+        }
+        self.mouse_keybinds.insert(key.name.clone(), key);
+        self.serialize_input_manager().unwrap();
     }
 
     /// Checks if a key is active, use:
@@ -235,4 +251,127 @@ impl InputManager {
             _ => {}
         }
     }
+
+    pub fn serialize_input_manager(&self) -> Result<(), std::io::Error> {
+        let keybinds = self.serialize_bindings().unwrap();
+        let path = format!("{}/{}.yaml", ENGINE_INPUT_SAVE_PATH, "input_manager");
+        if !Path::new(&path).exists() {
+            std::fs::create_dir_all(ENGINE_INPUT_SAVE_PATH)?;
+        }
+        std::fs::write(path, keybinds)
+    }
+
+    pub fn deserialize_input_manager(&mut self) -> Result<(), std::io::Error> {
+        let path = format!("{}/{}.yaml", ENGINE_INPUT_SAVE_PATH, "input_manager");
+
+        let contents = std::fs::read_to_string(path)?;
+
+        let (key_bindings, mouse_bindings) = self
+            .deserialize_bindings(&contents)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+
+        self.keybinds = key_bindings;
+        self.mouse_keybinds = mouse_bindings;
+
+        Ok(())
+    }
+    pub fn serialize_bindings(&self) -> Result<String, serde_yaml::Error> {
+        let key_binds: Vec<serde_yaml::Value> = self
+            .keybinds
+            .iter()
+            .map(|(name, bind)| {
+                serde_yaml::to_value(serde_yaml::Mapping::from_iter([
+                    (
+                        serde_yaml::Value::String("name".into()),
+                        serde_yaml::to_value(name).unwrap(),
+                    ),
+                    (
+                        serde_yaml::Value::String("bind".into()),
+                        serde_yaml::to_value(bind).unwrap(),
+                    ),
+                ]))
+                .unwrap()
+            })
+            .collect();
+
+        let mouse_binds: Vec<serde_yaml::Value> = self
+            .mouse_keybinds
+            .iter()
+            .map(|(name, bind)| {
+                serde_yaml::to_value(serde_yaml::Mapping::from_iter([
+                    (
+                        serde_yaml::Value::String("name".into()),
+                        serde_yaml::to_value(name).unwrap(),
+                    ),
+                    (
+                        serde_yaml::Value::String("bind".into()),
+                        serde_yaml::to_value(bind).unwrap(),
+                    ),
+                ]))
+                .unwrap()
+            })
+            .collect();
+
+        let mut output = serde_yaml::Mapping::new();
+        output.insert(
+            serde_yaml::Value::String("key_bindings".into()),
+            serde_yaml::to_value(key_binds).unwrap(),
+        );
+        output.insert(
+            serde_yaml::Value::String("mouse_bindings".into()),
+            serde_yaml::to_value(mouse_binds).unwrap(),
+        );
+
+        serde_yaml::to_string(&output)
+    }
+
+    pub fn deserialize_bindings(
+        &self,
+        contents: &str,
+    ) -> Result<(HashMap<String, KeyBind>, HashMap<String, MouseBind>), serde_yaml::Error> {
+        let raw: serde_yaml::Value = serde_yaml::from_str(contents)?;
+
+        let key_bindings = raw["key_bindings"]
+            .as_sequence()
+            .map(|seq| {
+                seq.iter()
+                    .filter_map(|entry| {
+                        let name = entry["name"].as_str()?.to_string();
+                        let bind = match serde_yaml::from_value::<KeyBind>(entry["bind"].clone()) {
+                            Ok(b) => b,
+                            Err(e) => {
+                                eprintln!("failed to deserialize KeyBind: {e}");
+                                return None;
+                            }
+                        };
+                        Some((name, bind))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let mouse_bindings = raw["mouse_bindings"]
+            .as_sequence()
+            .map(|seq| {
+                seq.iter()
+                    .filter_map(|entry| {
+                        let name = entry["name"].as_str()?.to_string();
+                        let bind = match serde_yaml::from_value::<MouseBind>(entry["bind"].clone())
+                        {
+                            Ok(b) => b,
+                            Err(e) => {
+                                eprintln!("failed to deserialize MouseBind: {e}");
+                                return None;
+                            }
+                        };
+                        Some((name, bind))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Ok((key_bindings, mouse_bindings))
+    }
 }
+
+const ENGINE_INPUT_SAVE_PATH: &str = "res/input";

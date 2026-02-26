@@ -308,12 +308,12 @@ impl World {
                 .map(serialize_node)
                 .collect(),
         };
-        let path = format!("{}/{}.yaml", ENGINE_SAVE_PATH, self.scene.name);
+        let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, self.scene.name);
         std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
     pub fn deserialize_scene(&mut self, scene: String) -> Result<(), serde_yaml::Error> {
-        let path = format!("{}/{}.yaml", ENGINE_SAVE_PATH, scene);
+        let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene);
         let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
         let serialized: SerializedScene = serde_yaml::from_str(&contents)?;
         self.scene.root_node.children = serialized
@@ -324,4 +324,4 @@ impl World {
         Ok(())
     }
 }
-const ENGINE_SAVE_PATH: &str = "res/scenes";
+const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
