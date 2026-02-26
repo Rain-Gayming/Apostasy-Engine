@@ -1,5 +1,5 @@
 root_children:
-- name: Node
+- name: camera
   components:
   - type: Camera
     data:
@@ -14,12 +14,12 @@ root_children:
         z: -10.0
       rotation:
         v:
-          x: -0.07475746423006058
-          y: 0.8888729214668274
-          z: -0.42397063970565796
-        s: -0.15673229098320007
-      yaw: 1640.0
-      pitch: 51.0
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      yaw: 0.0
+      pitch: 0.0
       scale:
         x: 1.0
         y: 1.0
@@ -42,8 +42,26 @@ root_children:
         x: 0.0
         y: 0.0
         z: 0.0
+  - type: Physics
+    data:
+      mass: 1.0
+      friction: 0.0
+      gravity: -9.8100004196167
+      is_gravity_enabled: false
+  - type: Collider
+    data:
+      half_extents:
+        x: 0.5
+        y: 0.5
+        z: 0.5
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: false
+      is_area: false
   children: []
-- name: Node (1)
+- name: cube
   components:
   - type: Transform
     data:
@@ -79,4 +97,19 @@ root_children:
     data:
       loading_model: cube
       loaded_model: cube
+  - type: Collider
+    data:
+      half_extents:
+        x: 0.5
+        y: 0.5
+        z: 0.5
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: true
+      is_area: false
+  children: []
+- name: cursor_manager
+  components: []
   children: []

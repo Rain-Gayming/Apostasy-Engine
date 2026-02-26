@@ -141,26 +141,35 @@ impl World {
     }
 
     pub fn get_all_nodes(&self) -> Vec<&Node> {
+        fn collect<'a>(node: &'a Node, out: &mut Vec<&'a Node>) {
+            out.push(node);
+            for child in &node.children {
+                collect(child, out);
+            }
+        }
+
         let mut nodes = Vec::new();
         for node in self.scene.root_node.children.iter() {
-            nodes.push(node);
-            nodes.extend(node.children.iter());
+            collect(node, &mut nodes);
         }
         nodes
     }
 
     pub fn get_all_nodes_mut(&mut self) -> Vec<&mut Node> {
-        let mut nodes = Vec::new();
-        for node in self.scene.root_node.children.iter_mut() {
-            let node_ptr = node as *mut Node;
-            unsafe {
-                nodes.push(&mut *node_ptr);
-                for child in (*node_ptr).children.iter_mut() {
-                    nodes.push(child);
-                }
+        fn collect<'a>(node: &'a mut Node, out: &mut Vec<*mut Node>) {
+            out.push(node as *mut Node);
+            for child in node.children.iter_mut() {
+                collect(child, out);
             }
         }
-        nodes
+
+        let mut ptrs: Vec<*mut Node> = Vec::new();
+        for node in self.scene.root_node.children.iter_mut() {
+            collect(node, &mut ptrs);
+        }
+
+        // SAFETY: each pointer is a unique node in the tree; we never alias.
+        unsafe { ptrs.into_iter().map(|p| &mut *p).collect() }
     }
 
     pub fn get_node_with_name(&self, name: &str) -> &Node {

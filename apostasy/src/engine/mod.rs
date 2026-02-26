@@ -4,6 +4,7 @@ use crate::{
         nodes::components::{
             collider::{Collider, CollisionEvent, CollisionEvents},
             physics::Physics,
+            raycast::Raycast,
         },
         windowing::{
             cursor_manager::CursorManager,
@@ -152,6 +153,7 @@ impl Engine {
         camera.add_component(Velocity::default());
         camera.add_component(Physics::default());
         camera.add_component(Collider::default());
+        camera.add_component(Raycast::default());
         camera.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, -10.0);
 
         let mut cube = Node::new();
@@ -331,14 +333,30 @@ pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
         velocity.add_velocity(direction);
     }
 }
-
 #[fixed_update]
 pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
-    let camera = world.get_node_with_component_mut::<Camera>();
+    let camera_name = world
+        .get_node_with_component::<Camera>() // immutable – just for the name
+        .name
+        .clone();
 
+    let (transform_snap, raycast_snap) = {
+        let camera = world.get_node_with_name(&camera_name);
+        (
+            camera.get_component::<Transform>().unwrap().clone(),
+            camera.get_component::<Raycast>().unwrap().clone(),
+        )
+    };
+    let hit = raycast_snap.cast(&transform_snap, world, &camera_name);
+
+    if let Some(hit) = hit {
+        println!("hit {:?}", hit);
+    }
+
+    let camera = world.get_node_with_name_mut(&camera_name);
     let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
-    velocity.direction *= delta_time;
 
+    velocity.direction *= delta_time;
     apply_velocity(velocity, transform);
     velocity.direction = Vector3::new(0.0, 0.0, 0.0);
 }
