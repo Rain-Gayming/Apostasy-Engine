@@ -29,7 +29,7 @@ impl Default for Raycast {
     fn default() -> Self {
         Self {
             direction: Vector3::new(0.0, 0.0, -1.0),
-            max_distance: 100.0,
+            max_distance: 1.0,
         }
     }
 }

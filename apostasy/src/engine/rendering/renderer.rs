@@ -460,13 +460,15 @@ impl Renderer {
             let model = Matrix4::from_scale(1.0);
             // Camera's position as a point
             let camera_eye = Point3::new(
-                transform.position.x,
-                transform.position.y,
-                transform.position.z,
+                transform.global_position.x,
+                transform.global_position.y,
+                transform.global_position.z,
             );
 
             // Forward direction from the camera
-            let rotated_forward = transform.calculate_forward();
+            let rotated_forward = transform.calculate_global_forward();
+            // Get the up direction
+            let rotated_up = transform.calculate_global_up();
 
             // Look point of the camera
             let look_at = Point3::new(
@@ -474,9 +476,6 @@ impl Renderer {
                 camera_eye.y + rotated_forward.y,
                 camera_eye.z + rotated_forward.z,
             );
-
-            // Get the up direction
-            let rotated_up = transform.calculate_up();
 
             let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
 
@@ -506,9 +505,9 @@ impl Renderer {
                 {
                     // Add position offset
                     let offset = [
-                        transform.position.x,
-                        transform.position.y,
-                        transform.position.z,
+                        transform.global_position.x,
+                        transform.global_position.y,
+                        transform.global_position.z,
                     ];
                     let offset_bytes: [u8; 12] = std::mem::transmute(offset);
                     push_constants[128..140].copy_from_slice(&offset_bytes);
@@ -574,147 +573,6 @@ impl Renderer {
                     }
                 }
             }
-            // Query for entities with Camera and Transform components
-            // world
-            //     .query()
-            //     .include::<Camera>()
-            //     .include::<Transform>()
-            //     .build()
-            //     .run(|entity_view: EntityView<'_>| {
-            //         if let (Some(camera), Some(transform)) =
-            //             (entity_view.get::<Camera>(), entity_view.get::<Transform>())
-            //         {
-            //
-            //             // Render ModelRenderer entities
-            //             world
-            //                 .query()
-            //                 .include::<ModelRenderer>()
-            //                 .include::<Transform>()
-            //                 .build()
-            //                 .run(|entity_view: EntityView<'_>| {
-            //                     world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
-            //                         // Add position offset
-            //
-            //                     });
-            //                 });
-            //
-            //             // Render MeshRenderer entities with Model vertex type
-            //             world
-            //                 .query()
-            //                 .include::<MeshRenderer>()
-            //                 .include::<Transform>()
-            //                 .build()
-            //                 .run(|entity_view: EntityView<'_>| {
-            //                     if let Some(transform) = entity_view.get::<Transform>() {
-            //                         // Add position offset
-            //                         let offset = [
-            //                             transform.position.x,
-            //                             transform.position.y,
-            //                             transform.position.z,
-            //                         ];
-            //                         let offset_bytes: [u8; 12] = std::mem::transmute(offset);
-            //                         push_constants[128..140].copy_from_slice(&offset_bytes);
-            //                         device.cmd_push_constants(
-            //                             command_buffer,
-            //                             pipeline_layout,
-            //                             vk::ShaderStageFlags::VERTEX,
-            //                             0,
-            //                             &push_constants,
-            //                         );
-            //                     }
-            //
-            //                     let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
-            //
-            //                     if mesh.vertex_type == VertexType::Model {
-            //                         device.cmd_bind_vertex_buffers(
-            //                             command_buffer,
-            //                             0,
-            //                             &[mesh.vertex_buffer],
-            //                             &[0],
-            //                         );
-            //                         device.cmd_bind_index_buffer(
-            //                             command_buffer,
-            //                             mesh.index_buffer,
-            //                             0,
-            //                             vk::IndexType::UINT32,
-            //                         );
-            //                         device.cmd_draw_indexed(
-            //                             command_buffer,
-            //                             mesh.index_count,
-            //                             1,
-            //                             0,
-            //                             0,
-            //                             0,
-            //                         );
-            //                     }
-            //                 });
-            //
-            //             // Render Voxel pipeline objects
-            //             device.cmd_bind_pipeline(
-            //                 command_buffer,
-            //                 vk::PipelineBindPoint::GRAPHICS,
-            //                 self.voxel_pipeline,
-            //             );
-            //
-            //             device.cmd_push_constants(
-            //                 command_buffer,
-            //                 pipeline_layout,
-            //                 vk::ShaderStageFlags::VERTEX,
-            //                 0,
-            //                 &push_constants,
-            //             );
-            //
-            //             // Render MeshRenderer entities with Voxel vertex type
-            //             world
-            //                 .query()
-            //                 .include::<MeshRenderer>()
-            //                 .include::<VoxelChunkTransform>()
-            //                 .build()
-            //                 .run(|entity_view: EntityView<'_>| {
-            //                     // Add position offset
-            //                     if let Some(transform) = entity_view.get::<VoxelChunkTransform>() {
-            //                         // Add position offset
-            //                         let offset = [
-            //                             transform.position.x as f32,
-            //                             transform.position.y as f32,
-            //                             transform.position.z as f32,
-            //                         ];
-            //                         let offset_bytes: [u8; 12] = std::mem::transmute(offset);
-            //                         push_constants[128..140].copy_from_slice(&offset_bytes);
-            //                         device.cmd_push_constants(
-            //                             command_buffer,
-            //                             pipeline_layout,
-            //                             vk::ShaderStageFlags::VERTEX,
-            //                             0,
-            //                             &push_constants,
-            //                         );
-            //                     }
-            //                     let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
-            //                     if mesh.vertex_type == VertexType::Voxel {
-            //                         device.cmd_bind_vertex_buffers(
-            //                             command_buffer,
-            //                             1,
-            //                             &[mesh.vertex_buffer],
-            //                             &[0],
-            //                         );
-            //                         device.cmd_bind_index_buffer(
-            //                             command_buffer,
-            //                             mesh.index_buffer,
-            //                             0,
-            //                             vk::IndexType::UINT32,
-            //                         );
-            //                         device.cmd_draw_indexed(
-            //                             command_buffer,
-            //                             mesh.index_count,
-            //                             1,
-            //                             0,
-            //                             0,
-            //                             0,
-            //                         );
-            //                     }
-            //                 });
-            //         }
-            //     });
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 

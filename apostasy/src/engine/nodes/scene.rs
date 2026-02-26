@@ -13,9 +13,11 @@ impl Default for Scene {
 
 impl Scene {
     pub fn new() -> Self {
+        let mut root_node = Node::new();
+        root_node.name = "root".to_string();
         Self {
             name: "Scene".to_string(),
-            root_node: Box::new(Node::new()),
+            root_node: Box::new(root_node),
         }
     }
 }

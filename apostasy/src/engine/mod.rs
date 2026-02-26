@@ -4,6 +4,7 @@ use crate::{
         nodes::components::{
             collider::{Collider, CollisionEvent, CollisionEvents},
             physics::Physics,
+            player::Player,
             raycast::Raycast,
         },
         windowing::{
@@ -150,11 +151,20 @@ impl Engine {
         camera.name = "camera".to_string();
         camera.add_component(Camera::default());
         camera.add_component(Transform::default());
-        camera.add_component(Velocity::default());
-        camera.add_component(Physics::default());
-        camera.add_component(Collider::default());
-        camera.add_component(Raycast::default());
-        camera.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, -10.0);
+
+        let mut player = Node::new();
+        player.name = "player".to_string();
+        player.add_component(Transform::default());
+        player.add_component(Velocity::default());
+        player.add_component(Physics::default());
+        player.add_component(Collider::default());
+        player.add_component(Raycast::default());
+        player.add_component(Player::default());
+        let transform = player.get_component_mut::<Transform>().unwrap();
+        transform.position = Vector3::new(0.0, 0.0, -10.0);
+        player.get_component_mut::<Raycast>().unwrap().direction = -transform.calculate_up();
+
+        player.add_child(camera);
 
         let mut cube = Node::new();
         cube.name = "cube".to_string();
@@ -166,8 +176,8 @@ impl Engine {
         ));
         cube.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, 0.0);
 
-        world.add_node(camera);
         world.add_node(cube);
+        world.add_node(player);
 
         let mut cursor_manager = Node::new();
         cursor_manager.name = "cursor_manager".to_string();
@@ -314,47 +324,76 @@ impl Engine {
 
 #[input]
 pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
-    let cursor_manager = world.get_node_with_component_mut::<CursorManager>();
-    let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
+    let is_grabbed = {
+        let cursor_manager = world.get_node_with_component::<CursorManager>();
+        cursor_manager
+            .get_component::<CursorManager>()
+            .unwrap()
+            .is_grabbed
+    };
 
-    if cursor_manager.is_grabbed {
-        let camera = world.get_node_with_component_mut::<Camera>();
-
-        let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
-
-        transform.yaw += -input_manager.mouse_delta.0 as f32;
-        transform.pitch += -input_manager.mouse_delta.1 as f32;
-        transform.pitch = clamp(transform.pitch, -89.0, 89.0);
-        transform.calculate_rotation();
-
-        let direction = transform.rotation
-            * input_manager.input_vector_3d("right", "left", "up", "down", "backward", "forward");
-
-        velocity.add_velocity(direction);
+    if !is_grabbed {
+        return;
     }
+
+    let mut all = world.get_all_nodes_mut();
+
+    let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
+    let player_transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+    let player_velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
+
+    let camera_node = all.iter_mut().find(|n| n.name == "camera").unwrap();
+    let camera_transform = camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+
+    let (player_transform, player_velocity, camera_transform) = unsafe {
+        (
+            &mut *player_transform,
+            &mut *player_velocity,
+            &mut *camera_transform,
+        )
+    };
+
+    player_transform.yaw += -input_manager.mouse_delta.0 as f32;
+    camera_transform.pitch += -input_manager.mouse_delta.1 as f32;
+    camera_transform.pitch = clamp(camera_transform.pitch, -89.0, 89.0);
+
+    player_transform.calculate_rotation();
+    camera_transform.calculate_rotation();
+
+    let direction = player_transform.rotation
+        * input_manager.input_vector_3d("right", "left", "up", "down", "backward", "forward");
+
+    player_velocity.add_velocity(direction);
 }
 #[fixed_update]
 pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
-    let camera_name = world
-        .get_node_with_component::<Camera>() // immutable – just for the name
-        .name
-        .clone();
+    let player_name = "player";
+    let camera_name = "camera";
 
-    let (transform_snap, raycast_snap) = {
-        let camera = world.get_node_with_name(&camera_name);
+    let (player_transform_snap, raycast_snap) = {
+        let player = world.get_node_with_name(player_name);
         (
-            camera.get_component::<Transform>().unwrap().clone(),
-            camera.get_component::<Raycast>().unwrap().clone(),
+            player.get_component::<Transform>().unwrap().clone(),
+            player.get_component::<Raycast>().unwrap().clone(),
         )
     };
-    let hit = raycast_snap.cast(&transform_snap, world, &camera_name);
+    let hit = raycast_snap.cast(&player_transform_snap, world, player_name);
 
-    if let Some(hit) = hit {
-        println!("hit {:?}", hit);
+    let mut all = world.get_all_nodes_mut();
+
+    let player_node = all.iter_mut().find(|n| n.name == player_name).unwrap();
+    let transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+    let velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
+
+    let camera_node = all.iter_mut().find(|n| n.name == camera_name).unwrap();
+    let camera_transform = camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+
+    let (transform, velocity, camera_transform) =
+        unsafe { (&mut *transform, &mut *velocity, &mut *camera_transform) };
+
+    if hit.is_some() {
+        velocity.direction.y = 0.0;
     }
-
-    let camera = world.get_node_with_name_mut(&camera_name);
-    let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
 
     velocity.direction *= delta_time;
     apply_velocity(velocity, transform);

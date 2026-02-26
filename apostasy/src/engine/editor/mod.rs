@@ -284,6 +284,9 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
                 let node = world.get_node_with_name_mut(&editor_storage.selected_node);
 
                 ui.label(format!("Name: {}", node.editing_name));
+                if let Some(parent) = &node.parent {
+                    ui.label(format!("Parent Node: {}", parent));
+                }
                 let text_edit = ui.text_edit_singleline(&mut node.editing_name);
                 if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     node.name = node.editing_name.clone();

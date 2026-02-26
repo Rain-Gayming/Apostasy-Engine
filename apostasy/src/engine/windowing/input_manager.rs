@@ -216,7 +216,6 @@ impl InputManager {
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
-                println!("mouse input: {:?}", button);
                 if state.is_pressed() {
                     self.mouse_pressed.insert(button);
                     self.mouse_held.insert(button);

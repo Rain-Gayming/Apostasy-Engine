@@ -1,10 +1,12 @@
 use std::any::TypeId;
 
 use anyhow::Result;
+use cgmath::{Rotation, Vector3};
 
 use crate::engine::{
     nodes::{
         component::Component,
+        components::transform::{ParentGlobal, Transform},
         scene::Scene,
         scene_serialization::{SerializedScene, deserialize_node, serialize_node},
         system::{FixedUpdateSystem, InputSystem, LateUpdateSystem, StartSystem, UpdateSystem},
@@ -23,7 +25,7 @@ pub struct Node {
     pub name: String,
     pub editing_name: String,
     pub children: Vec<Node>,
-    pub parent: Option<Box<Node>>,
+    pub parent: Option<String>,
     pub components: Vec<Box<dyn Component>>,
 }
 
@@ -64,9 +66,48 @@ impl Node {
         self.components.push(Box::new(component));
         self
     }
-    pub fn add_child(&mut self, child: Node) -> &mut Self {
+    pub fn add_child(&mut self, mut child: Node) -> &mut Self {
+        child.parent = Some(self.name.clone());
         self.children.push(child);
         self
+    }
+
+    pub fn propagate_transform(&mut self, parent: Option<&ParentGlobal>) {
+        let binding = ParentGlobal::default();
+        let parent = parent.unwrap_or(&binding);
+
+        if let Some(t) = self.get_component_mut::<Transform>() {
+            let global_position = parent.position
+                + parent.rotation.rotate_vector(Vector3::new(
+                    t.position.x * parent.scale.x,
+                    t.position.y * parent.scale.y,
+                    t.position.z * parent.scale.z,
+                ));
+            let global_rotation = parent.rotation * t.rotation;
+            let global_scale = Vector3::new(
+                parent.scale.x * t.scale.x,
+                parent.scale.y * t.scale.y,
+                parent.scale.z * t.scale.z,
+            );
+
+            t.global_position = global_position;
+            t.global_rotation = global_rotation;
+            t.global_scale = global_scale;
+        }
+
+        // Collect the new globals to pass to children
+        let my_global = self
+            .get_component::<Transform>()
+            .map(|t| ParentGlobal {
+                position: t.global_position,
+                rotation: t.global_rotation,
+                scale: t.global_scale,
+            })
+            .unwrap_or_else(|| parent.clone());
+
+        for child in self.children.iter_mut() {
+            child.propagate_transform(Some(&my_global));
+        }
     }
 }
 pub trait ComponentsMut<'a> {
