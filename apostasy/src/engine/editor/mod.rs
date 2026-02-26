@@ -2,11 +2,7 @@ use crate::{
     self as apostasy,
     engine::{
         editor::inspectable::InspectValue,
-        nodes::{
-            camera::Camera,
-            transform::{Transform, calculate_rotation},
-            velocity::Velocity,
-        },
+        nodes::{camera::Camera, transform::Transform, velocity::Velocity},
         rendering::models::model::ModelRenderer,
     },
 };
@@ -283,7 +279,7 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
 
                 if let Some(mut transform) = node.get_component_mut::<Transform>() {
                     transform.inspect_value(ui);
-                    calculate_rotation(&mut transform);
+                    transform.calculate_rotation();
                 }
                 if let Some(camera) = node.get_component_mut::<Camera>() {
                     camera.inspect_value(ui);

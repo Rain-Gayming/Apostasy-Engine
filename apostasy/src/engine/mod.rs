@@ -1,6 +1,9 @@
 use crate::{
     self as apostasy,
-    engine::windowing::input_manager::{KeyAction, KeyBind, handle_input_event, register_keybind},
+    engine::windowing::{
+        cursor_manager::CursorManager,
+        input_manager::{KeyAction, KeyBind, MouseBind},
+    },
 };
 use anyhow::Result;
 use apostasy_macros::{fixed_update, input};
@@ -8,7 +11,7 @@ use cgmath::{Vector3, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
-    event::{DeviceEvent, DeviceId},
+    event::{DeviceEvent, DeviceId, MouseButton},
     event_loop::{ControlFlow, EventLoop},
     keyboard::{KeyCode, PhysicalKey},
 };
@@ -24,8 +27,8 @@ use crate::engine::{
     nodes::{
         Node, World,
         camera::Camera,
-        transform::{Transform, calculate_rotation},
-        velocity::{Velocity, add_velocity, apply_velocity},
+        transform::Transform,
+        velocity::{Velocity, apply_velocity},
     },
     rendering::{
         models::model::{ModelLoader, ModelRenderer, load_models},
@@ -34,10 +37,7 @@ use crate::engine::{
         rendering_context::{RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
-    windowing::{
-        WindowManager,
-        input_manager::{InputManager, clear_actions, handle_device_event, input_vector_3d},
-    },
+    windowing::{WindowManager, input_manager::InputManager},
 };
 
 pub mod editor;
@@ -140,18 +140,25 @@ impl Engine {
         let mut world = World::new();
 
         let mut camera = Node::new();
+        camera.name = "camera".to_string();
         camera.add_component(Camera::default());
         camera.add_component(Transform::default());
         camera.add_component(Velocity::default());
         camera.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, -10.0);
 
         let mut cube = Node::new();
+        cube.name = "cube".to_string();
         cube.add_component(Transform::default());
         cube.add_component(ModelRenderer::default());
         cube.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, 0.0);
 
         world.add_node(camera);
         world.add_node(cube);
+
+        let mut cursor_manager = Node::new();
+        cursor_manager.name = "cursor_manager".to_string();
+        cursor_manager.add_component(CursorManager::default());
+        world.add_node(cursor_manager);
 
         let window_manager = WindowManager {
             windows,
@@ -163,35 +170,34 @@ impl Engine {
 
         load_models(&mut model_loader, &rendering_context);
         let mut input_manager = InputManager::default();
-        register_keybind(
-            &mut input_manager,
+        input_manager.register_keybind(
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyW), KeyAction::Hold),
             "forward",
         );
-        register_keybind(
-            &mut input_manager,
+        input_manager.register_keybind(
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyS), KeyAction::Hold),
             "backward",
         );
-        register_keybind(
-            &mut input_manager,
+        input_manager.register_keybind(
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyA), KeyAction::Hold),
             "left",
         );
-        register_keybind(
-            &mut input_manager,
+        input_manager.register_keybind(
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyD), KeyAction::Hold),
             "right",
         );
-        register_keybind(
-            &mut input_manager,
+        input_manager.register_keybind(
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyE), KeyAction::Hold),
             "up",
         );
-        register_keybind(
-            &mut input_manager,
+        input_manager.register_keybind(
             KeyBind::new(PhysicalKey::Code(KeyCode::KeyQ), KeyAction::Hold),
             "down",
+        );
+
+        input_manager.register_mousebind(
+            MouseBind::new(MouseButton::Right, KeyAction::Hold),
+            "editor_camera_look",
         );
 
         Ok(Self {
@@ -217,7 +223,7 @@ impl Engine {
             renderer.window_event(window, event.clone());
         }
 
-        handle_input_event(&mut self.input_manager, event.clone());
+        self.input_manager.handle_input_event(event.clone());
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -239,9 +245,7 @@ impl Engine {
                     let _ = renderer.render(&self.world, &mut self.model_loader);
                 }
             }
-            WindowEvent::KeyboardInput { .. } => {
-                self.world.input(&mut self.input_manager);
-            }
+            WindowEvent::KeyboardInput { .. } => {}
 
             _ => (),
         }
@@ -253,18 +257,25 @@ impl Engine {
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
-        handle_device_event(&mut self.input_manager, event.clone());
-        self.world.input(&mut self.input_manager);
+        self.input_manager.handle_device_event(event.clone());
+        let cursor_manager = self.world.get_node_with_component_mut::<CursorManager>();
+        let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
+        if self.input_manager.is_mousebind_active("editor_camera_look") {
+            cursor_manager.grab_cursor(&mut self.window_manager);
+        } else {
+            cursor_manager.ungrab_cursor(&mut self.window_manager);
+        }
     }
 
     pub fn request_redraw(&mut self) {
         self.world.update();
         self.world.fixed_update(self.timer.tick().fixed_dt);
+        self.world.input(&mut self.input_manager);
 
         for window in &self.window_manager.windows {
             window.1.request_redraw();
         }
-        clear_actions(&mut self.input_manager);
+        self.input_manager.clear_actions();
         self.world.late_update();
     }
 
@@ -284,34 +295,32 @@ impl Engine {
 
 #[input]
 pub fn input_handle(world: &mut World, input_manager: &mut InputManager) {
-    let camera = world.get_node_with_component_mut::<Camera>();
+    let cursor_manager = world.get_node_with_component_mut::<CursorManager>();
+    let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
 
-    let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
+    if cursor_manager.is_grabbed {
+        let camera = world.get_node_with_component_mut::<Camera>();
 
-    let direction = transform.rotation
-        * input_vector_3d(
-            input_manager,
-            "right",
-            "left",
-            "up",
-            "down",
-            "backward",
-            "forward",
-        );
+        let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
 
-    add_velocity(velocity, direction * 0.01);
-    transform.yaw += -input_manager.mouse_delta.0 as f32;
-    transform.pitch += -input_manager.mouse_delta.1 as f32;
+        transform.yaw += -input_manager.mouse_delta.0 as f32;
+        transform.pitch += -input_manager.mouse_delta.1 as f32;
+        transform.pitch = clamp(transform.pitch, -89.0, 89.0);
+        transform.calculate_rotation();
 
-    calculate_rotation(transform);
-    transform.pitch = clamp(transform.pitch, -89.0, 89.0);
+        let direction = transform.rotation
+            * input_manager.input_vector_3d("right", "left", "up", "down", "backward", "forward");
+
+        velocity.add_velocity(direction);
+    }
 }
 
 #[fixed_update]
-pub fn fixed_update_handle(world: &mut World, _delta_time: f32) {
+pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
     let camera = world.get_node_with_component_mut::<Camera>();
 
     let (transform, velocity) = camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
+    velocity.direction *= delta_time;
 
     apply_velocity(velocity, transform);
     velocity.direction = Vector3::new(0.0, 0.0, 0.0);

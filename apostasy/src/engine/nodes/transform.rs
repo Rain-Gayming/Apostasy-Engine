@@ -47,26 +47,28 @@ impl Default for Transform {
     }
 }
 
-pub fn calculate_rotation(transform: &mut Transform) {
-    transform.rotation = Quaternion::from(Euler {
-        x: Deg(0.0),
-        y: Deg(transform.yaw),
-        z: Deg(0.0),
-    }) * Quaternion::from(Euler {
-        x: Deg(transform.pitch),
-        y: Deg(0.0),
-        z: Deg(0.0),
-    });
-}
+impl Transform {
+    pub fn calculate_rotation(&mut self) {
+        self.rotation = Quaternion::from(Euler {
+            x: Deg(0.0),
+            y: Deg(self.yaw),
+            z: Deg(0.0),
+        }) * Quaternion::from(Euler {
+            x: Deg(self.pitch),
+            y: Deg(0.0),
+            z: Deg(0.0),
+        });
+    }
 
-pub fn calculate_up(transform: &Transform) -> Vector3<f32> {
-    transform.rotation.rotate_vector(transform.up)
-}
+    pub fn calculate_up(&self) -> Vector3<f32> {
+        self.rotation.rotate_vector(self.up)
+    }
 
-pub fn calculate_forward(transform: &Transform) -> Vector3<f32> {
-    transform.rotation.rotate_vector(transform.forward)
-}
+    pub fn calculate_forward(&self) -> Vector3<f32> {
+        self.rotation.rotate_vector(self.forward)
+    }
 
-pub fn calculate_right(transform: &Transform) -> Vector3<f32> {
-    transform.rotation.rotate_vector(transform.right)
+    pub fn calculate_right(&self) -> Vector3<f32> {
+        self.rotation.rotate_vector(self.right)
+    }
 }

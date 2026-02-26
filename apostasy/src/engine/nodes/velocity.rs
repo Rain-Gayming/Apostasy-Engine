@@ -1,7 +1,7 @@
 use crate::engine::editor::inspectable::Inspectable;
 use crate::{self as apostasy, engine::nodes::transform::Transform};
 use apostasy_macros::{Component, Inspectable, SerializableComponent};
-use cgmath::Vector3;
+use cgmath::{InnerSpace, Vector3, Zero};
 use serde::{Deserialize, Serialize};
 
 #[derive(Component, Clone, Inspectable, SerializableComponent, Serialize, Deserialize)]
@@ -21,6 +21,13 @@ pub fn apply_velocity(velocity: &Velocity, transform: &mut Transform) {
     transform.position += velocity.direction;
 }
 
-pub fn add_velocity(velocity: &mut Velocity, strength: Vector3<f32>) {
-    velocity.direction += strength;
+impl Velocity {
+    pub fn add_velocity(&mut self, strength: Vector3<f32>) {
+        let len = strength.magnitude();
+        if len > 0.0 {
+            self.direction = strength / len;
+        } else {
+            self.direction = Vector3::zero();
+        }
+    }
 }

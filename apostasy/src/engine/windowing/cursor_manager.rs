@@ -10,29 +10,39 @@ pub struct CursorManager {
     pub is_grabbed: bool,
 }
 
-pub fn grab_cursor(cursor_manager: &mut CursorManager, window_manager: &mut WindowManager) {
-    log!("grabbing cursor");
-    cursor_manager.is_grabbed = true;
-    cursor_manager.is_hidden = true;
-
-    window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(false);
-    let _ = window_manager.windows[&window_manager.primary_window_id]
-        .set_cursor_grab(CursorGrabMode::Locked)
-        .or_else(|_| {
-            window_manager.windows[&window_manager.primary_window_id]
-                .set_cursor_grab(CursorGrabMode::Confined)
-        });
+impl Default for CursorManager {
+    fn default() -> Self {
+        Self {
+            is_hidden: false,
+            is_grabbed: false,
+        }
+    }
 }
 
-pub fn ungrab_cursor(cursor_manager: &mut CursorManager, window_manager: &mut WindowManager) {
-    cursor_manager.is_grabbed = false;
-    cursor_manager.is_hidden = false;
+impl CursorManager {
+    pub fn grab_cursor(&mut self, window_manager: &mut WindowManager) {
+        self.is_grabbed = true;
+        self.is_hidden = true;
 
-    window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(true);
-    let _ = window_manager.windows[&window_manager.primary_window_id]
-        .set_cursor_grab(CursorGrabMode::None);
-}
+        window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(false);
+        let _ = window_manager.windows[&window_manager.primary_window_id]
+            .set_cursor_grab(CursorGrabMode::Locked)
+            .or_else(|_| {
+                window_manager.windows[&window_manager.primary_window_id]
+                    .set_cursor_grab(CursorGrabMode::Confined)
+            });
+    }
 
-pub fn toggle_hide_cursor(cursor_manager: &mut CursorManager) {
-    cursor_manager.is_hidden = !cursor_manager.is_hidden;
+    pub fn ungrab_cursor(&mut self, window_manager: &mut WindowManager) {
+        self.is_grabbed = false;
+        self.is_hidden = false;
+
+        window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(true);
+        let _ = window_manager.windows[&window_manager.primary_window_id]
+            .set_cursor_grab(CursorGrabMode::None);
+    }
+
+    pub fn toggle_hide_cursor(&mut self) {
+        self.is_hidden = !self.is_hidden;
+    }
 }

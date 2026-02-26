@@ -15,7 +15,7 @@ use crate::engine::{
         Node, World,
         camera::{Camera, get_perspective_projection},
         system::EditorUIFunction,
-        transform::{Transform, calculate_forward, calculate_up},
+        transform::Transform,
     },
     rendering::{
         models::model::{ModelLoader, ModelRenderer, get_model},
@@ -466,7 +466,7 @@ impl Renderer {
             );
 
             // Forward direction from the camera
-            let rotated_forward = calculate_forward(&transform);
+            let rotated_forward = transform.calculate_forward();
 
             // Look point of the camera
             let look_at = Point3::new(
@@ -476,7 +476,7 @@ impl Renderer {
             );
 
             // Get the up direction
-            let rotated_up = calculate_up(&transform);
+            let rotated_up = transform.calculate_up();
 
             let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
 
@@ -525,6 +525,7 @@ impl Renderer {
                     model_name.push_str(".glb");
 
                     let model = get_model(&model_name, model_loader);
+
                     if let Some(model) = model {
                         for mesh in &mut model.meshes {
                             if mesh.material.base_color_texture.is_none()

@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 const MODEL_LOCATION: &str = "res/models/";
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ModelLoader {
     pub models: HashMap<String, Model>,
 }
