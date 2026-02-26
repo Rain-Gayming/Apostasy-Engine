@@ -1,26 +1,22 @@
 use std::any::TypeId;
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 
 use crate::engine::{
     nodes::{
         component::Component,
         scene::Scene,
-        scene_serialization::{
-            SerializedScene, debug_registered_components, deserialize_node, serialize_node,
-        },
+        scene_serialization::{SerializedScene, deserialize_node, serialize_node},
         system::{FixedUpdateSystem, InputSystem, LateUpdateSystem, StartSystem, UpdateSystem},
     },
     windowing::input_manager::InputManager,
 };
 
-pub mod camera;
 pub mod component;
+pub mod components;
 pub mod scene;
 pub mod scene_serialization;
 pub mod system;
-pub mod transform;
-pub mod velocity;
 
 #[derive(Clone)]
 pub struct Node {
@@ -113,7 +109,7 @@ impl_components_mut!(A, B, C, D);
 
 pub struct World {
     pub scene: Scene,
-    pub global_nodes: Vec<Box<Node>>,
+    pub global_nodes: Vec<Node>,
 }
 
 impl Default for World {
@@ -130,7 +126,7 @@ impl World {
         }
     }
 
-    pub fn add_global_node(&mut self, node: Box<Node>) {
+    pub fn add_global_node(&mut self, node: Node) {
         self.global_nodes.push(node);
     }
     pub fn add_node(&mut self, node: Node) -> &mut Self {

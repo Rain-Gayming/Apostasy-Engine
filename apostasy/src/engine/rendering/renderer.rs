@@ -13,9 +13,9 @@ use crate::engine::{
     editor::EditorStorage,
     nodes::{
         Node, World,
-        camera::{Camera, get_perspective_projection},
+        components::camera::{Camera, get_perspective_projection},
+        components::transform::Transform,
         system::EditorUIFunction,
-        transform::Transform,
     },
     rendering::{
         models::model::{ModelLoader, ModelRenderer, get_model},

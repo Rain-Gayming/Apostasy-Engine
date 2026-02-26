@@ -1,14 +1,29 @@
 use crate::engine::nodes::World;
+use crate::log;
+use crate::log_warn;
 use crate::{self as apostasy, engine::editor::EditorStorage, get_log_buffer};
-use apostasy_macros::editor_ui;
+use apostasy_macros::{console_command, editor_ui};
 use egui::{Color32, Context, RichText, ScrollArea, Window};
 
 pub struct ConsoleCommand {
     pub name: &'static str,
-    pub func: fn(world: &mut World, inputs: Vec<String>),
+    pub func: fn(world: &mut World, editor_storage: &mut EditorStorage, inputs: Vec<String>),
 }
 
 inventory::collect!(ConsoleCommand);
+
+#[console_command]
+pub fn editor_mode(_world: &mut World, editor_storage: &mut EditorStorage, inputs: Vec<String>) {
+    if inputs.len() == 1 {
+        if inputs[0].to_lowercase() == "on" || inputs[0].to_lowercase() == "true" {
+            editor_storage.is_editor_open = true;
+        } else if inputs[0].to_lowercase() == "off" || inputs[0].to_lowercase() == "false" {
+            editor_storage.is_editor_open = false;
+        }
+    } else {
+        log_warn!("Usage: editor_mode [on/true|off/false]");
+    }
+}
 
 #[editor_ui]
 pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
@@ -84,7 +99,7 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
     if let Some(command_name) = command_to_execute {
         for cmd in inventory::iter::<ConsoleCommand> {
             if cmd.name.to_lowercase() == command_name.to_lowercase() {
-                (cmd.func)(world, command_inputs);
+                (cmd.func)(world, editor_storage, command_inputs);
                 break;
             }
         }

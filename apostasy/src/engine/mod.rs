@@ -1,8 +1,14 @@
 use crate::{
     self as apostasy,
-    engine::windowing::{
-        cursor_manager::CursorManager,
-        input_manager::{KeyAction, KeyBind, MouseBind},
+    engine::{
+        nodes::components::{
+            collider::{Collider, CollisionEvent, CollisionEvents},
+            physics::Physics,
+        },
+        windowing::{
+            cursor_manager::CursorManager,
+            input_manager::{KeyAction, KeyBind, MouseBind},
+        },
     },
 };
 use anyhow::Result;
@@ -26,9 +32,9 @@ use crate::engine::{
     editor::EditorStorage,
     nodes::{
         Node, World,
-        camera::Camera,
-        transform::Transform,
-        velocity::{Velocity, apply_velocity},
+        components::camera::Camera,
+        components::transform::Transform,
+        components::velocity::{Velocity, apply_velocity},
     },
     rendering::{
         models::model::{ModelLoader, ModelRenderer, load_models},
@@ -144,12 +150,18 @@ impl Engine {
         camera.add_component(Camera::default());
         camera.add_component(Transform::default());
         camera.add_component(Velocity::default());
+        camera.add_component(Physics::default());
+        camera.add_component(Collider::default());
         camera.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, -10.0);
 
         let mut cube = Node::new();
         cube.name = "cube".to_string();
         cube.add_component(Transform::default());
         cube.add_component(ModelRenderer::default());
+        cube.add_component(Collider::new_static(
+            Vector3::new(0.5, 0.5, 0.5),
+            Vector3::new(0.0, 0.0, 0.0),
+        ));
         cube.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, 0.0);
 
         world.add_node(camera);
@@ -159,6 +171,11 @@ impl Engine {
         cursor_manager.name = "cursor_manager".to_string();
         cursor_manager.add_component(CursorManager::default());
         world.add_node(cursor_manager);
+
+        let mut events_node = Node::new();
+        events_node.name = "CollisionEvents".to_string();
+        events_node.add_component(CollisionEvents::new());
+        world.add_global_node(events_node);
 
         let window_manager = WindowManager {
             windows,

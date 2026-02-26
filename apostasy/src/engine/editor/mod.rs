@@ -2,7 +2,10 @@ use crate::{
     self as apostasy,
     engine::{
         editor::inspectable::InspectValue,
-        nodes::{camera::Camera, transform::Transform, velocity::Velocity},
+        nodes::components::{
+            camera::Camera, collider::Collider, physics::Physics, transform::Transform,
+            velocity::Velocity,
+        },
         rendering::models::model::ModelRenderer,
     },
 };
@@ -30,6 +33,8 @@ pub struct EditorStorage {
     pub console_command: String,
 
     pub selected_node: String,
+
+    pub is_editor_open: bool,
 }
 
 impl Default for EditorStorage {
@@ -44,6 +49,7 @@ impl Default for EditorStorage {
             console_filter: String::new(),
             console_command: String::new(),
             selected_node: "".to_string(),
+            is_editor_open: true,
         }
     }
 }
@@ -153,6 +159,10 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize) {
 
 #[editor_ui]
 pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+    if !editor_storage.is_editor_open {
+        return;
+    }
+
     Window::new("Hierarchy")
         .default_size([100.0, 300.0])
         .show(context, |ui| {
@@ -238,6 +248,10 @@ pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &m
 
 #[editor_ui]
 pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+    if !editor_storage.is_editor_open {
+        return;
+    }
+
     Window::new("Inspector")
         .default_size([100.0, 100.0])
         .show(context, |ui| {
@@ -290,6 +304,12 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
                 if let Some(velocity) = node.get_component_mut::<Velocity>() {
                     velocity.inspect_value(ui);
                 }
+                if let Some(physics) = node.get_component_mut::<Physics>() {
+                    physics.inspect_value(ui);
+                }
+                if let Some(collider) = node.get_component_mut::<Collider>() {
+                    collider.inspect_value(ui);
+                }
 
                 ui.allocate_space(ui.available_size());
             }
@@ -298,6 +318,10 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
 
 #[editor_ui]
 pub fn file_tree_ui(context: &mut Context, _world: &mut World, editor_storage: &mut EditorStorage) {
+    if !editor_storage.is_editor_open {
+        return;
+    }
+
     Window::new("Files")
         .default_size([100.0, 300.0])
         .show(context, |ui| {
