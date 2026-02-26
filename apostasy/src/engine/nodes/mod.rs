@@ -1,6 +1,8 @@
+use crate as apostasy;
 use std::any::TypeId;
 
 use anyhow::Result;
+use apostasy_macros::start;
 use cgmath::{Rotation, Vector3};
 
 use crate::engine::{
@@ -151,6 +153,7 @@ impl_components_mut!(A, B, C, D);
 pub struct World {
     pub scene: Scene,
     pub global_nodes: Vec<Node>,
+    pub input_manager: InputManager,
 }
 
 impl Default for World {
@@ -164,6 +167,7 @@ impl World {
         Self {
             scene: Scene::new(),
             global_nodes: Vec::new(),
+            input_manager: InputManager::default(),
         }
     }
 
@@ -259,15 +263,6 @@ impl World {
             (system.func)(self);
         }
     }
-    pub fn input(&mut self, input_manager: &mut InputManager) {
-        let mut systems = inventory::iter::<InputSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
-            (system.func)(self, input_manager);
-        }
-    }
-
     pub fn get_node_with_component<T: Component + 'static>(&self) -> &Node {
         let node = self
             .get_all_nodes()
@@ -325,3 +320,8 @@ impl World {
     }
 }
 const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
+
+#[start]
+pub fn start_system(world: &mut World) {
+    world.input_manager.deserialize_input_manager().unwrap();
+}

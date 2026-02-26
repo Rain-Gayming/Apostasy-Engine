@@ -1,8 +1,10 @@
 use crate::{log, log_warn};
 use cgmath::{Vector2, Vector3};
-use egui::ahash::HashMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 use winit::{
     dpi::PhysicalPosition,
     event::{DeviceEvent, MouseButton, WindowEvent},
@@ -38,21 +40,98 @@ impl MouseBind {
     }
 }
 
-#[derive(Default)]
 pub struct InputManager {
-    keybinds: HashMap<String, KeyBind>,
-    mouse_keybinds: HashMap<String, MouseBind>,
-    keys_held: HashSet<PhysicalKey>,
-    mouse_held: HashSet<MouseButton>,
-    mouse_position: PhysicalPosition<f64>,
+    pub keybinds: HashMap<String, KeyBind>,
+    pub mouse_keybinds: HashMap<String, MouseBind>,
+    pub keys_held: HashSet<PhysicalKey>,
+    pub mouse_held: HashSet<MouseButton>,
+    pub mouse_position: PhysicalPosition<f64>,
     pub mouse_delta: (f64, f64),
     // scroll_delta: (f32, f32),
 
     // Resets each frame
-    keys_pressed: HashSet<PhysicalKey>,
-    keys_released: HashSet<PhysicalKey>,
-    mouse_pressed: HashSet<MouseButton>,
-    mouse_released: HashSet<MouseButton>,
+    pub keys_pressed: HashSet<PhysicalKey>,
+    pub keys_released: HashSet<PhysicalKey>,
+    pub mouse_pressed: HashSet<MouseButton>,
+    pub mouse_released: HashSet<MouseButton>,
+}
+
+impl Default for InputManager {
+    fn default() -> Self {
+        let mut default_keybinds: HashMap<String, KeyBind> = HashMap::new();
+        let mut default_mousebinds: HashMap<String, MouseBind> = HashMap::new();
+
+        default_keybinds.insert(
+            "forward".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::KeyW),
+                KeyAction::Hold,
+                "forward".to_string(),
+            ),
+        );
+        default_keybinds.insert(
+            "backward".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::KeyS),
+                KeyAction::Hold,
+                "backward".to_string(),
+            ),
+        );
+        default_keybinds.insert(
+            "left".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::KeyA),
+                KeyAction::Hold,
+                "left".to_string(),
+            ),
+        );
+        default_keybinds.insert(
+            "right".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::KeyD),
+                KeyAction::Hold,
+                "right".to_string(),
+            ),
+        );
+        default_keybinds.insert(
+            "up".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::KeyE),
+                KeyAction::Hold,
+                "up".to_string(),
+            ),
+        );
+        default_keybinds.insert(
+            "down".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::KeyQ),
+                KeyAction::Hold,
+                "down".to_string(),
+            ),
+        );
+
+        default_mousebinds.insert(
+            "editor_camera_look".to_string(),
+            MouseBind::new(
+                MouseButton::Right,
+                KeyAction::Hold,
+                "editor_camera_look".to_string(),
+            ),
+        );
+
+        Self {
+            keybinds: default_keybinds,
+            mouse_keybinds: default_mousebinds,
+            keys_held: HashSet::new(),
+            mouse_held: HashSet::new(),
+            mouse_position: PhysicalPosition::new(0.0, 0.0),
+            mouse_delta: (0.0, 0.0),
+            keys_pressed: HashSet::new(),
+            keys_released: HashSet::new(),
+            mouse_pressed: HashSet::new(),
+            mouse_released: HashSet::new(),
+        }
+    }
 }
 
 impl InputManager {
