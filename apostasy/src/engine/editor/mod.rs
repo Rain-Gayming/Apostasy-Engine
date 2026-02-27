@@ -39,7 +39,7 @@ pub struct EditorStorage {
     pub console_filter: String,
     pub console_command: String,
 
-    pub selected_node: u64,
+    pub selected_node: Option<u64>,
 
     pub is_editor_open: bool,
 
@@ -74,7 +74,7 @@ impl Default for EditorStorage {
             console_size: Vec2::new(100.0, 100.0),
             console_filter: String::new(),
             console_command: String::new(),
-            selected_node: 0,
+            selected_node: None,
             is_editor_open: true,
 
             // keybind editor
@@ -202,8 +202,7 @@ pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &m
 fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage, depth: usize) {
     let indent = depth as f32 * 10.0;
     let has_children = !node.children.is_empty();
-    let selected = editor_storage.selected_node == node.id;
-
+    let selected = Some(node.id) == editor_storage.selected_node;
     if has_children {
         let id = ui.make_persistent_id(format!("node_{}", node.name));
 
@@ -304,7 +303,7 @@ fn draw_node_row(
     );
 
     if response.clicked() {
-        editor_storage.selected_node = node.id;
+        editor_storage.selected_node = Some(node.id);
     }
 }
 #[editor_ui]
@@ -341,39 +340,40 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
 
             ui.label("Components");
 
-            let node = world.get_node_mut(editor_storage.selected_node);
+            if let Some(id) = editor_storage.selected_node {
+                let node = world.get_node_mut(id);
+                ui.label(format!("Name: {}", node.editing_name));
+                if let Some(parent) = &node.parent {
+                    ui.label(format!("Parent Node: {}", parent));
+                }
+                let text_edit = ui.text_edit_singleline(&mut node.editing_name);
+                if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    node.name = node.editing_name.clone();
+                    editor_storage.selected_node = Some(id);
+                }
+                ui.separator();
 
-            ui.label(format!("Name: {}", node.editing_name));
-            if let Some(parent) = &node.parent {
-                ui.label(format!("Parent Node: {}", parent));
-            }
-            let text_edit = ui.text_edit_singleline(&mut node.editing_name);
-            if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                node.name = node.editing_name.clone();
-                editor_storage.selected_node = node.id;
-            }
-            ui.separator();
+                if let Some(transform) = node.get_component_mut::<Transform>() {
+                    transform.inspect_value(ui);
+                }
+                if let Some(camera) = node.get_component_mut::<Camera>() {
+                    camera.inspect_value(ui);
+                }
+                if let Some(model) = node.get_component_mut::<ModelRenderer>() {
+                    model.inspect_value(ui);
+                }
+                if let Some(velocity) = node.get_component_mut::<Velocity>() {
+                    velocity.inspect_value(ui);
+                }
+                if let Some(physics) = node.get_component_mut::<Physics>() {
+                    physics.inspect_value(ui);
+                }
+                if let Some(collider) = node.get_component_mut::<Collider>() {
+                    collider.inspect_value(ui);
+                }
 
-            if let Some(transform) = node.get_component_mut::<Transform>() {
-                transform.inspect_value(ui);
+                ui.allocate_space(ui.available_size());
             }
-            if let Some(camera) = node.get_component_mut::<Camera>() {
-                camera.inspect_value(ui);
-            }
-            if let Some(model) = node.get_component_mut::<ModelRenderer>() {
-                model.inspect_value(ui);
-            }
-            if let Some(velocity) = node.get_component_mut::<Velocity>() {
-                velocity.inspect_value(ui);
-            }
-            if let Some(physics) = node.get_component_mut::<Physics>() {
-                physics.inspect_value(ui);
-            }
-            if let Some(collider) = node.get_component_mut::<Collider>() {
-                collider.inspect_value(ui);
-            }
-
-            ui.allocate_space(ui.available_size());
         });
 }
 

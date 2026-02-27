@@ -1,70 +1,4 @@
 root_children:
-- name: cube
-  id: 0
-  components:
-  - type: Transform
-    data:
-      position:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      rotation:
-        v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
-      rotation_euler:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-      up:
-        x: 0.0
-        y: 1.0
-        z: 0.0
-      forward:
-        x: 0.0
-        y: 0.0
-        z: -1.0
-      right:
-        x: 1.0
-        y: 0.0
-        z: 0.0
-      global_position:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      global_rotation:
-        v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
-      global_scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-  - type: ModelRenderer
-    data:
-      loading_model: cube
-      loaded_model: cube
-  - type: Collider
-    data:
-      half_extents:
-        x: 0.5
-        y: 0.5
-        z: 0.5
-      offset:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      is_static: true
-      is_area: false
-  children: []
 - name: player
   id: 1
   components:
@@ -150,7 +84,7 @@ root_children:
       is_active: true
   children:
   - name: camera
-    id: 3
+    id: 0
     components:
     - type: Camera
       data:
@@ -205,66 +139,72 @@ root_children:
           z: 1.0
     children:
     - name: Node
-      id: 4
+      id: 0
       components: []
       children: []
-- name: Node (1)
-  id: 2
-  components: []
-  children:
-  - name: Node (2)
-    id: 5
-    components: []
-    children:
-    - name: Node (3)
-      id: 6
-      components: []
-      children:
-      - name: Node (4)
-        id: 7
-        components: []
-        children:
-        - name: Node (5)
-          id: 8
-          components: []
-          children:
-          - name: Node (6)
-            id: 9
-            components: []
-            children:
-            - name: Node (7)
-              id: 10
-              components: []
-              children:
-              - name: Node (8)
-                id: 11
-                components: []
-                children:
-                - name: Node (9)
-                  id: 12
-                  components: []
-                  children:
-                  - name: Node (11)
-                    id: 14
-                    components: []
-                    children:
-                    - name: Node (10)
-                      id: 13
-                      components: []
-                      children: []
-- name: Node (12)
-  id: 15
-  components: []
-  children: []
-- name: Node (13)
-  id: 16
-  components: []
-  children: []
-- name: Node (14)
-  id: 17
-  components: []
-  children: []
-- name: Node (15)
-  id: 18
-  components: []
+- name: cube
+  id: 0
+  components:
+  - type: Transform
+    data:
+      position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+  - type: ModelRenderer
+    data:
+      loading_model: cube
+      loaded_model: cube
+  - type: Collider
+    data:
+      half_extents:
+        x: 0.5
+        y: 0.5
+        z: 0.5
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: true
+      is_area: false
   children: []

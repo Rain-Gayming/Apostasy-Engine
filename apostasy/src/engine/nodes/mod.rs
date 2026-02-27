@@ -228,8 +228,7 @@ impl World {
         self.global_nodes.push(node);
     }
     pub fn add_node(&mut self, mut node: Node) -> &mut Self {
-        node.id = self.nodes;
-        self.nodes += 1;
+        self.assign_ids_recursive(&mut node);
         self.scene.root_node.add_child(node);
         self.check_node_names();
         self
@@ -440,6 +439,14 @@ impl World {
         }
 
         self.nodes = next_id;
+    }
+
+    fn assign_ids_recursive(&mut self, node: &mut Node) {
+        node.id = self.nodes;
+        self.nodes += 1;
+        for child in node.children.iter_mut() {
+            self.assign_ids_recursive(child);
+        }
     }
 }
 const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
