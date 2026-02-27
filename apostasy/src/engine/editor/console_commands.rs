@@ -27,8 +27,8 @@ pub fn editor_mode(_world: &mut World, editor_storage: &mut EditorStorage, input
 }
 
 #[console_command]
-pub fn help(_world: &mut World, _editor_storage: &mut EditorStorage, inputs: Vec<String>) {
-    if !inputs.is_empty() {
+pub fn help(_world: &mut World, editor_storage: &mut EditorStorage, inputs: Vec<String>) {
+    if inputs.is_empty() {
         log!("Commands:");
         for cmd in inventory::iter::<ConsoleCommand> {
             log!("{} {}", cmd.name, cmd.inputs);

@@ -1,19 +1,14 @@
 key_bindings:
-- name: down
-  bind:
-    key: !Code KeyQ
-    action: hold
-    name: down
 - name: forward
   bind:
     key: !Code KeyW
     action: hold
     name: forward
-- name: backward
+- name: left
   bind:
-    key: !Code KeyS
+    key: !Code KeyA
     action: hold
-    name: backward
+    name: left
 - name: right
   bind:
     key: !Code KeyD
@@ -24,11 +19,21 @@ key_bindings:
     key: !Code KeyE
     action: hold
     name: up
-- name: left
+- name: down
   bind:
-    key: !Code KeyA
+    key: !Code KeyQ
     action: hold
-    name: left
+    name: down
+- name: test
+  bind:
+    key: !Code KeyO
+    action: release
+    name: test
+- name: backward
+  bind:
+    key: !Code KeyS
+    action: hold
+    name: backward
 mouse_bindings:
 - name: editor_camera_look
   bind:
