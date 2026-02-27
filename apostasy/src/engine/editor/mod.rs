@@ -29,6 +29,8 @@ pub mod inspectable;
 /// Storage for all information needed by the editor
 pub struct EditorStorage {
     pub component_text_edit: String,
+
+    pub file_tree_search: String,
     pub file_tree: Option<FileNode>,
 
     pub is_console_open: bool,
@@ -63,6 +65,8 @@ impl Default for EditorStorage {
     fn default() -> Self {
         Self {
             component_text_edit: String::new(),
+
+            file_tree_search: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
 
             is_console_open: false,
@@ -133,65 +137,6 @@ impl FileNode {
     }
 }
 
-fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize) {
-    let indent = depth as f32 * 12.0;
-
-    if node.is_dir {
-        let id = ui.make_persistent_id(&node.path);
-        let default_open = depth == 0; // root open by default
-        CollapsingHeader::new(&node.name)
-            .id_salt(id)
-            .default_open(default_open)
-            .icon(|ui, openness, response| {
-                // Simple triangle icon
-                let rect = response.rect;
-                let color = Color32::from_gray(180);
-                let points = if openness > 0.5 {
-                    // pointing down
-                    vec![
-                        pos2(rect.left(), rect.top()),
-                        pos2(rect.right(), rect.top()),
-                        pos2(rect.center().x, rect.bottom()),
-                    ]
-                } else {
-                    // pointing right
-                    vec![
-                        pos2(rect.left(), rect.top()),
-                        pos2(rect.right(), rect.center().y),
-                        pos2(rect.left(), rect.bottom()),
-                    ]
-                };
-                ui.painter()
-                    .add(epaint::Shape::convex_polygon(points, color, Stroke::NONE));
-            })
-            .show(ui, |ui| {
-                ui.add_space(2.0);
-                for child in &node.children {
-                    render_file_tree(ui, child, depth + 1);
-                }
-            });
-    } else {
-        // File entry
-        ui.horizontal(|ui| {
-            ui.add_space(indent);
-            let ext = node.path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            let icon = match ext {
-                "png" | "jpg" | "jpeg" | "webp" => "🖼",
-                "glsl" | "vert" | "frag" | "wgsl" => "🔷",
-                "rs" => "🦀",
-                "toml" | "json" | "yaml" | "yml" => "📄",
-                "ttf" | "otf" => "🔤",
-                "wav" | "mp3" | "ogg" => "🔊",
-                _ => "📃",
-            };
-            let label = ui.selectable_label(false, format!("{} {}", icon, node.name));
-            if label.double_clicked() {
-                log!("Open: {:?}", node.path); // hook into your editor's open-file logic
-            }
-            label.on_hover_text(node.path.to_string_lossy());
-        });
-    }
-}
 #[editor_ui]
 pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
     if !editor_storage.is_editor_open {
@@ -457,9 +402,27 @@ pub fn file_tree_ui(context: &mut Context, _world: &mut World, editor_storage: &
                                 .color(Color32::from_gray(150)),
                         );
                     });
+
+                    let text_edit = ui.text_edit_singleline(&mut editor_storage.file_tree_search);
+
                     ui.separator();
                     if let Some(tree) = &editor_storage.file_tree {
-                        render_file_tree(ui, tree, 0);
+                        if editor_storage.file_tree_search.is_empty() {
+                            render_file_tree(ui, tree, 0, editor_storage.file_tree_search.clone());
+                        } else {
+                            let files = get_all_files(&tree.path);
+                            for file in files {
+                                let name = file.name.to_lowercase();
+                                if name.contains(&name) {
+                                    render_file_tree(
+                                        ui,
+                                        &file,
+                                        0,
+                                        editor_storage.file_tree_search.clone(),
+                                    );
+                                }
+                            }
+                        }
                     } else {
                         ui.label(
                             RichText::new("res/ not found").color(Color32::from_rgb(200, 80, 80)),
@@ -469,6 +432,85 @@ pub fn file_tree_ui(context: &mut Context, _world: &mut World, editor_storage: &
                     ui.allocate_space(ui.available_size());
                 });
         });
+}
+
+fn get_all_files(path: &Path) -> Vec<FileNode> {
+    let mut files: Vec<FileNode> = Vec::new();
+    for entry in std::fs::read_dir(path).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(get_all_files(&path));
+        } else {
+            files.push(FileNode::from_path(&path));
+        }
+    }
+    files
+}
+
+fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize, search: String) {
+    let indent = depth as f32 * 12.0;
+
+    let search = search.to_lowercase();
+    let name = node.name.clone().to_lowercase();
+
+    if node.is_dir {
+        let id = ui.make_persistent_id(&node.path);
+        let default_open = depth == 0; // root open by default
+        CollapsingHeader::new(&node.name)
+            .id_salt(id)
+            .default_open(default_open)
+            .icon(|ui, openness, response| {
+                // Simple triangle icon
+                let rect = response.rect;
+                let color = Color32::from_gray(180);
+                let points = if openness > 0.5 {
+                    // pointing down
+                    vec![
+                        pos2(rect.left(), rect.top()),
+                        pos2(rect.right(), rect.top()),
+                        pos2(rect.center().x, rect.bottom()),
+                    ]
+                } else {
+                    // pointing right
+                    vec![
+                        pos2(rect.left(), rect.top()),
+                        pos2(rect.right(), rect.center().y),
+                        pos2(rect.left(), rect.bottom()),
+                    ]
+                };
+                ui.painter()
+                    .add(epaint::Shape::convex_polygon(points, color, Stroke::NONE));
+            })
+            .show(ui, |ui| {
+                ui.add_space(2.0);
+                for child in &node.children {
+                    render_file_tree(ui, child, depth + 1, search.clone());
+                }
+            });
+    } else {
+        if search.is_empty() || name.contains(&search) {
+            // File entry
+            ui.horizontal(|ui| {
+                ui.add_space(indent);
+                let ext = node.path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                let icon = match ext {
+                    "png" | "jpg" | "jpeg" | "webp" => "🖼",
+                    "glsl" | "vert" | "frag" | "wgsl" => "🔷",
+                    "rs" => "🦀",
+                    "toml" | "json" | "yaml" | "yml" => "📄",
+                    "ttf" | "otf" => "🔤",
+                    "wav" | "mp3" | "ogg" => "🔊",
+                    _ => "📃",
+                };
+                let label = ui.selectable_label(false, format!("{} {}", icon, node.name));
+                if label.double_clicked() {
+                    log!("Open: {:?}", node.path); // hook into your editor's open-file logic
+                }
+                label.on_hover_text(node.path.to_string_lossy());
+            });
+        }
+    }
 }
 
 #[editor_ui]

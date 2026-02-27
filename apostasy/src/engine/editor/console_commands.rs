@@ -102,7 +102,7 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
                 && ui.input(|i| i.key_pressed(egui::Key::Enter))
                 && !editor_storage.console_command.is_empty()
             {
-                log!("Executing command: {}", editor_storage.console_command);
+                log!("> {}", editor_storage.console_command);
                 let split_command: Vec<&str> = editor_storage.console_command.split(' ').collect();
                 command_to_execute = Some(split_command[0].to_string());
                 for input in split_command.iter().skip(1) {
@@ -119,8 +119,9 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
         for cmd in inventory::iter::<ConsoleCommand> {
             if cmd.name.to_lowercase() == command_name.to_lowercase() {
                 (cmd.func)(world, editor_storage, command_inputs);
-                break;
+                return;
             }
         }
+        log_warn!("Command not found: {}", command_name);
     }
 }
