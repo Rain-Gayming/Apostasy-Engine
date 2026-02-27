@@ -225,12 +225,13 @@ impl World {
     }
     pub fn add_node(&mut self, node: Node) -> &mut Self {
         self.scene.root_node.add_child(node);
+        self.check_node_names();
         self
     }
 
     pub fn add_new_node(&mut self) -> &mut Self {
         self.add_node(Node::new());
-
+        self.check_node_names();
         self
     }
 
@@ -379,6 +380,30 @@ impl World {
             .map(deserialize_node)
             .collect();
         Ok(())
+    }
+
+    pub fn check_node_names(&mut self) {
+        let mut names = Vec::new();
+        for node in self.get_all_nodes_mut() {
+            let base_name = node.name.clone();
+
+            // check if name already exists
+            if names.contains(&base_name) {
+                let mut counter = 1;
+                let mut new_name = format!("{} ({})", base_name, counter);
+
+                // keep incrementing until it finds an unused name
+                while names.contains(&new_name) {
+                    counter += 1;
+                    new_name = format!("{} ({})", base_name, counter);
+                }
+
+                node.name = new_name.clone();
+                names.push(new_name);
+            } else {
+                names.push(base_name);
+            }
+        }
     }
 }
 const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
