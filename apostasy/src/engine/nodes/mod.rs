@@ -11,7 +11,7 @@ use crate::engine::{
         components::transform::{ParentGlobal, Transform},
         scene::Scene,
         scene_serialization::{SerializedScene, deserialize_node, serialize_node},
-        system::{FixedUpdateSystem, InputSystem, LateUpdateSystem, StartSystem, UpdateSystem},
+        system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
     },
     windowing::input_manager::InputManager,
 };
@@ -130,6 +130,35 @@ impl Node {
         for child in self.children.iter_mut() {
             child.propagate_transform(Some(&my_global));
         }
+    }
+
+    // Remove a node by name from anywhere in the tree, returning it
+    pub fn remove_node_by_name(&mut self, name: &str) -> Option<Node> {
+        if let Some(pos) = self.children.iter().position(|c| c.name == name) {
+            return Some(self.children.remove(pos));
+        }
+        for child in self.children.iter_mut() {
+            if let Some(found) = child.remove_node_by_name(name) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    // Insert a node as a child of the node with the given name
+    pub fn insert_under(&mut self, parent_name: &str, mut node: Node) -> bool {
+        if self.name == parent_name {
+            node.parent = Some(self.name.clone());
+            self.children.push(node);
+            return true;
+        }
+        for child in self.children.iter_mut() {
+            if child.insert_under(parent_name, node.clone()) {
+                return true; // a bit wasteful due to clone, see note below
+            }
+            // note: ideally use Option passing to avoid clone, this is simplified
+        }
+        false
     }
 }
 pub trait ComponentsMut<'a> {

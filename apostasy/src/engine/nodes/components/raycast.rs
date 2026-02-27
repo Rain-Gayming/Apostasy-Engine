@@ -1,7 +1,6 @@
 use cgmath::{InnerSpace, Rotation, Vector3};
 use serde::{Deserialize, Serialize};
 
-use crate::engine::editor::inspectable::Inspectable;
 use crate::engine::nodes::{
     World,
     components::{collider::Collider, transform::Transform},

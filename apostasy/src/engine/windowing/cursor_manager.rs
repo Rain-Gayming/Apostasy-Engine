@@ -1,22 +1,12 @@
 use crate as apostasy;
 use crate::engine::windowing::WindowManager;
-use crate::log;
 use apostasy_macros::Component;
 use winit::window::CursorGrabMode;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Default)]
 pub struct CursorManager {
     pub is_hidden: bool,
     pub is_grabbed: bool,
-}
-
-impl Default for CursorManager {
-    fn default() -> Self {
-        Self {
-            is_hidden: false,
-            is_grabbed: false,
-        }
-    }
 }
 
 impl CursorManager {

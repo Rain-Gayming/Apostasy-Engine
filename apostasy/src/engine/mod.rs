@@ -2,26 +2,22 @@ use crate::{
     self as apostasy,
     engine::{
         nodes::components::{
-            collider::{Collider, CollisionEvent, CollisionEvents},
+            collider::{Collider, CollisionEvents},
             physics::Physics,
             player::Player,
             raycast::Raycast,
         },
-        windowing::{
-            cursor_manager::CursorManager,
-            input_manager::{KeyAction, KeyBind, MouseBind},
-        },
+        windowing::cursor_manager::CursorManager,
     },
 };
 use anyhow::Result;
-use apostasy_macros::{fixed_update, input};
+use apostasy_macros::fixed_update;
 use cgmath::{Vector3, Zero, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
-    event::{DeviceEvent, DeviceId, MouseButton},
+    event::{DeviceEvent, DeviceId},
     event_loop::{ControlFlow, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
 };
 
 use winit::{
@@ -45,7 +41,7 @@ use crate::engine::{
         rendering_context::{RenderingContext, RenderingContextAttributes},
     },
     timer::EngineTimer,
-    windowing::{WindowManager, input_manager::InputManager},
+    windowing::WindowManager,
 };
 
 pub mod editor;

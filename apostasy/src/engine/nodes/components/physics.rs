@@ -1,7 +1,5 @@
 use crate::engine::editor::inspectable::Inspectable;
 use crate::engine::nodes::World;
-use crate::log;
-use crate::log_warn;
 use crate::{self as apostasy, engine::nodes::components::velocity::Velocity};
 use apostasy_macros::InspectValue;
 use apostasy_macros::{Component, Inspectable, SerializableComponent, fixed_update};

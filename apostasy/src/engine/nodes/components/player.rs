@@ -1,4 +1,3 @@
-use crate::engine::editor::inspectable::Inspectable;
 use crate::{self as apostasy};
 use apostasy_macros::{Component, Inspectable, SerializableComponent};
 use serde::{Deserialize, Serialize};

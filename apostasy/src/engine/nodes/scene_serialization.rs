@@ -40,7 +40,7 @@ pub fn find_registration(type_name: &str) -> Option<&'static ComponentRegistrato
 
 /// Serializes a node, returns a serialized node
 pub fn serialize_node(node: &Node) -> SerializedNode {
-    let components: Vec<SerializedComponent> = node
+    let _: Vec<SerializedComponent> = node
         .components
         .iter()
         .filter_map(|component| {

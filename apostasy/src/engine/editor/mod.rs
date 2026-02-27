@@ -51,8 +51,14 @@ pub struct EditorStorage {
     pub mousebind_name: String,
     pub mousebind_button: MouseButton,
     pub mousebind_action: KeyAction,
-}
 
+    pub dragging_node: Option<String>,
+    pub drag_target: Option<DragTarget>,
+}
+pub enum DragTarget {
+    Parent(String), // drop onto root to un-parent
+    Root,           // drop onto root to un-parent
+}
 impl Default for EditorStorage {
     fn default() -> Self {
         Self {
@@ -77,6 +83,9 @@ impl Default for EditorStorage {
             mousebind_name: String::new(),
             mousebind_button: MouseButton::Left,
             mousebind_action: KeyAction::Press,
+
+            dragging_node: None,
+            drag_target: None,
         }
     }
 }
@@ -208,31 +217,51 @@ pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &m
                 .show(ui, |ui| {
                     ui.add_space(4.0);
 
-                    // collect root children names to avoid borrowing world in the recursive fn
                     let root_children: Vec<Node> = world.scene.root_node.children.clone();
-
-                    // draw the nodes
                     for node in &root_children {
                         draw_node(ui, node, editor_storage, 0);
                     }
 
-                    ui.allocate_space(ui.available_size());
+                    // Drop onto empty space = move to root
+                    let empty_space = ui.allocate_response(ui.available_size(), Sense::hover());
+                    if empty_space.hovered() && editor_storage.dragging_node.is_some() {
+                        editor_storage.drag_target = Some(DragTarget::Root);
+                    }
                 });
+
+            // Commit the drag on mouse release
+            if ui.input(|i| i.pointer.any_released())
+                && let Some(dragging) = editor_storage.dragging_node.take()
+            {
+                let target = editor_storage.drag_target.take();
+                let root = &mut *world.scene.root_node;
+
+                match target {
+                    Some(DragTarget::Parent(parent_name)) if parent_name != dragging => {
+                        if let Some(node) = root.remove_node_by_name(&dragging) {
+                            root.insert_under(&parent_name, node);
+                        }
+                    }
+                    Some(DragTarget::Root) | None => {
+                        if let Some(mut node) = root.remove_node_by_name(&dragging) {
+                            node.parent = None;
+                            root.children.push(node);
+                        }
+                    }
+                    _ => {}
+                }
+            }
         });
 }
 
-/// Adds a node to the editor hierarchy
 fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage, depth: usize) {
     let indent = depth as f32 * 10.0;
     let has_children = !node.children.is_empty();
-    let selected =
-        !editor_storage.selected_node.is_empty() && editor_storage.selected_node == node.name;
+    let selected = editor_storage.selected_node == node.name;
 
-    // If the node has children, draw a collapsing header for the children
     if has_children {
-        let id = ui.make_persistent_id(&node.name);
+        let id = ui.make_persistent_id(format!("node_{}", node.name));
 
-        // Load the collapsing state and populate it with the node's children
         CollapsingState::load_with_default_open(ui.ctx(), id, false)
             .show_header(ui, |ui: &mut egui::Ui| {
                 ui.add_space(indent);
@@ -245,22 +274,23 @@ fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage,
             });
     } else {
         ui.horizontal(|ui| {
-            // indent the node
-            // the + 18 is to account for the collapsing header keeping everything aligned
-            let indent = indent
-                + if node.parent.as_ref().unwrap() == &"root".to_string() {
-                    18.0
-                } else {
-                    0.0
-                };
-            ui.add_space(indent);
-            // draw the node
-            draw_node_row(ui, node, selected, editor_storage);
+            if let Some(parent) = &node.parent {
+                let indent = indent
+                    + if parent == &"root".to_string() {
+                        18.0
+                    } else {
+                        0.0
+                    };
+                ui.add_space(indent);
+                draw_node_row(ui, node, selected, editor_storage);
+            } else {
+                ui.add_space(indent + 18.0);
+                draw_node_row(ui, node, selected, editor_storage);
+            }
         });
     }
 }
 
-/// Draws a node row in the editor hierarchy
 fn draw_node_row(
     ui: &mut egui::Ui,
     node: &Node,
@@ -268,16 +298,55 @@ fn draw_node_row(
     editor_storage: &mut EditorStorage,
 ) {
     let desired_size = Vec2::new(ui.available_width() - 5.0, 20.0);
-    let (rect, response) = ui.allocate_exact_size(desired_size, Sense::click());
+    let (rect, response) = ui.allocate_exact_size(desired_size, Sense::click_and_drag());
 
-    // selection / hover / click colors
+    if response.drag_started() {
+        editor_storage.dragging_node = Some(node.name.clone());
+    }
+
+    // render a tooltip with the node name when dragging
+    if editor_storage.dragging_node.as_deref() == Some(&node.name) && response.dragged() {
+        egui::Tooltip::always_open(
+            ui.ctx().clone(),
+            ui.layer_id(),
+            egui::Id::new("drag_tooltip"),
+            response.rect,
+        )
+        .at_pointer()
+        .show(|ui| {
+            ui.label(&node.name);
+        });
+    }
+
+    // get the pointer position
+    let pointer_pos = ui.ctx().pointer_latest_pos();
+
+    // highlight as drop target when something is being dragged over it
+    let is_drag_target =
+        editor_storage.dragging_node.is_some() && pointer_pos.is_some_and(|pos| rect.contains(pos));
+
+    // detects and stores the current hovered node when dragging
+    if is_drag_target {
+        editor_storage.drag_target = Some(DragTarget::Parent(node.name.clone()));
+    }
+
     let color = if selected {
         Color32::from_rgb(0, 120, 215)
+    } else if is_drag_target {
+        Color32::from_rgb(40, 100, 40)
     } else if response.hovered() {
         Color32::from_gray(70)
     } else {
         Color32::TRANSPARENT
     };
+
+    // draw a line above the row to show insert position
+    if is_drag_target {
+        ui.painter().line_segment(
+            [rect.left_bottom(), rect.right_bottom()],
+            egui::Stroke::new(2.0, Color32::from_rgb(100, 200, 100)),
+        );
+    }
 
     // draw the color needed and the name
     ui.painter().rect_filled(rect, 0.0, color);
@@ -289,12 +358,10 @@ fn draw_node_row(
         Color32::WHITE,
     );
 
-    // set the selected node if the node is clicked
     if response.clicked() {
         editor_storage.selected_node = node.name.clone();
     }
 }
-
 #[editor_ui]
 pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
     if !editor_storage.is_editor_open {
@@ -343,7 +410,7 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
                 }
                 ui.separator();
 
-                if let Some(mut transform) = node.get_component_mut::<Transform>() {
+                if let Some(transform) = node.get_component_mut::<Transform>() {
                     transform.inspect_value(ui);
                 }
                 if let Some(camera) = node.get_component_mut::<Camera>() {
@@ -436,7 +503,7 @@ pub fn input_manager_ui(
 
                 ui.horizontal(|ui| {
                     ui.label("Key Code:");
-                    egui::ComboBox::from_id_source("keybind_key_code")
+                    egui::ComboBox::from_id_salt("keybind_key_code")
                         .selected_text(&editor_storage.keybind_key_code)
                         .show_ui(ui, |ui| {
                             for key in ALL_KEY_CODES {
@@ -559,7 +626,7 @@ pub fn input_manager_ui(
                 ui.add_enabled_ui(can_add, |ui| {
                     if ui.button("Add MouseBind").clicked() {
                         let bind = MouseBind::new(
-                            editor_storage.mousebind_button.clone(),
+                            editor_storage.mousebind_button,
                             editor_storage.mousebind_action.clone(),
                             editor_storage.mousebind_name.clone(),
                         );

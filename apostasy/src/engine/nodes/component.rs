@@ -1,10 +1,5 @@
-use std::{
-    any::Any,
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::any::Any;
 
-use once_cell::sync::Lazy;
 pub trait Component: ComponentClone {
     fn name() -> &'static str
     where
