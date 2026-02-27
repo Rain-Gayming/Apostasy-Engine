@@ -15,7 +15,7 @@ use crate::{
 };
 use anyhow::Result;
 use apostasy_macros::{fixed_update, input};
-use cgmath::{Vector3, num_traits::clamp};
+use cgmath::{Vector3, Zero, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
@@ -181,7 +181,7 @@ impl Engine {
         let mut cursor_manager = Node::new();
         cursor_manager.name = "cursor_manager".to_string();
         cursor_manager.add_component(CursorManager::default());
-        world.add_node(cursor_manager);
+        world.add_global_node(cursor_manager);
 
         let mut events_node = Node::new();
         events_node.name = "CollisionEvents".to_string();
@@ -260,11 +260,15 @@ impl Engine {
             .input_manager
             .is_mousebind_active("editor_camera_look")
         {
-            let cursor_manager = self.world.get_node_with_component_mut::<CursorManager>();
+            let cursor_manager = self
+                .world
+                .get_global_node_with_component_mut::<CursorManager>();
             let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
             cursor_manager.grab_cursor(&mut self.window_manager);
         } else {
-            let cursor_manager = self.world.get_node_with_component_mut::<CursorManager>();
+            let cursor_manager = self
+                .world
+                .get_global_node_with_component_mut::<CursorManager>();
             let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
             cursor_manager.ungrab_cursor(&mut self.window_manager);
         }
@@ -297,17 +301,19 @@ impl Engine {
 
 #[fixed_update]
 pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
-    let is_grabbed = {
-        let cursor_manager = world.get_node_with_component::<CursorManager>();
-        cursor_manager
-            .get_component::<CursorManager>()
-            .unwrap()
-            .is_grabbed
-    };
-
-    if !is_grabbed {
+    if !world
+        .get_global_node_with_component::<CursorManager>()
+        .get_component::<CursorManager>()
+        .unwrap()
+        .is_grabbed
+    {
         return;
     }
+
+    let mouse_delta = world.input_manager.mouse_delta;
+    let input_dir = world
+        .input_manager
+        .input_vector_3d("right", "left", "up", "down", "backward", "forward");
 
     let mut all = world.get_all_nodes_mut();
 
@@ -318,7 +324,7 @@ pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
     let camera_node = all.iter_mut().find(|n| n.name == "camera").unwrap();
     let camera_transform = camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
 
-    let (player_transform, player_velocity, camera_transform) = unsafe {
+    let (transform, velocity, cam_transform) = unsafe {
         (
             &mut *player_transform,
             &mut *player_velocity,
@@ -326,51 +332,40 @@ pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
         )
     };
 
-    player_transform.yaw += -world.input_manager.mouse_delta.0 as f32;
-    camera_transform.pitch += -world.input_manager.mouse_delta.1 as f32;
-    camera_transform.pitch = clamp(camera_transform.pitch, -89.0, 89.0);
+    transform.rotation_euler.y -= mouse_delta.0 as f32;
+    cam_transform.rotation_euler.x = clamp(
+        cam_transform.rotation_euler.x - mouse_delta.1 as f32,
+        -89.0,
+        89.0,
+    );
 
-    player_transform.calculate_rotation();
-    camera_transform.calculate_rotation();
+    transform.calculate_rotation();
+    cam_transform.calculate_rotation();
 
-    let direction = player_transform.rotation
-        * world
-            .input_manager
-            .input_vector_3d("right", "left", "up", "down", "backward", "forward");
+    velocity.add_velocity(transform.rotation * input_dir);
 
-    player_velocity.add_velocity(direction);
-
-    let player_name = "player";
-    let camera_name = "camera";
-
-    let (player_transform_snap, raycast_snap) = {
-        let player = world.get_node_with_name(player_name);
+    let (transform_snap, raycast_snap) = {
+        let player = world.get_node_with_name("player");
         (
             player.get_component::<Transform>().unwrap().clone(),
             player.get_component::<Raycast>().unwrap().clone(),
         )
     };
-    let hit = raycast_snap.cast(&player_transform_snap, world, player_name);
+
+    let hit = raycast_snap.cast(&transform_snap, world, "player");
 
     let mut all = world.get_all_nodes_mut();
-
-    let player_node = all.iter_mut().find(|n| n.name == player_name).unwrap();
+    let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
     let transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
     let velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
 
-    let camera_node = all.iter_mut().find(|n| n.name == camera_name).unwrap();
-    let camera_transform = camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+    let (transform, velocity) = unsafe { (&mut *transform, &mut *velocity) };
 
-    let (transform, velocity, camera_transform) =
-        unsafe { (&mut *transform, &mut *velocity, &mut *camera_transform) };
-
-    if hit.is_some() {
-        if velocity.direction.y < 0.0 {
-            velocity.direction.y = 0.0;
-        }
+    if hit.is_some() && velocity.direction.y < 0.0 {
+        velocity.direction.y = 0.0;
     }
 
     velocity.direction *= delta_time;
     apply_velocity(velocity, transform);
-    velocity.direction = Vector3::new(0.0, 0.0, 0.0);
+    velocity.direction = Vector3::zero();
 }

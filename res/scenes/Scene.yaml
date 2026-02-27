@@ -1,25 +1,22 @@
 root_children:
-- name: camera
+- name: cube
   components:
-  - type: Camera
-    data:
-      fov_y: 90.0
-      near: 0.0010000000474974513
-      far: 10000.0
   - type: Transform
     data:
       position:
         x: 0.0
         y: 0.0
-        z: -10.0
+        z: 0.0
       rotation:
         v:
           x: 0.0
           y: 0.0
           z: 0.0
         s: 1.0
-      yaw: 0.0
-      pitch: 0.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
       scale:
         x: 1.0
         y: 1.0
@@ -36,6 +33,85 @@ root_children:
         x: 1.0
         y: 0.0
         z: 0.0
+      global_position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+  - type: ModelRenderer
+    data:
+      loading_model: cube
+      loaded_model: cube
+  - type: Collider
+    data:
+      half_extents:
+        x: 0.5
+        y: 0.5
+        z: 0.5
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: true
+      is_area: false
+  children: []
+- name: player
+  components:
+  - type: Transform
+    data:
+      position:
+        x: 0.0
+        y: 0.0
+        z: -10.0
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 0.0
+        y: 0.0
+        z: -10.0
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
   - type: Velocity
     data:
       direction:
@@ -60,56 +136,71 @@ root_children:
         z: 0.0
       is_static: false
       is_area: false
-  children: []
-- name: cube
-  components:
-  - type: Transform
+  - type: Raycast
     data:
-      position:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      rotation:
-        v:
+      direction:
+        x: -0.0
+        y: -1.0
+        z: -0.0
+      max_distance: 1.0
+  - type: Player
+    data:
+      is_active: true
+  children:
+  - name: camera
+    components:
+    - type: Camera
+      data:
+        fov_y: 90.0
+        near: 0.0010000000474974513
+        far: 10000.0
+    - type: Transform
+      data:
+        position:
           x: 0.0
           y: 0.0
           z: 0.0
-        s: 1.0
-      yaw: 0.0
-      pitch: 0.0
-      scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-      up:
-        x: 0.0
-        y: 1.0
-        z: 0.0
-      forward:
-        x: 0.0
-        y: 0.0
-        z: -1.0
-      right:
-        x: 1.0
-        y: 0.0
-        z: 0.0
-  - type: ModelRenderer
-    data:
-      loading_model: cube
-      loaded_model: cube
-  - type: Collider
-    data:
-      half_extents:
-        x: 0.5
-        y: 0.5
-        z: 0.5
-      offset:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      is_static: true
-      is_area: false
-  children: []
+        rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        rotation_euler:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        scale:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+        up:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        forward:
+          x: 0.0
+          y: 0.0
+          z: -1.0
+        right:
+          x: 1.0
+          y: 0.0
+          z: 0.0
+        global_position:
+          x: 0.0
+          y: 0.0
+          z: -10.0
+        global_rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        global_scale:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+    children: []
 - name: cursor_manager
   components: []
   children: []

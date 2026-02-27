@@ -48,26 +48,46 @@ impl Node {
         }
     }
 
+    /// Checks if the node has a component of type T
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_with_component::<Transform>().has_component::<Transform>();
+    /// ```
+    pub fn has_component<T: Component + 'static>(&self) -> bool {
+        self.components
+            .iter()
+            .find(|component| component.as_any().type_id() == TypeId::of::<T>())
+            .is_some()
+    }
+
+    /// Gets a component of type T from the node
     pub fn get_component<T: Component + 'static>(&self) -> Option<&T> {
         self.components
             .iter()
             .find(|component| component.as_any().type_id() == TypeId::of::<T>())
             .and_then(|component| component.as_any().downcast_ref())
     }
+
+    /// Gets a mutable component of type T from the node
     pub fn get_component_mut<T: Component + 'static>(&mut self) -> Option<&mut T> {
         self.components
             .iter_mut()
             .find(|component| component.as_any().type_id() == TypeId::of::<T>())
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
+
+    /// Gets mutable components of type (T, T, ...) from the node
     pub fn get_components_mut<'a, T: ComponentsMut<'a>>(&'a mut self) -> T {
         T::from_node(self)
     }
 
+    /// Adds a component of type T to the node
     pub fn add_component<T: Component + 'static>(&mut self, component: T) -> &mut Self {
         self.components.push(Box::new(component));
         self
     }
+
+    /// Adds a child to the node
     pub fn add_child(&mut self, mut child: Node) -> &mut Self {
         child.parent = Some(self.name.clone());
         self.children.push(child);
@@ -291,6 +311,19 @@ impl World {
             );
         }
         node.unwrap()
+    }
+
+    pub fn get_global_node_with_component<T: Component + 'static>(&self) -> &Node {
+        self.global_nodes
+            .iter()
+            .find(|n| n.has_component::<T>())
+            .unwrap()
+    }
+    pub fn get_global_node_with_component_mut<T: Component + 'static>(&mut self) -> &mut Node {
+        self.global_nodes
+            .iter_mut()
+            .find(|n| n.has_component::<T>())
+            .unwrap()
     }
 
     pub fn serialize_scene(&self) -> Result<(), std::io::Error> {

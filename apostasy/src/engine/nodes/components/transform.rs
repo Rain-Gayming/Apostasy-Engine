@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct Transform {
     pub position: Vector3<f32>,
     pub rotation: Quaternion<f32>,
-    pub yaw: f32,
-    pub pitch: f32,
+    pub rotation_euler: Vector3<f32>,
     pub scale: Vector3<f32>,
     up: Vector3<f32>,
     forward: Vector3<f32>,
@@ -33,8 +32,7 @@ impl Default for Transform {
         Self {
             position: Vector3::new(0.0, 0.0, 0.0),
             rotation: Quaternion::one(),
-            yaw: 0.0,
-            pitch: 0.0,
+            rotation_euler: Vector3::new(0.0, 0.0, 0.0),
             scale: Vector3::new(1.0, 1.0, 1.0),
 
             global_position: Vector3::new(0.0, 0.0, 0.0),
@@ -52,12 +50,16 @@ impl Transform {
     pub fn calculate_rotation(&mut self) {
         self.rotation = Quaternion::from(Euler {
             x: Deg(0.0),
-            y: Deg(self.yaw),
+            y: Deg(self.rotation_euler.y),
             z: Deg(0.0),
         }) * Quaternion::from(Euler {
-            x: Deg(self.pitch),
+            x: Deg(self.rotation_euler.x),
             y: Deg(0.0),
             z: Deg(0.0),
+        }) * Quaternion::from(Euler {
+            x: Deg(0.0),
+            y: Deg(0.0),
+            z: Deg(self.rotation_euler.z),
         });
     }
 
