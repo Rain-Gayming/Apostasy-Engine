@@ -1,0 +1,12 @@
+name: material
+base_color: [0.0, 0.0, 0.0, 1.0]
+metallic: 0.0
+roughness: 0.0
+emissive: [0.0, 0.0, 0.0]
+alpha_mode: Opaque
+alpha_cutoff: 0.5
+double_sided: false
+albedo_texture: "temp.png"
+metallic_roughness_texture: "" 
+normal_texture: "" 
+emissive_texture: "" 

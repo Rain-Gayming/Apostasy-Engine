@@ -13,12 +13,14 @@ use crate::engine::{
     editor::EditorStorage,
     nodes::{
         Node, World,
-        components::camera::{Camera, get_perspective_projection},
-        components::transform::Transform,
+        components::{
+            camera::{Camera, get_perspective_projection},
+            transform::Transform,
+        },
         system::EditorUIFunction,
     },
     rendering::{
-        models::model::{ModelLoader, ModelRenderer, get_model},
+        models::model::{Material, ModelLoader, ModelRenderer},
         rendering_context::{ImageLayoutState, RenderingContext},
         swapchain::Swapchain,
     },
@@ -179,7 +181,7 @@ impl Renderer {
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX)
                 .offset(0)
-                .size(144);
+                .size(256);
 
             let pipeline_layout = context.device.create_pipeline_layout(
                 &vk::PipelineLayoutCreateInfo::default()
@@ -488,7 +490,7 @@ impl Renderer {
             let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
             let model_bytes: [u8; 64] = std::mem::transmute(model);
 
-            let mut push_constants = [0u8; 144];
+            let mut push_constants = [0u8; 256];
             push_constants[0..64].copy_from_slice(&mvp_bytes);
             push_constants[64..128].copy_from_slice(&model_bytes);
 
@@ -508,9 +510,30 @@ impl Renderer {
                         transform.global_position.x,
                         transform.global_position.y,
                         transform.global_position.z,
+                        0.0f32, // padding
                     ];
-                    let offset_bytes: [u8; 12] = std::mem::transmute(offset);
-                    push_constants[128..140].copy_from_slice(&offset_bytes);
+                    let offset_bytes: [u8; 16] = std::mem::transmute(offset);
+
+                    push_constants[128..144].copy_from_slice(&offset_bytes);
+
+                    let rotation = [
+                        transform.global_rotation.v.x,
+                        transform.global_rotation.v.y,
+                        transform.global_rotation.v.z,
+                        transform.global_rotation.s,
+                    ];
+
+                    let rotation_bytes: [u8; 16] = std::mem::transmute(rotation);
+                    push_constants[144..160].copy_from_slice(&rotation_bytes);
+
+                    let scale = [
+                        transform.global_scale.x,
+                        transform.global_scale.y,
+                        transform.global_scale.z,
+                        0.0f32, // padding
+                    ];
+                    let scale_bytes: [u8; 16] = std::mem::transmute(scale);
+                    push_constants[160..176].copy_from_slice(&scale_bytes);
 
                     device.cmd_push_constants(
                         command_buffer,
@@ -523,37 +546,44 @@ impl Renderer {
                     let mut model_name = model_renderer.loaded_model.clone();
                     model_name.push_str(".glb");
 
-                    let model = get_model(&model_name, model_loader);
+                    let model = model_loader.get_model(&model_name);
 
                     if let Some(model) = model {
-                        for mesh in &mut model.meshes {
-                            if mesh.material.base_color_texture.is_none()
-                                && let Some(ref texture_name) = mesh.material.texture_name.clone()
-                            {
-                                let texture = self
-                                    .context
-                                    .load_texture(
-                                        &texture_name,
-                                        self.command_pool,
-                                        self.descriptor_pool,
-                                        self.descriptor_set_layout,
-                                    )
-                                    .unwrap();
-
-                                mesh.material.base_color_texture = Some(texture);
-                                println!("texture loaded");
-                                println!("{}", mesh.material.base_color_texture.is_some());
+                        for mesh in model.meshes.clone() {
+                            if model_loader.get_material(&mesh.material).is_none() {
+                                model_loader
+                                    .materials
+                                    .insert(mesh.material.clone(), Material::default());
+                                continue;
                             }
+                            if let Some(material) = model_loader.get_material_mut(&mesh.material) {
+                                if material.albedo_texture().is_none()
+                                    && let Some(ref texture_name) =
+                                        material.albedo_texture_name.clone()
+                                {
+                                    let texture = self
+                                        .context
+                                        .load_texture(
+                                            &texture_name,
+                                            self.command_pool,
+                                            self.descriptor_pool,
+                                            self.descriptor_set_layout,
+                                        )
+                                        .unwrap();
 
-                            if let Some(ref texture) = mesh.material.base_color_texture {
-                                device.cmd_bind_descriptor_sets(
-                                    command_buffer,
-                                    vk::PipelineBindPoint::GRAPHICS,
-                                    pipeline_layout,
-                                    0,
-                                    &[texture.descriptor_set],
-                                    &[],
-                                );
+                                    material.set_albedo_texture(texture);
+                                }
+
+                                if let &mut Some(ref texture) = material.albedo_texture() {
+                                    device.cmd_bind_descriptor_sets(
+                                        command_buffer,
+                                        vk::PipelineBindPoint::GRAPHICS,
+                                        pipeline_layout,
+                                        0,
+                                        &[texture.descriptor_set],
+                                        &[],
+                                    );
+                                }
                             }
 
                             device.cmd_bind_vertex_buffers(
