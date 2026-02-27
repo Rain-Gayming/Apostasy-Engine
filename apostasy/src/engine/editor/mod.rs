@@ -2,9 +2,12 @@ use crate::{
     self as apostasy,
     engine::{
         editor::inspectable::InspectValue,
-        nodes::components::{
-            camera::Camera, collider::Collider, physics::Physics, transform::Transform,
-            velocity::Velocity,
+        nodes::{
+            Node,
+            components::{
+                camera::Camera, collider::Collider, physics::Physics, transform::Transform,
+                velocity::Velocity,
+            },
         },
         rendering::models::model::ModelRenderer,
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
@@ -16,7 +19,7 @@ use crate::{engine::nodes::World, log};
 use apostasy_macros::editor_ui;
 use egui::{
     Align2, CollapsingHeader, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense,
-    Stroke, Ui, Vec2, Window, pos2,
+    Stroke, Ui, Vec2, Window, collapsing_header::CollapsingState, pos2,
 };
 use winit::{event::MouseButton, keyboard::PhysicalKey};
 
@@ -180,7 +183,6 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize) {
         });
     }
 }
-
 #[editor_ui]
 pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
     if !editor_storage.is_editor_open {
@@ -205,69 +207,92 @@ pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &m
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.add_space(4.0);
-                    let mut names = Vec::new();
-                    for node in world.get_all_nodes_mut() {
-                        let base_name = node.name.clone();
 
-                        // check if name already exists
-                        if names.contains(&base_name) {
-                            let mut counter = 1;
-                            let mut new_name = format!("{} ({})", base_name, counter);
+                    // collect root children names to avoid borrowing world in the recursive fn
+                    let root_children: Vec<Node> = world.scene.root_node.children.clone();
 
-                            // keep incrementing until it finds an unused name
-                            while names.contains(&new_name) {
-                                counter += 1;
-                                new_name = format!("{} ({})", base_name, counter);
-                            }
-
-                            node.name = new_name.clone();
-                            names.push(new_name);
-                        } else {
-                            names.push(base_name);
-                        }
-
-                        ui.horizontal(|ui| {
-                            ui.add_space(4.0);
-
-                            let desired_size = Vec2::new(ui.available_width() - 5.0, 20.0);
-                            let (rect, response) =
-                                ui.allocate_exact_size(desired_size, Sense::click());
-
-                            let selected;
-                            if !editor_storage.selected_node.is_empty() {
-                                selected = editor_storage.selected_node == node.name;
-                            } else {
-                                selected = false;
-                            }
-
-                            // hover/click/ignored colors
-                            let color = if selected {
-                                Color32::from_rgb(0, 120, 215)
-                            } else if response.hovered() {
-                                Color32::from_gray(70)
-                            } else {
-                                Color32::TRANSPARENT
-                            };
-
-                            // draw a background
-                            ui.painter().rect_filled(rect, 0.0, color);
-                            // draw the name
-                            ui.painter().text(
-                                rect.left_center() + Vec2::new(4.0, 0.0),
-                                Align2::LEFT_CENTER,
-                                node.name.clone(),
-                                FontId::new(11.0, FontFamily::Proportional),
-                                Color32::WHITE,
-                            );
-                            if response.clicked() {
-                                editor_storage.selected_node = node.name.clone();
-                            }
-                        });
+                    // draw the nodes
+                    for node in &root_children {
+                        draw_node(ui, node, editor_storage, 0);
                     }
 
                     ui.allocate_space(ui.available_size());
                 });
         });
+}
+
+/// Adds a node to the editor hierarchy
+fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage, depth: usize) {
+    let indent = depth as f32 * 10.0;
+    let has_children = !node.children.is_empty();
+    let selected =
+        !editor_storage.selected_node.is_empty() && editor_storage.selected_node == node.name;
+
+    // If the node has children, draw a collapsing header for the children
+    if has_children {
+        let id = ui.make_persistent_id(&node.name);
+
+        // Load the collapsing state and populate it with the node's children
+        CollapsingState::load_with_default_open(ui.ctx(), id, false)
+            .show_header(ui, |ui: &mut egui::Ui| {
+                ui.add_space(indent);
+                draw_node_row(ui, node, selected, editor_storage);
+            })
+            .body(|ui| {
+                for child in &node.children {
+                    draw_node(ui, child, editor_storage, depth + 1);
+                }
+            });
+    } else {
+        ui.horizontal(|ui| {
+            // indent the node
+            // the + 18 is to account for the collapsing header keeping everything aligned
+            let indent = indent
+                + if node.parent.as_ref().unwrap() == &"root".to_string() {
+                    18.0
+                } else {
+                    0.0
+                };
+            ui.add_space(indent);
+            // draw the node
+            draw_node_row(ui, node, selected, editor_storage);
+        });
+    }
+}
+
+/// Draws a node row in the editor hierarchy
+fn draw_node_row(
+    ui: &mut egui::Ui,
+    node: &Node,
+    selected: bool,
+    editor_storage: &mut EditorStorage,
+) {
+    let desired_size = Vec2::new(ui.available_width() - 5.0, 20.0);
+    let (rect, response) = ui.allocate_exact_size(desired_size, Sense::click());
+
+    // selection / hover / click colors
+    let color = if selected {
+        Color32::from_rgb(0, 120, 215)
+    } else if response.hovered() {
+        Color32::from_gray(70)
+    } else {
+        Color32::TRANSPARENT
+    };
+
+    // draw the color needed and the name
+    ui.painter().rect_filled(rect, 0.0, color);
+    ui.painter().text(
+        rect.left_center() + Vec2::new(4.0, 0.0),
+        Align2::LEFT_CENTER,
+        &node.name,
+        FontId::new(11.0, FontFamily::Proportional),
+        Color32::WHITE,
+    );
+
+    // set the selected node if the node is clicked
+    if response.clicked() {
+        editor_storage.selected_node = node.name.clone();
+    }
 }
 
 #[editor_ui]

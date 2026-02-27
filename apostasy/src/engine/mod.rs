@@ -151,6 +151,10 @@ impl Engine {
         camera.add_component(Camera::default());
         camera.add_component(Transform::default());
 
+        let mut new_node = Node::new();
+
+        camera.add_child(new_node);
+
         let mut player = Node::new();
         player.name = "player".to_string();
         player.add_component(Transform::default());
