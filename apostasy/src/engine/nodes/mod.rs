@@ -25,6 +25,7 @@ pub mod system;
 #[derive(Clone)]
 pub struct Node {
     pub name: String,
+    pub id: u64,
     pub editing_name: String,
     pub children: Vec<Node>,
     pub parent: Option<String>,
@@ -41,6 +42,7 @@ impl Node {
     pub fn new() -> Self {
         Self {
             name: "Node".to_string(),
+            id: 0,
             editing_name: "Node".to_string(),
             children: Vec::new(),
             parent: None,
@@ -133,12 +135,12 @@ impl Node {
     }
 
     // Remove a node by name from anywhere in the tree, returning it
-    pub fn remove_node_by_name(&mut self, name: &str) -> Option<Node> {
-        if let Some(pos) = self.children.iter().position(|c| c.name == name) {
+    pub fn remove_node(&mut self, id: u64) -> Option<Node> {
+        if let Some(pos) = self.children.iter().position(|c| c.id == id) {
             return Some(self.children.remove(pos));
         }
         for child in self.children.iter_mut() {
-            if let Some(found) = child.remove_node_by_name(name) {
+            if let Some(found) = child.remove_node(id) {
                 return Some(found);
             }
         }
@@ -146,14 +148,14 @@ impl Node {
     }
 
     // Insert a node as a child of the node with the given name
-    pub fn insert_under(&mut self, parent_name: &str, mut node: Node) -> bool {
-        if self.name == parent_name {
+    pub fn insert_under(&mut self, parent_id: u64, mut node: Node) -> bool {
+        if self.id == parent_id {
             node.parent = Some(self.name.clone());
             self.children.push(node);
             return true;
         }
         for child in self.children.iter_mut() {
-            if child.insert_under(parent_name, node.clone()) {
+            if child.insert_under(parent_id, node.clone()) {
                 return true; // a bit wasteful due to clone, see note below
             }
             // note: ideally use Option passing to avoid clone, this is simplified
@@ -201,6 +203,7 @@ impl_components_mut!(A, B, C, D);
 
 pub struct World {
     pub scene: Scene,
+    pub nodes: u64,
     pub global_nodes: Vec<Node>,
     pub input_manager: InputManager,
 }
@@ -215,6 +218,7 @@ impl World {
     pub fn new() -> Self {
         Self {
             scene: Scene::new(),
+            nodes: 0,
             global_nodes: Vec::new(),
             input_manager: InputManager::default(),
         }
@@ -223,16 +227,18 @@ impl World {
     pub fn add_global_node(&mut self, node: Node) {
         self.global_nodes.push(node);
     }
-    pub fn add_node(&mut self, node: Node) -> &mut Self {
+    pub fn add_node(&mut self, mut node: Node) -> &mut Self {
+        node.id = self.nodes;
+        self.nodes += 1;
         self.scene.root_node.add_child(node);
         self.check_node_names();
         self
     }
 
-    pub fn add_new_node(&mut self) -> &mut Self {
+    pub fn add_new_node(&mut self) {
         self.add_node(Node::new());
         self.check_node_names();
-        self
+        self.check_node_ids();
     }
 
     pub fn get_all_nodes(&self) -> Vec<&Node> {
@@ -280,6 +286,21 @@ impl World {
             .find(|node| node.name == name)
             .unwrap()
     }
+
+    pub fn get_node(&self, id: u64) -> &Node {
+        self.get_all_nodes()
+            .into_iter()
+            .find(|node| node.id == id)
+            .unwrap()
+    }
+
+    pub fn get_node_mut(&mut self, id: u64) -> &mut Node {
+        self.get_all_nodes_mut()
+            .into_iter()
+            .find(|node| node.id == id)
+            .unwrap()
+    }
+
     pub fn start(&mut self) {
         let mut systems = inventory::iter::<StartSystem>().collect::<Vec<_>>();
         systems.sort_by(|a, b| a.priority.cmp(&b.priority));
@@ -384,6 +405,7 @@ impl World {
 
     pub fn check_node_names(&mut self) {
         let mut names = Vec::new();
+
         for node in self.get_all_nodes_mut() {
             let base_name = node.name.clone();
 
@@ -404,6 +426,20 @@ impl World {
                 names.push(base_name);
             }
         }
+    }
+    pub fn check_node_ids(&mut self) {
+        let mut ids = Vec::new();
+        let mut next_id = self.nodes;
+
+        for node in self.get_all_nodes_mut() {
+            if ids.contains(&node.id) {
+                node.id = next_id;
+                next_id += 1;
+            }
+            ids.push(node.id);
+        }
+
+        self.nodes = next_id;
     }
 }
 const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";

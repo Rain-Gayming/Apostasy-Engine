@@ -16,6 +16,7 @@ pub struct SerializedComponent {
 /// A serialized node, contains a list of components and children
 pub struct SerializedNode {
     name: String,
+    id: u64,
     components: Vec<SerializedComponent>,
     children: Vec<SerializedNode>,
 }
@@ -73,6 +74,7 @@ pub fn serialize_node(node: &Node) -> SerializedNode {
 
     SerializedNode {
         name: node.name.clone(),
+        id: node.id,
         components,
         children: node.children.iter().map(serialize_node).collect(),
     }
@@ -91,6 +93,7 @@ pub fn deserialize_node(serialized: SerializedNode) -> Node {
 
     Node {
         name: serialized.name.clone(),
+        id: serialized.id,
         editing_name: serialized.name,
         children: serialized
             .children
