@@ -65,24 +65,24 @@ root_children:
       is_static: true
       is_area: false
   children: []
-- name: player
-  id: 1
+- name: Player
+  id: 4
   components:
   - type: Transform
     data:
       position:
         x: 0.0
         y: 0.0
-        z: -10.0
+        z: 0.0
       rotation:
         v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
+          x: 0.2890852391719818
+          y: 0.4713207483291626
+          z: -0.16690343618392944
+        s: 0.8163514733314514
       rotation_euler:
-        x: 0.0
-        y: 0.0
+        x: 39.0
+        y: 60.0
         z: 0.0
       scale:
         x: 1.0
@@ -103,13 +103,13 @@ root_children:
       global_position:
         x: 0.0
         y: 0.0
-        z: -10.0
+        z: 0.0
       global_rotation:
         v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
+          x: 0.2890852391719818
+          y: 0.4713207483291626
+          z: -0.16690343618392944
+        s: 0.8163514733314514
       global_scale:
         x: 1.0
         y: 1.0
@@ -120,43 +120,22 @@ root_children:
         x: 0.0
         y: 0.0
         z: 0.0
-  - type: Physics
+  - type: Player
     data:
-      mass: 1.0
-      friction: 0.0
-      gravity: -9.8100004196167
-      is_gravity_enabled: false
-  - type: Collider
+      is_active: false
+  - type: Player
     data:
-      half_extents:
-        x: 0.5
-        y: 0.5
-        z: 0.5
-      offset:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      is_static: false
-      is_area: false
-  - type: Raycast
+      is_active: true
+  - type: Player
     data:
-      direction:
-        x: -0.0
-        y: -1.0
-        z: -0.0
-      max_distance: 1.0
+      is_active: true
   - type: Player
     data:
       is_active: true
   children:
-  - name: camera
-    id: 2
+  - name: Camera
+    id: 5
     components:
-    - type: Camera
-      data:
-        fov_y: 90.0
-        near: 0.0010000000474974513
-        far: 10000.0
     - type: Transform
       data:
         position:
@@ -192,19 +171,22 @@ root_children:
         global_position:
           x: 0.0
           y: 0.0
-          z: -10.0
+          z: 0.0
         global_rotation:
           v:
-            x: 0.0
-            y: 0.0
-            z: 0.0
-          s: 1.0
+            x: 0.2890852391719818
+            y: 0.4713207483291626
+            z: -0.16690343618392944
+          s: 0.8163514733314514
         global_scale:
           x: 1.0
           y: 1.0
           z: 1.0
-    children:
-    - name: Node
-      id: 3
-      components: []
-      children: []
+    - type: Camera
+      data:
+        fov_y: 90.0
+        near: 0.0010000000474974513
+        far: 10000.0
+    children: []
+name: DevScene
+is_primary: true

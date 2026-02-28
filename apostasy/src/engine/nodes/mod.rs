@@ -1,6 +1,9 @@
 use crate::{
     self as apostasy,
-    engine::nodes::{scene_serialization::find_registration, system::EditorFixedUpdateSystem},
+    engine::nodes::{
+        scene::SceneManager, scene_serialization::find_registration,
+        system::EditorFixedUpdateSystem,
+    },
     log, log_warn,
 };
 use std::any::TypeId;
@@ -224,6 +227,7 @@ impl_components_mut!(A, B, C, D);
 
 pub struct World {
     pub scene: Scene,
+    pub scene_manager: SceneManager,
     pub nodes: u64,
     pub global_nodes: Vec<Node>,
     pub input_manager: InputManager,
@@ -240,6 +244,7 @@ impl World {
     pub fn new() -> Self {
         Self {
             scene: Scene::new(),
+            scene_manager: SceneManager::new(),
             nodes: 0,
             global_nodes: Vec::new(),
             input_manager: InputManager::default(),
@@ -440,6 +445,8 @@ impl World {
                 .iter()
                 .map(serialize_node)
                 .collect(),
+            name: self.scene.name.clone(),
+            is_primary: self.scene.is_primary,
         };
         let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, self.scene.name);
         std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
@@ -463,6 +470,21 @@ impl World {
         self.scene.name = "Scene".to_string();
         self.scene.root_node.children = Vec::new();
         self.nodes = 0;
+    }
+
+    pub fn serialize_scene_not_loaded(&self, scene: &Scene) -> Result<(), std::io::Error> {
+        let serialized = SerializedScene {
+            root_children: scene
+                .root_node
+                .children
+                .iter()
+                .map(serialize_node)
+                .collect(),
+            name: scene.name.clone(),
+            is_primary: scene.is_primary,
+        };
+        let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene.name);
+        std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
     pub fn check_node_names(&mut self) {
@@ -531,7 +553,7 @@ impl World {
         Ok(())
     }
 }
-const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
+pub const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
 
 #[start]
 pub fn start_system(world: &mut World) {

@@ -25,6 +25,8 @@ pub struct SerializedNode {
 /// A serialized scene, contains a list of root children
 pub struct SerializedScene {
     pub root_children: Vec<SerializedNode>,
+    pub name: String,
+    pub is_primary: bool,
 }
 
 /// A component registrator, used to serialize and deserialize components
@@ -48,12 +50,9 @@ pub fn serialize_node(node: &Node) -> SerializedNode {
         .iter()
         .filter_map(|component| {
             let type_name = component.type_name();
-            println!(
-                "Trying to serialize component with type_name: '{}'",
-                type_name
-            );
+
             let registration = find_registration(type_name);
-            println!("Registration found: {}", registration.is_some());
+
             let registration = registration?;
             Some(SerializedComponent {
                 type_name: type_name.to_string(),
@@ -104,14 +103,5 @@ pub fn deserialize_node(serialized: SerializedNode) -> Node {
             .collect(),
         parent: None,
         components,
-    }
-}
-
-/// Prints the registered components
-pub fn debug_registered_components() {
-    let registrations: Vec<_> = inventory::iter::<ComponentRegistrator>().collect();
-    println!("Registered components ({}):", registrations.len());
-    for r in registrations {
-        println!("  - {}", r.type_name);
     }
 }

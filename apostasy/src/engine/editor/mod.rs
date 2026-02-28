@@ -3,11 +3,12 @@ use crate::{
     engine::{
         editor::inspectable::InspectValue,
         nodes::{
-            Node,
+            ENGINE_SCENE_SAVE_PATH, Node,
             components::{
                 camera::Camera, collider::Collider, physics::Physics, player::Player,
                 transform::Transform, velocity::Velocity,
             },
+            scene::Scene,
         },
         rendering::models::model::ModelRenderer,
         windowing::{
@@ -15,6 +16,7 @@ use crate::{
             input_manager::{KeyAction, KeyBind, MouseBind},
         },
     },
+    log_warn,
 };
 use std::path::{Path, PathBuf};
 
@@ -80,6 +82,9 @@ pub struct EditorStorage {
     pub inspector_position_prev: WindowPosition,
     pub file_tree_position_prev: WindowPosition,
     pub console_position_prev: WindowPosition,
+
+    pub is_scene_manager_open: bool,
+    pub scene_name: String,
 }
 
 pub enum DragTarget {
@@ -161,6 +166,9 @@ impl Default for EditorStorage {
             inspector_position_prev: WindowPosition::Right,
             file_tree_position_prev: WindowPosition::Left,
             console_position_prev: WindowPosition::Bottom,
+
+            is_scene_manager_open: false,
+            scene_name: String::new(),
         };
 
         editor_storage.deserialize();
@@ -285,11 +293,25 @@ pub fn top_bar_ui(context: &mut Context, world: &mut World, editor_storage: &mut
                 if ui.button("InputManager").clicked() {
                     editor_storage.is_keybind_editor_open = !editor_storage.is_keybind_editor_open;
                 }
+                if ui.button("SceneManager").clicked() {
+                    editor_storage.is_scene_manager_open = !editor_storage.is_scene_manager_open;
+                }
                 if ui.button("Layout").clicked() {
                     editor_storage.is_layout_editor_open = !editor_storage.is_layout_editor_open;
                 }
 
                 if ui.button("Play").clicked() {
+                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                    world.scene_manager.get_primary_scene();
+
+                    let scene = world
+                        .scene_manager
+                        .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+
+                    world.scene = scene;
+                }
+
+                if ui.button("Play Current").clicked() {
                     editor_storage.is_editor_open = !editor_storage.is_editor_open;
                 }
             });
@@ -423,24 +445,15 @@ pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &m
 
 pub fn render_hierarchy(ui: &mut egui::Ui, world: &mut World, editor_storage: &mut EditorStorage) {
     ui.horizontal(|ui| {
-        ui.label("Scene Name:");
-        ui.text_edit_singleline(&mut world.scene.name);
+        ui.label(format!("Scene Name: {}", world.scene.name));
     });
     ui.horizontal(|ui| {
         if ui.button("New Entity").clicked() {
             world.add_new_node();
         }
-        if ui.button("New Scene").clicked() {
-            world.new_scene();
-        }
-    });
 
-    ui.horizontal(|ui| {
         if ui.button("Save Scene").clicked() {
             world.serialize_scene().unwrap();
-        }
-        if ui.button("Load Scene").clicked() {
-            world.deserialize_scene("Scene".to_string()).unwrap();
         }
     });
 
@@ -929,6 +942,146 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize, search: String) 
             });
         }
     }
+}
+
+#[editor_ui]
+pub fn scene_manager_ui(
+    context: &mut Context,
+    world: &mut World,
+    editor_storage: &mut EditorStorage,
+) {
+    if !editor_storage.is_editor_open {
+        return;
+    }
+
+    if !editor_storage.is_scene_manager_open {
+        return;
+    }
+
+    Window::new("Scene Manager")
+        .default_size([400.0, 500.0])
+        .show(context, |ui| {
+            ui.collapsing("Add Scene", |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Name:");
+                    ui.text_edit_singleline(&mut editor_storage.scene_name);
+                });
+
+                ui.add_space(4.0);
+
+                let scene_path = format!(
+                    "{}/{}.yaml",
+                    ENGINE_SCENE_SAVE_PATH, editor_storage.scene_name
+                );
+                let scene_path = Path::new(scene_path.as_str());
+                let can_add = !editor_storage.scene_name.is_empty() && !scene_path.exists();
+
+                ui.add_enabled_ui(can_add, |ui| {
+                    if ui.button("Add Scene").clicked() {
+                        if can_add {
+                            let mut scene = Scene::new();
+                            scene.name = editor_storage.scene_name.clone();
+                            world.serialize_scene_not_loaded(&scene).unwrap();
+                            let mut scene = Scene::new();
+                            scene.name = editor_storage.scene_name.clone();
+                            world.scene_manager.scenes.push(scene);
+                            editor_storage.scene_name.clear();
+                        } else {
+                            log_warn!("Scene already exists");
+                        }
+                    }
+                });
+            });
+
+            ui.separator();
+            ui.collapsing("Scenes", |ui| {
+                ScrollArea::vertical()
+                    .id_salt("scenes_scroll")
+                    .show(ui, |ui| {
+                        let scene_names: Vec<String> = world
+                            .scene_manager
+                            .scenes
+                            .iter()
+                            .map(|s| s.name.clone())
+                            .collect();
+
+                        for mut name in scene_names {
+                            ui.horizontal(|ui| {
+                                let mut new_name = name.clone();
+                                ui.text_edit_singleline(&mut new_name);
+                                ui.add_space(4.0);
+
+                                if new_name != name {
+                                    let new_path =
+                                        format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, new_name);
+                                    if !Path::new(&new_path).exists() {
+                                        let old_path =
+                                            format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, name);
+                                        std::fs::rename(&old_path, &new_path).unwrap();
+
+                                        if let Some(scene) = world
+                                            .scene_manager
+                                            .scenes
+                                            .iter_mut()
+                                            .find(|s| s.name == name)
+                                        {
+                                            scene.name = new_name.clone();
+                                        }
+
+                                        if world.scene.name == name {
+                                            world.scene.name = new_name.clone();
+                                        }
+
+                                        if let Some(scene) = world
+                                            .scene_manager
+                                            .scenes
+                                            .iter()
+                                            .find(|s| s.name == new_name)
+                                        {
+                                            world.serialize_scene_not_loaded(scene).unwrap();
+                                        }
+                                    }
+                                }
+                                let (is_primary, scene_exists) = world
+                                    .scene_manager
+                                    .scenes
+                                    .iter()
+                                    .find(|s| s.name == new_name)
+                                    .map(|s| (s.is_primary, true))
+                                    .unwrap_or((false, false));
+
+                                if scene_exists {
+                                    let mut primary = is_primary;
+                                    if ui.checkbox(&mut primary, "Primary").clicked() {
+                                        world
+                                            .scene_manager
+                                            .set_scene_primary(&new_name, !is_primary);
+                                        if let Some(scene) = world
+                                            .scene_manager
+                                            .scenes
+                                            .iter()
+                                            .find(|s| s.name == new_name)
+                                        {
+                                            world.serialize_scene_not_loaded(scene).unwrap();
+                                        }
+                                    }
+                                }
+
+                                ui.add_space(4.0);
+
+                                if ui.button("load").clicked() {
+                                    let scene = world.scene_manager.load_scene(&name);
+                                    world.scene = scene;
+                                }
+
+                                if ui.button("❌").clicked() {
+                                    world.scene_manager.remove_scene(&name);
+                                }
+                            });
+                        }
+                    });
+            });
+        });
 }
 
 #[editor_ui]
