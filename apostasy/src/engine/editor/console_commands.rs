@@ -63,7 +63,7 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
 
     match editor_storage.console_position {
         WindowPosition::Floating => {
-            Window::new("Console")
+            let window = Window::new("Console")
                 .default_size([100.0, 100.0])
                 .show(context, |ui| {
                     render_console_ui(
@@ -73,31 +73,11 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
                         &mut command_inputs,
                     );
                 });
+            editor_storage.console_size = window.unwrap().response.rect.size();
         }
         WindowPosition::Left => {
-            SidePanel::left("Console").show(context, |ui| {
-                render_console_ui(
-                    ui,
-                    editor_storage,
-                    &mut command_to_execute,
-                    &mut command_inputs,
-                );
-            });
-        }
-        WindowPosition::Right => {
-            SidePanel::right("Console").show(context, |ui| {
-                render_console_ui(
-                    ui,
-                    editor_storage,
-                    &mut command_to_execute,
-                    &mut command_inputs,
-                );
-            });
-        }
-        WindowPosition::Top => {
-            TopBottomPanel::top("Console")
-                .resizable(true)
-                .min_height(64.0)
+            let window = SidePanel::left("Console")
+                .default_width(editor_storage.console_size.x)
                 .show(context, |ui| {
                     render_console_ui(
                         ui,
@@ -106,11 +86,41 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
                         &mut command_inputs,
                     );
                 });
+            editor_storage.console_size = window.response.rect.size();
         }
-        WindowPosition::Bottom => {
-            let panel = TopBottomPanel::bottom("Console")
+        WindowPosition::Right => {
+            let window = SidePanel::right("Console")
+                .default_width(editor_storage.console_size.x)
+                .show(context, |ui| {
+                    render_console_ui(
+                        ui,
+                        editor_storage,
+                        &mut command_to_execute,
+                        &mut command_inputs,
+                    );
+                });
+            editor_storage.console_size = window.response.rect.size();
+        }
+        WindowPosition::Top => {
+            let window = TopBottomPanel::top("Console")
                 .resizable(true)
                 .min_height(64.0)
+                .default_height(editor_storage.console_size.y)
+                .show(context, |ui| {
+                    render_console_ui(
+                        ui,
+                        editor_storage,
+                        &mut command_to_execute,
+                        &mut command_inputs,
+                    );
+                });
+            editor_storage.console_size = window.response.rect.size();
+        }
+        WindowPosition::Bottom => {
+            let window = TopBottomPanel::bottom("Console")
+                .resizable(true)
+                .min_height(64.0)
+                .default_height(editor_storage.console_size.y)
                 .show(context, |ui| {
                     render_console_ui(
                         ui,
@@ -120,7 +130,7 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
                     );
                 });
 
-            editor_storage.console_size.y = panel.response.rect.height();
+            editor_storage.console_size = window.response.rect.size();
         }
     }
 

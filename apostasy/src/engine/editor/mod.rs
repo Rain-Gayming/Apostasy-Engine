@@ -21,6 +21,7 @@ use egui::{
     Align2, CollapsingHeader, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense,
     SidePanel, Stroke, TopBottomPanel, Ui, Vec2, Window, collapsing_header::CollapsingState, pos2,
 };
+use serde::{Deserialize, Serialize};
 use winit::{event::MouseButton, keyboard::PhysicalKey};
 
 pub mod console_commands;
@@ -30,20 +31,21 @@ pub mod inspectable;
 pub struct EditorStorage {
     pub component_text_edit: String,
 
+    pub is_editor_open: bool,
+
+    // file tree editor
     pub file_tree_search: String,
     pub file_tree: Option<FileNode>,
     pub file_tree_position: WindowPosition,
+    pub file_tree_size: Vec2,
 
+    // console editor
     pub is_console_open: bool,
     pub console_log: Vec<String>,
     pub console_size: Vec2,
     pub console_filter: String,
     pub console_command: String,
     pub console_position: WindowPosition,
-
-    pub selected_node: Option<u64>,
-
-    pub is_editor_open: bool,
 
     // keybind editor
     pub is_keybind_editor_open: bool,
@@ -57,13 +59,19 @@ pub struct EditorStorage {
     pub mousebind_button: MouseButton,
     pub mousebind_action: KeyAction,
 
+    // hierarchy editor
     pub dragging_node: Option<u64>,
     pub drag_target: Option<DragTarget>,
     pub hierarchy_position: WindowPosition,
+    pub hierarchy_size: Vec2,
+    pub selected_node: Option<u64>,
 
+    // inspector editor
     pub inspector_position: WindowPosition,
+    pub inspector_size: Vec2,
 
     pub is_layout_editor_open: bool,
+    pub is_layout_dirty: bool,
     pub hierarchy_position_prev: WindowPosition,
     pub inspector_position_prev: WindowPosition,
     pub file_tree_position_prev: WindowPosition,
@@ -75,7 +83,7 @@ pub enum DragTarget {
     Root,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WindowPosition {
     Left,
     Right,
@@ -84,23 +92,40 @@ pub enum WindowPosition {
     Floating,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct SerializedEditorStorage {
+    pub hierarchy_position: WindowPosition,
+    pub inspector_position: WindowPosition,
+    pub file_tree_position: WindowPosition,
+    pub console_position: WindowPosition,
+
+    pub hierarchy_size: [f32; 2],
+    pub inspector_size: [f32; 2],
+    pub file_tree_size: [f32; 2],
+    pub console_size: [f32; 2],
+}
+
+const ENGINE_EDITOR_SAVE_PATH: &str = "res/editor.yaml";
+
 impl Default for EditorStorage {
     fn default() -> Self {
-        Self {
+        let mut editor_storage = Self {
             component_text_edit: String::new(),
 
             file_tree_search: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
             file_tree_position: WindowPosition::Left,
+            file_tree_size: Vec2::new(100.0, 100.0),
 
+            is_editor_open: true,
+
+            // console editor
             is_console_open: false,
             console_log: Vec::new(),
-            console_size: Vec2::new(100.0, 100.0),
             console_filter: String::new(),
             console_command: String::new(),
-            selected_node: None,
-            is_editor_open: true,
             console_position: WindowPosition::Bottom,
+            console_size: Vec2::new(100.0, 100.0),
 
             // keybind editor
             is_keybind_editor_open: false,
@@ -114,18 +139,27 @@ impl Default for EditorStorage {
             mousebind_button: MouseButton::Left,
             mousebind_action: KeyAction::Press,
 
+            // hierarchy editor
             dragging_node: None,
             drag_target: None,
             hierarchy_position: WindowPosition::Left,
+            selected_node: None,
+            hierarchy_size: Vec2::new(100.0, 100.0),
 
+            // inspector editor
             inspector_position: WindowPosition::Right,
+            inspector_size: Vec2::new(100.0, 100.0),
 
             is_layout_editor_open: false,
+            is_layout_dirty: false,
             hierarchy_position_prev: WindowPosition::Left,
             inspector_position_prev: WindowPosition::Right,
             file_tree_position_prev: WindowPosition::Left,
             console_position_prev: WindowPosition::Bottom,
-        }
+        };
+
+        editor_storage.deserialize();
+        editor_storage
     }
 }
 //
@@ -136,6 +170,48 @@ pub struct FileNode {
     pub children: Vec<FileNode>,
     pub is_dir: bool,
 }
+
+impl EditorStorage {
+    pub fn serialize(&self) {
+        let serialized = SerializedEditorStorage {
+            hierarchy_position: self.hierarchy_position,
+            inspector_position: self.inspector_position,
+            file_tree_position: self.file_tree_position,
+            console_position: self.console_position,
+
+            hierarchy_size: self.hierarchy_size.into(),
+            inspector_size: self.inspector_size.into(),
+            file_tree_size: self.file_tree_size.into(),
+            console_size: self.console_size.into(),
+        };
+
+        let path = format!("{}/{}.yaml", ENGINE_EDITOR_SAVE_PATH, "editor");
+
+        if !Path::new(&path).exists() {
+            std::fs::create_dir_all(ENGINE_EDITOR_SAVE_PATH).unwrap();
+        }
+
+        let res = std::fs::write(path, serde_yaml::to_string(&serialized).unwrap());
+    }
+
+    pub fn deserialize(&mut self) {
+        let path = format!("{}/{}.yaml", ENGINE_EDITOR_SAVE_PATH, "editor");
+
+        let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
+        let serialized: SerializedEditorStorage = serde_yaml::from_str(&contents).unwrap();
+
+        self.hierarchy_position = serialized.hierarchy_position;
+        self.inspector_position = serialized.inspector_position;
+        self.file_tree_position = serialized.file_tree_position;
+        self.console_position = serialized.console_position;
+
+        self.hierarchy_size = serialized.hierarchy_size.into();
+        self.inspector_size = serialized.inspector_size.into();
+        self.file_tree_size = serialized.file_tree_size.into();
+        self.console_size = serialized.console_size.into();
+    }
+}
+
 impl FileNode {
     pub fn from_path(path: &Path) -> Self {
         // get the name of the file or directory
@@ -179,12 +255,28 @@ fn clear_panel_memory(context: &mut Context, name: &str) {
 }
 #[editor_ui(priority = 100)]
 pub fn top_bar_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+    if editor_storage.is_layout_dirty {
+        clear_panel_memory(context, "Hierarchy");
+        clear_panel_memory(context, "Inspector");
+        clear_panel_memory(context, "Files");
+        clear_panel_memory(context, "Console");
+        editor_storage.is_layout_dirty = false;
+    }
     TopBottomPanel::top("TopBar")
         .default_height(20.0)
         .show(context, |ui| {
             ui.add_space(1.0);
 
             ui.horizontal(|ui| {
+                if ui.button("Save Editor").clicked() {
+                    editor_storage.serialize();
+                }
+
+                // if ui.button("Load Editor").clicked() {
+                //     editor_storage.deserialize();
+                //     editor_storage.is_layout_dirty = true;
+                // }
+
                 if ui.button("InputManager").clicked() {
                     editor_storage.is_keybind_editor_open = !editor_storage.is_keybind_editor_open;
                 }
@@ -269,41 +361,53 @@ pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &m
 
     match editor_storage.hierarchy_position {
         WindowPosition::Floating => {
-            Window::new("Hierarchy")
-                .default_size([100.0, 300.0])
+            if let Some(window) = Window::new("Hierarchy")
+                .default_size(editor_storage.hierarchy_size)
+                .resizable(true)
                 .show(context, |ui| {
                     render_hierarchy(ui, world, editor_storage);
-                });
+                })
+            {
+                editor_storage.hierarchy_size = window.response.rect.size();
+            }
         }
         WindowPosition::Left => {
-            SidePanel::left("Hierarchy")
-                .default_width(200.0)
+            let window = SidePanel::left("Hierarchy")
+                .default_width(editor_storage.hierarchy_size.x)
+                .resizable(true)
                 .show(context, |ui| {
                     render_hierarchy(ui, world, editor_storage);
                 });
+            editor_storage.hierarchy_size.x = window.response.rect.width();
         }
         WindowPosition::Right => {
-            SidePanel::right("Hierarchy")
-                .default_width(200.0)
+            let window = SidePanel::right("Hierarchy")
+                .default_width(editor_storage.hierarchy_size.x)
+                .resizable(true)
                 .show(context, |ui| {
                     render_hierarchy(ui, world, editor_storage);
                 });
+            editor_storage.hierarchy_size.x = window.response.rect.width();
         }
         WindowPosition::Top => {
-            TopBottomPanel::top("Hierarchy")
+            let window = TopBottomPanel::top("Hierarchy")
+                .default_height(editor_storage.hierarchy_size.y)
                 .resizable(true)
                 .min_height(64.0)
                 .show(context, |ui| {
                     render_hierarchy(ui, world, editor_storage);
                 });
+            editor_storage.hierarchy_size.y = window.response.rect.height();
         }
         WindowPosition::Bottom => {
-            TopBottomPanel::bottom("Hierarchy")
+            let window = TopBottomPanel::bottom("Hierarchy")
+                .default_height(editor_storage.hierarchy_size.y)
                 .resizable(true)
                 .min_height(64.0)
                 .show(context, |ui| {
                     render_hierarchy(ui, world, editor_storage);
                 });
+            editor_storage.hierarchy_size.y = window.response.rect.height();
         }
     }
 }
@@ -518,41 +622,48 @@ pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &m
     }
     match editor_storage.inspector_position {
         WindowPosition::Floating => {
-            Window::new("Inspector")
-                .default_size([100.0, 100.0])
+            let window = Window::new("Inspector")
+                .default_size(editor_storage.inspector_size)
                 .show(context, |ui| {
                     render_inspector(ui, world, editor_storage);
                 });
+            editor_storage.inspector_size = window.unwrap().response.rect.size();
         }
         WindowPosition::Left => {
-            SidePanel::left("Inspector")
-                .default_width(200.0)
+            let window = SidePanel::left("Inspector")
+                .default_width(editor_storage.inspector_size.x)
                 .show(context, |ui| {
                     render_inspector(ui, world, editor_storage);
                 });
+            editor_storage.inspector_size = window.response.rect.size();
         }
         WindowPosition::Right => {
-            SidePanel::right("Inspector")
-                .default_width(200.0)
+            let window = SidePanel::right("Inspector")
+                .default_width(editor_storage.inspector_size.x)
                 .show(context, |ui| {
                     render_inspector(ui, world, editor_storage);
                 });
+            editor_storage.inspector_size = window.response.rect.size();
         }
         WindowPosition::Top => {
-            TopBottomPanel::top("Inspector")
+            let window = TopBottomPanel::top("Inspector")
                 .resizable(true)
+                .default_height(editor_storage.inspector_size.y)
                 .min_height(64.0)
                 .show(context, |ui| {
                     render_inspector(ui, world, editor_storage);
                 });
+            editor_storage.inspector_size = window.response.rect.size();
         }
         WindowPosition::Bottom => {
-            TopBottomPanel::bottom("Inspector")
+            let window = TopBottomPanel::bottom("Inspector")
                 .resizable(true)
+                .default_height(editor_storage.inspector_size.y)
                 .min_height(64.0)
                 .show(context, |ui| {
                     render_inspector(ui, world, editor_storage);
                 });
+            editor_storage.inspector_size = window.response.rect.size();
         }
     }
 }
@@ -631,41 +742,48 @@ pub fn file_tree_ui(context: &mut Context, _world: &mut World, editor_storage: &
     }
     match editor_storage.file_tree_position {
         WindowPosition::Floating => {
-            Window::new("Files")
-                .default_size([100.0, 300.0])
+            let window = Window::new("Files")
+                .default_size(editor_storage.file_tree_size)
                 .show(context, |ui| {
                     render_file_tree_ui(ui, editor_storage);
                 });
+            editor_storage.file_tree_size = window.unwrap().response.rect.size();
         }
         WindowPosition::Left => {
-            SidePanel::left("Files")
-                .default_width(200.0)
+            let window = SidePanel::left("Files")
+                .default_width(editor_storage.file_tree_size.x)
                 .show(context, |ui| {
                     render_file_tree_ui(ui, editor_storage);
                 });
+            editor_storage.file_tree_size = window.response.rect.size();
         }
         WindowPosition::Right => {
-            SidePanel::right("Files")
-                .default_width(200.0)
+            let window = SidePanel::right("Files")
+                .default_width(editor_storage.file_tree_size.x)
                 .show(context, |ui| {
                     render_file_tree_ui(ui, editor_storage);
                 });
+            editor_storage.file_tree_size = window.response.rect.size();
         }
         WindowPosition::Top => {
-            TopBottomPanel::top("Files")
+            let window = TopBottomPanel::top("Files")
                 .resizable(true)
+                .default_height(editor_storage.file_tree_size.y)
                 .min_height(64.0)
                 .show(context, |ui| {
                     render_file_tree_ui(ui, editor_storage);
                 });
+            editor_storage.file_tree_size = window.response.rect.size();
         }
         WindowPosition::Bottom => {
-            TopBottomPanel::bottom("Files")
+            let window = TopBottomPanel::bottom("Files")
                 .resizable(true)
+                .default_height(editor_storage.file_tree_size.y)
                 .min_height(64.0)
                 .show(context, |ui| {
                     render_file_tree_ui(ui, editor_storage);
                 });
+            editor_storage.file_tree_size = window.response.rect.size();
         }
     }
 }
