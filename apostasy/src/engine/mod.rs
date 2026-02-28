@@ -1,12 +1,7 @@
 use crate::{
     self as apostasy,
     engine::{
-        nodes::components::{
-            collider::{Collider, CollisionEvents},
-            physics::Physics,
-            player::Player,
-            raycast::Raycast,
-        },
+        nodes::components::collider::{Collider, CollisionEvents},
         windowing::cursor_manager::CursorManager,
     },
 };
@@ -143,27 +138,10 @@ impl Engine {
         let mut world = World::new();
 
         let mut camera = Node::new();
-        camera.name = "camera".to_string();
+        camera.name = "editor_camera".to_string();
         camera.add_component(Camera::default());
         camera.add_component(Transform::default());
-
-        let mut new_node = Node::new();
-
-        camera.add_child(new_node);
-
-        let mut player = Node::new();
-        player.name = "player".to_string();
-        player.add_component(Transform::default());
-        player.add_component(Velocity::default());
-        player.add_component(Physics::default());
-        player.add_component(Collider::default());
-        player.add_component(Raycast::default());
-        player.add_component(Player::default());
-        let transform = player.get_component_mut::<Transform>().unwrap();
-        transform.position = Vector3::new(0.0, 0.0, -10.0);
-        player.get_component_mut::<Raycast>().unwrap().direction = -transform.calculate_up();
-
-        player.add_child(camera);
+        camera.add_component(Velocity::default());
 
         let mut cube = Node::new();
         cube.name = "cube".to_string();
@@ -176,7 +154,7 @@ impl Engine {
         cube.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, 0.0);
 
         world.add_node(cube);
-        world.add_node(player);
+        world.add_global_node(camera);
 
         let mut cursor_manager = Node::new();
         cursor_manager.name = "cursor_manager".to_string();
@@ -266,13 +244,19 @@ impl Engine {
             let cursor_manager = self
                 .world
                 .get_global_node_with_component_mut::<CursorManager>();
-            let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
+            let cursor_manager = cursor_manager
+                .unwrap()
+                .get_component_mut::<CursorManager>()
+                .unwrap();
             cursor_manager.grab_cursor(&mut self.window_manager);
         } else {
             let cursor_manager = self
                 .world
                 .get_global_node_with_component_mut::<CursorManager>();
-            let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
+            let cursor_manager = cursor_manager
+                .unwrap()
+                .get_component_mut::<CursorManager>()
+                .unwrap();
             cursor_manager.ungrab_cursor(&mut self.window_manager);
         }
     }
@@ -306,6 +290,7 @@ impl Engine {
 pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
     if !world
         .get_global_node_with_component::<CursorManager>()
+        .unwrap()
         .get_component::<CursorManager>()
         .unwrap()
         .is_grabbed
@@ -319,63 +304,26 @@ pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
         .input_manager
         .input_vector_3d("right", "left", "up", "down", "backward", "forward");
 
-    let mut all = world.get_all_nodes_mut();
+    let editor_camera = world.get_global_node_with_component_mut::<Camera>();
 
-    let player_node = all.iter_mut().find(|n| n.name == "player");
-    if let Some(player_node) = player_node {
-        let player_transform =
-            player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
-        let player_velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
-
-        let camera_node = all.iter_mut().find(|n| n.name == "camera").unwrap();
-        let camera_transform =
-            camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
-
-        let (player_transform, velocity, camera_transform) = unsafe {
-            (
-                &mut *player_transform,
-                &mut *player_velocity,
-                &mut *camera_transform,
-            )
-        };
-
-        player_transform.rotation_euler.y -= mouse_delta.0 as f32;
+    if let Some(editor_camera) = editor_camera {
+        let (camera_transform, velocity) =
+            editor_camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
+        camera_transform.rotation_euler.y -= mouse_delta.0 as f32;
         camera_transform.rotation_euler.x = clamp(
             camera_transform.rotation_euler.x - mouse_delta.1 as f32,
             -89.0,
             89.0,
         );
 
-        player_transform.calculate_rotation();
         camera_transform.calculate_rotation();
 
         let direction = camera_transform.global_rotation * input_dir;
 
         velocity.add_velocity(direction * delta_time);
 
-        let (transform_snap, raycast_snap) = {
-            let player = world.get_node_with_name("player");
-            (
-                player.get_component::<Transform>().unwrap().clone(),
-                player.get_component::<Raycast>().unwrap().clone(),
-            )
-        };
-
-        let hit = raycast_snap.cast(&transform_snap, world, "player");
-
-        let mut all = world.get_all_nodes_mut();
-        let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
-        let transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
-        let velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
-
-        let (transform, velocity) = unsafe { (&mut *transform, &mut *velocity) };
-
-        if hit.is_some() && velocity.direction.y < 0.0 {
-            velocity.direction.y = 0.0;
-        }
-
         velocity.direction *= delta_time;
-        apply_velocity(velocity, transform);
+        apply_velocity(velocity, camera_transform);
         velocity.direction = Vector3::zero();
     }
 }

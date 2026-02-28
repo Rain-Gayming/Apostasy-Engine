@@ -246,6 +246,7 @@ impl World {
 
     pub fn add_global_node(&mut self, node: Node) {
         self.global_nodes.push(node);
+        self.check_node_ids();
     }
     pub fn add_node(&mut self, mut node: Node) -> &mut Self {
         self.assign_ids_recursive(&mut node);
@@ -272,6 +273,11 @@ impl World {
         for node in self.scene.root_node.children.iter() {
             collect(node, &mut nodes);
         }
+
+        for node in self.global_nodes.iter() {
+            collect(node, &mut nodes);
+        }
+
         nodes
     }
 
@@ -285,6 +291,10 @@ impl World {
 
         let mut ptrs: Vec<*mut Node> = Vec::new();
         for node in self.scene.root_node.children.iter_mut() {
+            collect(node, &mut ptrs);
+        }
+
+        for node in self.global_nodes.iter_mut() {
             collect(node, &mut ptrs);
         }
 
@@ -383,17 +393,15 @@ impl World {
         node.unwrap()
     }
 
-    pub fn get_global_node_with_component<T: Component + 'static>(&self) -> &Node {
-        self.global_nodes
-            .iter()
-            .find(|n| n.has_component::<T>())
-            .unwrap()
+    pub fn get_global_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
+        self.global_nodes.iter().find(|n| n.has_component::<T>())
     }
-    pub fn get_global_node_with_component_mut<T: Component + 'static>(&mut self) -> &mut Node {
+    pub fn get_global_node_with_component_mut<T: Component + 'static>(
+        &mut self,
+    ) -> Option<&mut Node> {
         self.global_nodes
             .iter_mut()
             .find(|n| n.has_component::<T>())
-            .unwrap()
     }
 
     pub fn serialize_scene(&mut self) -> Result<(), std::io::Error> {
@@ -459,7 +467,10 @@ impl World {
         let mut ids = Vec::new();
         let mut next_id = self.nodes;
 
-        for node in self.get_all_nodes_mut() {
+        let nodes = self.get_all_nodes_mut();
+
+        for node in nodes {
+            println!("next_id: {}", next_id);
             if ids.contains(&node.id) {
                 node.id = next_id;
                 next_id += 1;

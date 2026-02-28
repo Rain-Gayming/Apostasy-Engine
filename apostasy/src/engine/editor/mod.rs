@@ -10,7 +10,10 @@ use crate::{
             },
         },
         rendering::models::model::ModelRenderer,
-        windowing::input_manager::{KeyAction, KeyBind, MouseBind},
+        windowing::{
+            cursor_manager::CursorManager,
+            input_manager::{KeyAction, KeyBind, MouseBind},
+        },
     },
 };
 use std::path::{Path, PathBuf};
@@ -65,6 +68,7 @@ pub struct EditorStorage {
     pub hierarchy_position: WindowPosition,
     pub hierarchy_size: Vec2,
     pub selected_node: Option<u64>,
+    pub show_globals: bool,
 
     // inspector editor
     pub inspector_position: WindowPosition,
@@ -145,6 +149,7 @@ impl Default for EditorStorage {
             hierarchy_position: WindowPosition::Left,
             selected_node: None,
             hierarchy_size: Vec2::new(100.0, 100.0),
+            show_globals: false,
 
             // inspector editor
             inspector_position: WindowPosition::Right,
@@ -435,6 +440,10 @@ pub fn render_hierarchy(ui: &mut egui::Ui, world: &mut World, editor_storage: &m
         }
     });
 
+    ui.horizontal(|ui| {
+        ui.checkbox(&mut editor_storage.show_globals, "Show Globals");
+    });
+
     ScrollArea::vertical()
         .id_salt("hierarchy_scroll")
         .show(ui, |ui| {
@@ -447,6 +456,12 @@ pub fn render_hierarchy(ui: &mut egui::Ui, world: &mut World, editor_storage: &m
                     let root_children: Vec<Node> = world.scene.root_node.children.clone();
                     for node in &root_children {
                         draw_node(ui, node, editor_storage, 0);
+                    }
+
+                    if editor_storage.show_globals {
+                        for node in &world.global_nodes {
+                            draw_node(ui, node, editor_storage, 0);
+                        }
                     }
 
                     // Drop onto empty space = move to root
@@ -724,6 +739,9 @@ fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorS
                 }
                 if let Some(collider) = node.get_component_mut::<Collider>() {
                     collider.inspect_value(ui);
+                }
+                if let Some(cursor_manager) = node.get_component_mut::<CursorManager>() {
+                    cursor_manager.inspect_value(ui);
                 }
 
                 ui.allocate_space(ui.available_size());

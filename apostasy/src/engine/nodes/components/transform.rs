@@ -110,4 +110,7 @@ fn propagate_transforms_root(world: &mut World) {
     for node in world.scene.root_node.children.iter_mut() {
         node.propagate_transform(Some(&root));
     }
+    for node in world.global_nodes.iter_mut() {
+        node.propagate_transform(Some(&root));
+    }
 }

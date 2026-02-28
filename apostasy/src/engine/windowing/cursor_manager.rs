@@ -1,9 +1,11 @@
 use crate as apostasy;
 use crate::engine::windowing::WindowManager;
-use apostasy_macros::Component;
+use apostasy_macros::{Component, InspectValue, Inspectable};
 use winit::window::CursorGrabMode;
 
-#[derive(Component, Clone, Default)]
+use crate::engine::editor::inspectable::Inspectable;
+
+#[derive(Component, Clone, Default, Inspectable, InspectValue)]
 pub struct CursorManager {
     pub is_hidden: bool,
     pub is_grabbed: bool,

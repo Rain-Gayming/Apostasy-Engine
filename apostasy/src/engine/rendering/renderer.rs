@@ -451,11 +451,18 @@ impl Renderer {
                 }
             }
 
+            if camera_node.is_none()
+                && let Some(node) = world.get_global_node_with_component::<Camera>()
+            {
+                camera_node = Some(node);
+            }
+
             if let Some(camera_node) = camera_node {
                 let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
 
                 let transform = camera_node.get_component::<Transform>().unwrap();
                 let camera = camera_node.get_component::<Camera>().unwrap();
+
                 let model = Matrix4::from_scale(1.0);
                 // Camera's position as a point
                 let camera_eye = Point3::new(
@@ -478,7 +485,7 @@ impl Renderer {
 
                 let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
 
-                let projection = get_perspective_projection(&camera, aspect);
+                let projection = get_perspective_projection(camera, aspect);
 
                 // Compute Projection * View * Model
                 let mvp = projection * view * model;
@@ -563,7 +570,7 @@ impl Renderer {
                                         let texture = self
                                             .context
                                             .load_texture(
-                                                &texture_name,
+                                                texture_name,
                                                 self.command_pool,
                                                 self.descriptor_pool,
                                                 self.descriptor_set_layout,
