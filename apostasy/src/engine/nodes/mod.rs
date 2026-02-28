@@ -1,4 +1,6 @@
-use crate as apostasy;
+use crate::{
+    self as apostasy, engine::nodes::scene_serialization::find_registration, log, log_warn,
+};
 use std::any::TypeId;
 
 use anyhow::Result;
@@ -162,6 +164,22 @@ impl Node {
         }
         false
     }
+
+    pub fn add_component_by_name(&mut self, component_name: &str) -> Result<()> {
+        let registration =
+            find_registration(component_name.to_lowercase().as_str()).ok_or_else(|| {
+                log_warn!("Component '{}' is not registered", component_name);
+                anyhow::anyhow!(
+                    "Component '{}' is not registered",
+                    component_name.to_lowercase()
+                )
+            })?;
+
+        let component = (registration.create)();
+
+        self.components.push(component);
+        Ok(())
+    }
 }
 pub trait ComponentsMut<'a> {
     fn from_node(node: &'a mut Node) -> Self;
@@ -206,6 +224,7 @@ pub struct World {
     pub nodes: u64,
     pub global_nodes: Vec<Node>,
     pub input_manager: InputManager,
+    pub is_world_hovered: bool,
 }
 
 impl Default for World {
@@ -221,6 +240,7 @@ impl World {
             nodes: 0,
             global_nodes: Vec::new(),
             input_manager: InputManager::default(),
+            is_world_hovered: false,
         }
     }
 
@@ -376,7 +396,8 @@ impl World {
             .unwrap()
     }
 
-    pub fn serialize_scene(&self) -> Result<(), std::io::Error> {
+    pub fn serialize_scene(&mut self) -> Result<(), std::io::Error> {
+        self.check_node_ids();
         let serialized = SerializedScene {
             root_children: self
                 .scene
@@ -399,7 +420,15 @@ impl World {
             .into_iter()
             .map(deserialize_node)
             .collect();
+
+        self.check_node_ids();
         Ok(())
+    }
+
+    pub fn new_scene(&mut self) {
+        self.scene.name = "Scene".to_string();
+        self.scene.root_node.children = Vec::new();
+        self.nodes = 0;
     }
 
     pub fn check_node_names(&mut self) {
@@ -447,6 +476,22 @@ impl World {
         for child in node.children.iter_mut() {
             self.assign_ids_recursive(child);
         }
+    }
+
+    pub fn add_component_by_name(&mut self, node_id: u64, component_name: &str) -> Result<()> {
+        let registration = find_registration(component_name)
+            .ok_or_else(|| anyhow::anyhow!("Component '{}' is not registered", component_name))?;
+
+        let component = (registration.create)();
+
+        let node = self
+            .get_all_nodes_mut()
+            .into_iter()
+            .find(|n| n.id == node_id)
+            .ok_or_else(|| anyhow::anyhow!("No node with id {} found", node_id))?;
+
+        node.components.push(component);
+        Ok(())
     }
 }
 const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";

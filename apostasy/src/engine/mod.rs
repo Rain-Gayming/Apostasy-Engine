@@ -260,6 +260,9 @@ impl Engine {
             .input_manager
             .is_mousebind_active("editor_camera_look")
         {
+            if !self.world.is_world_hovered {
+                return;
+            }
             let cursor_manager = self
                 .world
                 .get_global_node_with_component_mut::<CursorManager>();
@@ -300,12 +303,13 @@ impl Engine {
 }
 
 #[fixed_update]
-pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
+pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
     if !world
         .get_global_node_with_component::<CursorManager>()
         .get_component::<CursorManager>()
         .unwrap()
         .is_grabbed
+        || !world.is_world_hovered
     {
         return;
     }
@@ -317,55 +321,61 @@ pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
 
     let mut all = world.get_all_nodes_mut();
 
-    let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
-    let player_transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
-    let player_velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
+    let player_node = all.iter_mut().find(|n| n.name == "player");
+    if let Some(player_node) = player_node {
+        let player_transform =
+            player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+        let player_velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
 
-    let camera_node = all.iter_mut().find(|n| n.name == "camera").unwrap();
-    let camera_transform = camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+        let camera_node = all.iter_mut().find(|n| n.name == "camera").unwrap();
+        let camera_transform =
+            camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
 
-    let (transform, velocity, cam_transform) = unsafe {
-        (
-            &mut *player_transform,
-            &mut *player_velocity,
-            &mut *camera_transform,
-        )
-    };
+        let (player_transform, velocity, camera_transform) = unsafe {
+            (
+                &mut *player_transform,
+                &mut *player_velocity,
+                &mut *camera_transform,
+            )
+        };
 
-    transform.rotation_euler.y -= mouse_delta.0 as f32;
-    cam_transform.rotation_euler.x = clamp(
-        cam_transform.rotation_euler.x - mouse_delta.1 as f32,
-        -89.0,
-        89.0,
-    );
+        player_transform.rotation_euler.y -= mouse_delta.0 as f32;
+        camera_transform.rotation_euler.x = clamp(
+            camera_transform.rotation_euler.x - mouse_delta.1 as f32,
+            -89.0,
+            89.0,
+        );
 
-    transform.calculate_rotation();
-    cam_transform.calculate_rotation();
+        player_transform.calculate_rotation();
+        camera_transform.calculate_rotation();
 
-    velocity.add_velocity(transform.rotation * input_dir);
+        let direction = camera_transform.global_rotation * input_dir;
 
-    let (transform_snap, raycast_snap) = {
-        let player = world.get_node_with_name("player");
-        (
-            player.get_component::<Transform>().unwrap().clone(),
-            player.get_component::<Raycast>().unwrap().clone(),
-        )
-    };
+        velocity.add_velocity(direction * delta_time);
 
-    let hit = raycast_snap.cast(&transform_snap, world, "player");
+        let (transform_snap, raycast_snap) = {
+            let player = world.get_node_with_name("player");
+            (
+                player.get_component::<Transform>().unwrap().clone(),
+                player.get_component::<Raycast>().unwrap().clone(),
+            )
+        };
 
-    let mut all = world.get_all_nodes_mut();
-    let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
-    let transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
-    let velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
+        let hit = raycast_snap.cast(&transform_snap, world, "player");
 
-    let (transform, velocity) = unsafe { (&mut *transform, &mut *velocity) };
+        let mut all = world.get_all_nodes_mut();
+        let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
+        let transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+        let velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
 
-    if hit.is_some() && velocity.direction.y < 0.0 {
-        velocity.direction.y = 0.0;
+        let (transform, velocity) = unsafe { (&mut *transform, &mut *velocity) };
+
+        if hit.is_some() && velocity.direction.y < 0.0 {
+            velocity.direction.y = 0.0;
+        }
+
+        velocity.direction *= delta_time;
+        apply_velocity(velocity, transform);
+        velocity.direction = Vector3::zero();
     }
-
-    velocity.direction *= delta_time;
-    apply_velocity(velocity, transform);
-    velocity.direction = Vector3::zero();
 }

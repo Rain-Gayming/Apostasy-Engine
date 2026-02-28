@@ -446,164 +446,170 @@ impl Renderer {
 
             let mut camera_node: Option<&Node> = None;
             for node in world.get_all_nodes() {
-                if let Some(_) = node.get_component::<Camera>() {
+                if node.get_component::<Camera>().is_some() {
                     camera_node = Some(node);
                 }
             }
 
-            if !camera_node.is_some() {
-                panic!("No camera found");
-            }
-            let camera_node = camera_node.unwrap();
-            let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
+            if let Some(camera_node) = camera_node {
+                let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
 
-            let transform = camera_node.get_component::<Transform>().unwrap();
-            let camera = camera_node.get_component::<Camera>().unwrap();
-            let model = Matrix4::from_scale(1.0);
-            // Camera's position as a point
-            let camera_eye = Point3::new(
-                transform.global_position.x,
-                transform.global_position.y,
-                transform.global_position.z,
-            );
+                let transform = camera_node.get_component::<Transform>().unwrap();
+                let camera = camera_node.get_component::<Camera>().unwrap();
+                let model = Matrix4::from_scale(1.0);
+                // Camera's position as a point
+                let camera_eye = Point3::new(
+                    transform.global_position.x,
+                    transform.global_position.y,
+                    transform.global_position.z,
+                );
 
-            // Forward direction from the camera
-            let rotated_forward = transform.calculate_global_forward();
-            // Get the up direction
-            let rotated_up = transform.calculate_global_up();
+                // Forward direction from the camera
+                let rotated_forward = transform.calculate_global_forward();
+                // Get the up direction
+                let rotated_up = transform.calculate_global_up();
 
-            // Look point of the camera
-            let look_at = Point3::new(
-                camera_eye.x + rotated_forward.x,
-                camera_eye.y + rotated_forward.y,
-                camera_eye.z + rotated_forward.z,
-            );
+                // Look point of the camera
+                let look_at = Point3::new(
+                    camera_eye.x + rotated_forward.x,
+                    camera_eye.y + rotated_forward.y,
+                    camera_eye.z + rotated_forward.z,
+                );
 
-            let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
+                let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
 
-            let projection = get_perspective_projection(&camera, aspect);
+                let projection = get_perspective_projection(&camera, aspect);
 
-            // Compute Projection * View * Model
-            let mvp = projection * view * model;
+                // Compute Projection * View * Model
+                let mvp = projection * view * model;
 
-            // Convert matrices to bytes for push constant
-            let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
-            let model_bytes: [u8; 64] = std::mem::transmute(model);
+                // Convert matrices to bytes for push constant
+                let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
+                let model_bytes: [u8; 64] = std::mem::transmute(model);
 
-            let mut push_constants = [0u8; 256];
-            push_constants[0..64].copy_from_slice(&mvp_bytes);
-            push_constants[64..128].copy_from_slice(&model_bytes);
+                let mut push_constants = [0u8; 256];
+                push_constants[0..64].copy_from_slice(&mvp_bytes);
+                push_constants[64..128].copy_from_slice(&model_bytes);
 
-            // Render Model pipeline objects
-            device.cmd_bind_pipeline(
-                command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.model_pipeline,
-            );
+                // Render Model pipeline objects
+                device.cmd_bind_pipeline(
+                    command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.model_pipeline,
+                );
 
-            for node in world.get_all_nodes() {
-                if let Some(transform) = node.get_component::<Transform>()
-                    && let Some(model_renderer) = node.get_component::<ModelRenderer>()
-                {
-                    // Add position offset
-                    let offset = [
-                        transform.global_position.x,
-                        transform.global_position.y,
-                        transform.global_position.z,
-                        0.0f32, // padding
-                    ];
-                    let offset_bytes: [u8; 16] = std::mem::transmute(offset);
+                for node in world.get_all_nodes() {
+                    if let Some(transform) = node.get_component::<Transform>()
+                        && let Some(model_renderer) = node.get_component::<ModelRenderer>()
+                    {
+                        // Add position offset
+                        let offset = [
+                            transform.global_position.x,
+                            transform.global_position.y,
+                            transform.global_position.z,
+                            0.0f32, // padding
+                        ];
+                        let offset_bytes: [u8; 16] = std::mem::transmute(offset);
 
-                    push_constants[128..144].copy_from_slice(&offset_bytes);
+                        push_constants[128..144].copy_from_slice(&offset_bytes);
 
-                    let rotation = [
-                        transform.global_rotation.v.x,
-                        transform.global_rotation.v.y,
-                        transform.global_rotation.v.z,
-                        transform.global_rotation.s,
-                    ];
+                        let rotation = [
+                            transform.global_rotation.v.x,
+                            transform.global_rotation.v.y,
+                            transform.global_rotation.v.z,
+                            transform.global_rotation.s,
+                        ];
 
-                    let rotation_bytes: [u8; 16] = std::mem::transmute(rotation);
-                    push_constants[144..160].copy_from_slice(&rotation_bytes);
+                        let rotation_bytes: [u8; 16] = std::mem::transmute(rotation);
+                        push_constants[144..160].copy_from_slice(&rotation_bytes);
 
-                    let scale = [
-                        transform.global_scale.x,
-                        transform.global_scale.y,
-                        transform.global_scale.z,
-                        0.0f32, // padding
-                    ];
-                    let scale_bytes: [u8; 16] = std::mem::transmute(scale);
-                    push_constants[160..176].copy_from_slice(&scale_bytes);
+                        let scale = [
+                            transform.global_scale.x,
+                            transform.global_scale.y,
+                            transform.global_scale.z,
+                            0.0f32, // padding
+                        ];
+                        let scale_bytes: [u8; 16] = std::mem::transmute(scale);
+                        push_constants[160..176].copy_from_slice(&scale_bytes);
 
-                    device.cmd_push_constants(
-                        command_buffer,
-                        pipeline_layout,
-                        vk::ShaderStageFlags::VERTEX,
-                        0,
-                        &push_constants,
-                    );
+                        device.cmd_push_constants(
+                            command_buffer,
+                            pipeline_layout,
+                            vk::ShaderStageFlags::VERTEX,
+                            0,
+                            &push_constants,
+                        );
 
-                    let mut model_name = model_renderer.loaded_model.clone();
-                    model_name.push_str(".glb");
+                        let mut model_name = model_renderer.loaded_model.clone();
+                        model_name.push_str(".glb");
 
-                    let model = model_loader.get_model(&model_name);
+                        let model = model_loader.get_model(&model_name);
 
-                    if let Some(model) = model {
-                        for mesh in model.meshes.clone() {
-                            if model_loader.get_material(&mesh.material).is_none() {
-                                model_loader
-                                    .materials
-                                    .insert(mesh.material.clone(), Material::default());
-                                continue;
-                            }
-                            if let Some(material) = model_loader.get_material_mut(&mesh.material) {
-                                if material.albedo_texture().is_none()
-                                    && let Some(ref texture_name) =
-                                        material.albedo_texture_name.clone()
+                        if let Some(model) = model {
+                            for mesh in model.meshes.clone() {
+                                if model_loader.get_material(&mesh.material).is_none() {
+                                    model_loader
+                                        .materials
+                                        .insert(mesh.material.clone(), Material::default());
+                                    continue;
+                                }
+                                if let Some(material) =
+                                    model_loader.get_material_mut(&mesh.material)
                                 {
-                                    let texture = self
-                                        .context
-                                        .load_texture(
-                                            &texture_name,
-                                            self.command_pool,
-                                            self.descriptor_pool,
-                                            self.descriptor_set_layout,
-                                        )
-                                        .unwrap();
+                                    if material.albedo_texture().is_none()
+                                        && let Some(ref texture_name) =
+                                            material.albedo_texture_name.clone()
+                                    {
+                                        let texture = self
+                                            .context
+                                            .load_texture(
+                                                &texture_name,
+                                                self.command_pool,
+                                                self.descriptor_pool,
+                                                self.descriptor_set_layout,
+                                            )
+                                            .unwrap();
 
-                                    material.set_albedo_texture(texture);
+                                        material.set_albedo_texture(texture);
+                                    }
+
+                                    if let &mut Some(ref texture) = material.albedo_texture() {
+                                        device.cmd_bind_descriptor_sets(
+                                            command_buffer,
+                                            vk::PipelineBindPoint::GRAPHICS,
+                                            pipeline_layout,
+                                            0,
+                                            &[texture.descriptor_set],
+                                            &[],
+                                        );
+                                    }
                                 }
 
-                                if let &mut Some(ref texture) = material.albedo_texture() {
-                                    device.cmd_bind_descriptor_sets(
-                                        command_buffer,
-                                        vk::PipelineBindPoint::GRAPHICS,
-                                        pipeline_layout,
-                                        0,
-                                        &[texture.descriptor_set],
-                                        &[],
-                                    );
-                                }
+                                device.cmd_bind_vertex_buffers(
+                                    command_buffer,
+                                    0,
+                                    &[mesh.vertex_buffer],
+                                    &[0],
+                                );
+                                device.cmd_bind_index_buffer(
+                                    command_buffer,
+                                    mesh.index_buffer,
+                                    0,
+                                    vk::IndexType::UINT32,
+                                );
+                                device.cmd_draw_indexed(
+                                    command_buffer,
+                                    mesh.index_count,
+                                    1,
+                                    0,
+                                    0,
+                                    0,
+                                );
                             }
-
-                            device.cmd_bind_vertex_buffers(
-                                command_buffer,
-                                0,
-                                &[mesh.vertex_buffer],
-                                &[0],
-                            );
-                            device.cmd_bind_index_buffer(
-                                command_buffer,
-                                mesh.index_buffer,
-                                0,
-                                vk::IndexType::UINT32,
-                            );
-                            device.cmd_draw_indexed(command_buffer, mesh.index_count, 1, 0, 0, 0);
                         }
                     }
                 }
             }
-
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             // Render egui

@@ -59,6 +59,7 @@ pub fn serializable_component_derive(input: TokenStream) -> TokenStream {
                         .expect(concat!("Deserialize: failed to deserialize ", stringify!(#struct_name)));
                     Box::new(concrete)
                 },
+                create: || Box::new(#struct_name::default()),
             }
         }
     };
