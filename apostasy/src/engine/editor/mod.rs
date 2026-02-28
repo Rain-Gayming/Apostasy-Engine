@@ -331,7 +331,7 @@ pub fn top_bar_ui(context: &mut Context, world: &mut World, editor_storage: &mut
         });
 }
 
-#[editor_ui(priority = 1)]
+#[editor_ui(priority = 2)]
 pub fn layout_editor_ui(
     context: &mut Context,
     _world: &mut World,
@@ -399,7 +399,7 @@ fn position_label(pos: &WindowPosition) -> &'static str {
     }
 }
 
-#[editor_ui(priority = 1)]
+#[editor_ui(priority = 2)]
 pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
     if !editor_storage.is_editor_open {
         return;
@@ -541,12 +541,32 @@ fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage,
     if has_children {
         let id = ui.make_persistent_id(format!("node_{}", node.name));
 
-        CollapsingState::load_with_default_open(ui.ctx(), id, false)
-            .show_header(ui, |ui: &mut egui::Ui| {
-                ui.add_space(indent);
-                draw_node_row(ui, node, selected, editor_storage);
+        CollapsingHeader::new(&node.name)
+            .id_salt(id)
+            .icon(|ui, openness, response| {
+                // Simple triangle icon
+                let rect = response.rect;
+                let color = Color32::from_gray(180);
+                let points = if openness > 0.5 {
+                    // pointing down
+                    vec![
+                        pos2(rect.left(), rect.top()),
+                        pos2(rect.right(), rect.top()),
+                        pos2(rect.center().x, rect.bottom()),
+                    ]
+                } else {
+                    // pointing right
+                    vec![
+                        pos2(rect.left(), rect.top()),
+                        pos2(rect.right(), rect.center().y),
+                        pos2(rect.left(), rect.bottom()),
+                    ]
+                };
+                ui.painter()
+                    .add(epaint::Shape::convex_polygon(points, color, Stroke::NONE));
             })
-            .body(|ui| {
+            .show(ui, |ui| {
+                ui.add_space(2.0);
                 for child in &node.children {
                     draw_node(ui, child, editor_storage, depth + 1);
                 }
@@ -663,7 +683,7 @@ pub fn viewport_ui(context: &mut Context, world: &mut World, editor_storage: &mu
 
     world.is_world_hovered = pointer_in_rect && !context.wants_pointer_input();
 }
-#[editor_ui(priority = 1)]
+#[editor_ui(priority = 2)]
 pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
     if !editor_storage.is_editor_open {
         return;
@@ -789,7 +809,7 @@ fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorS
     }
 }
 
-#[editor_ui(priority = 1)]
+#[editor_ui(priority = 2)]
 pub fn file_tree_ui(context: &mut Context, _world: &mut World, editor_storage: &mut EditorStorage) {
     if !editor_storage.is_editor_open {
         return;
