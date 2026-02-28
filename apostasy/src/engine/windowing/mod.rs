@@ -1,11 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate as apostasy;
-use apostasy_macros::Resource;
 use winit::window::{Window, WindowId};
 
 pub mod cursor_manager;
-#[derive(Resource)]
+pub mod input_manager;
+
 pub struct WindowManager {
     pub windows: HashMap<WindowId, Arc<Window>>,
     pub primary_window_id: WindowId,

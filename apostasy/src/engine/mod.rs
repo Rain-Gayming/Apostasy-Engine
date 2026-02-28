@@ -1,10 +1,23 @@
+use crate::{
+    self as apostasy,
+    engine::{
+        nodes::components::{
+            collider::{Collider, CollisionEvents},
+            physics::Physics,
+            player::Player,
+            raycast::Raycast,
+        },
+        windowing::cursor_manager::CursorManager,
+    },
+};
 use anyhow::Result;
+use apostasy_macros::fixed_update;
+use cgmath::{Vector3, Zero, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId},
     event_loop::{ControlFlow, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
 };
 
 use winit::{
@@ -14,11 +27,15 @@ use winit::{
 };
 
 use crate::engine::{
-    ecs::resources::input_manager::{
-        InputManager, KeyAction, KeyBind, handle_device_event, handle_input_event, register_keybind,
+    editor::EditorStorage,
+    nodes::{
+        Node, World,
+        components::camera::Camera,
+        components::transform::Transform,
+        components::velocity::{Velocity, apply_velocity},
     },
     rendering::{
-        models::model::{ModelLoader, load_models},
+        models::model::{ModelLoader, ModelRenderer, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -27,24 +44,20 @@ use crate::engine::{
     windowing::WindowManager,
 };
 
-use crate::engine::ecs::World;
-
-pub mod ecs;
 pub mod editor;
+pub mod nodes;
 pub mod rendering;
 pub mod timer;
-pub mod voxels;
 pub mod windowing;
 
 /// Render application
 pub struct Application {
-    render_engine: Option<Engine>,
-    _world: Option<World>,
+    engine: Option<Engine>,
 }
 
 impl ApplicationHandler for Application {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        self.render_engine = Some(Engine::new(event_loop).unwrap());
+        self.engine = Some(Engine::new(event_loop).unwrap());
     }
 
     fn window_event(
@@ -53,7 +66,7 @@ impl ApplicationHandler for Application {
         window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        if let Some(engine) = self.render_engine.as_mut() {
+        if let Some(engine) = self.engine.as_mut() {
             engine.window_event(event_loop, window_id, event.clone());
         }
     }
@@ -64,13 +77,13 @@ impl ApplicationHandler for Application {
         device_id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
-        if let Some(engine) = self.render_engine.as_mut() {
+        if let Some(engine) = self.engine.as_mut() {
             engine.device_event(event_loop, device_id, event.clone());
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
-        if let Some(engine) = &mut self.render_engine {
+        if let Some(engine) = &mut self.engine {
             engine.request_redraw();
         }
     }
@@ -82,10 +95,7 @@ impl ApplicationHandler for Application {
 
 pub fn start_app() -> Result<()> {
     tracing_subscriber::fmt::init();
-    let mut app = Application {
-        render_engine: None,
-        _world: None,
-    };
+    let mut app = Application { engine: None };
 
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -96,9 +106,12 @@ pub fn start_app() -> Result<()> {
 /// The render engine, contains all the data for rendering, windowing and their logic
 pub struct Engine {
     pub renderers: HashMap<WindowId, Renderer>,
-    pub world: World,
     pub rendering_context: Arc<RenderingContext>,
+    pub window_manager: WindowManager,
     pub timer: EngineTimer,
+    pub world: World,
+    pub editor: EditorStorage,
+    pub model_loader: ModelLoader,
 }
 
 impl Engine {
@@ -117,10 +130,6 @@ impl Engine {
             compatability_window: &primary_window,
             queue_family_picker: single_queue_family,
         })?);
-
-        let mut world = World::new(rendering_context.clone());
-        world.start();
-
         let renderers = windows
             .iter()
             .map(|(id, window)| {
@@ -131,32 +140,72 @@ impl Engine {
 
         let timer = EngineTimer::new();
 
-        world.insert_resource::<WindowManager>(WindowManager::default());
+        let mut world = World::new();
 
-        world.with_resource_mut(|window_manager: &mut WindowManager| {
-            window_manager.primary_window_id = primary_window_id;
-            window_manager
-                .windows
-                .insert(primary_window_id, primary_window.clone());
-        });
+        let mut camera = Node::new();
+        camera.name = "camera".to_string();
+        camera.add_component(Camera::default());
+        camera.add_component(Transform::default());
 
-        world.with_resource_mut(|model_loader: &mut ModelLoader| {
-            load_models(model_loader, &rendering_context);
-        });
+        let mut new_node = Node::new();
 
-        world.with_resource_mut(|input_manager: &mut InputManager| {
-            register_keybind(
-                input_manager,
-                KeyBind::new(PhysicalKey::Code(KeyCode::Backquote), KeyAction::Press),
-                "console_toggle",
-            );
-        });
+        camera.add_child(new_node);
+
+        let mut player = Node::new();
+        player.name = "player".to_string();
+        player.add_component(Transform::default());
+        player.add_component(Velocity::default());
+        player.add_component(Physics::default());
+        player.add_component(Collider::default());
+        player.add_component(Raycast::default());
+        player.add_component(Player::default());
+        let transform = player.get_component_mut::<Transform>().unwrap();
+        transform.position = Vector3::new(0.0, 0.0, -10.0);
+        player.get_component_mut::<Raycast>().unwrap().direction = -transform.calculate_up();
+
+        player.add_child(camera);
+
+        let mut cube = Node::new();
+        cube.name = "cube".to_string();
+        cube.add_component(Transform::default());
+        cube.add_component(ModelRenderer::default());
+        cube.add_component(Collider::new_static(
+            Vector3::new(0.5, 0.5, 0.5),
+            Vector3::new(0.0, 0.0, 0.0),
+        ));
+        cube.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, 0.0);
+
+        world.add_node(cube);
+        world.add_node(player);
+
+        let mut cursor_manager = Node::new();
+        cursor_manager.name = "cursor_manager".to_string();
+        cursor_manager.add_component(CursorManager::default());
+        world.add_global_node(cursor_manager);
+
+        let mut events_node = Node::new();
+        events_node.name = "CollisionEvents".to_string();
+        events_node.add_component(CollisionEvents::new());
+        world.add_global_node(events_node);
+
+        let window_manager = WindowManager {
+            windows,
+            primary_window_id,
+        };
+
+        let mut model_loader = ModelLoader::default();
+        let editor = EditorStorage::default();
+
+        load_models(&mut model_loader, &rendering_context);
 
         Ok(Self {
             renderers,
-            world,
             rendering_context,
+            window_manager,
             timer,
+            world,
+            editor,
+            model_loader,
         })
     }
 
@@ -166,20 +215,12 @@ impl Engine {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        self.world
-            .with_resource_mut(|input_manager: &mut InputManager| {
-                handle_input_event(input_manager, event.clone());
-            });
+        if let Some(renderer) = self.renderers.get_mut(&window_id) {
+            let window = self.window_manager.windows.get(&window_id).unwrap();
+            renderer.window_event(window, event.clone());
+        }
 
-        self.world
-            .with_resource_mut(|window_manager: &mut WindowManager| {
-                if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    renderer.window_event(
-                        window_manager.windows.get(&window_id).unwrap(),
-                        event.clone(),
-                    );
-                }
-            });
+        self.world.input_manager.handle_input_event(event.clone());
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -194,18 +235,14 @@ impl Engine {
             }
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    let windows: Vec<Arc<Window>> =
-                        self.world.with_resource(|window_manager: &WindowManager| {
-                            window_manager.windows.values().cloned().collect()
-                        });
-
-                    for window in &windows {
-                        renderer.prepare_egui(window, &mut self.world);
+                    for window in &self.window_manager.windows {
+                        renderer.prepare_egui(window.1, &mut self.world, &mut self.editor);
                     }
 
-                    let _ = renderer.render(&self.world);
+                    let _ = renderer.render(&self.world, &mut self.model_loader);
                 }
             }
+            WindowEvent::KeyboardInput { .. } => {}
 
             _ => (),
         }
@@ -217,23 +254,34 @@ impl Engine {
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
-        self.world
-            .with_resource_mut(|input_manager: &mut InputManager| {
-                handle_device_event(input_manager, event.clone());
-            });
+        self.world.input_manager.handle_device_event(event.clone());
+        if self
+            .world
+            .input_manager
+            .is_mousebind_active("editor_camera_look")
+        {
+            let cursor_manager = self
+                .world
+                .get_global_node_with_component_mut::<CursorManager>();
+            let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
+            cursor_manager.grab_cursor(&mut self.window_manager);
+        } else {
+            let cursor_manager = self
+                .world
+                .get_global_node_with_component_mut::<CursorManager>();
+            let cursor_manager = cursor_manager.get_component_mut::<CursorManager>().unwrap();
+            cursor_manager.ungrab_cursor(&mut self.window_manager);
+        }
     }
 
     pub fn request_redraw(&mut self) {
         self.world.update();
         self.world.fixed_update(self.timer.tick().fixed_dt);
 
-        self.world
-            .with_resource_mut(|window_manager: &mut WindowManager| {
-                for window in window_manager.windows.values() {
-                    window.request_redraw();
-                }
-            });
-
+        for window in &self.window_manager.windows {
+            window.1.request_redraw();
+        }
+        self.world.input_manager.clear_actions();
         self.world.late_update();
     }
 
@@ -245,13 +293,79 @@ impl Engine {
         let window = Arc::new(event_loop.create_window(attributes)?);
         let window_id = window.id();
 
-        self.world
-            .with_resource_mut::<WindowManager, _, _>(|window_manager| {
-                window_manager.windows.insert(window_id, window.clone());
-            });
-
         let renderer = Renderer::new(self.rendering_context.clone(), window)?;
         self.renderers.insert(window_id, renderer);
         Ok(window_id)
     }
+}
+
+#[fixed_update]
+pub fn fixed_update_handle(world: &mut World, delta_time: f32) {
+    if !world
+        .get_global_node_with_component::<CursorManager>()
+        .get_component::<CursorManager>()
+        .unwrap()
+        .is_grabbed
+    {
+        return;
+    }
+
+    let mouse_delta = world.input_manager.mouse_delta;
+    let input_dir = world
+        .input_manager
+        .input_vector_3d("right", "left", "up", "down", "backward", "forward");
+
+    let mut all = world.get_all_nodes_mut();
+
+    let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
+    let player_transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+    let player_velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
+
+    let camera_node = all.iter_mut().find(|n| n.name == "camera").unwrap();
+    let camera_transform = camera_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+
+    let (transform, velocity, cam_transform) = unsafe {
+        (
+            &mut *player_transform,
+            &mut *player_velocity,
+            &mut *camera_transform,
+        )
+    };
+
+    transform.rotation_euler.y -= mouse_delta.0 as f32;
+    cam_transform.rotation_euler.x = clamp(
+        cam_transform.rotation_euler.x - mouse_delta.1 as f32,
+        -89.0,
+        89.0,
+    );
+
+    transform.calculate_rotation();
+    cam_transform.calculate_rotation();
+
+    velocity.add_velocity(transform.rotation * input_dir);
+
+    let (transform_snap, raycast_snap) = {
+        let player = world.get_node_with_name("player");
+        (
+            player.get_component::<Transform>().unwrap().clone(),
+            player.get_component::<Raycast>().unwrap().clone(),
+        )
+    };
+
+    let hit = raycast_snap.cast(&transform_snap, world, "player");
+
+    let mut all = world.get_all_nodes_mut();
+    let player_node = all.iter_mut().find(|n| n.name == "player").unwrap();
+    let transform = player_node.get_component_mut::<Transform>().unwrap() as *mut Transform;
+    let velocity = player_node.get_component_mut::<Velocity>().unwrap() as *mut Velocity;
+
+    let (transform, velocity) = unsafe { (&mut *transform, &mut *velocity) };
+
+    if hit.is_some() && velocity.direction.y < 0.0 {
+        velocity.direction.y = 0.0;
+    }
+
+    velocity.direction *= delta_time;
+    apply_velocity(velocity, transform);
+    velocity.direction = Vector3::zero();
 }

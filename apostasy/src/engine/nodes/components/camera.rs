@@ -1,21 +1,24 @@
-use crate as apostasy;
-use apostasy_macros::Component;
-use cgmath::{Deg, Matrix4, PerspectiveFov, Zero};
+use crate::engine::editor::inspectable::Inspectable;
+use crate::{self as apostasy};
+use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
+use cgmath::{Deg, Matrix4, PerspectiveFov};
+use serde::{Deserialize, Serialize};
 
-#[derive(Component)]
+#[derive(
+    Component, Clone, Inspectable, InspectValue, SerializableComponent, Serialize, Deserialize,
+)]
 pub struct Camera {
     pub fov_y: f32,
     pub near: f32,
     pub far: f32,
-    pub projection: Matrix4<f32>,
 }
+
 impl Default for Camera {
     fn default() -> Self {
         Self {
             fov_y: 90.0,
             far: 10000.0,
             near: 0.001,
-            projection: Matrix4::<f32>::zero(),
         }
     }
 }

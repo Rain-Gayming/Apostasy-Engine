@@ -1,32 +1,29 @@
-use crate::engine::{
-    ecs::{
-        World,
-        components::{
-            camera::{Camera, get_perspective_projection},
-            transform::{Transform, VoxelChunkTransform, calculate_forward, calculate_up},
-        },
-        entity::EntityView,
-        system::{EguiRenderer, UIFunction},
-    },
-    rendering::models::{
-        model::{MeshRenderer, ModelLoader, ModelRenderer, get_model},
-        vertex::VertexType,
-    },
-};
 use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
 use cgmath::{Matrix4, Point3};
-use egui::FontFamily;
+use egui::{Context, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
-use crate::engine::rendering::{
-    rendering_context::{ImageLayoutState, RenderingContext},
-    swapchain::Swapchain,
+use crate::engine::{
+    editor::EditorStorage,
+    nodes::{
+        Node, World,
+        components::{
+            camera::{Camera, get_perspective_projection},
+            transform::Transform,
+        },
+        system::EditorUIFunction,
+    },
+    rendering::{
+        models::model::{Material, ModelLoader, ModelRenderer},
+        rendering_context::{ImageLayoutState, RenderingContext},
+        swapchain::Swapchain,
+    },
 };
 
 /// A frame of the renderer
@@ -36,6 +33,87 @@ pub struct Frame {
     pub render_finished_semaphore: vk::Semaphore,
     pub in_flight_fence: vk::Fence,
 }
+
+pub struct EguiRenderer {
+    pub egui_state: egui_winit::State,
+    pub egui_renderer: egui_ash_renderer::Renderer,
+    pub egui_ctx: egui::Context,
+    pub sorted_ui_systems: Vec<&'static UIFunction>,
+    pub sorted_editor_ui_systems: Vec<&'static EditorUIFunction>,
+}
+
+impl EguiRenderer {
+    pub fn new(
+        context: &crate::engine::rendering::rendering_context::RenderingContext,
+        swapchain: &Swapchain,
+        window: &Window,
+    ) -> Self {
+        let egui_state = egui_winit::State::new(
+            egui::Context::default(),
+            egui::ViewportId::ROOT,
+            &window,
+            None,
+            None,
+            None,
+        );
+
+        let mut egui_renderer = egui_ash_renderer::Renderer::with_default_allocator(
+            &context.instance,
+            context.physical_device.handle,
+            context.device.clone(),
+            DynamicRendering {
+                color_attachment_format: swapchain.format,
+                depth_attachment_format: Some(swapchain.depth_format),
+            },
+            Options::default(),
+        )
+        .unwrap();
+        egui_renderer.add_user_texture(DescriptorSet::default());
+
+        let mut fonts = egui::FontDefinitions::default();
+        let mut new_font_family = BTreeMap::new();
+        new_font_family.insert(
+            FontFamily::Name("fantasy".into()),
+            vec!["fantasy".to_owned()],
+        );
+        fonts.families.append(&mut new_font_family);
+
+        fonts.font_data.insert(
+            "fantasy".to_owned(),
+            Arc::new(egui::FontData::from_static(include_bytes!(
+                "../../../res/fonts/FantasyFont.ttf"
+            ))),
+        );
+
+        let egui_ctx = egui::Context::default();
+        egui_ctx.set_fonts(fonts);
+
+        let mut sorted_ui_systems: Vec<&'static UIFunction> =
+            inventory::iter::<UIFunction>.into_iter().collect();
+        sorted_ui_systems.sort_by_key(|s| s.priority);
+        sorted_ui_systems.reverse();
+
+        let mut sorted_editor_ui_systems: Vec<&'static EditorUIFunction> =
+            inventory::iter::<EditorUIFunction>.into_iter().collect();
+        sorted_editor_ui_systems.sort_by_key(|s| s.priority);
+        sorted_editor_ui_systems.reverse();
+
+        Self {
+            egui_state,
+            egui_renderer,
+            egui_ctx,
+            sorted_ui_systems,
+            sorted_editor_ui_systems,
+        }
+    }
+}
+
+pub struct UIFunction {
+    pub name: &'static str,
+    pub func: fn(&mut Context),
+    pub priority: u32,
+}
+inventory::collect!(UIFunction);
 
 /// A renderer
 pub struct Renderer {
@@ -103,7 +181,7 @@ impl Renderer {
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX)
                 .offset(0)
-                .size(140);
+                .size(256);
 
             let pipeline_layout = context.device.create_pipeline_layout(
                 &vk::PipelineLayoutCreateInfo::default()
@@ -199,7 +277,7 @@ impl Renderer {
         }
     }
     /// Renders the world from a perspective of a camera
-    pub fn render(&mut self, world: &World) -> Result<()> {
+    pub fn render(&mut self, world: &World, model_loader: &mut ModelLoader) -> Result<()> {
         let frame = &mut self.frames[self.frame_index];
         unsafe {
             // Wait for the image to be available
@@ -297,42 +375,42 @@ impl Renderer {
                 depth_attachment_state,
                 vk::ImageAspectFlags::DEPTH,
             );
-
-            // Texture loading
-            world
-                .query()
-                .include::<ModelRenderer>()
-                .include::<Transform>()
-                .build()
-                .run(|entity_view: EntityView<'_>| {
-                    world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
-                        let model_renderer = entity_view.get::<ModelRenderer>().unwrap();
-
-                        let mut model_name = model_renderer.0.clone();
-                        model_name.push_str(".glb");
-
-                        let model = get_model(&model_name, model_loader);
-                        for mesh in &mut model.meshes {
-                            if mesh.material.base_color_texture.is_none()
-                                && let Some(ref texture_name) = mesh.material.texture_name.clone()
-                            {
-                                let texture = self
-                                    .context
-                                    .load_texture(
-                                        &texture_name,
-                                        self.command_pool,
-                                        self.descriptor_pool,
-                                        self.descriptor_set_layout,
-                                    )
-                                    .unwrap();
-
-                                mesh.material.base_color_texture = Some(texture);
-                                println!("texture loaded");
-                                println!("{}", mesh.material.base_color_texture.is_some());
-                            }
-                        }
-                    });
-                });
+            //
+            // // Texture loading
+            // world
+            //     .query()
+            //     .include::<ModelRenderer>()
+            //     .include::<Transform>()
+            //     .build()
+            //     .run(|entity_view: EntityView<'_>| {
+            //         world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
+            //             let model_renderer = entity_view.get::<ModelRenderer>().unwrap();
+            //
+            //             let mut model_name = model_renderer.0.clone();
+            //             model_name.push_str(".glb");
+            //
+            //             let model = get_model(&model_name, model_loader);
+            //             for mesh in &mut model.meshes {
+            //                 if mesh.material.base_color_texture.is_none()
+            //                     && let Some(ref texture_name) = mesh.material.texture_name.clone()
+            //                 {
+            //                     let texture = self
+            //                         .context
+            //                         .load_texture(
+            //                             &texture_name,
+            //                             self.command_pool,
+            //                             self.descriptor_pool,
+            //                             self.descriptor_set_layout,
+            //                         )
+            //                         .unwrap();
+            //
+            //                     mesh.material.base_color_texture = Some(texture);
+            //                     println!("texture loaded");
+            //                     println!("{}", mesh.material.base_color_texture.is_some());
+            //                 }
+            //             }
+            //         });
+            //     });
 
             // Begin rendering
             self.context.begin_rendering(
@@ -366,250 +444,165 @@ impl Renderer {
             let pipeline_layout = self.pipeline_layout;
             let swapchain_extent = self.swapchain.extent;
 
-            // Query for entities with Camera and Transform components
-            world
-                .query()
-                .include::<Camera>()
-                .include::<Transform>()
-                .build()
-                .run(|entity_view: EntityView<'_>| {
-                    if let (Some(camera), Some(transform)) =
-                        (entity_view.get::<Camera>(), entity_view.get::<Transform>())
-                    {
-                        let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
+            let mut camera_node: Option<&Node> = None;
+            for node in world.get_all_nodes() {
+                if let Some(_) = node.get_component::<Camera>() {
+                    camera_node = Some(node);
+                }
+            }
 
-                        let model = Matrix4::from_scale(1.0);
-                        // Camera's position as a point
-                        let camera_eye = Point3::new(
-                            transform.position.x,
-                            transform.position.y,
-                            transform.position.z,
-                        );
+            if !camera_node.is_some() {
+                panic!("No camera found");
+            }
+            let camera_node = camera_node.unwrap();
+            let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
 
-                        // Forward direction from the camera
-                        let rotated_forward = calculate_forward(&transform);
+            let transform = camera_node.get_component::<Transform>().unwrap();
+            let camera = camera_node.get_component::<Camera>().unwrap();
+            let model = Matrix4::from_scale(1.0);
+            // Camera's position as a point
+            let camera_eye = Point3::new(
+                transform.global_position.x,
+                transform.global_position.y,
+                transform.global_position.z,
+            );
 
-                        // Look point of the camera
-                        let look_at = Point3::new(
-                            camera_eye.x + rotated_forward.x,
-                            camera_eye.y + rotated_forward.y,
-                            camera_eye.z + rotated_forward.z,
-                        );
+            // Forward direction from the camera
+            let rotated_forward = transform.calculate_global_forward();
+            // Get the up direction
+            let rotated_up = transform.calculate_global_up();
 
-                        // Get the up direction
-                        let rotated_up = calculate_up(&transform);
+            // Look point of the camera
+            let look_at = Point3::new(
+                camera_eye.x + rotated_forward.x,
+                camera_eye.y + rotated_forward.y,
+                camera_eye.z + rotated_forward.z,
+            );
 
-                        let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
+            let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
 
-                        let projection = get_perspective_projection(&camera, aspect);
+            let projection = get_perspective_projection(&camera, aspect);
 
-                        // Compute Projection * View * Model
-                        let mvp = projection * view * model;
+            // Compute Projection * View * Model
+            let mvp = projection * view * model;
 
-                        // Convert matrices to bytes for push constant
-                        let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
-                        let model_bytes: [u8; 64] = std::mem::transmute(model);
+            // Convert matrices to bytes for push constant
+            let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
+            let model_bytes: [u8; 64] = std::mem::transmute(model);
 
-                        let mut push_constants = [0u8; 140];
-                        push_constants[0..64].copy_from_slice(&mvp_bytes);
-                        push_constants[64..128].copy_from_slice(&model_bytes);
+            let mut push_constants = [0u8; 256];
+            push_constants[0..64].copy_from_slice(&mvp_bytes);
+            push_constants[64..128].copy_from_slice(&model_bytes);
 
-                        // Render Model pipeline objects
-                        device.cmd_bind_pipeline(
-                            command_buffer,
-                            vk::PipelineBindPoint::GRAPHICS,
-                            self.model_pipeline,
-                        );
+            // Render Model pipeline objects
+            device.cmd_bind_pipeline(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.model_pipeline,
+            );
 
-                        // Render ModelRenderer entities
-                        world
-                            .query()
-                            .include::<ModelRenderer>()
-                            .include::<Transform>()
-                            .build()
-                            .run(|entity_view: EntityView<'_>| {
-                                world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
-                                    // Add position offset
-                                    if let Some(transform) = entity_view.get::<Transform>() {
-                                        // Add position offset
-                                        let offset = [
-                                            transform.position.x,
-                                            transform.position.y,
-                                            transform.position.z,
-                                        ];
-                                        let offset_bytes: [u8; 12] = std::mem::transmute(offset);
-                                        push_constants[128..140].copy_from_slice(&offset_bytes);
-                                    }
+            for node in world.get_all_nodes() {
+                if let Some(transform) = node.get_component::<Transform>()
+                    && let Some(model_renderer) = node.get_component::<ModelRenderer>()
+                {
+                    // Add position offset
+                    let offset = [
+                        transform.global_position.x,
+                        transform.global_position.y,
+                        transform.global_position.z,
+                        0.0f32, // padding
+                    ];
+                    let offset_bytes: [u8; 16] = std::mem::transmute(offset);
 
-                                    device.cmd_push_constants(
+                    push_constants[128..144].copy_from_slice(&offset_bytes);
+
+                    let rotation = [
+                        transform.global_rotation.v.x,
+                        transform.global_rotation.v.y,
+                        transform.global_rotation.v.z,
+                        transform.global_rotation.s,
+                    ];
+
+                    let rotation_bytes: [u8; 16] = std::mem::transmute(rotation);
+                    push_constants[144..160].copy_from_slice(&rotation_bytes);
+
+                    let scale = [
+                        transform.global_scale.x,
+                        transform.global_scale.y,
+                        transform.global_scale.z,
+                        0.0f32, // padding
+                    ];
+                    let scale_bytes: [u8; 16] = std::mem::transmute(scale);
+                    push_constants[160..176].copy_from_slice(&scale_bytes);
+
+                    device.cmd_push_constants(
+                        command_buffer,
+                        pipeline_layout,
+                        vk::ShaderStageFlags::VERTEX,
+                        0,
+                        &push_constants,
+                    );
+
+                    let mut model_name = model_renderer.loaded_model.clone();
+                    model_name.push_str(".glb");
+
+                    let model = model_loader.get_model(&model_name);
+
+                    if let Some(model) = model {
+                        for mesh in model.meshes.clone() {
+                            if model_loader.get_material(&mesh.material).is_none() {
+                                model_loader
+                                    .materials
+                                    .insert(mesh.material.clone(), Material::default());
+                                continue;
+                            }
+                            if let Some(material) = model_loader.get_material_mut(&mesh.material) {
+                                if material.albedo_texture().is_none()
+                                    && let Some(ref texture_name) =
+                                        material.albedo_texture_name.clone()
+                                {
+                                    let texture = self
+                                        .context
+                                        .load_texture(
+                                            &texture_name,
+                                            self.command_pool,
+                                            self.descriptor_pool,
+                                            self.descriptor_set_layout,
+                                        )
+                                        .unwrap();
+
+                                    material.set_albedo_texture(texture);
+                                }
+
+                                if let &mut Some(ref texture) = material.albedo_texture() {
+                                    device.cmd_bind_descriptor_sets(
                                         command_buffer,
+                                        vk::PipelineBindPoint::GRAPHICS,
                                         pipeline_layout,
-                                        vk::ShaderStageFlags::VERTEX,
                                         0,
-                                        &push_constants,
-                                    );
-
-                                    let model_renderer =
-                                        entity_view.get::<ModelRenderer>().unwrap();
-
-                                    let mut model_name = model_renderer.0.clone();
-                                    model_name.push_str(".glb");
-
-                                    let model = get_model(&model_name, model_loader);
-                                    for mesh in &mut model.meshes {
-                                        if let Some(ref texture) = mesh.material.base_color_texture
-                                        {
-                                            device.cmd_bind_descriptor_sets(
-                                                command_buffer,
-                                                vk::PipelineBindPoint::GRAPHICS,
-                                                pipeline_layout,
-                                                0,
-                                                &[texture.descriptor_set],
-                                                &[],
-                                            );
-                                        }
-
-                                        device.cmd_bind_vertex_buffers(
-                                            command_buffer,
-                                            0,
-                                            &[mesh.vertex_buffer],
-                                            &[0],
-                                        );
-                                        device.cmd_bind_index_buffer(
-                                            command_buffer,
-                                            mesh.index_buffer,
-                                            0,
-                                            vk::IndexType::UINT32,
-                                        );
-                                        device.cmd_draw_indexed(
-                                            command_buffer,
-                                            mesh.index_count,
-                                            1,
-                                            0,
-                                            0,
-                                            0,
-                                        );
-                                    }
-                                });
-                            });
-
-                        // Render MeshRenderer entities with Model vertex type
-                        world
-                            .query()
-                            .include::<MeshRenderer>()
-                            .include::<Transform>()
-                            .build()
-                            .run(|entity_view: EntityView<'_>| {
-                                if let Some(transform) = entity_view.get::<Transform>() {
-                                    // Add position offset
-                                    let offset = [
-                                        transform.position.x,
-                                        transform.position.y,
-                                        transform.position.z,
-                                    ];
-                                    let offset_bytes: [u8; 12] = std::mem::transmute(offset);
-                                    push_constants[128..140].copy_from_slice(&offset_bytes);
-                                    device.cmd_push_constants(
-                                        command_buffer,
-                                        pipeline_layout,
-                                        vk::ShaderStageFlags::VERTEX,
-                                        0,
-                                        &push_constants,
+                                        &[texture.descriptor_set],
+                                        &[],
                                     );
                                 }
+                            }
 
-                                let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
-
-                                if mesh.vertex_type == VertexType::Model {
-                                    device.cmd_bind_vertex_buffers(
-                                        command_buffer,
-                                        0,
-                                        &[mesh.vertex_buffer],
-                                        &[0],
-                                    );
-                                    device.cmd_bind_index_buffer(
-                                        command_buffer,
-                                        mesh.index_buffer,
-                                        0,
-                                        vk::IndexType::UINT32,
-                                    );
-                                    device.cmd_draw_indexed(
-                                        command_buffer,
-                                        mesh.index_count,
-                                        1,
-                                        0,
-                                        0,
-                                        0,
-                                    );
-                                }
-                            });
-
-                        // Render Voxel pipeline objects
-                        device.cmd_bind_pipeline(
-                            command_buffer,
-                            vk::PipelineBindPoint::GRAPHICS,
-                            self.voxel_pipeline,
-                        );
-
-                        device.cmd_push_constants(
-                            command_buffer,
-                            pipeline_layout,
-                            vk::ShaderStageFlags::VERTEX,
-                            0,
-                            &push_constants,
-                        );
-
-                        // Render MeshRenderer entities with Voxel vertex type
-                        world
-                            .query()
-                            .include::<MeshRenderer>()
-                            .include::<VoxelChunkTransform>()
-                            .build()
-                            .run(|entity_view: EntityView<'_>| {
-                                // Add position offset
-                                if let Some(transform) = entity_view.get::<VoxelChunkTransform>() {
-                                    // Add position offset
-                                    let offset = [
-                                        transform.position.x as f32,
-                                        transform.position.y as f32,
-                                        transform.position.z as f32,
-                                    ];
-                                    let offset_bytes: [u8; 12] = std::mem::transmute(offset);
-                                    push_constants[128..140].copy_from_slice(&offset_bytes);
-                                    device.cmd_push_constants(
-                                        command_buffer,
-                                        pipeline_layout,
-                                        vk::ShaderStageFlags::VERTEX,
-                                        0,
-                                        &push_constants,
-                                    );
-                                }
-                                let mesh = entity_view.get::<MeshRenderer>().unwrap().0.clone();
-                                if mesh.vertex_type == VertexType::Voxel {
-                                    device.cmd_bind_vertex_buffers(
-                                        command_buffer,
-                                        1,
-                                        &[mesh.vertex_buffer],
-                                        &[0],
-                                    );
-                                    device.cmd_bind_index_buffer(
-                                        command_buffer,
-                                        mesh.index_buffer,
-                                        0,
-                                        vk::IndexType::UINT32,
-                                    );
-                                    device.cmd_draw_indexed(
-                                        command_buffer,
-                                        mesh.index_count,
-                                        1,
-                                        0,
-                                        0,
-                                        0,
-                                    );
-                                }
-                            });
+                            device.cmd_bind_vertex_buffers(
+                                command_buffer,
+                                0,
+                                &[mesh.vertex_buffer],
+                                &[0],
+                            );
+                            device.cmd_bind_index_buffer(
+                                command_buffer,
+                                mesh.index_buffer,
+                                0,
+                                vk::IndexType::UINT32,
+                            );
+                            device.cmd_draw_indexed(command_buffer, mesh.index_count, 1, 0, 0, 0);
+                        }
                     }
-                });
+                }
+            }
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
@@ -702,37 +695,19 @@ impl Renderer {
     }
 
     /// Prepares egui for rendering
-    pub fn prepare_egui(&mut self, window: &Window, world: &mut World) {
+    pub fn prepare_egui(&mut self, window: &Window, world: &mut World, editor: &mut EditorStorage) {
         let raw_input = self.egui_renderer.egui_state.take_egui_input(window);
         self.egui_renderer.egui_ctx.begin_pass(raw_input);
 
         for system in &self.egui_renderer.sorted_ui_systems {
-            (system.func)(&mut self.egui_renderer.egui_ctx, world);
+            (system.func)(&mut self.egui_renderer.egui_ctx);
+        }
+
+        for system in &self.egui_renderer.sorted_editor_ui_systems {
+            (system.func)(&mut self.egui_renderer.egui_ctx, world, editor);
         }
     }
 }
-//
-// #[ui]
-// fn test(context: &mut Context, world: &mut World) {
-//     egui::Window::new("Debug Info")
-//         .default_pos([10.0, 10.0])
-//         .show(&context, |ui| {
-//             ui.heading("Engine Stats");
-//             ui.separator();
-//             ui.label(format!(
-//                 "Entity Count: {}",
-//                 world
-//                     .crust
-//                     .mantle(|mantle| mantle.core.entity_index.lock().len())
-//             ));
-//             ui.label(format!("Archetypes: {}", world.debug_archetypes()));
-//             ui.label(format!(
-//                 "FPS: {}",
-//                 world.with_resource(|fps: &FPSCounter| fps.fps())
-//             ));
-//             ui.separator();
-//         });
-// }
 
 impl Drop for Renderer {
     fn drop(&mut self) {

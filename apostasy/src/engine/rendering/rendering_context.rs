@@ -1,6 +1,5 @@
-use crate::{self as apostasy, engine::rendering::models::model::Texture};
+use crate::engine::rendering::models::model::Texture;
 use anyhow::{Result, anyhow};
-use apostasy_macros::Resource;
 use ash::{
     khr::{surface, swapchain},
     vk::{
@@ -22,7 +21,6 @@ use crate::engine::rendering::{
 };
 
 /// A set of data required for a renderer
-#[derive(Resource)]
 pub struct RenderingContext {
     pub queues: Vec<vk::Queue>,
     pub device: ash::Device,
