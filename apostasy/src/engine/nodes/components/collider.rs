@@ -185,38 +185,41 @@ pub fn collision_detection_system(world: &mut World) {
         let a = world.get_node_with_name(&event.node_a);
         let b = world.get_node_with_name(&event.node_b);
 
-        let a_collider = a.get_component::<Collider>().unwrap();
-        let b_collider = b.get_component::<Collider>().unwrap();
+        if let Some(a) = a
+            && let Some(b) = b
+            && let Some(a_collider) = a.get_component::<Collider>()
+            && let Some(b_collider) = b.get_component::<Collider>()
+        {
+            let a_static = a_collider.is_static;
+            let b_static = b_collider.is_static;
 
-        let a_static = a_collider.is_static;
-        let b_static = b_collider.is_static;
+            let normal_a = event.normal;
+            let normal_b = Vector3::new(-event.normal.x, -event.normal.y, -event.normal.z);
 
-        let normal_a = event.normal;
-        let normal_b = Vector3::new(-event.normal.x, -event.normal.y, -event.normal.z);
-
-        match (a_static, b_static) {
-            // both are dynamic, split the correction evenly
-            (false, false) => {
-                let half = event.translation_vector * 0.5;
-                let neg_half = Vector3::new(-half.x, -half.y, -half.z);
-                resolve_node(world, &event.node_a, half, normal_a);
-                resolve_node(world, &event.node_b, neg_half, normal_b);
+            match (a_static, b_static) {
+                // both are dynamic, split the correction evenly
+                (false, false) => {
+                    let half = event.translation_vector * 0.5;
+                    let neg_half = Vector3::new(-half.x, -half.y, -half.z);
+                    resolve_node(world, &event.node_a, half, normal_a);
+                    resolve_node(world, &event.node_b, neg_half, normal_b);
+                }
+                // a is static,push b the full amount
+                (true, false) => {
+                    let neg_translation_vector = Vector3::new(
+                        -event.translation_vector.x,
+                        -event.translation_vector.y,
+                        -event.translation_vector.z,
+                    );
+                    resolve_node(world, &event.node_b, neg_translation_vector, normal_b);
+                }
+                // b is static, push a the full amount
+                (false, true) => {
+                    resolve_node(world, &event.node_a, event.translation_vector, normal_a);
+                }
+                // both static, do nothing
+                (true, true) => {}
             }
-            // a is static,push b the full amount
-            (true, false) => {
-                let neg_translation_vector = Vector3::new(
-                    -event.translation_vector.x,
-                    -event.translation_vector.y,
-                    -event.translation_vector.z,
-                );
-                resolve_node(world, &event.node_b, neg_translation_vector, normal_b);
-            }
-            // b is static, push a the full amount
-            (false, true) => {
-                resolve_node(world, &event.node_a, event.translation_vector, normal_a);
-            }
-            // both static, do nothing
-            (true, true) => {}
         }
     }
 
@@ -232,7 +235,8 @@ pub fn collision_detection_system(world: &mut World) {
 fn resolve_node(world: &mut World, name: &str, _offset: Vector3<f32>, normal: Vector3<f32>) {
     let node = world.get_node_with_name_mut(name);
 
-    if let Some(velocity) = node.get_component_mut::<Velocity>()
+    if let Some(node) = node
+        && let Some(velocity) = node.get_component_mut::<Velocity>()
         && velocity.direction != Vector3::zero()
     {
         velocity.add_velocity(normal);

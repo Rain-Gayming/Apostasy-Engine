@@ -138,6 +138,29 @@ pub fn fixed_update(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn editor_fixed_update(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let args = parse_macro_input!(attr as SystemArgs);
+    let fn_name = &input_fn.sig.ident;
+    let priority = args.priority.unwrap_or(0);
+
+    // Generate an inventory registration
+    let expanded = quote! {
+        #input_fn
+
+        inventory::submit! {
+            apostasy::engine::nodes::system::EditorFixedUpdateSystem {
+                name: stringify!(#fn_name),
+                func: #fn_name,
+                priority: #priority,
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+#[proc_macro_attribute]
 pub fn input(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     let args = parse_macro_input!(attr as SystemArgs);

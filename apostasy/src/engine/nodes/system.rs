@@ -15,8 +15,14 @@ pub struct StartSystem {
     pub func: fn(&mut World),
     pub priority: u32,
 }
-
 inventory::collect!(StartSystem);
+
+pub struct EditorFixedUpdateSystem {
+    pub name: &'static str,
+    pub func: fn(&mut World, delta: f32),
+    pub priority: u32,
+}
+inventory::collect!(EditorFixedUpdateSystem);
 
 pub struct FixedUpdateSystem {
     pub name: &'static str,

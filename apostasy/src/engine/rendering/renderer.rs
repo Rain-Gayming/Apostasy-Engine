@@ -277,7 +277,12 @@ impl Renderer {
         }
     }
     /// Renders the world from a perspective of a camera
-    pub fn render(&mut self, world: &World, model_loader: &mut ModelLoader) -> Result<()> {
+    pub fn render(
+        &mut self,
+        world: &World,
+        model_loader: &mut ModelLoader,
+        is_editor: bool,
+    ) -> Result<()> {
         let frame = &mut self.frames[self.frame_index];
         unsafe {
             // Wait for the image to be available
@@ -375,42 +380,6 @@ impl Renderer {
                 depth_attachment_state,
                 vk::ImageAspectFlags::DEPTH,
             );
-            //
-            // // Texture loading
-            // world
-            //     .query()
-            //     .include::<ModelRenderer>()
-            //     .include::<Transform>()
-            //     .build()
-            //     .run(|entity_view: EntityView<'_>| {
-            //         world.with_resource_mut::<ModelLoader, _, _>(|model_loader| {
-            //             let model_renderer = entity_view.get::<ModelRenderer>().unwrap();
-            //
-            //             let mut model_name = model_renderer.0.clone();
-            //             model_name.push_str(".glb");
-            //
-            //             let model = get_model(&model_name, model_loader);
-            //             for mesh in &mut model.meshes {
-            //                 if mesh.material.base_color_texture.is_none()
-            //                     && let Some(ref texture_name) = mesh.material.texture_name.clone()
-            //                 {
-            //                     let texture = self
-            //                         .context
-            //                         .load_texture(
-            //                             &texture_name,
-            //                             self.command_pool,
-            //                             self.descriptor_pool,
-            //                             self.descriptor_set_layout,
-            //                         )
-            //                         .unwrap();
-            //
-            //                     mesh.material.base_color_texture = Some(texture);
-            //                     println!("texture loaded");
-            //                     println!("{}", mesh.material.base_color_texture.is_some());
-            //                 }
-            //             }
-            //         });
-            //     });
 
             // Begin rendering
             self.context.begin_rendering(
@@ -445,14 +414,18 @@ impl Renderer {
             let swapchain_extent = self.swapchain.extent;
 
             let mut camera_node: Option<&Node> = None;
-            for node in world.get_all_nodes() {
-                if node.get_component::<Camera>().is_some() {
-                    camera_node = Some(node);
+
+            if !is_editor {
+                for node in world.get_all_world_nodes() {
+                    if node.get_component::<Camera>().is_some() {
+                        camera_node = Some(node);
+                    }
                 }
             }
 
             if camera_node.is_none()
                 && let Some(node) = world.get_global_node_with_component::<Camera>()
+                && is_editor
             {
                 camera_node = Some(node);
             }

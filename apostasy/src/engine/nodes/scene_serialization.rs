@@ -37,7 +37,8 @@ pub struct ComponentRegistrator {
 
 inventory::collect!(ComponentRegistrator);
 pub fn find_registration(type_name: &str) -> Option<&'static ComponentRegistrator> {
-    inventory::iter::<ComponentRegistrator>().find(|r| r.type_name == type_name)
+    inventory::iter::<ComponentRegistrator>()
+        .find(|r| r.type_name.to_lowercase() == type_name.to_lowercase())
 }
 
 /// Serializes a node, returns a serialized node

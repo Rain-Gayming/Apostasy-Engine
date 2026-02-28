@@ -1,8 +1,11 @@
 use crate::{self as apostasy};
-use apostasy_macros::{Component, Inspectable, SerializableComponent};
+use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
 use serde::{Deserialize, Serialize};
 
-#[derive(Component, Clone, Inspectable, Serialize, Deserialize, SerializableComponent)]
+use crate::engine::editor::inspectable::Inspectable;
+#[derive(
+    Component, Clone, Inspectable, InspectValue, Serialize, Deserialize, SerializableComponent,
+)]
 pub struct Player {
     pub is_active: bool,
 }

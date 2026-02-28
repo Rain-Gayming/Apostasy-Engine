@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use apostasy_macros::fixed_update;
+use apostasy_macros::{editor_fixed_update, fixed_update};
 use cgmath::{Vector3, Zero, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
@@ -217,7 +217,11 @@ impl Engine {
                         renderer.prepare_egui(window.1, &mut self.world, &mut self.editor);
                     }
 
-                    let _ = renderer.render(&self.world, &mut self.model_loader);
+                    let _ = renderer.render(
+                        &self.world,
+                        &mut self.model_loader,
+                        self.editor.is_editor_open,
+                    );
                 }
             }
             WindowEvent::KeyboardInput { .. } => {}
@@ -263,7 +267,12 @@ impl Engine {
 
     pub fn request_redraw(&mut self) {
         self.world.update();
-        self.world.fixed_update(self.timer.tick().fixed_dt);
+
+        if self.editor.is_editor_open {
+            self.world.editor_fixed_update(self.timer.tick().fixed_dt);
+        } else {
+            self.world.fixed_update(self.timer.tick().fixed_dt);
+        }
 
         for window in &self.window_manager.windows {
             window.1.request_redraw();
@@ -286,7 +295,7 @@ impl Engine {
     }
 }
 
-#[fixed_update]
+#[editor_fixed_update]
 pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
     if !world
         .get_global_node_with_component::<CursorManager>()

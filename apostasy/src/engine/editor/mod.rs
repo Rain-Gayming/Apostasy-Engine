@@ -5,8 +5,8 @@ use crate::{
         nodes::{
             Node,
             components::{
-                camera::Camera, collider::Collider, physics::Physics, transform::Transform,
-                velocity::Velocity,
+                camera::Camera, collider::Collider, physics::Physics, player::Player,
+                transform::Transform, velocity::Velocity,
             },
         },
         rendering::models::model::ModelRenderer,
@@ -287,6 +287,10 @@ pub fn top_bar_ui(context: &mut Context, world: &mut World, editor_storage: &mut
                 }
                 if ui.button("Layout").clicked() {
                     editor_storage.is_layout_editor_open = !editor_storage.is_layout_editor_open;
+                }
+
+                if ui.button("Play").clicked() {
+                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
                 }
             });
 
@@ -742,6 +746,9 @@ fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorS
                 }
                 if let Some(cursor_manager) = node.get_component_mut::<CursorManager>() {
                     cursor_manager.inspect_value(ui);
+                }
+                if let Some(player) = node.get_component_mut::<Player>() {
+                    player.inspect_value(ui);
                 }
 
                 ui.allocate_space(ui.available_size());

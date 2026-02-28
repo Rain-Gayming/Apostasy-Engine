@@ -1,5 +1,7 @@
 use crate::{
-    self as apostasy, engine::nodes::scene_serialization::find_registration, log, log_warn,
+    self as apostasy,
+    engine::nodes::{scene_serialization::find_registration, system::EditorFixedUpdateSystem},
+    log, log_warn,
 };
 use std::any::TypeId;
 
@@ -181,6 +183,7 @@ impl Node {
         Ok(())
     }
 }
+
 pub trait ComponentsMut<'a> {
     fn from_node(node: &'a mut Node) -> Self;
 }
@@ -261,6 +264,39 @@ impl World {
         self.check_node_ids();
     }
 
+    pub fn get_all_world_nodes(&self) -> Vec<&Node> {
+        fn collect<'a>(node: &'a Node, out: &mut Vec<&'a Node>) {
+            out.push(node);
+            for child in &node.children {
+                collect(child, out);
+            }
+        }
+
+        let mut nodes = Vec::new();
+        for node in self.scene.root_node.children.iter() {
+            collect(node, &mut nodes);
+        }
+
+        nodes
+    }
+
+    pub fn get_all_world_nodes_mut(&mut self) -> Vec<&mut Node> {
+        fn collect<'a>(node: &'a mut Node, out: &mut Vec<*mut Node>) {
+            out.push(node as *mut Node);
+            for child in node.children.iter_mut() {
+                collect(child, out);
+            }
+        }
+
+        let mut ptrs: Vec<*mut Node> = Vec::new();
+        for node in self.scene.root_node.children.iter_mut() {
+            collect(node, &mut ptrs);
+        }
+
+        // SAFETY: each pointer is a unique node in the tree; we never alias.
+        unsafe { ptrs.into_iter().map(|p| &mut *p).collect() }
+    }
+
     pub fn get_all_nodes(&self) -> Vec<&Node> {
         fn collect<'a>(node: &'a Node, out: &mut Vec<&'a Node>) {
             out.push(node);
@@ -302,18 +338,16 @@ impl World {
         unsafe { ptrs.into_iter().map(|p| &mut *p).collect() }
     }
 
-    pub fn get_node_with_name(&self, name: &str) -> &Node {
+    pub fn get_node_with_name(&self, name: &str) -> Option<&Node> {
         self.get_all_nodes()
             .into_iter()
             .find(|node| node.name == name)
-            .unwrap()
     }
 
-    pub fn get_node_with_name_mut(&mut self, name: &str) -> &mut Node {
+    pub fn get_node_with_name_mut(&mut self, name: &str) -> Option<&mut Node> {
         self.get_all_nodes_mut()
             .into_iter()
             .find(|node| node.name == name)
-            .unwrap()
     }
 
     pub fn get_node(&self, id: u64) -> &Node {
@@ -355,6 +389,16 @@ impl World {
             (system.func)(self, delta);
         }
     }
+
+    pub fn editor_fixed_update(&mut self, delta: f32) {
+        let mut systems = inventory::iter::<EditorFixedUpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self, delta);
+        }
+    }
+
     pub fn late_update(&mut self) {
         let mut systems = inventory::iter::<LateUpdateSystem>().collect::<Vec<_>>();
         systems.sort_by(|a, b| a.priority.cmp(&b.priority));
@@ -363,34 +407,16 @@ impl World {
             (system.func)(self);
         }
     }
-    pub fn get_node_with_component<T: Component + 'static>(&self) -> &Node {
-        let node = self
-            .get_all_nodes()
+    pub fn get_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
+        self.get_all_nodes()
             .into_iter()
-            .find(|node| node.get_component::<T>().is_some());
-
-        if node.is_none() {
-            panic!(
-                "No node with component ({}) found",
-                std::any::type_name::<T>()
-            );
-        }
-        node.unwrap()
+            .find(|node| node.get_component::<T>().is_some())
     }
 
-    pub fn get_node_with_component_mut<T: Component + 'static>(&mut self) -> &mut Node {
-        let node = self
-            .get_all_nodes_mut()
+    pub fn get_node_with_component_mut<T: Component + 'static>(&mut self) -> Option<&mut Node> {
+        self.get_all_nodes_mut()
             .into_iter()
-            .find(|node| node.get_component::<T>().is_some());
-
-        if node.is_none() {
-            panic!(
-                "No node with component ({}) found",
-                std::any::type_name::<T>()
-            );
-        }
-        node.unwrap()
+            .find(|node| node.get_component::<T>().is_some())
     }
 
     pub fn get_global_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
