@@ -1,4 +1,5 @@
 use crate::engine::editor::WindowPosition;
+use crate::engine::editor::clear_panel_memory;
 use crate::engine::nodes::World;
 use crate::log;
 use crate::log_warn;
@@ -52,6 +53,10 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
     let mut command_to_execute: Option<String> = None;
     let mut command_inputs: Vec<String> = Vec::new();
 
+    if editor_storage.console_position != editor_storage.console_position_prev {
+        clear_panel_memory(context, "Console");
+        editor_storage.console_position_prev = editor_storage.console_position;
+    }
     // Drain new logs once
     let new_logs: Vec<String> = get_log_buffer().lock().drain(..).collect();
     editor_storage.console_log.extend(new_logs);
@@ -91,8 +96,8 @@ pub fn console_ui(context: &mut Context, world: &mut World, editor_storage: &mut
         }
         WindowPosition::Top => {
             TopBottomPanel::top("Console")
-                .default_height(200.0)
                 .resizable(true)
+                .min_height(64.0)
                 .show(context, |ui| {
                     render_console_ui(
                         ui,
