@@ -51,7 +51,7 @@ root_children:
   - type: ModelRenderer
     data:
       loading_model: cube
-      loaded_model: cube
+      loaded_model: smooth_sphere
   - type: Collider
     data:
       half_extents:
@@ -64,6 +64,18 @@ root_children:
         z: 0.0
       is_static: true
       is_area: false
+  - type: Velocity
+    data:
+      direction:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+  - type: Physics
+    data:
+      mass: 1.0
+      friction: 0.0
+      gravity: -9.8100004196167
+      is_gravity_enabled: true
   children: []
 - name: Player
   id: 4

@@ -189,7 +189,7 @@ impl Engine {
 
     pub fn window_event(
         &mut self,
-        _event_loop: &ActiveEventLoop,
+        event_loop: &ActiveEventLoop,
         window_id: WindowId,
         event: WindowEvent,
     ) {
@@ -215,6 +215,10 @@ impl Engine {
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     for window in &self.window_manager.windows {
                         renderer.prepare_egui(window.1, &mut self.world, &mut self.editor);
+
+                        if self.editor.should_close {
+                            event_loop.exit();
+                        }
                     }
 
                     let _ = renderer.render(
@@ -225,6 +229,10 @@ impl Engine {
                 }
             }
             WindowEvent::KeyboardInput { .. } => {}
+
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
 
             _ => (),
         }

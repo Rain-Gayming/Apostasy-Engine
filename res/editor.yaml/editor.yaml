@@ -3,14 +3,14 @@ inspector_position: Right
 file_tree_position: Left
 console_position: Bottom
 hierarchy_size:
-- 169.25
+- 167.28125
 - 100.0
 inspector_size:
-- 415.03125
-- 1353.0
+- 96.0
+- 28.0
 file_tree_size:
-- 216.0
-- 1353.0
+- 122.0
+- 68.0
 console_size:
-- 465.71875
-- 460.0
+- 2560.0
+- 1413.0

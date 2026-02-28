@@ -10,7 +10,7 @@ use winit::{event::WindowEvent, window::Window};
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
 use crate::engine::{
-    editor::EditorStorage,
+    editor::{EditorStorage, style::style},
     nodes::{
         Node, World,
         components::{
@@ -48,15 +48,6 @@ impl EguiRenderer {
         swapchain: &Swapchain,
         window: &Window,
     ) -> Self {
-        let egui_state = egui_winit::State::new(
-            egui::Context::default(),
-            egui::ViewportId::ROOT,
-            &window,
-            None,
-            None,
-            None,
-        );
-
         let mut egui_renderer = egui_ash_renderer::Renderer::with_default_allocator(
             &context.instance,
             context.physical_device.handle,
@@ -65,7 +56,10 @@ impl EguiRenderer {
                 color_attachment_format: swapchain.format,
                 depth_attachment_format: Some(swapchain.depth_format),
             },
-            Options::default(),
+            Options {
+                srgb_framebuffer: true,
+                ..Default::default()
+            },
         )
         .unwrap();
         egui_renderer.add_user_texture(DescriptorSet::default());
@@ -87,6 +81,16 @@ impl EguiRenderer {
 
         let egui_ctx = egui::Context::default();
         egui_ctx.set_fonts(fonts);
+        egui_ctx.set_style(style());
+
+        let egui_state = egui_winit::State::new(
+            egui_ctx.clone(),
+            egui::ViewportId::ROOT,
+            &window,
+            None,
+            None,
+            None,
+        );
 
         let mut sorted_ui_systems: Vec<&'static UIFunction> =
             inventory::iter::<UIFunction>.into_iter().collect();

@@ -31,6 +31,7 @@ use winit::{event::MouseButton, keyboard::PhysicalKey};
 
 pub mod console_commands;
 pub mod inspectable;
+pub mod style;
 
 /// Storage for all information needed by the editor
 pub struct EditorStorage {
@@ -85,6 +86,8 @@ pub struct EditorStorage {
 
     pub is_scene_manager_open: bool,
     pub scene_name: String,
+
+    pub should_close: bool,
 }
 
 pub enum DragTarget {
@@ -169,6 +172,7 @@ impl Default for EditorStorage {
 
             is_scene_manager_open: false,
             scene_name: String::new(),
+            should_close: false,
         };
 
         editor_storage.deserialize();
@@ -281,39 +285,46 @@ pub fn top_bar_ui(context: &mut Context, world: &mut World, editor_storage: &mut
             ui.add_space(1.0);
 
             ui.horizontal(|ui| {
-                if ui.button("Save Editor").clicked() {
-                    editor_storage.serialize();
-                }
+                ui.horizontal(|ui| {
+                    // if ui.button("Load Editor").clicked() {
+                    //     editor_storage.deserialize();
+                    //     editor_storage.is_layout_dirty = true;
+                    // }
 
-                // if ui.button("Load Editor").clicked() {
-                //     editor_storage.deserialize();
-                //     editor_storage.is_layout_dirty = true;
-                // }
+                    if ui.button("InputManager").clicked() {
+                        editor_storage.is_keybind_editor_open =
+                            !editor_storage.is_keybind_editor_open;
+                    }
+                    if ui.button("SceneManager").clicked() {
+                        editor_storage.is_scene_manager_open =
+                            !editor_storage.is_scene_manager_open;
+                    }
+                    if ui.button("Layout").clicked() {
+                        editor_storage.is_layout_editor_open =
+                            !editor_storage.is_layout_editor_open;
+                    }
 
-                if ui.button("InputManager").clicked() {
-                    editor_storage.is_keybind_editor_open = !editor_storage.is_keybind_editor_open;
-                }
-                if ui.button("SceneManager").clicked() {
-                    editor_storage.is_scene_manager_open = !editor_storage.is_scene_manager_open;
-                }
-                if ui.button("Layout").clicked() {
-                    editor_storage.is_layout_editor_open = !editor_storage.is_layout_editor_open;
-                }
+                    if ui.button("Play").clicked() {
+                        editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                        world.scene_manager.get_primary_scene();
 
-                if ui.button("Play").clicked() {
-                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                    world.scene_manager.get_primary_scene();
+                        let scene = world
+                            .scene_manager
+                            .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
 
-                    let scene = world
-                        .scene_manager
-                        .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                        world.scene = scene;
+                    }
 
-                    world.scene = scene;
-                }
+                    if ui.button("Play Current").clicked() {
+                        editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                    }
+                });
 
-                if ui.button("Play Current").clicked() {
-                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("Close").clicked() {
+                        editor_storage.should_close = true;
+                    }
+                });
             });
 
             ui.add_space(1.0);
@@ -341,6 +352,15 @@ pub fn layout_editor_ui(
                 WindowPosition::Floating,
             ];
             let labels = ["Left", "Right", "Top", "Bottom", "Floating"];
+
+            ui.horizontal(|ui| {
+                if ui.button("Save Editor").clicked() {
+                    editor_storage.serialize();
+                }
+                if ui.button("Load Editor").clicked() {
+                    editor_storage.deserialize();
+                }
+            });
 
             egui::Grid::new("layout_grid")
                 .num_columns(2)

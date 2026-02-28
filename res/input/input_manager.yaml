@@ -24,11 +24,6 @@ key_bindings:
     key: !Code KeyQ
     action: hold
     name: down
-- name: test
-  bind:
-    key: !Code KeyO
-    action: release
-    name: test
 - name: backward
   bind:
     key: !Code KeyS
