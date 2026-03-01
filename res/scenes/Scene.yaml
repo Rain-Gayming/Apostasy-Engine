@@ -1,0 +1,69 @@
+root_children:
+- name: cube
+  id: 0
+  components:
+  - type: Transform
+    data:
+      position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+  - type: ModelRenderer
+    data:
+      loading_model: cube
+      loaded_model: cube
+  - type: Collider
+    data:
+      half_extents:
+        x: 0.5
+        y: 0.5
+        z: 0.5
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: true
+      is_area: false
+  children: []
+name: Scene
+is_primary: false

@@ -339,7 +339,6 @@ pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
 
         velocity.add_velocity(direction * delta_time);
 
-        velocity.direction *= delta_time;
         apply_velocity(velocity, camera_transform);
         velocity.direction = Vector3::zero();
     }

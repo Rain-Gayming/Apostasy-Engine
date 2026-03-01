@@ -2,7 +2,10 @@ use crate::engine::{
     editor::inspectable::Inspectable,
     nodes::{
         World,
-        components::{transform::Transform, velocity::Velocity},
+        components::{
+            transform::Transform,
+            velocity::{Velocity, apply_velocity},
+        },
     },
 };
 use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent, update};
@@ -235,10 +238,11 @@ pub fn collision_detection_system(world: &mut World) {
 fn resolve_node(world: &mut World, name: &str, _offset: Vector3<f32>, normal: Vector3<f32>) {
     let node = world.get_node_with_name_mut(name);
 
-    if let Some(node) = node
-        && let Some(velocity) = node.get_component_mut::<Velocity>()
-        && velocity.direction != Vector3::zero()
-    {
-        velocity.add_velocity(normal);
+    if let Some(node) = node {
+        let (transform, velocity) = node.get_components_mut::<(&mut Transform, &mut Velocity)>();
+        if velocity.direction != Vector3::zero() {
+            velocity.add_velocity(normal);
+            apply_velocity(velocity, transform);
+        }
     }
 }

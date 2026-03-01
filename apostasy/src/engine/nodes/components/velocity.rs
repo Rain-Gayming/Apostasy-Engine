@@ -25,11 +25,6 @@ pub fn apply_velocity(velocity: &Velocity, transform: &mut Transform) {
 
 impl Velocity {
     pub fn add_velocity(&mut self, strength: Vector3<f32>) {
-        let len = strength.magnitude();
-        if len > 0.0 {
-            self.direction = strength / len;
-        } else {
-            self.direction = Vector3::zero();
-        }
+        self.direction = strength;
     }
 }

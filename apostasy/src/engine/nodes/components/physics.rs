@@ -37,7 +37,7 @@ pub fn apply_gravity(world: &mut World, delta_time: f32) {
             if physics.is_gravity_enabled {
                 let (transform, velocity) =
                     node.get_components_mut::<(&mut Transform, &mut Velocity)>();
-                velocity.add_velocity(Vector3::new(0.0, gravity, 0.0) * delta_time);
+                velocity.add_velocity(Vector3::new(0.0, gravity * delta_time, 0.0));
                 apply_velocity(velocity, transform);
             }
         }

@@ -6,6 +6,76 @@ root_children:
     data:
       position:
         x: 0.0
+        y: -4.460000038146973
+        z: 0.0
+      rotation:
+        v:
+          x: 0.012246477417647839
+          y: 0.15254290401935577
+          z: -0.0018903835443779826
+        s: 0.988219141960144
+      rotation_euler:
+        x: 1.4199999570846558
+        y: 17.549999237060547
+        z: 0.0
+      scale:
+        x: 15.0
+        y: 1.0
+        z: 15.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 0.0
+        y: -4.460000038146973
+        z: 0.0
+      global_rotation:
+        v:
+          x: 0.012246477417647839
+          y: 0.15254290401935577
+          z: -0.0018903835443779826
+        s: 0.988219141960144
+      global_scale:
+        x: 15.0
+        y: 1.0
+        z: 15.0
+  - type: ModelRenderer
+    data:
+      loading_model: cube
+      loaded_model: cube
+  - type: Collider
+    data:
+      half_extents:
+        x: 7.5
+        y: 0.5
+        z: 7.5
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: true
+      is_area: false
+  children: []
+- name: Node
+  id: 1
+  components: []
+  children: []
+- name: player
+  id: 2
+  components:
+  - type: Transform
+    data:
+      position:
+        x: 0.0
         y: 0.0
         z: 0.0
       rotation:
@@ -48,22 +118,6 @@ root_children:
         x: 1.0
         y: 1.0
         z: 1.0
-  - type: ModelRenderer
-    data:
-      loading_model: cube
-      loaded_model: smooth_sphere
-  - type: Collider
-    data:
-      half_extents:
-        x: 0.5
-        y: 0.5
-        z: 0.5
-      offset:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      is_static: true
-      is_area: false
   - type: Velocity
     data:
       direction:
@@ -74,79 +128,26 @@ root_children:
     data:
       mass: 1.0
       friction: 0.0
-      gravity: -9.8100004196167
+      gravity: -0.10000000149011612
       is_gravity_enabled: true
-  children: []
-- name: Player
-  id: 1
-  components:
-  - type: Transform
-    data:
-      position:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      rotation:
-        v:
-          x: 0.2890852391719818
-          y: 0.4713207483291626
-          z: -0.16690343618392944
-        s: 0.8163514733314514
-      rotation_euler:
-        x: 39.0
-        y: 60.0
-        z: 0.0
-      scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-      up:
-        x: 0.0
-        y: 1.0
-        z: 0.0
-      forward:
-        x: 0.0
-        y: 0.0
-        z: -1.0
-      right:
-        x: 1.0
-        y: 0.0
-        z: 0.0
-      global_position:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      global_rotation:
-        v:
-          x: 0.2890852391719818
-          y: 0.4713207483291626
-          z: -0.16690343618392944
-        s: 0.8163514733314514
-      global_scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-  - type: Velocity
-    data:
-      direction:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-  - type: Player
-    data:
-      is_active: false
   - type: Player
     data:
       is_active: true
-  - type: Player
+  - type: Collider
     data:
-      is_active: true
-  - type: Player
-    data:
-      is_active: true
+      half_extents:
+        x: 0.5
+        y: 0.5
+        z: 0.5
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: false
+      is_area: false
   children:
-  - name: Camera
-    id: 2
+  - name: camera
+    id: 3
     components:
     - type: Transform
       data:
@@ -186,10 +187,10 @@ root_children:
           z: 0.0
         global_rotation:
           v:
-            x: 0.2890852391719818
-            y: 0.4713207483291626
-            z: -0.16690343618392944
-          s: 0.8163514733314514
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
         global_scale:
           x: 1.0
           y: 1.0
@@ -200,9 +201,62 @@ root_children:
         near: 0.0010000000474974513
         far: 10000.0
     children: []
-- name: Node
-  id: 3
-  components: []
-  children: []
+  - name: ground detector
+    id: 4
+    components:
+    - type: Raycast
+      data:
+        direction:
+          x: 0.0
+          y: -1.0
+          z: -1.0
+        max_distance: 0.10000000149011612
+    - type: Transform
+      data:
+        position:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        rotation_euler:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        scale:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+        up:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        forward:
+          x: 0.0
+          y: 0.0
+          z: -1.0
+        right:
+          x: 1.0
+          y: 0.0
+          z: 0.0
+        global_position:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        global_rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        global_scale:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+    children: []
 name: DevScene
 is_primary: true

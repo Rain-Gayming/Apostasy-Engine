@@ -5,6 +5,7 @@ use egui::DragValue;
 /// Impliment via ```#[derive(Inspectable)]```
 pub trait Inspectable {
     fn inspect(&mut self, ui: &mut egui::Ui) -> bool;
+    fn on_inspect(&mut self) {}
 }
 
 /// Implemented by types that can be inspected

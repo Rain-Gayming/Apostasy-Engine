@@ -1,6 +1,8 @@
+use std::path::Path;
+
 use crate::engine::nodes::{
     ENGINE_SCENE_SAVE_PATH, Node,
-    scene_serialization::{SerializedScene, deserialize_node},
+    scene_serialization::{SerializedScene, deserialize_node, serialize_node},
 };
 
 pub struct Scene {
@@ -57,6 +59,27 @@ impl SceneManager {
 
             let scene = self.deserialize_scene(name);
             self.scenes.push(scene);
+        }
+    }
+
+    pub fn serialize_scenes(&mut self) {
+        for scene in self.scenes.iter_mut() {
+            println!("Serializing scene: {}", scene.name);
+            let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene.name);
+            if !Path::new(ENGINE_SCENE_SAVE_PATH).exists() {
+                let _ = std::fs::create_dir_all(ENGINE_SCENE_SAVE_PATH);
+            }
+            let serialized = SerializedScene {
+                root_children: scene
+                    .root_node
+                    .children
+                    .iter()
+                    .map(serialize_node)
+                    .collect(),
+                name: scene.name.clone(),
+                is_primary: scene.is_primary,
+            };
+            let _ = std::fs::write(path, serde_yaml::to_string(&serialized).unwrap());
         }
     }
 

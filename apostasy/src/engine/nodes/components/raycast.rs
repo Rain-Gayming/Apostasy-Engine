@@ -2,7 +2,7 @@ use cgmath::{InnerSpace, Rotation, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::engine::nodes::{
-    World,
+    Node, World,
     components::{collider::Collider, transform::Transform},
 };
 use crate::{self as apostasy};
@@ -41,50 +41,44 @@ impl Raycast {
         }
     }
 
-    /// Fires a ray from `transform.position` along `self.direction` rotated by `transform.rotation`.
-    pub fn cast(&self, transform: &Transform, world: &World, ignore: &str) -> Option<RayHit> {
+    pub fn cast(&self, transform: &Transform, nodes: &[&Node], ignore: &str) -> Option<RayHit> {
         let world_dir = transform.rotation.rotate_vector(self.direction).normalize();
-        self.hits(transform.position, world_dir, world, |name| name != ignore)
+        self.hits(transform.position, world_dir, nodes, |name| name != ignore)
             .into_iter()
             .next()
     }
 
-    /// Same as `cast` but returns every hit sorted nearest-first.
-    pub fn cast_all(&self, transform: &Transform, world: &World, ignore: &str) -> Vec<RayHit> {
+    pub fn cast_all(&self, transform: &Transform, nodes: &[&Node], ignore: &str) -> Vec<RayHit> {
         let world_dir = transform.rotation.rotate_vector(self.direction).normalize();
-        self.hits(transform.position, world_dir, world, |name| name != ignore)
+        self.hits(transform.position, world_dir, nodes, |name| name != ignore)
     }
 
-    /// Same as `cast` but ignores multiple nodes by name.
     pub fn cast_ignore_many(
         &self,
         transform: &Transform,
-        world: &World,
+        nodes: &[&Node],
         ignore: &[&str],
     ) -> Option<RayHit> {
         let world_dir = transform.rotation.rotate_vector(self.direction).normalize();
-        self.hits(transform.position, world_dir, world, |name| {
+        self.hits(transform.position, world_dir, nodes, |name| {
             !ignore.contains(&name)
         })
         .into_iter()
         .next()
     }
 
-    // ── Internal ──────────────────────────────────────────────────────────────
-
     fn hits<F>(
         &self,
         origin: Vector3<f32>,
         direction: Vector3<f32>,
-        world: &World,
+        nodes: &[&Node],
         filter: F,
     ) -> Vec<RayHit>
     where
         F: Fn(&str) -> bool,
     {
-        let mut hits: Vec<RayHit> = world
-            .get_all_nodes()
-            .into_iter()
+        let mut hits: Vec<RayHit> = nodes
+            .iter()
             .filter(|node| filter(&node.name))
             .filter_map(|node| {
                 let transform = node.get_component::<Transform>()?;
@@ -114,8 +108,6 @@ impl Raycast {
         hits
     }
 }
-
-// ─── Slab intersection (Kay–Kajiya) ──────────────────────────────────────────
 
 fn intersect_aabb(
     origin: Vector3<f32>,

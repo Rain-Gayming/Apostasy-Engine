@@ -146,6 +146,7 @@ impl Node {
             t.global_position = global_position;
             t.global_rotation = global_rotation;
             t.global_scale = global_scale;
+            t.calculate_rotation();
         }
 
         // Collect the new globals to pass to children

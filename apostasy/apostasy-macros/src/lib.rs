@@ -374,6 +374,7 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
                         });
                 });
                 ui.separator();
+                self.on_inspect();
                 remove
             }
         }

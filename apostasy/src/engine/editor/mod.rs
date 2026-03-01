@@ -301,16 +301,23 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                 }
 
                 if ui.button("Play").clicked() {
-                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                    world.scene_manager.get_primary_scene();
-                    let scene = world
-                        .scene_manager
-                        .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-                    world.scene = scene;
-                    world.check_node_ids();
-                }
-
-                if ui.button("Play Current").clicked() {
+                    if editor_storage.is_editor_open {
+                        println!("Playing");
+                        world.serialize_scene();
+                        world.scene_manager.get_primary_scene();
+                        let scene = world
+                            .scene_manager
+                            .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                        world.scene = scene;
+                        world.check_node_ids();
+                    } else {
+                        world.scene_manager.get_primary_scene();
+                        let scene = world
+                            .scene_manager
+                            .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                        world.scene = scene;
+                        world.check_node_ids();
+                    }
                     editor_storage.is_editor_open = !editor_storage.is_editor_open;
                 }
 
@@ -541,9 +548,6 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
 
                 ui.separator();
 
-                // Iterate all components, call inspect(), collect any that
-                // requested removal. Only one removal per frame is fine since
-                // the UI rerenders every frame.
                 let mut to_remove: Option<usize> = None;
 
                 for (i, component) in node.components.iter_mut().enumerate() {
@@ -683,6 +687,9 @@ fn render_scene_manager(
     Window::new("Scene Manager")
         .default_size([400.0, 500.0])
         .show(context, |ui| {
+            if ui.button("Close").clicked() {
+                editor_storage.is_scene_manager_open = false;
+            }
             ui.collapsing("Add Scene", |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Name:");
@@ -814,6 +821,9 @@ fn render_input_manager(
                 }
                 if ui.button("Load Input Manager").clicked() {
                     world.input_manager.deserialize_input_manager().unwrap();
+                }
+                if ui.button("Close").clicked() {
+                    editor_storage.is_keybind_editor_open = false;
                 }
             });
             ui.separator();

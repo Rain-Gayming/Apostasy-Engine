@@ -20,13 +20,6 @@ pub struct Transform {
     pub global_scale: Vector3<f32>,
 }
 
-impl InspectValue for Transform {
-    fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        self.inspect(ui);
-        self.calculate_rotation();
-    }
-}
-
 impl Default for Transform {
     fn default() -> Self {
         Self {
