@@ -20,12 +20,14 @@ use crate::{
 };
 use std::path::{Path, PathBuf};
 
+use crate::engine::editor::console_commands::render_console_ui;
 use crate::{engine::nodes::World, log};
 use apostasy_macros::editor_ui;
 use egui::{
-    Align2, CollapsingHeader, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense,
-    SidePanel, Stroke, TopBottomPanel, Ui, Vec2, Window, collapsing_header::CollapsingState, pos2,
+    Align2, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
+    TopBottomPanel, Ui, Vec2, Window, pos2,
 };
+use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
 use serde::{Deserialize, Serialize};
 use winit::{event::MouseButton, keyboard::PhysicalKey};
 
@@ -33,25 +35,40 @@ pub mod console_commands;
 pub mod inspectable;
 pub mod style;
 
-/// Storage for all information needed by the editor
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+pub enum EditorTab {
+    Hierarchy,
+    Inspector,
+    Files,
+    Console,
+    Viewport,
+}
+
+impl std::fmt::Display for EditorTab {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EditorTab::Hierarchy => write!(f, "Hierarchy"),
+            EditorTab::Inspector => write!(f, "Inspector"),
+            EditorTab::Files => write!(f, "Files"),
+            EditorTab::Console => write!(f, "Console"),
+            EditorTab::Viewport => write!(f, "Viewport"),
+        }
+    }
+}
+
 pub struct EditorStorage {
     pub component_text_edit: String,
-
     pub is_editor_open: bool,
 
-    // file tree editor
+    // file tree
     pub file_tree_search: String,
     pub file_tree: Option<FileNode>,
-    pub file_tree_position: WindowPosition,
-    pub file_tree_size: Vec2,
 
-    // console editor
+    // console
     pub is_console_open: bool,
     pub console_log: Vec<String>,
-    pub console_size: Vec2,
     pub console_filter: String,
     pub console_command: String,
-    pub console_position: WindowPosition,
 
     // keybind editor
     pub is_keybind_editor_open: bool,
@@ -65,29 +82,19 @@ pub struct EditorStorage {
     pub mousebind_button: MouseButton,
     pub mousebind_action: KeyAction,
 
-    // hierarchy editor
+    // hierarchy
     pub dragging_node: Option<u64>,
     pub drag_target: Option<DragTarget>,
-    pub hierarchy_position: WindowPosition,
-    pub hierarchy_size: Vec2,
     pub selected_node: Option<u64>,
     pub show_globals: bool,
 
-    // inspector editor
-    pub inspector_position: WindowPosition,
-    pub inspector_size: Vec2,
-
-    pub is_layout_editor_open: bool,
-    pub is_layout_dirty: bool,
-    pub hierarchy_position_prev: WindowPosition,
-    pub inspector_position_prev: WindowPosition,
-    pub file_tree_position_prev: WindowPosition,
-    pub console_position_prev: WindowPosition,
-
+    // scene manager
     pub is_scene_manager_open: bool,
     pub scene_name: String,
 
     pub should_close: bool,
+
+    pub dock_state: DockState<EditorTab>,
 }
 
 pub enum DragTarget {
@@ -95,92 +102,91 @@ pub enum DragTarget {
     Root,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum WindowPosition {
-    Left,
-    Right,
-    Top,
-    Bottom,
-    Floating,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct SerializedEditorStorage {
-    pub hierarchy_position: WindowPosition,
-    pub inspector_position: WindowPosition,
-    pub file_tree_position: WindowPosition,
-    pub console_position: WindowPosition,
-
-    pub hierarchy_size: [f32; 2],
-    pub inspector_size: [f32; 2],
-    pub file_tree_size: [f32; 2],
-    pub console_size: [f32; 2],
-}
-
 const ENGINE_EDITOR_SAVE_PATH: &str = "res/editor.yaml";
+
+fn default_dock_state() -> DockState<EditorTab> {
+    let mut state = DockState::new(vec![EditorTab::Viewport]);
+
+    let surface = state.main_surface_mut();
+
+    let [_viewport, hierarchy] =
+        surface.split_left(NodeIndex::root(), 0.2, vec![EditorTab::Hierarchy]);
+
+    let [_, _inspector] = surface.split_right(NodeIndex::root(), 0.75, vec![EditorTab::Inspector]);
+
+    surface.split_below(hierarchy, 0.6, vec![EditorTab::Files, EditorTab::Console]);
+
+    state
+}
 
 impl Default for EditorStorage {
     fn default() -> Self {
-        let mut editor_storage = Self {
+        let dock_state = Self::load_dock_state().unwrap_or_else(default_dock_state);
+
+        Self {
             component_text_edit: String::new(),
 
             file_tree_search: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
-            file_tree_position: WindowPosition::Left,
-            file_tree_size: Vec2::new(100.0, 100.0),
 
             is_editor_open: true,
 
-            // console editor
             is_console_open: false,
             console_log: Vec::new(),
             console_filter: String::new(),
             console_command: String::new(),
-            console_position: WindowPosition::Bottom,
-            console_size: Vec2::new(100.0, 100.0),
 
-            // keybind editor
             is_keybind_editor_open: false,
             keybind_name: String::new(),
             keybind_key_code: String::new(),
             keybind_action: KeyAction::Press,
             keybind_error: None,
 
-            // mousebind editor
             mousebind_name: String::new(),
             mousebind_button: MouseButton::Left,
             mousebind_action: KeyAction::Press,
 
-            // hierarchy editor
             dragging_node: None,
             drag_target: None,
-            hierarchy_position: WindowPosition::Left,
             selected_node: None,
-            hierarchy_size: Vec2::new(100.0, 100.0),
             show_globals: false,
-
-            // inspector editor
-            inspector_position: WindowPosition::Right,
-            inspector_size: Vec2::new(100.0, 100.0),
-
-            is_layout_editor_open: false,
-            is_layout_dirty: false,
-            hierarchy_position_prev: WindowPosition::Left,
-            inspector_position_prev: WindowPosition::Right,
-            file_tree_position_prev: WindowPosition::Left,
-            console_position_prev: WindowPosition::Bottom,
 
             is_scene_manager_open: false,
             scene_name: String::new(),
             should_close: false,
-        };
 
-        editor_storage.deserialize();
-        editor_storage
+            dock_state,
+        }
     }
 }
-//
-/// A node in the file tree
+
+#[derive(Serialize, Deserialize)]
+struct SerializedDockState {
+    dock: DockState<EditorTab>,
+}
+
+impl EditorStorage {
+    pub fn save_dock_state(&self) {
+        let path = format!("{}/editor.yaml", ENGINE_EDITOR_SAVE_PATH);
+        if !Path::new(ENGINE_EDITOR_SAVE_PATH).exists() {
+            let _ = std::fs::create_dir_all(ENGINE_EDITOR_SAVE_PATH);
+        }
+        let serialized = SerializedDockState {
+            dock: self.dock_state.clone(),
+        };
+        if let Ok(yaml) = serde_yaml::to_string(&serialized) {
+            let _ = std::fs::write(path, yaml);
+        }
+    }
+
+    fn load_dock_state() -> Option<DockState<EditorTab>> {
+        let path = format!("{}/editor.yaml", ENGINE_EDITOR_SAVE_PATH);
+        let contents = std::fs::read_to_string(&path).ok()?;
+        let s: SerializedDockState = serde_yaml::from_str(&contents).ok()?;
+        Some(s.dock)
+    }
+}
+
 pub struct FileNode {
     pub name: String,
     pub path: PathBuf,
@@ -188,50 +194,8 @@ pub struct FileNode {
     pub is_dir: bool,
 }
 
-impl EditorStorage {
-    pub fn serialize(&self) {
-        let serialized = SerializedEditorStorage {
-            hierarchy_position: self.hierarchy_position,
-            inspector_position: self.inspector_position,
-            file_tree_position: self.file_tree_position,
-            console_position: self.console_position,
-
-            hierarchy_size: self.hierarchy_size.into(),
-            inspector_size: self.inspector_size.into(),
-            file_tree_size: self.file_tree_size.into(),
-            console_size: self.console_size.into(),
-        };
-
-        let path = format!("{}/{}.yaml", ENGINE_EDITOR_SAVE_PATH, "editor");
-
-        if !Path::new(&path).exists() {
-            std::fs::create_dir_all(ENGINE_EDITOR_SAVE_PATH).unwrap();
-        }
-
-        let res = std::fs::write(path, serde_yaml::to_string(&serialized).unwrap());
-    }
-
-    pub fn deserialize(&mut self) {
-        let path = format!("{}/{}.yaml", ENGINE_EDITOR_SAVE_PATH, "editor");
-
-        let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
-        let serialized: SerializedEditorStorage = serde_yaml::from_str(&contents).unwrap();
-
-        self.hierarchy_position = serialized.hierarchy_position;
-        self.inspector_position = serialized.inspector_position;
-        self.file_tree_position = serialized.file_tree_position;
-        self.console_position = serialized.console_position;
-
-        self.hierarchy_size = serialized.hierarchy_size.into();
-        self.inspector_size = serialized.inspector_size.into();
-        self.file_tree_size = serialized.file_tree_size.into();
-        self.console_size = serialized.console_size.into();
-    }
-}
-
 impl FileNode {
     pub fn from_path(path: &Path) -> Self {
-        // get the name of the file or directory
         let name = path
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
@@ -240,19 +204,19 @@ impl FileNode {
         let mut children = Vec::new();
         let is_dir = path.is_dir();
 
-        // if the path is a directory, read the entries and sort them
-        if is_dir && let Ok(entries) = std::fs::read_dir(path) {
-            let mut entries: Vec<_> = entries.flatten().collect();
-            entries.sort_by(|a, b| {
-                let a_is_dir = a.path().is_dir();
-                let b_is_dir = b.path().is_dir();
-                b_is_dir
-                    .cmp(&a_is_dir)
-                    .then(a.file_name().cmp(&b.file_name()))
-            });
-            // recursively create FileNodes for each entry
-            for entry in entries {
-                children.push(FileNode::from_path(&entry.path()));
+        if is_dir {
+            if let Ok(entries) = std::fs::read_dir(path) {
+                let mut entries: Vec<_> = entries.flatten().collect();
+                entries.sort_by(|a, b| {
+                    let a_is_dir = a.path().is_dir();
+                    let b_is_dir = b.path().is_dir();
+                    b_is_dir
+                        .cmp(&a_is_dir)
+                        .then(a.file_name().cmp(&b.file_name()))
+                });
+                for entry in entries {
+                    children.push(FileNode::from_path(&entry.path()));
+                }
             }
         }
 
@@ -264,61 +228,117 @@ impl FileNode {
         }
     }
 }
-fn clear_panel_memory(context: &mut Context, name: &str) {
-    let id = egui::Id::new(name);
-    context.memory_mut(|mem| {
-        mem.data.remove::<egui::containers::panel::PanelState>(id);
-    });
+pub struct EditorTabViewer<'a> {
+    pub world: &'a mut World,
+    pub editor_storage: &'a mut EditorStorage,
+    pub viewport_rect: Option<egui::Rect>,
 }
-#[editor_ui(priority = 100)]
-pub fn top_bar_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
-    if editor_storage.is_layout_dirty {
-        clear_panel_memory(context, "Hierarchy");
-        clear_panel_memory(context, "Inspector");
-        clear_panel_memory(context, "Files");
-        clear_panel_memory(context, "Console");
-        editor_storage.is_layout_dirty = false;
+
+impl<'a> TabViewer for EditorTabViewer<'a> {
+    type Tab = EditorTab;
+
+    fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
+        tab.to_string().into()
     }
+
+    fn ui(&mut self, ui: &mut Ui, tab: &mut Self::Tab) {
+        match tab {
+            EditorTab::Hierarchy => render_hierarchy(ui, self.world, self.editor_storage),
+            EditorTab::Inspector => render_inspector(ui, self.world, self.editor_storage),
+            EditorTab::Files => render_file_tree_ui(ui, self.editor_storage),
+            EditorTab::Console => render_console_ui(ui, self.world, self.editor_storage),
+            EditorTab::Viewport => {
+                // The central viewport: transparent so the 3-D render shows through.
+                let rect = ui.max_rect();
+                self.viewport_rect = Some(rect);
+
+                ui.painter().rect_filled(rect, 0.0, Color32::TRANSPARENT);
+                ui.allocate_space(ui.available_size());
+            }
+        }
+    }
+
+    fn closeable(&mut self, _tab: &mut Self::Tab) -> bool {
+        false
+    }
+
+    fn tab_style_override(
+        &self,
+        tab: &Self::Tab,
+        global_style: &egui_dock::TabStyle,
+    ) -> Option<egui_dock::TabStyle> {
+        if *tab == EditorTab::Viewport {
+            let mut style = global_style.clone();
+            style.tab_body.bg_fill = Color32::TRANSPARENT;
+            Some(style)
+        } else {
+            None
+        }
+    }
+}
+
+#[editor_ui]
+pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+    render_top_bar(context, world, editor_storage);
+
+    if !editor_storage.is_editor_open {
+        return;
+    }
+    render_scene_manager(context, world, editor_storage);
+    render_input_manager(context, world, editor_storage);
+    let mut dock_state = std::mem::replace(&mut editor_storage.dock_state, default_dock_state());
+
+    let mut viewer = EditorTabViewer {
+        world,
+        editor_storage,
+        viewport_rect: None,
+    };
+
+    DockArea::new(&mut dock_state)
+        .style({
+            let mut style = Style::from_egui(context.style().as_ref());
+
+            style.main_surface_border_stroke = egui::Stroke::NONE;
+            style
+        })
+        .show(context, &mut viewer);
+    viewer.editor_storage.dock_state = dock_state;
+
+    let viewport_rect = viewer.viewport_rect;
+
+    if let Some(rect) = viewport_rect {
+        let pointer_in_rect = context
+            .pointer_latest_pos()
+            .map_or(false, |pos| rect.contains(pos));
+        viewer.world.is_world_hovered = pointer_in_rect && !context.wants_pointer_input();
+    }
+}
+
+fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
     TopBottomPanel::top("TopBar")
         .default_height(20.0)
         .show(context, |ui| {
             ui.add_space(1.0);
-
             ui.horizontal(|ui| {
-                ui.horizontal(|ui| {
-                    // if ui.button("Load Editor").clicked() {
-                    //     editor_storage.deserialize();
-                    //     editor_storage.is_layout_dirty = true;
-                    // }
+                if ui.button("InputManager").clicked() {
+                    editor_storage.is_keybind_editor_open = !editor_storage.is_keybind_editor_open;
+                }
+                if ui.button("SceneManager").clicked() {
+                    editor_storage.is_scene_manager_open = !editor_storage.is_scene_manager_open;
+                }
 
-                    if ui.button("InputManager").clicked() {
-                        editor_storage.is_keybind_editor_open =
-                            !editor_storage.is_keybind_editor_open;
-                    }
-                    if ui.button("SceneManager").clicked() {
-                        editor_storage.is_scene_manager_open =
-                            !editor_storage.is_scene_manager_open;
-                    }
-                    if ui.button("Layout").clicked() {
-                        editor_storage.is_layout_editor_open =
-                            !editor_storage.is_layout_editor_open;
-                    }
+                if ui.button("Play").clicked() {
+                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                    world.scene_manager.get_primary_scene();
+                    let scene = world
+                        .scene_manager
+                        .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                    world.scene = scene;
+                }
 
-                    if ui.button("Play").clicked() {
-                        editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                        world.scene_manager.get_primary_scene();
-
-                        let scene = world
-                            .scene_manager
-                            .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-
-                        world.scene = scene;
-                    }
-
-                    if ui.button("Play Current").clicked() {
-                        editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                    }
-                });
+                if ui.button("Play Current").clicked() {
+                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button("Close").clicked() {
@@ -326,208 +346,65 @@ pub fn top_bar_ui(context: &mut Context, world: &mut World, editor_storage: &mut
                     }
                 });
             });
-
             ui.add_space(1.0);
         });
 }
 
-#[editor_ui(priority = 2)]
-pub fn layout_editor_ui(
-    context: &mut Context,
-    _world: &mut World,
-    editor_storage: &mut EditorStorage,
-) {
-    if !editor_storage.is_layout_editor_open {
-        return;
-    }
-
-    Window::new("Layout Editor")
-        .default_size([300.0, 400.0])
-        .show(context, |ui| {
-            let positions = [
-                WindowPosition::Left,
-                WindowPosition::Right,
-                WindowPosition::Top,
-                WindowPosition::Bottom,
-                WindowPosition::Floating,
-            ];
-            let labels = ["Left", "Right", "Top", "Bottom", "Floating"];
-
-            ui.horizontal(|ui| {
-                if ui.button("Save Editor").clicked() {
-                    editor_storage.serialize();
-                }
-                if ui.button("Load Editor").clicked() {
-                    editor_storage.deserialize();
-                }
-            });
-
-            egui::Grid::new("layout_grid")
-                .num_columns(2)
-                .spacing([16.0, 8.0])
-                .show(ui, |ui| {
-                    // Helper macro to render a row
-                    macro_rules! position_row {
-                        ($label:expr, $field:expr) => {
-                            ui.label($label);
-                            egui::ComboBox::from_id_salt($label)
-                                .selected_text(position_label(&$field))
-                                .show_ui(ui, |ui| {
-                                    for (pos, lbl) in positions.iter().zip(labels.iter()) {
-                                        ui.selectable_value(&mut $field, pos.clone(), *lbl);
-                                    }
-                                });
-                            ui.end_row();
-                        };
-                    }
-
-                    position_row!("Hierarchy", editor_storage.hierarchy_position);
-                    position_row!("Inspector", editor_storage.inspector_position);
-                    position_row!("Files", editor_storage.file_tree_position);
-                    position_row!("Console", editor_storage.console_position);
-                });
-        });
-}
-
-fn position_label(pos: &WindowPosition) -> &'static str {
-    match pos {
-        WindowPosition::Left => "Left",
-        WindowPosition::Right => "Right",
-        WindowPosition::Top => "Top",
-        WindowPosition::Bottom => "Bottom",
-        WindowPosition::Floating => "Floating",
-    }
-}
-
-#[editor_ui(priority = 2)]
-pub fn hierarchy_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
-    if !editor_storage.is_editor_open {
-        return;
-    }
-
-    if editor_storage.hierarchy_position != editor_storage.hierarchy_position_prev {
-        clear_panel_memory(context, "Hierarchy");
-        editor_storage.hierarchy_position_prev = editor_storage.hierarchy_position;
-    }
-
-    match editor_storage.hierarchy_position {
-        WindowPosition::Floating => {
-            if let Some(window) = Window::new("Hierarchy")
-                .default_size(editor_storage.hierarchy_size)
-                .resizable(true)
-                .show(context, |ui| {
-                    render_hierarchy(ui, world, editor_storage);
-                })
-            {
-                editor_storage.hierarchy_size = window.response.rect.size();
-            }
-        }
-        WindowPosition::Left => {
-            let window = SidePanel::left("Hierarchy")
-                .default_width(editor_storage.hierarchy_size.x)
-                .resizable(true)
-                .show(context, |ui| {
-                    render_hierarchy(ui, world, editor_storage);
-                });
-            editor_storage.hierarchy_size.x = window.response.rect.width();
-        }
-        WindowPosition::Right => {
-            let window = SidePanel::right("Hierarchy")
-                .default_width(editor_storage.hierarchy_size.x)
-                .resizable(true)
-                .show(context, |ui| {
-                    render_hierarchy(ui, world, editor_storage);
-                });
-            editor_storage.hierarchy_size.x = window.response.rect.width();
-        }
-        WindowPosition::Top => {
-            let window = TopBottomPanel::top("Hierarchy")
-                .default_height(editor_storage.hierarchy_size.y)
-                .resizable(true)
-                .min_height(64.0)
-                .show(context, |ui| {
-                    render_hierarchy(ui, world, editor_storage);
-                });
-            editor_storage.hierarchy_size.y = window.response.rect.height();
-        }
-        WindowPosition::Bottom => {
-            let window = TopBottomPanel::bottom("Hierarchy")
-                .default_height(editor_storage.hierarchy_size.y)
-                .resizable(true)
-                .min_height(64.0)
-                .show(context, |ui| {
-                    render_hierarchy(ui, world, editor_storage);
-                });
-            editor_storage.hierarchy_size.y = window.response.rect.height();
-        }
-    }
-}
-
-pub fn render_hierarchy(ui: &mut egui::Ui, world: &mut World, editor_storage: &mut EditorStorage) {
+pub fn render_hierarchy(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorStorage) {
     ui.horizontal(|ui| {
-        ui.label(format!("Scene Name: {}", world.scene.name));
+        ui.label(format!("Scene: {}", world.scene.name));
     });
     ui.horizontal(|ui| {
         if ui.button("New Entity").clicked() {
             world.add_new_node();
         }
-
         if ui.button("Save Scene").clicked() {
             world.serialize_scene().unwrap();
         }
     });
-
     ui.horizontal(|ui| {
         ui.checkbox(&mut editor_storage.show_globals, "Show Globals");
     });
 
     ScrollArea::vertical()
         .id_salt("hierarchy_scroll")
+        .auto_shrink([false, false])
         .show(ui, |ui| {
-            ScrollArea::vertical()
-                .id_salt("entities_scroll")
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    ui.add_space(4.0);
+            ui.add_space(4.0);
 
-                    let root_children: Vec<Node> = world.scene.root_node.children.clone();
-                    for node in &root_children {
-                        draw_node(ui, node, editor_storage, 0);
-                    }
+            let root_children: Vec<Node> = world.scene.root_node.children.clone();
+            for node in &root_children {
+                draw_node(ui, node, editor_storage, 0);
+            }
 
-                    if editor_storage.show_globals {
-                        for node in &world.global_nodes {
-                            draw_node(ui, node, editor_storage, 0);
+            if editor_storage.show_globals {
+                for node in &world.global_nodes {
+                    draw_node(ui, node, editor_storage, 0);
+                }
+            }
+
+            let empty_space = ui.allocate_response(ui.available_size(), Sense::hover());
+            if empty_space.hovered() && editor_storage.dragging_node.is_some() {
+                editor_storage.drag_target = Some(DragTarget::Root);
+            }
+
+            if ui.input(|i| i.pointer.any_released()) {
+                if let Some(dragging) = editor_storage.dragging_node.take() {
+                    let target = editor_storage.drag_target.take();
+                    let root = &mut *world.scene.root_node;
+                    match target {
+                        Some(DragTarget::Parent(parent_id)) if parent_id != dragging => {
+                            if let Some(node) = root.remove_node(dragging) {
+                                root.insert_under(parent_id, node);
+                            }
+                        }
+                        _ => {
+                            if let Some(mut node) = root.remove_node(dragging) {
+                                node.parent = None;
+                                root.children.push(node);
+                            }
                         }
                     }
-
-                    // Drop onto empty space = move to root
-                    let empty_space = ui.allocate_response(ui.available_size(), Sense::hover());
-                    if empty_space.hovered() && editor_storage.dragging_node.is_some() {
-                        editor_storage.drag_target = Some(DragTarget::Root);
-                    }
-                });
-
-            // Commit the drag on mouse release
-            if ui.input(|i| i.pointer.any_released())
-                && let Some(dragging) = editor_storage.dragging_node.take()
-            {
-                let target = editor_storage.drag_target.take();
-                let root = &mut *world.scene.root_node;
-
-                match target {
-                    Some(DragTarget::Parent(parent_id)) if parent_id != dragging => {
-                        if let Some(node) = root.remove_node(dragging) {
-                            root.insert_under(parent_id, node);
-                        }
-                    }
-                    Some(DragTarget::Root) | None => {
-                        if let Some(mut node) = root.remove_node(dragging) {
-                            node.parent = None;
-                            root.children.push(node);
-                        }
-                    }
-                    _ => {}
                 }
             }
             ui.allocate_space(ui.available_size());
@@ -538,24 +415,21 @@ fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage,
     let indent = depth as f32 * 10.0;
     let has_children = !node.children.is_empty();
     let selected = Some(node.id) == editor_storage.selected_node;
-    if has_children {
-        let id = ui.make_persistent_id(format!("node_{}", node.name));
+    let id = ui.make_persistent_id(format!("node_{}", node.name));
 
-        CollapsingHeader::new(&node.name)
+    if has_children {
+        egui::CollapsingHeader::new(&node.name)
             .id_salt(id)
             .icon(|ui, openness, response| {
-                // Simple triangle icon
                 let rect = response.rect;
                 let color = Color32::from_gray(180);
                 let points = if openness > 0.5 {
-                    // pointing down
                     vec![
                         pos2(rect.left(), rect.top()),
                         pos2(rect.right(), rect.top()),
                         pos2(rect.center().x, rect.bottom()),
                     ]
                 } else {
-                    // pointing right
                     vec![
                         pos2(rect.left(), rect.top()),
                         pos2(rect.right(), rect.center().y),
@@ -573,19 +447,13 @@ fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage,
             });
     } else {
         ui.horizontal(|ui| {
-            if let Some(parent) = &node.parent {
-                let indent = indent
-                    + if parent == &"root".to_string() {
-                        18.0
-                    } else {
-                        0.0
-                    };
-                ui.add_space(indent);
-                draw_node_row(ui, node, selected, editor_storage);
+            let extra = if node.parent.as_deref() == Some("root") {
+                18.0
             } else {
-                ui.add_space(indent + 18.0);
-                draw_node_row(ui, node, selected, editor_storage);
-            }
+                0.0
+            };
+            ui.add_space(indent + extra);
+            draw_node_row(ui, node, selected, editor_storage);
         });
     }
 }
@@ -603,7 +471,6 @@ fn draw_node_row(
         editor_storage.dragging_node = Some(node.id);
     }
 
-    // render a tooltip with the node name when dragging
     if editor_storage.dragging_node == Some(node.id) && response.dragged() {
         egui::Tooltip::always_open(
             ui.ctx().clone(),
@@ -617,14 +484,10 @@ fn draw_node_row(
         });
     }
 
-    // get the pointer position
     let pointer_pos = ui.ctx().pointer_latest_pos();
-
-    // highlight as drop target when something is being dragged over it
     let is_drag_target =
         editor_storage.dragging_node.is_some() && pointer_pos.is_some_and(|pos| rect.contains(pos));
 
-    // detects and stores the current hovered node when dragging
     if is_drag_target {
         editor_storage.drag_target = Some(DragTarget::Parent(node.id));
     }
@@ -639,7 +502,6 @@ fn draw_node_row(
         Color32::TRANSPARENT
     };
 
-    // draw a line above the row to show insert position
     if is_drag_target {
         ui.painter().line_segment(
             [rect.left_bottom(), rect.right_bottom()],
@@ -647,7 +509,6 @@ fn draw_node_row(
         );
     }
 
-    // draw the color needed and the name
     ui.painter().rect_filled(rect, 0.0, color);
     ui.painter().text(
         rect.left_center() + Vec2::new(4.0, 0.0),
@@ -661,88 +522,9 @@ fn draw_node_row(
         editor_storage.selected_node = Some(node.id);
     }
 }
-#[editor_ui(priority = 0)]
-pub fn viewport_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
-    if !editor_storage.is_editor_open {
-        return;
-    }
 
-    let viewport_rect = egui::CentralPanel::default()
-        .frame(egui::Frame::new().fill(Color32::TRANSPARENT))
-        .show(context, |ui| {
-            let rect = ui.max_rect();
-
-            ui.allocate_space(ui.available_size());
-            rect
-        })
-        .inner;
-
-    let pointer_in_rect = context
-        .pointer_latest_pos()
-        .map_or(false, |pos| viewport_rect.contains(pos));
-
-    world.is_world_hovered = pointer_in_rect && !context.wants_pointer_input();
-}
-#[editor_ui(priority = 2)]
-pub fn inspector_ui(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
-    if !editor_storage.is_editor_open {
-        return;
-    }
-    if editor_storage.inspector_position != editor_storage.inspector_position_prev {
-        clear_panel_memory(context, "Inspector");
-        editor_storage.inspector_position_prev = editor_storage.inspector_position;
-    }
-    match editor_storage.inspector_position {
-        WindowPosition::Floating => {
-            let window = Window::new("Inspector")
-                .default_size(editor_storage.inspector_size)
-                .show(context, |ui| {
-                    render_inspector(ui, world, editor_storage);
-                });
-            editor_storage.inspector_size = window.unwrap().response.rect.size();
-        }
-        WindowPosition::Left => {
-            let window = SidePanel::left("Inspector")
-                .default_width(editor_storage.inspector_size.x)
-                .show(context, |ui| {
-                    render_inspector(ui, world, editor_storage);
-                });
-            editor_storage.inspector_size = window.response.rect.size();
-        }
-        WindowPosition::Right => {
-            let window = SidePanel::right("Inspector")
-                .default_width(editor_storage.inspector_size.x)
-                .show(context, |ui| {
-                    render_inspector(ui, world, editor_storage);
-                });
-            editor_storage.inspector_size = window.response.rect.size();
-        }
-        WindowPosition::Top => {
-            let window = TopBottomPanel::top("Inspector")
-                .resizable(true)
-                .default_height(editor_storage.inspector_size.y)
-                .min_height(64.0)
-                .show(context, |ui| {
-                    render_inspector(ui, world, editor_storage);
-                });
-            editor_storage.inspector_size = window.response.rect.size();
-        }
-        WindowPosition::Bottom => {
-            let window = TopBottomPanel::bottom("Inspector")
-                .resizable(true)
-                .default_height(editor_storage.inspector_size.y)
-                .min_height(64.0)
-                .show(context, |ui| {
-                    render_inspector(ui, world, editor_storage);
-                });
-            editor_storage.inspector_size = window.response.rect.size();
-        }
-    }
-}
-
-fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorStorage) {
+pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorStorage) {
     ui.separator();
-
     ui.label("Components");
 
     if let Some(id) = editor_storage.selected_node {
@@ -752,7 +534,6 @@ fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorS
                 let node = world.get_node_mut(id);
                 ui.horizontal(|ui| {
                     ui.label("Name: ");
-
                     let text_edit = ui.text_edit_singleline(&mut node.editing_name);
                     if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                         node.name = node.editing_name.clone();
@@ -767,7 +548,6 @@ fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorS
 
                 ui.horizontal(|ui| {
                     ui.text_edit_singleline(&mut editor_storage.component_text_edit);
-
                     if ui.button("Add Component").clicked() {
                         let res = node.add_component_by_name(&editor_storage.component_text_edit);
                         if res.is_err() {
@@ -779,90 +559,33 @@ fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorS
                     }
                 });
 
-                if let Some(transform) = node.get_component_mut::<Transform>() {
-                    transform.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<Transform>() {
+                    c.inspect_value(ui);
                 }
-                if let Some(camera) = node.get_component_mut::<Camera>() {
-                    camera.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<Camera>() {
+                    c.inspect_value(ui);
                 }
-                if let Some(model) = node.get_component_mut::<ModelRenderer>() {
-                    model.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<ModelRenderer>() {
+                    c.inspect_value(ui);
                 }
-                if let Some(velocity) = node.get_component_mut::<Velocity>() {
-                    velocity.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<Velocity>() {
+                    c.inspect_value(ui);
                 }
-                if let Some(physics) = node.get_component_mut::<Physics>() {
-                    physics.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<Physics>() {
+                    c.inspect_value(ui);
                 }
-                if let Some(collider) = node.get_component_mut::<Collider>() {
-                    collider.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<Collider>() {
+                    c.inspect_value(ui);
                 }
-                if let Some(cursor_manager) = node.get_component_mut::<CursorManager>() {
-                    cursor_manager.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<CursorManager>() {
+                    c.inspect_value(ui);
                 }
-                if let Some(player) = node.get_component_mut::<Player>() {
-                    player.inspect_value(ui);
+                if let Some(c) = node.get_component_mut::<Player>() {
+                    c.inspect_value(ui);
                 }
 
                 ui.allocate_space(ui.available_size());
             });
-    }
-}
-
-#[editor_ui(priority = 2)]
-pub fn file_tree_ui(context: &mut Context, _world: &mut World, editor_storage: &mut EditorStorage) {
-    if !editor_storage.is_editor_open {
-        return;
-    }
-    if editor_storage.file_tree_position != editor_storage.file_tree_position_prev {
-        clear_panel_memory(context, "Files");
-        editor_storage.file_tree_position_prev = editor_storage.file_tree_position;
-    }
-    match editor_storage.file_tree_position {
-        WindowPosition::Floating => {
-            let window = Window::new("Files")
-                .default_size(editor_storage.file_tree_size)
-                .show(context, |ui| {
-                    render_file_tree_ui(ui, editor_storage);
-                });
-            editor_storage.file_tree_size = window.unwrap().response.rect.size();
-        }
-        WindowPosition::Left => {
-            let window = SidePanel::left("Files")
-                .default_width(editor_storage.file_tree_size.x)
-                .show(context, |ui| {
-                    render_file_tree_ui(ui, editor_storage);
-                });
-            editor_storage.file_tree_size = window.response.rect.size();
-        }
-        WindowPosition::Right => {
-            let window = SidePanel::right("Files")
-                .default_width(editor_storage.file_tree_size.x)
-                .show(context, |ui| {
-                    render_file_tree_ui(ui, editor_storage);
-                });
-            editor_storage.file_tree_size = window.response.rect.size();
-        }
-        WindowPosition::Top => {
-            let window = TopBottomPanel::top("Files")
-                .resizable(true)
-                .default_height(editor_storage.file_tree_size.y)
-                .min_height(64.0)
-                .show(context, |ui| {
-                    render_file_tree_ui(ui, editor_storage);
-                });
-            editor_storage.file_tree_size = window.response.rect.size();
-        }
-        WindowPosition::Bottom => {
-            let window = TopBottomPanel::bottom("Files")
-                .resizable(true)
-                .default_height(editor_storage.file_tree_size.y)
-                .min_height(64.0)
-                .show(context, |ui| {
-                    render_file_tree_ui(ui, editor_storage);
-                });
-            editor_storage.file_tree_size = window.response.rect.size();
-        }
     }
 }
 
@@ -883,16 +606,16 @@ pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage
             });
 
             ui.text_edit_singleline(&mut editor_storage.file_tree_search);
-
             ui.separator();
+
             if let Some(tree) = &editor_storage.file_tree {
                 if editor_storage.file_tree_search.is_empty() {
                     render_file_tree(ui, tree, 0, editor_storage.file_tree_search.clone());
                 } else {
                     let files = get_all_files(&tree.path);
+                    let search = editor_storage.file_tree_search.to_lowercase();
                     for file in files {
-                        let name = file.name.to_lowercase();
-                        if name.contains(&name) {
+                        if file.name.to_lowercase().contains(&search) {
                             render_file_tree(ui, &file, 0, editor_storage.file_tree_search.clone());
                         }
                     }
@@ -907,13 +630,14 @@ pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage
 
 fn get_all_files(path: &Path) -> Vec<FileNode> {
     let mut files: Vec<FileNode> = Vec::new();
-    for entry in std::fs::read_dir(path).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        if path.is_dir() {
-            files.extend(get_all_files(&path));
-        } else {
-            files.push(FileNode::from_path(&path));
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                files.extend(get_all_files(&p));
+            } else {
+                files.push(FileNode::from_path(&p));
+            }
         }
     }
     files
@@ -921,29 +645,24 @@ fn get_all_files(path: &Path) -> Vec<FileNode> {
 
 fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize, search: String) {
     let indent = depth as f32 * 12.0;
-
-    let search = search.to_lowercase();
-    let name = node.name.clone().to_lowercase();
+    let search_lc = search.to_lowercase();
+    let name_lc = node.name.to_lowercase();
 
     if node.is_dir {
         let id = ui.make_persistent_id(&node.path);
-        let default_open = depth == 0; // root open by default
-        CollapsingHeader::new(&node.name)
+        egui::CollapsingHeader::new(&node.name)
             .id_salt(id)
-            .default_open(default_open)
+            .default_open(depth == 0)
             .icon(|ui, openness, response| {
-                // Simple triangle icon
                 let rect = response.rect;
                 let color = Color32::from_gray(180);
                 let points = if openness > 0.5 {
-                    // pointing down
                     vec![
                         pos2(rect.left(), rect.top()),
                         pos2(rect.right(), rect.top()),
                         pos2(rect.center().x, rect.bottom()),
                     ]
                 } else {
-                    // pointing right
                     vec![
                         pos2(rect.left(), rect.top()),
                         pos2(rect.right(), rect.center().y),
@@ -959,41 +678,33 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize, search: String) 
                     render_file_tree(ui, child, depth + 1, search.clone());
                 }
             });
-    } else {
-        if search.is_empty() || name.contains(&search) {
-            // File entry
-            ui.horizontal(|ui| {
-                ui.add_space(indent);
-                let ext = node.path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                let icon = match ext {
-                    "png" | "jpg" | "jpeg" | "webp" => "🖼",
-                    "glsl" | "vert" | "frag" | "wgsl" => "🔷",
-                    "rs" => "🦀",
-                    "toml" | "json" | "yaml" | "yml" => "📄",
-                    "ttf" | "otf" => "🔤",
-                    "wav" | "mp3" | "ogg" => "🔊",
-                    _ => "📃",
-                };
-                let label = ui.selectable_label(false, format!("{} {}", icon, node.name));
-                if label.double_clicked() {
-                    log!("Open: {:?}", node.path); // hook into your editor's open-file logic
-                }
-                label.on_hover_text(node.path.to_string_lossy());
-            });
-        }
+    } else if search_lc.is_empty() || name_lc.contains(&search_lc) {
+        ui.horizontal(|ui| {
+            ui.add_space(indent);
+            let ext = node.path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            let icon = match ext {
+                "png" | "jpg" | "jpeg" | "webp" => "🖼",
+                "glsl" | "vert" | "frag" | "wgsl" => "🔷",
+                "rs" => "🦀",
+                "toml" | "json" | "yaml" | "yml" => "📄",
+                "ttf" | "otf" => "🔤",
+                "wav" | "mp3" | "ogg" => "🔊",
+                _ => "📃",
+            };
+            let label = ui.selectable_label(false, format!("{} {}", icon, node.name));
+            if label.double_clicked() {
+                log!("Open: {:?}", node.path);
+            }
+            label.on_hover_text(node.path.to_string_lossy());
+        });
     }
 }
 
-#[editor_ui]
-pub fn scene_manager_ui(
+fn render_scene_manager(
     context: &mut Context,
     world: &mut World,
     editor_storage: &mut EditorStorage,
 ) {
-    if !editor_storage.is_editor_open {
-        return;
-    }
-
     if !editor_storage.is_scene_manager_open {
         return;
     }
@@ -1006,29 +717,22 @@ pub fn scene_manager_ui(
                     ui.label("Name:");
                     ui.text_edit_singleline(&mut editor_storage.scene_name);
                 });
-
                 ui.add_space(4.0);
 
                 let scene_path = format!(
                     "{}/{}.yaml",
                     ENGINE_SCENE_SAVE_PATH, editor_storage.scene_name
                 );
-                let scene_path = Path::new(scene_path.as_str());
-                let can_add = !editor_storage.scene_name.is_empty() && !scene_path.exists();
+                let can_add =
+                    !editor_storage.scene_name.is_empty() && !Path::new(&scene_path).exists();
 
                 ui.add_enabled_ui(can_add, |ui| {
                     if ui.button("Add Scene").clicked() {
-                        if can_add {
-                            let mut scene = Scene::new();
-                            scene.name = editor_storage.scene_name.clone();
-                            world.serialize_scene_not_loaded(&scene).unwrap();
-                            let mut scene = Scene::new();
-                            scene.name = editor_storage.scene_name.clone();
-                            world.scene_manager.scenes.push(scene);
-                            editor_storage.scene_name.clear();
-                        } else {
-                            log_warn!("Scene already exists");
-                        }
+                        let mut scene = Scene::new();
+                        scene.name = editor_storage.scene_name.clone();
+                        world.serialize_scene_not_loaded(&scene).unwrap();
+                        world.scene_manager.scenes.push(scene);
+                        editor_storage.scene_name.clear();
                     }
                 });
             });
@@ -1045,7 +749,7 @@ pub fn scene_manager_ui(
                             .map(|s| s.name.clone())
                             .collect();
 
-                        for mut name in scene_names {
+                        for name in scene_names {
                             ui.horizontal(|ui| {
                                 let mut new_name = name.clone();
                                 ui.text_edit_singleline(&mut new_name);
@@ -1059,29 +763,28 @@ pub fn scene_manager_ui(
                                             format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, name);
                                         std::fs::rename(&old_path, &new_path).unwrap();
 
-                                        if let Some(scene) = world
+                                        if let Some(s) = world
                                             .scene_manager
                                             .scenes
                                             .iter_mut()
                                             .find(|s| s.name == name)
                                         {
-                                            scene.name = new_name.clone();
+                                            s.name = new_name.clone();
                                         }
-
                                         if world.scene.name == name {
                                             world.scene.name = new_name.clone();
                                         }
-
-                                        if let Some(scene) = world
+                                        if let Some(s) = world
                                             .scene_manager
                                             .scenes
                                             .iter()
                                             .find(|s| s.name == new_name)
                                         {
-                                            world.serialize_scene_not_loaded(scene).unwrap();
+                                            world.serialize_scene_not_loaded(s).unwrap();
                                         }
                                     }
                                 }
+
                                 let (is_primary, scene_exists) = world
                                     .scene_manager
                                     .scenes
@@ -1096,24 +799,22 @@ pub fn scene_manager_ui(
                                         world
                                             .scene_manager
                                             .set_scene_primary(&new_name, !is_primary);
-                                        if let Some(scene) = world
+                                        if let Some(s) = world
                                             .scene_manager
                                             .scenes
                                             .iter()
                                             .find(|s| s.name == new_name)
                                         {
-                                            world.serialize_scene_not_loaded(scene).unwrap();
+                                            world.serialize_scene_not_loaded(s).unwrap();
                                         }
                                     }
                                 }
 
                                 ui.add_space(4.0);
-
                                 if ui.button("load").clicked() {
                                     let scene = world.scene_manager.load_scene(&name);
                                     world.scene = scene;
                                 }
-
                                 if ui.button("❌").clicked() {
                                     world.scene_manager.remove_scene(&name);
                                 }
@@ -1124,16 +825,11 @@ pub fn scene_manager_ui(
         });
 }
 
-#[editor_ui]
-pub fn input_manager_ui(
+fn render_input_manager(
     context: &mut Context,
     world: &mut World,
     editor_storage: &mut EditorStorage,
 ) {
-    if !editor_storage.is_editor_open {
-        return;
-    }
-
     if !editor_storage.is_keybind_editor_open {
         return;
     }
@@ -1149,7 +845,6 @@ pub fn input_manager_ui(
                     world.input_manager.deserialize_input_manager().unwrap();
                 }
             });
-
             ui.separator();
 
             ui.collapsing("Add KeyBind", |ui| {
@@ -1157,7 +852,6 @@ pub fn input_manager_ui(
                     ui.label("Name:");
                     ui.text_edit_singleline(&mut editor_storage.keybind_name);
                 });
-
                 ui.horizontal(|ui| {
                     ui.label("Key Code:");
                     egui::ComboBox::from_id_salt("keybind_key_code")
@@ -1172,7 +866,6 @@ pub fn input_manager_ui(
                             }
                         });
                 });
-
                 ui.horizontal(|ui| {
                     ui.label("Action:");
                     ui.selectable_value(
@@ -1191,11 +884,10 @@ pub fn input_manager_ui(
                         "Hold",
                     );
                 });
+                ui.add_space(4.0);
 
                 let can_add = !editor_storage.keybind_name.is_empty()
                     && !editor_storage.keybind_key_code.is_empty();
-
-                ui.add_space(4.0);
 
                 ui.horizontal(|ui| {
                     ui.add_enabled_ui(can_add, |ui| {
@@ -1223,7 +915,6 @@ pub fn input_manager_ui(
                             }
                         }
                     });
-
                     if let Some(err) = &editor_storage.keybind_error {
                         ui.colored_label(egui::Color32::RED, err);
                     }
@@ -1237,7 +928,6 @@ pub fn input_manager_ui(
                     ui.label("Name:");
                     ui.text_edit_singleline(&mut editor_storage.mousebind_name);
                 });
-
                 ui.horizontal(|ui| {
                     ui.label("Button:");
                     ui.selectable_value(
@@ -1256,7 +946,6 @@ pub fn input_manager_ui(
                         "Middle",
                     );
                 });
-
                 ui.horizontal(|ui| {
                     ui.label("Action:");
                     ui.selectable_value(
@@ -1275,12 +964,9 @@ pub fn input_manager_ui(
                         "Hold",
                     );
                 });
-
                 ui.add_space(4.0);
 
-                let can_add = !editor_storage.mousebind_name.is_empty();
-
-                ui.add_enabled_ui(can_add, |ui| {
+                ui.add_enabled_ui(!editor_storage.mousebind_name.is_empty(), |ui| {
                     if ui.button("Add MouseBind").clicked() {
                         let bind = MouseBind::new(
                             editor_storage.mousebind_button,
@@ -1303,8 +989,7 @@ pub fn input_manager_ui(
                 format!("KeyBinds ({})", world.input_manager.keybinds.len()),
                 |ui| {
                     let mut to_remove: Option<String> = None;
-
-                    egui::ScrollArea::vertical()
+                    ScrollArea::vertical()
                         .id_salt("keybinds_scroll")
                         .max_height(150.0)
                         .show(ui, |ui| {
@@ -1320,7 +1005,6 @@ pub fn input_manager_ui(
                                 });
                             }
                         });
-
                     if let Some(name) = to_remove {
                         world.input_manager.keybinds.remove(&name);
                     }
@@ -1331,8 +1015,7 @@ pub fn input_manager_ui(
                 format!("MouseBinds ({})", world.input_manager.mouse_keybinds.len()),
                 |ui| {
                     let mut to_remove: Option<String> = None;
-
-                    egui::ScrollArea::vertical()
+                    ScrollArea::vertical()
                         .id_salt("mousebinds_scroll")
                         .max_height(150.0)
                         .show(ui, |ui| {
@@ -1348,7 +1031,6 @@ pub fn input_manager_ui(
                                 });
                             }
                         });
-
                     if let Some(name) = to_remove {
                         world.input_manager.mouse_keybinds.remove(&name);
                     }
@@ -1356,6 +1038,8 @@ pub fn input_manager_ui(
             );
         });
 }
+
+// ── Key code helpers (unchanged) ───────────────────────────────────────────────
 
 pub fn parse_key_code(s: &str) -> Option<winit::keyboard::KeyCode> {
     match s {

@@ -28,13 +28,17 @@ pub trait InspectValue {
 
 impl InspectValue for f32 {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::DragValue::new(self).speed(1));
+        let mut value = if self.is_finite() { *self as f64 } else { 0.0 };
+        ui.add(DragValue::new(&mut value).speed(0.01));
+        *self = value as f32;
     }
 }
 
 impl InspectValue for f64 {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::DragValue::new(self).speed(1));
+        let mut value = if self.is_finite() { *self } else { 0.0 };
+        ui.add(DragValue::new(&mut value).speed(0.01));
+        *self = value;
     }
 }
 
@@ -64,34 +68,98 @@ impl InspectValue for bool {
 
 impl InspectValue for Vector3<f32> {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(DragValue::new(&mut self.x).speed(1));
-        ui.add(DragValue::new(&mut self.y).speed(1));
-        ui.add(DragValue::new(&mut self.z).speed(1));
+        let mut x = if self.x.is_finite() {
+            self.x as f64
+        } else {
+            0.0
+        };
+        let mut y = if self.y.is_finite() {
+            self.y as f64
+        } else {
+            0.0
+        };
+        let mut z = if self.z.is_finite() {
+            self.z as f64
+        } else {
+            0.0
+        };
+
+        ui.add(DragValue::new(&mut x).speed(0.01));
+        ui.add(DragValue::new(&mut y).speed(0.01));
+        ui.add(DragValue::new(&mut z).speed(0.01));
+
+        self.x = x as f32;
+        self.y = y as f32;
+        self.z = z as f32;
     }
 }
 
 impl InspectValue for Quaternion<f32> {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(DragValue::new(&mut self.s).speed(1));
-        ui.add(DragValue::new(&mut self.v.x).speed(1));
-        ui.add(DragValue::new(&mut self.v.y).speed(1));
-        ui.add(DragValue::new(&mut self.v.z).speed(1));
+        let mut s = if self.s.is_finite() {
+            self.s as f64
+        } else {
+            0.0
+        };
+        let mut x = if self.v.x.is_finite() {
+            self.v.x as f64
+        } else {
+            0.0
+        };
+        let mut y = if self.v.y.is_finite() {
+            self.v.y as f64
+        } else {
+            0.0
+        };
+        let mut z = if self.v.z.is_finite() {
+            self.v.z as f64
+        } else {
+            0.0
+        };
+
+        ui.add(DragValue::new(&mut s).speed(0.01));
+        ui.add(DragValue::new(&mut x).speed(0.01));
+        ui.add(DragValue::new(&mut y).speed(0.01));
+        ui.add(DragValue::new(&mut z).speed(0.01));
+
+        self.s = s as f32;
+        self.v.x = x as f32;
+        self.v.y = y as f32;
+        self.v.z = z as f32;
     }
 }
 impl InspectValue for Vector3<f64> {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(DragValue::new(&mut self.x).speed(1));
-        ui.add(DragValue::new(&mut self.y).speed(1));
-        ui.add(DragValue::new(&mut self.z).speed(1));
+        let mut x = if self.x.is_finite() { self.x } else { 0.0 };
+        let mut y = if self.y.is_finite() { self.y } else { 0.0 };
+        let mut z = if self.z.is_finite() { self.z } else { 0.0 };
+
+        ui.add(DragValue::new(&mut x).speed(0.01));
+        ui.add(DragValue::new(&mut y).speed(0.01));
+        ui.add(DragValue::new(&mut z).speed(0.01));
+
+        self.x = x;
+        self.y = y;
+        self.z = z;
     }
 }
 
 impl InspectValue for Quaternion<f64> {
     fn inspect_value(&mut self, ui: &mut egui::Ui) {
-        ui.add(DragValue::new(&mut self.s).speed(1));
-        ui.add(DragValue::new(&mut self.v.x).speed(1));
-        ui.add(DragValue::new(&mut self.v.y).speed(1));
-        ui.add(DragValue::new(&mut self.v.z).speed(1));
+        let mut s = if self.s.is_finite() { self.s } else { 0.0 };
+        let mut x = if self.v.x.is_finite() { self.v.x } else { 0.0 };
+        let mut y = if self.v.y.is_finite() { self.v.y } else { 0.0 };
+        let mut z = if self.v.z.is_finite() { self.v.z } else { 0.0 };
+
+        ui.add(DragValue::new(&mut s).speed(0.01));
+        ui.add(DragValue::new(&mut x).speed(0.01));
+        ui.add(DragValue::new(&mut y).speed(0.01));
+        ui.add(DragValue::new(&mut z).speed(0.01));
+
+        self.s = s;
+        self.v.x = x;
+        self.v.y = y;
+        self.v.z = z;
     }
 }
 impl InspectValue for Vector3<i8> {

@@ -391,7 +391,7 @@ impl Renderer {
                 self.swapchain.image_views[image_index as usize],
                 self.swapchain.depth_image_view,
                 vk::ClearColorValue {
-                    float32: [0.01, 0.01, 0.01, 1.0],
+                    float32: [0.01, 0.01, 0.4, 1.0],
                 },
                 vk::Rect2D::default().extent(self.swapchain.extent),
             )?;
