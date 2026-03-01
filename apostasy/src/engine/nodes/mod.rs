@@ -293,10 +293,8 @@ impl World {
 
     pub fn add_new_node(&mut self) {
         self.add_node(Node::new());
-        self.check_node_names();
         self.check_node_ids();
     }
-
     pub fn get_all_world_nodes(&self) -> Vec<&Node> {
         fn collect<'a>(node: &'a Node, out: &mut Vec<&'a Node>) {
             out.push(node);
@@ -540,20 +538,11 @@ impl World {
         }
     }
     pub fn check_node_ids(&mut self) {
-        let mut ids = Vec::new();
-        let mut next_id = self.nodes;
-
-        let nodes = self.get_all_nodes_mut();
-
-        for node in nodes {
-            println!("next_id: {}", next_id);
-            if ids.contains(&node.id) {
-                node.id = next_id;
-                next_id += 1;
-            }
-            ids.push(node.id);
+        let mut next_id = 0u64;
+        for node in self.get_all_nodes_mut() {
+            node.id = next_id;
+            next_id += 1;
         }
-
         self.nodes = next_id;
     }
 

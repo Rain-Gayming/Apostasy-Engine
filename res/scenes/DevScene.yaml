@@ -78,7 +78,7 @@ root_children:
       is_gravity_enabled: true
   children: []
 - name: Player
-  id: 4
+  id: 1
   components:
   - type: Transform
     data:
@@ -146,7 +146,7 @@ root_children:
       is_active: true
   children:
   - name: Camera
-    id: 5
+    id: 2
     components:
     - type: Transform
       data:
@@ -200,5 +200,9 @@ root_children:
         near: 0.0010000000474974513
         far: 10000.0
     children: []
+- name: Node
+  id: 3
+  components: []
+  children: []
 name: DevScene
 is_primary: true

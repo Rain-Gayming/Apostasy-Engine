@@ -307,6 +307,7 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                         .scene_manager
                         .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
                     world.scene = scene;
+                    world.check_node_ids();
                 }
 
                 if ui.button("Play Current").clicked() {
