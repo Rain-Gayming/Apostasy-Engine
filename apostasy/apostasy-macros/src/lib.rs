@@ -32,6 +32,9 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
             fn type_name(&self) -> &'static str {
                 #type_name_str
             }
+            fn inspect(&mut self, ui: &mut egui::Ui) -> bool {
+        apostasy::engine::editor::inspectable::Inspectable::inspect(self, ui)
+    }
         }
     };
     output.into()
@@ -358,21 +361,26 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl apostasy::engine::editor::inspectable::Inspectable for #name {
-            fn inspect(&mut self, ui: &mut egui::Ui) {
-                egui::CollapsingHeader::new(stringify!(#name))
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        #(#field_inspections)*
-                    });
+            fn inspect(&mut self, ui: &mut egui::Ui) -> bool {
+                let mut remove = false;
+                ui.horizontal(|ui| {
+                    if ui.small_button("✕").clicked() {
+                        remove = true;
+                    }
+                    egui::CollapsingHeader::new(stringify!(#name))
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            #(#field_inspections)*
+                        });
+                });
                 ui.separator();
+                remove
             }
         }
-
     };
 
     TokenStream::from(expanded)
 }
-
 #[proc_macro_derive(InspectValue)]
 pub fn inspect_value_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

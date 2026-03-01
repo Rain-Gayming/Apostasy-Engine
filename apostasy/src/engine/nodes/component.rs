@@ -7,6 +7,7 @@ pub trait Component: ComponentClone {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn type_name(&self) -> &'static str;
+    fn inspect(&mut self, ui: &mut egui::Ui) -> bool;
 }
 
 pub trait ComponentClone {

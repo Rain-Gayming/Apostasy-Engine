@@ -105,7 +105,7 @@ impl Collider {
 }
 
 /// Contains information about a collision event
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, InspectValue, Inspectable)]
 pub struct CollisionEvent {
     pub node_a: String,
     pub node_b: String,
@@ -114,7 +114,7 @@ pub struct CollisionEvent {
     pub normal: Vector3<f32>,
 }
 
-#[derive(Debug, Clone, Default, Component)]
+#[derive(Debug, Clone, Default, Component, InspectValue, Inspectable)]
 pub struct CollisionEvents {
     pub events: Vec<CollisionEvent>,
 }

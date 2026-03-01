@@ -4,7 +4,7 @@ use egui::DragValue;
 /// Implemented by structs that can be inspected
 /// Impliment via ```#[derive(Inspectable)]```
 pub trait Inspectable {
-    fn inspect(&mut self, ui: &mut egui::Ui);
+    fn inspect(&mut self, ui: &mut egui::Ui) -> bool;
 }
 
 /// Implemented by types that can be inspected

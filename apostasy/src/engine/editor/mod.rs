@@ -91,6 +91,7 @@ pub struct EditorStorage {
     // scene manager
     pub is_scene_manager_open: bool,
     pub scene_name: String,
+    pub last_scene_name: String,
 
     pub should_close: bool,
 
@@ -102,7 +103,7 @@ pub enum DragTarget {
     Root,
 }
 
-const ENGINE_EDITOR_SAVE_PATH: &str = "res/editor.yaml";
+const ENGINE_EDITOR_SAVE_PATH: &str = "res/editor";
 
 fn default_dock_state() -> DockState<EditorTab> {
     let mut state = DockState::new(vec![EditorTab::Viewport]);
@@ -121,8 +122,6 @@ fn default_dock_state() -> DockState<EditorTab> {
 
 impl Default for EditorStorage {
     fn default() -> Self {
-        let dock_state = Self::load_dock_state().unwrap_or_else(default_dock_state);
-
         Self {
             component_text_edit: String::new(),
 
@@ -153,37 +152,11 @@ impl Default for EditorStorage {
 
             is_scene_manager_open: false,
             scene_name: String::new(),
+            last_scene_name: String::new(),
             should_close: false,
 
-            dock_state,
+            dock_state: default_dock_state(),
         }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct SerializedDockState {
-    dock: DockState<EditorTab>,
-}
-
-impl EditorStorage {
-    pub fn save_dock_state(&self) {
-        let path = format!("{}/editor.yaml", ENGINE_EDITOR_SAVE_PATH);
-        if !Path::new(ENGINE_EDITOR_SAVE_PATH).exists() {
-            let _ = std::fs::create_dir_all(ENGINE_EDITOR_SAVE_PATH);
-        }
-        let serialized = SerializedDockState {
-            dock: self.dock_state.clone(),
-        };
-        if let Ok(yaml) = serde_yaml::to_string(&serialized) {
-            let _ = std::fs::write(path, yaml);
-        }
-    }
-
-    fn load_dock_state() -> Option<DockState<EditorTab>> {
-        let path = format!("{}/editor.yaml", ENGINE_EDITOR_SAVE_PATH);
-        let contents = std::fs::read_to_string(&path).ok()?;
-        let s: SerializedDockState = serde_yaml::from_str(&contents).ok()?;
-        Some(s.dock)
     }
 }
 
@@ -388,21 +361,21 @@ pub fn render_hierarchy(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
                 editor_storage.drag_target = Some(DragTarget::Root);
             }
 
-            if ui.input(|i| i.pointer.any_released()) {
-                if let Some(dragging) = editor_storage.dragging_node.take() {
-                    let target = editor_storage.drag_target.take();
-                    let root = &mut *world.scene.root_node;
-                    match target {
-                        Some(DragTarget::Parent(parent_id)) if parent_id != dragging => {
-                            if let Some(node) = root.remove_node(dragging) {
-                                root.insert_under(parent_id, node);
-                            }
+            if ui.input(|i| i.pointer.any_released())
+                && let Some(dragging) = editor_storage.dragging_node.take()
+            {
+                let target = editor_storage.drag_target.take();
+                let root = &mut *world.scene.root_node;
+                match target {
+                    Some(DragTarget::Parent(parent_id)) if parent_id != dragging => {
+                        if let Some(node) = root.remove_node(dragging) {
+                            root.insert_under(parent_id, node);
                         }
-                        _ => {
-                            if let Some(mut node) = root.remove_node(dragging) {
-                                node.parent = None;
-                                root.children.push(node);
-                            }
+                    }
+                    _ => {
+                        if let Some(mut node) = root.remove_node(dragging) {
+                            node.parent = None;
+                            root.children.push(node);
                         }
                     }
                 }
@@ -410,49 +383,55 @@ pub fn render_hierarchy(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
             ui.allocate_space(ui.available_size());
         });
 }
-
 fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage, depth: usize) {
-    let indent = depth as f32 * 10.0;
-    let has_children = !node.children.is_empty();
     let selected = Some(node.id) == editor_storage.selected_node;
-    let id = ui.make_persistent_id(format!("node_{}", node.name));
+    let id = ui.make_persistent_id(node.id);
 
-    if has_children {
-        egui::CollapsingHeader::new(&node.name)
-            .id_salt(id)
-            .icon(|ui, openness, response| {
-                let rect = response.rect;
-                let color = Color32::from_gray(180);
-                let points = if openness > 0.5 {
-                    vec![
-                        pos2(rect.left(), rect.top()),
-                        pos2(rect.right(), rect.top()),
-                        pos2(rect.center().x, rect.bottom()),
-                    ]
-                } else {
-                    vec![
-                        pos2(rect.left(), rect.top()),
-                        pos2(rect.right(), rect.center().y),
-                        pos2(rect.left(), rect.bottom()),
-                    ]
-                };
-                ui.painter()
-                    .add(epaint::Shape::convex_polygon(points, color, Stroke::NONE));
-            })
-            .show(ui, |ui| {
-                ui.add_space(2.0);
+    if !node.children.is_empty() {
+        let mut state =
+            egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, true);
+
+        let header_resp = ui.horizontal(|ui| {
+            ui.add_space(depth as f32 * 10.0);
+
+            // Triangle toggle button
+            let (toggle_rect, toggle_resp) =
+                ui.allocate_exact_size(Vec2::splat(16.0), Sense::click());
+            if toggle_resp.clicked() {
+                state.toggle(ui);
+            }
+            let openness = state.openness(ui.ctx());
+            let color = Color32::from_gray(180);
+            let points = if openness > 0.5 {
+                vec![
+                    pos2(toggle_rect.left(), toggle_rect.top()),
+                    pos2(toggle_rect.right(), toggle_rect.top()),
+                    pos2(toggle_rect.center().x, toggle_rect.bottom()),
+                ]
+            } else {
+                vec![
+                    pos2(toggle_rect.left(), toggle_rect.top()),
+                    pos2(toggle_rect.right(), toggle_rect.center().y),
+                    pos2(toggle_rect.left(), toggle_rect.bottom()),
+                ]
+            };
+            ui.painter()
+                .add(epaint::Shape::convex_polygon(points, color, Stroke::NONE));
+
+            draw_node_row(ui, node, selected, editor_storage);
+        });
+
+        state.store(ui.ctx());
+        if state.is_open() {
+            ui.indent(id, |ui| {
                 for child in &node.children {
                     draw_node(ui, child, editor_storage, depth + 1);
                 }
             });
+        }
     } else {
         ui.horizontal(|ui| {
-            let extra = if node.parent.as_deref() == Some("root") {
-                18.0
-            } else {
-                0.0
-            };
-            ui.add_space(indent + extra);
+            ui.add_space(depth as f32 * 10.0 + 16.0); // 16 to align past the toggle
             draw_node_row(ui, node, selected, editor_storage);
         });
     }
@@ -522,7 +501,6 @@ fn draw_node_row(
         editor_storage.selected_node = Some(node.id);
     }
 }
-
 pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorStorage) {
     ui.separator();
     ui.label("Components");
@@ -532,6 +510,7 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
             .id_salt("inspector_scroll")
             .show(ui, |ui| {
                 let node = world.get_node_mut(id);
+
                 ui.horizontal(|ui| {
                     ui.label("Name: ");
                     let text_edit = ui.text_edit_singleline(&mut node.editing_name);
@@ -559,36 +538,27 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
                     }
                 });
 
-                if let Some(c) = node.get_component_mut::<Transform>() {
-                    c.inspect_value(ui);
+                ui.separator();
+
+                // Iterate all components, call inspect(), collect any that
+                // requested removal. Only one removal per frame is fine since
+                // the UI rerenders every frame.
+                let mut to_remove: Option<usize> = None;
+
+                for (i, component) in node.components.iter_mut().enumerate() {
+                    if component.inspect(ui) {
+                        to_remove = Some(i);
+                    }
                 }
-                if let Some(c) = node.get_component_mut::<Camera>() {
-                    c.inspect_value(ui);
-                }
-                if let Some(c) = node.get_component_mut::<ModelRenderer>() {
-                    c.inspect_value(ui);
-                }
-                if let Some(c) = node.get_component_mut::<Velocity>() {
-                    c.inspect_value(ui);
-                }
-                if let Some(c) = node.get_component_mut::<Physics>() {
-                    c.inspect_value(ui);
-                }
-                if let Some(c) = node.get_component_mut::<Collider>() {
-                    c.inspect_value(ui);
-                }
-                if let Some(c) = node.get_component_mut::<CursorManager>() {
-                    c.inspect_value(ui);
-                }
-                if let Some(c) = node.get_component_mut::<Player>() {
-                    c.inspect_value(ui);
+
+                if let Some(i) = to_remove {
+                    node.components.remove(i);
                 }
 
                 ui.allocate_space(ui.available_size());
             });
     }
 }
-
 pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage) {
     ui.style_mut().visuals.override_text_color = Some(Color32::from_gray(210));
     ScrollArea::vertical()

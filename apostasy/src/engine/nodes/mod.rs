@@ -70,6 +70,10 @@ impl Node {
     }
 
     /// Gets a component of type T from the node
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).get_component::<Transform>();
+    /// ```
     pub fn get_component<T: Component + 'static>(&self) -> Option<&T> {
         self.components
             .iter()
@@ -78,6 +82,10 @@ impl Node {
     }
 
     /// Gets a mutable component of type T from the node
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).get_component_mut::<Transform>();
+    /// ```
     pub fn get_component_mut<T: Component + 'static>(&mut self) -> Option<&mut T> {
         self.components
             .iter_mut()
@@ -86,23 +94,37 @@ impl Node {
     }
 
     /// Gets mutable components of type (T, T, ...) from the node
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).get_components_mut::<(&mut Transform, &mut Velocity)>();
+    /// ```
     pub fn get_components_mut<'a, T: ComponentsMut<'a>>(&'a mut self) -> T {
         T::from_node(self)
     }
 
     /// Adds a component of type T to the node
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    /// ```
     pub fn add_component<T: Component + 'static>(&mut self, component: T) -> &mut Self {
         self.components.push(Box::new(component));
         self
     }
 
     /// Adds a child to the node
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_child(Node::new());
+    /// ```
     pub fn add_child(&mut self, mut child: Node) -> &mut Self {
         child.parent = Some(self.name.clone());
         self.children.push(child);
         self
     }
 
+    /// Propagates the transform of the node to all its children
+    /// NOT MANUALLY CALLED
     pub fn propagate_transform(&mut self, parent: Option<&ParentGlobal>) {
         let binding = ParentGlobal::default();
         let parent = parent.unwrap_or(&binding);
@@ -170,6 +192,12 @@ impl Node {
         false
     }
 
+    /// Adds a component of type T to the node
+    /// Note: capitalization is ignored
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component_by_name("transform");
+    /// ```
     pub fn add_component_by_name(&mut self, component_name: &str) -> Result<()> {
         let registration =
             find_registration(component_name.to_lowercase().as_str()).ok_or_else(|| {
