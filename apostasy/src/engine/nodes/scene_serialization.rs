@@ -3,6 +3,7 @@ use serde_yaml;
 
 use super::Node;
 use crate::engine::nodes::component::Component;
+use serde_yaml::Value;
 
 #[derive(Serialize, Deserialize)]
 /// A serialized component, contains the type name and data
@@ -103,5 +104,85 @@ pub fn deserialize_node(serialized: SerializedNode) -> Node {
             .collect(),
         parent: None,
         components,
+    }
+}
+
+fn parse_serialized_node(value: &Value) -> Option<SerializedNode> {
+    use serde_yaml::Value::{Mapping, Sequence, String as VString, Number};
+
+    let mapping = match value {
+        Mapping(m) => m,
+        _ => return None,
+    };
+
+    let get_str = |k: &str| -> Option<String> {
+        mapping
+            .get(&Value::String(k.to_string()))
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+    };
+
+    let get_u64 = |k: &str| -> Option<u64> {
+        mapping
+            .get(&Value::String(k.to_string()))
+            .and_then(|v| v.as_u64())
+    };
+
+    let name = get_str("name").unwrap_or_else(|| "node".to_string());
+    let id = get_u64("id").unwrap_or(0);
+
+    // components
+    let components = mapping
+        .get(&Value::String("components".to_string()))
+        .and_then(|v| match v {
+            Sequence(seq) => Some(
+                seq.iter()
+                    .filter_map(|entry| {
+                        // each component should be a mapping with "type" and "data"
+                        if let Value::Mapping(cm) = entry {
+                            let type_val = cm.get(&Value::String("type".to_string()));
+                            let data_val = cm.get(&Value::String("data".to_string()));
+                            if let Some(Value::String(t)) = type_val {
+                                let data = data_val.cloned().unwrap_or(Value::Null);
+                                return Some(SerializedComponent {
+                                    type_name: t.clone(),
+                                    data,
+                                });
+                            }
+                        }
+                        None
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        })
+        .unwrap_or_default();
+
+    // children
+    let children = mapping
+        .get(&Value::String("children".to_string()))
+        .and_then(|v| match v {
+            Sequence(seq) => Some(
+                seq.iter()
+                    .filter_map(|entry| parse_serialized_node(entry))
+                    .collect(),
+            ),
+            _ => None,
+        })
+        .unwrap_or_default();
+
+    Some(SerializedNode {
+        name,
+        id,
+        components,
+        children,
+    })
+}
+
+/// Parse a root sequence of SerializedNodes from a YAML value safely.
+pub fn parse_root_children_from_value(value: &Value) -> Vec<SerializedNode> {
+    if let Value::Sequence(seq) = value {
+        seq.iter().filter_map(|v| parse_serialized_node(v)).collect()
+    } else {
+        Vec::new()
     }
 }

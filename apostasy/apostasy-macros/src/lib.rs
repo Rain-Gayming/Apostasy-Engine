@@ -58,9 +58,17 @@ pub fn serializable_component_derive(input: TokenStream) -> TokenStream {
                         .expect(concat!("Serialize: failed to serialize ", stringify!(#struct_name)))
                 },
                 deserialize: |value| {
-                    let concrete: #struct_name = serde_yaml::from_value(value)
-                        .expect(concat!("Deserialize: failed to deserialize ", stringify!(#struct_name)));
-                    Box::new(concrete)
+                    match serde_yaml::from_value::<#struct_name>(value.clone()) {
+                        Ok(concrete) => Box::new(concrete),
+                        Err(err) => {
+                            eprintln!(
+                                "Deserialize: failed to deserialize {}: {}. Using default.",
+                                stringify!(#struct_name),
+                                err
+                            );
+                            Box::new(#struct_name::default())
+                        }
+                    }
                 },
                 create: || Box::new(#struct_name::default()),
             }

@@ -85,16 +85,40 @@ impl SceneManager {
 
     pub fn deserialize_scene(&mut self, scene: String) -> Scene {
         let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene);
-        let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
-        let serialized: SerializedScene = serde_yaml::from_str(&contents).unwrap();
+        let contents = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(err) => {
+                eprintln!("Failed to read scene file {}: {}", path, err);
+                return Scene::new();
+            }
+        };
+
+        let value: serde_yaml::Value = match serde_yaml::from_str(&contents) {
+            Ok(v) => v,
+            Err(err) => {
+                eprintln!("Failed to parse scene YAML {}: {}", path, err);
+                return Scene::new();
+            }
+        };
+
         let mut scene = Scene::new();
-        scene.root_node.children = serialized
-            .root_children
-            .into_iter()
-            .map(deserialize_node)
-            .collect();
-        scene.name = serialized.name;
-        scene.is_primary = serialized.is_primary;
+
+        // root_children
+        if let Some(root_children_value) = value.get("root_children") {
+            let parsed = crate::engine::nodes::scene_serialization::
+                parse_root_children_from_value(root_children_value);
+            scene.root_node.children = parsed.into_iter().map(deserialize_node).collect();
+        }
+
+        // name
+        if let Some(n) = value.get("name").and_then(|v| v.as_str()) {
+            scene.name = n.to_string();
+        }
+
+        // is_primary
+        if let Some(p) = value.get("is_primary").and_then(|v| v.as_bool()) {
+            scene.is_primary = p;
+        }
 
         scene
     }

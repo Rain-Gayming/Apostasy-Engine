@@ -158,9 +158,9 @@ root_children:
   - type: Collider
     data:
       half_extents:
-        x: 0.5
+        x: 0.75
         y: 0.5
-        z: 0.5
+        z: 0.75
       offset:
         x: 0.0
         y: 0.0
@@ -337,6 +337,73 @@ root_children:
       loading_model: cube
       loaded_model: cube
       material: null
+  children: []
+- name: Wall
+  id: 6
+  components:
+  - type: Transform
+    data:
+      position:
+        x: 5.650000095367432
+        y: -2.9100000858306885
+        z: 0.0
+      rotation:
+        v:
+          x: 0.0
+          y: 0.7071067690849304
+          z: 0.0
+        s: 0.7071067690849304
+      rotation_euler:
+        x: 0.0
+        y: 90.0
+        z: 0.0
+      scale:
+        x: 6.230000019073486
+        y: 2.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 5.650000095367432
+        y: -2.9100000858306885
+        z: 0.0
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.7071067690849304
+          z: 0.0
+        s: 0.7071067690849304
+      global_scale:
+        x: 6.230000019073486
+        y: 2.0
+        z: 1.0
+  - type: ModelRenderer
+    data:
+      loading_model: 123
+      loaded_model: cube
+      material: null
+  - type: Collider
+    data:
+      half_extents:
+        x: 3.0999999046325684
+        y: 1.0
+        z: 3.0999999046325684
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: true
+      is_area: false
   children: []
 name: DevScene
 is_primary: true
