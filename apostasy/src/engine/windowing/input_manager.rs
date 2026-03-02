@@ -340,7 +340,6 @@ impl InputManager {
             }
             WindowEvent::MouseWheel { delta, .. } => match delta {
                 MouseScrollDelta::LineDelta(x, y) => {
-                    println!("line delta: {x}, {y}");
                     self.scroll_delta = (x, y);
                 }
                 _ => {}
