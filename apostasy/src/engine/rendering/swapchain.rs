@@ -75,28 +75,78 @@ impl Swapchain {
         };
 
         if self.extent.width == 0 || self.extent.height == 0 {
+           
             return Ok(());
         }
 
         unsafe {
             self.context.device.device_wait_idle()?;
-            let new_swapchain = self.context.swapchain_extensions.create_swapchain(
-                &vk::SwapchainCreateInfoKHR::default()
-                    .surface(self.surface.handle)
-                    .min_image_count(self.desired_image_count)
-                    .image_format(self.format)
-                    .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
-                    .image_extent(self.extent)
-                    .image_array_layers(1)
-                    .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
-                    .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
-                    .pre_transform(vk::SurfaceTransformFlagsKHR::IDENTITY)
-                    .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-                    .present_mode(vk::PresentModeKHR::IMMEDIATE)
-                    .clipped(true)
-                    .old_swapchain(self.handle),
-                None,
-            )?;
+self.surface.capabilities = self
+                .context
+                .surface_extensions
+                .get_physical_device_surface_capabilities(
+                    self.context.physical_device.handle,
+                    self.surface.handle,
+                )?;
+
+           self.desired_image_count = (self.surface.capabilities.min_image_count + 1).clamp(
+                self.surface.capabilities.min_image_count,
+                if self.surface.capabilities.max_image_count != 0 {
+                    self.surface.capabilities.max_image_count
+                } else {
+                    u32::MAX
+                },
+            );
+ let present_mode = {
+                let modes = self
+                    .context
+                    .surface_extensions
+                    .get_physical_device_surface_present_modes(
+                        self.context.physical_device.handle,
+                        self.surface.handle,
+                    )?;
+                if modes.contains(&vk::PresentModeKHR::MAILBOX) {
+                    vk::PresentModeKHR::MAILBOX
+                } else {
+                    vk::PresentModeKHR::FIFO
+                }
+            };
+
+            let composite_alpha = {
+                let flags = self.surface.capabilities.supported_composite_alpha;
+                if flags.contains(vk::CompositeAlphaFlagsKHR::OPAQUE) {
+                    vk::CompositeAlphaFlagsKHR::OPAQUE
+                } else if flags.contains(vk::CompositeAlphaFlagsKHR::PRE_MULTIPLIED) {
+                    vk::CompositeAlphaFlagsKHR::PRE_MULTIPLIED
+                } else if flags.contains(vk::CompositeAlphaFlagsKHR::POST_MULTIPLIED) {
+                    vk::CompositeAlphaFlagsKHR::POST_MULTIPLIED
+                } else {
+                    vk::CompositeAlphaFlagsKHR::INHERIT
+                }
+            };
+
+            let mut ci = vk::SwapchainCreateInfoKHR::default()
+                .surface(self.surface.handle)
+                .min_image_count(self.desired_image_count)
+                .image_format(self.format)
+                .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
+                .image_extent(self.extent)
+                .image_array_layers(1)
+                .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+                .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
+                .pre_transform(vk::SurfaceTransformFlagsKHR::IDENTITY)
+                .composite_alpha(composite_alpha)
+                .present_mode(present_mode)
+                .clipped(true);
+
+            if self.handle != vk::SwapchainKHR::null() {
+                ci = ci.old_swapchain(self.handle);
+            }
+
+            let new_swapchain = self
+                .context
+                .swapchain_extensions
+                .create_swapchain(&ci, None)?;
 
             for image_view in self.image_views.drain(..) {
                 self.context.device.destroy_image_view(image_view, None);
@@ -136,8 +186,6 @@ impl Swapchain {
                 )?);
             }
 
-            // Create depth buffer
-            //
             let (depth_image, depth_memory) = self.context.create_image(
                 self.extent,
                 self.depth_format,

@@ -1,0 +1,556 @@
+    Checking apostasy v0.1.0 (/home/rain/files/projects/rust/apostasy-engine/apostasy)
+error: expected `;`, found keyword `let`
+   --> apostasy/src/engine/editor/mod.rs:313:43
+    |
+313 |                             .scene_manager
+    |                                           ^ help: add `;` here
+314 |                         let scene = world
+    |                         --- unexpected token
+
+error[E0252]: the name `Path` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:24:17
+   |
+12 | use std::path::{Path, PathBuf};
+   |                 ---- previous import of the type `Path` here
+...
+24 | use std::path::{Path, PathBuf};
+   |                 ^^^^--
+   |                 |
+   |                 `Path` reimported here
+   |                 help: remove unnecessary import
+   |
+   = note: `Path` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `PathBuf` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:24:23
+   |
+12 | use std::path::{Path, PathBuf};
+   |                       ------- previous import of the type `PathBuf` here
+...
+24 | use std::path::{Path, PathBuf};
+   |                       ^^^^^^^ `PathBuf` reimported here
+   |
+   = note: `PathBuf` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `render_console_ui` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:26:5
+   |
+14 | use crate::engine::editor::console_commands::render_console_ui;
+   |     ---------------------------------------------------------- previous import of the value `render_console_ui` here
+...
+26 | use crate::engine::editor::console_commands::render_console_ui;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `render_console_ui` reimported here
+   |
+   = note: `render_console_ui` must be defined only once in the value namespace of this module
+
+error[E0252]: the name `World` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:27:13
+   |
+15 | use crate::{engine::nodes::World, log};
+   |             -------------------- previous import of the type `World` here
+...
+27 | use crate::{engine::nodes::World, log};
+   |             ^^^^^^^^^^^^^^^^^^^^--
+   |             |
+   |             `World` reimported here
+   |             help: remove unnecessary import
+   |
+   = note: `World` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `log` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:27:35
+   |
+15 | use crate::{engine::nodes::World, log};
+   |                                   --- previous import of the macro `log` here
+...
+27 | use crate::{engine::nodes::World, log};
+   |                                   ^^^ `log` reimported here
+   |
+   = note: `log` must be defined only once in the macro namespace of this module
+
+error[E0252]: the name `editor_ui` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:28:5
+   |
+16 | use apostasy_macros::editor_ui;
+   |     -------------------------- previous import of the macro `editor_ui` here
+...
+28 | use apostasy_macros::editor_ui;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ `editor_ui` reimported here
+   |
+   = note: `editor_ui` must be defined only once in the macro namespace of this module
+
+error[E0252]: the name `Align2` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:5
+   |
+18 |     Align2, Color32, Context, FontFamily, FontId, RichText, ScrollArea, ...
+   |     ------ previous import of the type `Align2` here
+...
+30 |     Align2, Color32, Context, FontFamily, FontId, RichText, ScrollArea, ...
+   |     ^^^^^^--
+   |     |
+   |     `Align2` reimported here
+   |     help: remove unnecessary import
+   |
+   = note: `Align2` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Color32` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:13
+   |
+18 |     Align2, Color32, Context, FontFamily, FontId, RichText, ScrollArea, ...
+   |             ------- previous import of the type `Color32` here
+...
+30 |     Align2, Color32, Context, FontFamily, FontId, RichText, ScrollArea, ...
+   |             ^^^^^^^--
+   |             |
+   |             `Color32` reimported here
+   |             help: remove unnecessary import
+   |
+   = note: `Color32` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Context` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:22
+   |
+18 | ...Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, St...
+   |             ------- previous import of the type `Context` here
+...
+30 | ...Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, St...
+   |             ^^^^^^^--
+   |             |
+   |             `Context` reimported here
+   |             help: remove unnecessary import
+   |
+   = note: `Context` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `FontFamily` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:31
+   |
+18 | ...text, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
+   |          ---------- previous import of the type `FontFamily` here
+...
+30 | ...text, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
+   |          ^^^^^^^^^^--
+   |          |
+   |          `FontFamily` reimported here
+   |          help: remove unnecessary import
+   |
+   = note: `FontFamily` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `FontId` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:43
+   |
+18 | ...ntFamily, FontId, RichText, ScrollArea, Sense, Stroke,
+   |              ------ previous import of the type `FontId` here
+...
+30 | ...ntFamily, FontId, RichText, ScrollArea, Sense, Stroke,
+   |              ^^^^^^--
+   |              |
+   |              `FontId` reimported here
+   |              help: remove unnecessary import
+   |
+   = note: `FontId` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `RichText` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:51
+   |
+18 | ...FontId, RichText, ScrollArea, Sense, Stroke,
+   |            -------- previous import of the type `RichText` here
+...
+30 | ...FontId, RichText, ScrollArea, Sense, Stroke,
+   |            ^^^^^^^^--
+   |            |
+   |            `RichText` reimported here
+   |            help: remove unnecessary import
+   |
+   = note: `RichText` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `ScrollArea` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:61
+   |
+18 | ...Text, ScrollArea, Sense, Stroke,
+   |          ---------- previous import of the type `ScrollArea` here
+...
+30 | ...Text, ScrollArea, Sense, Stroke,
+   |          ^^^^^^^^^^--
+   |          |
+   |          `ScrollArea` reimported here
+   |          help: remove unnecessary import
+   |
+   = note: `ScrollArea` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Sense` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:73
+   |
+18 | ...crollArea, Sense, Stroke,
+   |               ----- previous import of the type `Sense` here
+...
+30 | ...crollArea, Sense, Stroke,
+   |               ^^^^^--
+   |               |
+   |               `Sense` reimported here
+   |               help: remove unnecessary import
+   |
+   = note: `Sense` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Stroke` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:30:80
+   |
+18 | ...a, Sense, Stroke,
+   |              ------ previous import of the type `Stroke` here
+...
+30 | ...a, Sense, Stroke,
+   |              ^^^^^^-
+   |              |
+   |              `Stroke` reimported here
+   |              help: remove unnecessary import
+   |
+   = note: `Stroke` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `TopBottomPanel` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:31:5
+   |
+19 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |     -------------- previous import of the type `TopBottomPanel` here
+...
+31 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |     ^^^^^^^^^^^^^^--
+   |     |
+   |     `TopBottomPanel` reimported here
+   |     help: remove unnecessary import
+   |
+   = note: `TopBottomPanel` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Ui` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:31:21
+   |
+19 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                     -- previous import of the type `Ui` here
+...
+31 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                     ^^--
+   |                     |
+   |                     `Ui` reimported here
+   |                     help: remove unnecessary import
+   |
+   = note: `Ui` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Vec2` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:31:25
+   |
+19 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                         ---- previous import of the type `Vec2` here
+...
+31 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                         ^^^^--
+   |                         |
+   |                         `Vec2` reimported here
+   |                         help: remove unnecessary import
+   |
+   = note: `Vec2` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Window` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:31:31
+   |
+19 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                               ------ previous import of the type `Window` here
+...
+31 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                               ^^^^^^--
+   |                               |
+   |                               `Window` reimported here
+   |                               help: remove unnecessary import
+   |
+   = note: `Window` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `pos2` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:31:39
+   |
+19 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                                       ---- previous import of the value `pos2` here
+...
+31 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |                                       ^^^^-
+   |                                       |
+   |                                       `pos2` reimported here
+   |                                       help: remove unnecessary import
+   |
+   = note: `pos2` must be defined only once in the value namespace of this module
+
+error[E0252]: the name `DockArea` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:33:17
+   |
+21 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                 -------- previous import of the type `DockArea` here
+...
+33 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                 ^^^^^^^^--
+   |                 |
+   |                 `DockArea` reimported here
+   |                 help: remove unnecessary import
+   |
+   = note: `DockArea` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `DockState` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:33:27
+   |
+21 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                           --------- previous import of the type `DockState` here
+...
+33 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                           ^^^^^^^^^--
+   |                           |
+   |                           `DockState` reimported here
+   |                           help: remove unnecessary import
+   |
+   = note: `DockState` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `NodeIndex` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:33:38
+   |
+21 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                                      --------- previous import of the type `NodeIndex` here
+...
+33 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                                      ^^^^^^^^^--
+   |                                      |
+   |                                      `NodeIndex` reimported here
+   |                                      help: remove unnecessary import
+   |
+   = note: `NodeIndex` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Style` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:33:49
+   |
+21 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                                                 ----- previous import of the type `Style` here
+...
+33 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                                                 ^^^^^--
+   |                                                 |
+   |                                                 `Style` reimported here
+   |                                                 help: remove unnecessary import
+   |
+   = note: `Style` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `TabViewer` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:33:56
+   |
+21 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                                                        --------- previous import of the trait `TabViewer` here
+...
+33 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                                                        ^^^^^^^^^ `TabViewer` reimported here
+   |
+   = note: `TabViewer` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Deserialize` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:34:13
+   |
+22 | use serde::{Deserialize, Serialize};
+   |             ----------- previous import of the trait `Deserialize` here
+...
+34 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^--
+   |             |
+   |             `Deserialize` reimported here
+   |             help: remove unnecessary import
+   |
+   = note: `Deserialize` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `Serialize` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:34:26
+   |
+22 | use serde::{Deserialize, Serialize};
+   |                          --------- previous import of the trait `Serialize` here
+...
+34 | use serde::{Deserialize, Serialize};
+   |                          ^^^^^^^^^ `Serialize` reimported here
+   |
+   = note: `Serialize` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `MouseButton` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:35:13
+   |
+23 | use winit::{event::MouseButton, keyboard::PhysicalKey};
+   |             ------------------ previous import of the type `MouseButton` here
+...
+35 | use winit::{event::MouseButton, keyboard::PhysicalKey};
+   |             ^^^^^^^^^^^^^^^^^^--
+   |             |
+   |             `MouseButton` reimported here
+   |             help: remove unnecessary import
+   |
+   = note: `MouseButton` must be defined only once in the type namespace of this module
+
+error[E0252]: the name `PhysicalKey` is defined multiple times
+  --> apostasy/src/engine/editor/mod.rs:35:33
+   |
+23 | use winit::{event::MouseButton, keyboard::PhysicalKey};
+   |                                 --------------------- previous import of the type `PhysicalKey` here
+...
+35 | use winit::{event::MouseButton, keyboard::PhysicalKey};
+   |                                 ^^^^^^^^^^^^^^^^^^^^^ `PhysicalKey` reimported here
+   |
+   = note: `PhysicalKey` must be defined only once in the type namespace of this module
+
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:43:57
+   |
+43 | ...ransform, nodes: &[&Node], ignore: &str) -> Option<RayHit> {
+   |                        ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:50:61
+   |
+50 | ...ransform, nodes: &[&Node], ignore: &str) -> Vec<RayHit> {
+   |                        ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:58:19
+   |
+58 |         nodes: &[&Node],
+   |                   ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:73:19
+   |
+73 |         nodes: &[&Node],
+   |                   ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+warning: unused imports: `PathBuf` and `Path`
+  --> apostasy/src/engine/editor/mod.rs:24:17
+   |
+24 | use std::path::{Path, PathBuf};
+   |                 ^^^^  ^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::engine::editor::console_commands::render_console_ui`
+  --> apostasy/src/engine/editor/mod.rs:26:5
+   |
+26 | use crate::engine::editor::console_commands::render_console_ui;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `engine::nodes::World` and `log`
+  --> apostasy/src/engine/editor/mod.rs:27:13
+   |
+27 | use crate::{engine::nodes::World, log};
+   |             ^^^^^^^^^^^^^^^^^^^^  ^^^
+
+warning: unused import: `apostasy_macros::editor_ui`
+  --> apostasy/src/engine/editor/mod.rs:28:5
+   |
+28 | use apostasy_macros::editor_ui;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Align2`, `Color32`, `Context`, `FontFamily`, `FontId`, `RichText`, `ScrollArea`, `Sense`, `Stroke`, `TopBottomPanel`, `Ui`, `Vec2`, `Window`, and `pos2`
+  --> apostasy/src/engine/editor/mod.rs:30:5
+   |
+30 |     Align2, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
+   |     ^^^^^^  ^^^^^^^  ^^^^^^^  ^^^^^^^^^^  ^^^^^^  ^^^^^^^^  ^^^^^^^^^^  ^^^^^  ^^^^^^
+31 |     TopBottomPanel, Ui, Vec2, Window, pos2,
+   |     ^^^^^^^^^^^^^^  ^^  ^^^^  ^^^^^^  ^^^^
+
+warning: unused imports: `DockArea`, `DockState`, `NodeIndex`, `Style`, and `TabViewer`
+  --> apostasy/src/engine/editor/mod.rs:33:17
+   |
+33 | use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+   |                 ^^^^^^^^  ^^^^^^^^^  ^^^^^^^^^  ^^^^^  ^^^^^^^^^
+
+warning: unused imports: `Deserialize` and `Serialize`
+  --> apostasy/src/engine/editor/mod.rs:34:13
+   |
+34 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused imports: `event::MouseButton` and `keyboard::PhysicalKey`
+  --> apostasy/src/engine/editor/mod.rs:35:13
+   |
+35 | use winit::{event::MouseButton, keyboard::PhysicalKey};
+   |             ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed
+  --> apostasy/src/engine/nodes/components/raycast.rs:82:26
+   |
+82 |             .filter_map(|node| {
+   |                          ^^^^
+83 |                 let transform = node.get_component::<Transform>()?;
+   |                                 ---- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+82 |             .filter_map(|node: /* Type */| {
+   |                              ++++++++++++
+
+error[E0507]: cannot move out of `world.scene_manager` which is behind a mutable reference
+   --> apostasy/src/engine/editor/mod.rs:312:37
+    |
+312 |                           let scene = world
+    |  _____________________________________^
+313 | |                             .scene_manager
+    | |__________________________________________^ move occurs because `world.scene_manager` has type `SceneManager`, which does not implement the `Copy` trait
+    |
+note: if `SceneManager` implemented `Clone`, you could clone the value
+   --> apostasy/src/engine/nodes/scene.rs:32:1
+    |
+ 32 |   pub struct SceneManager {
+    |   ^^^^^^^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+    |
+   ::: apostasy/src/engine/editor/mod.rs:312:37
+    |
+312 |                           let scene = world
+    |  _____________________________________-
+313 | |                             .scene_manager
+    | |__________________________________________- you could clone this value
+help: consider borrowing here
+    |
+312 |                         let scene = &world
+    |                                     +
+
+warning: unused variable: `scene`
+   --> apostasy/src/engine/editor/mod.rs:312:29
+    |
+312 |                         let scene = world
+    |                             ^^^^^ help: if this is intentional, prefix it with an underscore: `_scene`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0252, E0282, E0425, E0507.
+For more information about an error, try `rustc --explain E0252`.
+warning: `apostasy` (lib) generated 9 warnings
+error: could not compile `apostasy` (lib) due to 36 previous errors; 9 warnings emitted

@@ -2,7 +2,7 @@ use cgmath::{InnerSpace, Rotation, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::engine::nodes::{
-    Node, World,
+    Node,
     components::{collider::Collider, transform::Transform},
 };
 use crate::{self as apostasy};

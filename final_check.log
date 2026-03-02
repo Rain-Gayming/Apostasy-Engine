@@ -1,0 +1,77 @@
+    Checking apostasy v0.1.0 (/home/rain/files/projects/rust/apostasy-engine/apostasy)
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:43:57
+   |
+43 | ...ransform, nodes: &[&Node], ignore: &str) -> Option<RayHit> {
+   |                        ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:50:61
+   |
+50 | ...ransform, nodes: &[&Node], ignore: &str) -> Vec<RayHit> {
+   |                        ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:58:19
+   |
+58 |         nodes: &[&Node],
+   |                   ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+error[E0425]: cannot find type `Node` in this scope
+  --> apostasy/src/engine/nodes/components/raycast.rs:73:19
+   |
+73 |         nodes: &[&Node],
+   |                   ^^^^ not found in this scope
+   |
+help: consider importing one of these items
+   |
+ 1 + use crate::engine::Node;
+   |
+ 1 + use egui_dock::Node;
+   |
+ 1 + use gltf::Node;
+   |
+
+error[E0282]: type annotations needed
+  --> apostasy/src/engine/nodes/components/raycast.rs:82:26
+   |
+82 |             .filter_map(|node| {
+   |                          ^^^^
+83 |                 let transform = node.get_component::<Transform>()?;
+   |                                 ---- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+82 |             .filter_map(|node: /* Type */| {
+   |                              ++++++++++++
+
+Some errors have detailed explanations: E0282, E0425.
+For more information about an error, try `rustc --explain E0282`.
+error: could not compile `apostasy` (lib) due to 5 previous errors

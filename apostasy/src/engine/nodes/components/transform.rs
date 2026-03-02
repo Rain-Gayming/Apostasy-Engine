@@ -1,4 +1,3 @@
-use crate::engine::editor::inspectable::{InspectValue, Inspectable};
 use crate::engine::nodes::World;
 use crate::{self as apostasy};
 use apostasy_macros::{Component, Inspectable, SerializableComponent, update};

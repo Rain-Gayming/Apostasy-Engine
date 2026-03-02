@@ -1,22 +1,12 @@
 use crate::{
     self as apostasy,
     engine::{
-        editor::inspectable::InspectValue,
         nodes::{
             ENGINE_SCENE_SAVE_PATH, Node,
-            components::{
-                camera::Camera, collider::Collider, physics::Physics, player::Player,
-                transform::Transform, velocity::Velocity,
-            },
             scene::Scene,
         },
-        rendering::models::model::ModelRenderer,
-        windowing::{
-            cursor_manager::CursorManager,
-            input_manager::{KeyAction, KeyBind, MouseBind},
-        },
+        windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
-    log_warn,
 };
 use std::path::{Path, PathBuf};
 
@@ -103,7 +93,7 @@ pub enum DragTarget {
     Root,
 }
 
-const ENGINE_EDITOR_SAVE_PATH: &str = "res/editor";
+const _ENGINE_EDITOR_SAVE_PATH: &str = "res/editor"; // keep around for future use, prefix with underscore to silence unused warning
 
 fn default_dock_state() -> DockState<EditorTab> {
     let mut state = DockState::new(vec![EditorTab::Viewport]);
@@ -303,7 +293,8 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {
                         println!("Playing");
-                        world.serialize_scene();
+                        // ignore the result, errors are logged inside if needed
+                        let _ = world.serialize_scene();
                         world.scene_manager.get_primary_scene();
                         let scene = world
                             .scene_manager
@@ -399,7 +390,7 @@ fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage,
         let mut state =
             egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, true);
 
-        let header_resp = ui.horizontal(|ui| {
+        let _header_resp = ui.horizontal(|ui| {
             ui.add_space(depth as f32 * 10.0);
 
             // Triangle toggle button

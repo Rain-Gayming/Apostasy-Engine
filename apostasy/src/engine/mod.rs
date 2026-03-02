@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use apostasy_macros::{editor_fixed_update, fixed_update};
+use apostasy_macros::{editor_fixed_update};
 use cgmath::{Vector3, Zero, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
@@ -107,6 +107,8 @@ pub struct Engine {
     pub world: World,
     pub editor: EditorStorage,
     pub model_loader: ModelLoader,
+    pending_windows: Vec<(WindowId, Arc<Window>)>,
+    renderers_initialized: bool,
 }
 
 impl Engine {
@@ -125,13 +127,13 @@ impl Engine {
             compatability_window: &primary_window,
             queue_family_picker: single_queue_family,
         })?);
-        let renderers = windows
-            .iter()
-            .map(|(id, window)| {
-                let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
-                (*id, renderer)
-            })
-            .collect::<HashMap<WindowId, Renderer>>();
+        // let renderers = windows
+        //     .iter()
+        //     .map(|(id, window)| {
+        //         let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
+        //         (*id, renderer)
+        //     })
+        //     .collect::<HashMap<WindowId, Renderer>>();
 
         let timer = EngineTimer::new();
 
@@ -176,14 +178,18 @@ impl Engine {
 
         load_models(&mut model_loader, &rendering_context);
 
+        let pending_windows = vec![(primary_window_id, primary_window.clone())];
+
         Ok(Self {
-            renderers,
+            renderers: HashMap::new(),
             rendering_context,
             window_manager,
             timer,
             world,
             editor,
             model_loader,
+            pending_windows,
+            renderers_initialized: false,
         })
     }
 
@@ -212,6 +218,21 @@ impl Engine {
                 }
             }
             WindowEvent::RedrawRequested => {
+                if !self.renderers_initialized && !self.pending_windows.is_empty() {
+                    let pending = std::mem::take(&mut self.pending_windows);
+                    for (id, window) in pending {
+                        match Renderer::new(self.rendering_context.clone(), window) {
+                            Ok(renderer) => {
+                                self.renderers.insert(id, renderer);
+                            }
+                            Err(e) => {
+                                eprintln!("Renderer init failed, deferring: {e}");
+                                return; // try again next frame
+                            }
+                        }
+                    }
+                    self.renderers_initialized = true;
+                }
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
                     for window in &self.window_manager.windows {
                         renderer.prepare_egui(window.1, &mut self.world, &mut self.editor);
