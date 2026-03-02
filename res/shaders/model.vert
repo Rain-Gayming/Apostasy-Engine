@@ -14,10 +14,12 @@ layout(push_constant) uniform PushConstants {
     float metallic;
     float roughness;
     vec3 emissive;
+    vec4 light_pos;
 } pc;
 
 layout(location = 0) out vec3 fragNormal;
 layout(location = 1) out vec2 fragTexCoord;
+layout(location = 2) out vec3 fragPos;
 
 vec3 applyQuaternion(vec4 q, vec3 v) {
     vec3 qv = vec3(q.x, q.y, q.z);
@@ -36,4 +38,6 @@ void main() {
     vec3 rotatedNormal = applyQuaternion(pc.rotation, inNormal / scale);
     fragNormal = normalize(mat3(transpose(inverse(pc.model))) * rotatedNormal);
     fragTexCoord = inTexCoord;
+  
+    fragPos = vec3(pc.model * vec4(inPosition, 1.0));
 }

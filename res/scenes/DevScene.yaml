@@ -258,5 +258,58 @@ root_children:
           y: 1.0
           z: 1.0
     children: []
+- name: light
+  id: 5
+  components:
+  - type: Light
+    data:
+      strenght: 0.0
+  - type: Transform
+    data:
+      position:
+        x: 0.6000000238418579
+        y: 3.5799999237060547
+        z: 0.41999998688697815
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 0.6000000238418579
+        y: 3.5799999237060547
+        z: 0.41999998688697815
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+  children: []
 name: DevScene
 is_primary: true

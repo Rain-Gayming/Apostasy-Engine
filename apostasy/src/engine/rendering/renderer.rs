@@ -16,6 +16,7 @@ use crate::{
             Node, World,
             components::{
                 camera::{Camera, get_perspective_projection},
+                light::Light,
                 transform::Transform,
             },
             system::EditorUIFunction,
@@ -485,6 +486,17 @@ impl Renderer {
                     self.model_pipeline,
                 );
 
+                let mut light: Option<Light> = None;
+                let mut light_transform: Option<Transform> = None;
+
+                for node in world.get_all_nodes() {
+                    light = node.get_component::<Light>().cloned();
+                    if light.is_some() {
+                        light_transform = node.get_component::<Transform>().cloned();
+                        break;
+                    }
+                }
+
                 for node in world.get_all_nodes_mut() {
                     let transform = node.get_component::<Transform>().cloned();
                     if let (Some(transform), Some(model_renderer)) =
@@ -520,7 +532,16 @@ impl Renderer {
                         let scale_bytes: [u8; 16] = std::mem::transmute(scale);
                         push_constants[160..176].copy_from_slice(&scale_bytes);
 
-                        // Defer pushing constants until material values are populated
+                        if light.is_some() && light_transform.is_some() {
+                            let light_pos = [
+                                light_transform.clone().unwrap().global_position.x,
+                                light_transform.clone().unwrap().global_position.y,
+                                light_transform.clone().unwrap().global_position.z,
+                                0.0f32, // padding
+                            ];
+                            let light_pos_bytes: [u8; 16] = std::mem::transmute(light_pos);
+                            push_constants[212..228].copy_from_slice(&light_pos_bytes);
+                        }
 
                         let mut model_name = model_renderer.loaded_model.clone();
                         model_name.push_str(".glb");
@@ -559,10 +580,18 @@ impl Renderer {
                                         // destroy previously loaded texture if present
                                         if let Some(old_tex) = material.take_albedo_texture() {
                                             unsafe {
-                                                self.context.device.destroy_image_view(old_tex.image_view, None);
-                                                self.context.device.destroy_image(old_tex.image, None);
-                                                self.context.device.free_memory(old_tex.memory, None);
-                                                self.context.device.destroy_sampler(old_tex.sampler, None);
+                                                self.context
+                                                    .device
+                                                    .destroy_image_view(old_tex.image_view, None);
+                                                self.context
+                                                    .device
+                                                    .destroy_image(old_tex.image, None);
+                                                self.context
+                                                    .device
+                                                    .free_memory(old_tex.memory, None);
+                                                self.context
+                                                    .device
+                                                    .destroy_sampler(old_tex.sampler, None);
                                             }
                                         }
 
@@ -574,7 +603,8 @@ impl Renderer {
                                                 self.descriptor_set_layout,
                                             ) {
                                                 material.set_albedo_texture(texture);
-                                                material.albedo_texture_loaded_name = Some(texture_name.clone());
+                                                material.albedo_texture_loaded_name =
+                                                    Some(texture_name.clone());
                                             }
                                         }
                                     }
