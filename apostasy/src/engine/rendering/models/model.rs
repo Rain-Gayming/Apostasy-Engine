@@ -28,26 +28,32 @@ pub struct Model {
     pub meshes: Vec<Mesh>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Material {
     pub name: String,
     pub base_color: [f32; 4],
     pub metallic: f32,
     pub roughness: f32,
     pub emissive: [f32; 3],
+    #[serde(with = "alpha_mode_serde")]
     pub alpha_mode: AlphaMode,
     pub alpha_cutoff: f32,
     pub double_sided: bool,
     pub albedo_texture_name: Option<String>,
+    #[serde(skip)]
     albedo_color_texture: Option<Texture>,
     pub albedo_texture_loaded_name: Option<String>,
     pub metallic_texture_name: Option<String>,
+    #[serde(skip)]
     metallic_texture: Option<Texture>,
     pub roughness_texture_name: Option<String>,
+    #[serde(skip)]
     roughness_texture: Option<Texture>,
     pub normal_texture_name: Option<String>,
+    #[serde(skip)]
     normal_texture: Option<Texture>,
     pub emmisive_texture_name: Option<String>,
+    #[serde(skip)]
     emissive_texture: Option<Texture>,
 }
 
@@ -101,7 +107,6 @@ pub struct Mesh {
 pub struct ModelRenderer {
     pub loading_model: String,
     pub loaded_model: String,
-    #[serde(skip)]
     pub material: Option<Material>,
 }
 
@@ -475,7 +480,7 @@ impl ModelLoader {
     }
 }
 
-pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext) {
+pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext, command_pool: vk::CommandPool) {
     for entry in fs::read_dir(MODEL_LOCATION).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -491,14 +496,14 @@ pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext) {
                 let path = path.to_str().unwrap();
                 model_loader
                     .models
-                    .insert(name, load_model(path, context).unwrap());
+                    .insert(name, load_model(path, context, command_pool).unwrap());
             }
         }
     }
 }
 
 /// Loads a model, path should be the file name, default path is "/res/models/"
-pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
+pub fn load_model(path: &str, context: &RenderingContext, command_pool: vk::CommandPool) -> Result<Model> {
     log!("loading model: {}", path);
     let (gltf, buffers, _images) = gltf::import(path)?;
 
@@ -532,9 +537,9 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
                 .into_u32()
                 .collect::<Vec<_>>();
 
-            // Create buffers
-            let vertex_buffer = context.create_vertex_buffer(vertices.as_slice())?;
-            let index_buffer = context.create_index_buffer(&indices)?;
+            // Create buffers using staging uploads to device-local memory
+            let vertex_buffer = context.create_vertex_buffer(vertices.as_slice(), command_pool)?;
+            let index_buffer = context.create_index_buffer(&indices, command_pool)?;
 
             // Determine material name from glTF primitive or fall back to 'material'
             let material_name = primitive
@@ -556,4 +561,33 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
     }
 
     Ok(Model { meshes })
+}
+
+mod alpha_mode_serde {
+    use super::*;
+    use serde::{Deserializer, Serializer};
+
+    pub fn serialize<S>(mode: &AlphaMode, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = match mode {
+            AlphaMode::Opaque => "OPAQUE",
+            AlphaMode::Mask => "MASK",
+            AlphaMode::Blend => "BLEND",
+        };
+        serializer.serialize_str(s)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<AlphaMode, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer).unwrap_or_else(|_| "OPAQUE".to_string());
+        Ok(match s.as_str() {
+            "MASK" => AlphaMode::Mask,
+            "BLEND" => AlphaMode::Blend,
+            _ => AlphaMode::Opaque,
+        })
+    }
 }

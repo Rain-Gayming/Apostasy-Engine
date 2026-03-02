@@ -171,6 +171,50 @@ impl RenderingContext {
             })
         }
     }
+
+    /// Loads all common image files from a directory into Vulkan textures.
+    /// Returns a map from file name to `Texture` for successfully loaded textures.
+    pub fn load_textures_from_dir(
+        &self,
+        dir: &str,
+        command_pool: vk::CommandPool,
+        descriptor_pool: vk::DescriptorPool,
+        descriptor_set_layout: vk::DescriptorSetLayout,
+    ) -> std::collections::HashMap<String, Texture> {
+        let mut map = std::collections::HashMap::new();
+        let path = std::path::Path::new(dir);
+        if !path.exists() || !path.is_dir() {
+            return map;
+        }
+
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if !p.is_file() {
+                    continue;
+                }
+                if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
+                    match ext.to_lowercase().as_str() {
+                        "png" | "jpg" | "jpeg" | "bmp" | "tga" | "gif" | "webp" => {
+                            if let Some(fname) = p.file_name().and_then(|s| s.to_str()).map(|s| s.to_string()) {
+                                match self.load_texture(&fname, command_pool, descriptor_pool, descriptor_set_layout) {
+                                    Ok(tex) => {
+                                        map.insert(fname.clone(), tex);
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Failed to load texture {}: {}", fname, e);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        map
+    }
     /// Safety: the window should outlive the surface
     #[allow(clippy::missing_safety_doc)]
     pub unsafe fn create_surface(&self, window: &Arc<Window>) -> Result<Surface> {
@@ -227,84 +271,119 @@ impl RenderingContext {
     pub fn create_vertex_buffer<T: VertexDefinition>(
         &self,
         vertices: &[T],
+        command_pool: vk::CommandPool,
     ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
         let buffer_size = (size_of::<T>() * vertices.len()) as vk::DeviceSize;
 
-        let buffer_info = vk::BufferCreateInfo::default()
-            .size(buffer_size)
-            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
-
-        let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
-
-        let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
-
-        let memory_type_index = self.find_memory_type(
-            mem_requirements.memory_type_bits,
+        // Create staging buffer
+        let (staging_buffer, staging_memory) = self.create_buffer(
+            buffer_size,
+            vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )?;
 
+        unsafe {
+            let data_ptr = self
+                .device
+                .map_memory(staging_memory, 0, buffer_size, vk::MemoryMapFlags::empty())? as *mut T;
+            data_ptr.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
+            self.device.unmap_memory(staging_memory);
+        }
+
+        // Create device local buffer
+        let buffer_info = vk::BufferCreateInfo::default()
+            .size(buffer_size)
+            .usage(vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+        let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
+        let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
+
         let alloc_info = vk::MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
-            .memory_type_index(memory_type_index);
+            .memory_type_index(
+                self.find_memory_type(
+                    mem_requirements.memory_type_bits,
+                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                )?,
+            );
 
         let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
+        unsafe { self.device.bind_buffer_memory(buffer, buffer_memory, 0)? };
+
+        // Copy staging -> device local
+        let cmd = self.begin_single_time_commands(command_pool);
+        unsafe {
+            let copy_region = vk::BufferCopy::default().size(buffer_size);
+            self.device.cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
+        }
+        let queue = self.queues[self.queue_families.transfer as usize];
+        self.end_single_time_commands(cmd, queue, command_pool);
 
         unsafe {
-            self.device.bind_buffer_memory(buffer, buffer_memory, 0)?;
-
-            let data_ptr = self.device.map_memory(
-                buffer_memory,
-                0,
-                buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )? as *mut T;
-
-            data_ptr.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
-
-            self.device.unmap_memory(buffer_memory);
+            self.device.destroy_buffer(staging_buffer, None);
+            self.device.free_memory(staging_memory, None);
         }
 
         Ok((buffer, buffer_memory))
     }
 
     /// Creates an index buffer from a slice of indices
-    pub fn create_index_buffer(&self, indices: &[u32]) -> Result<(vk::Buffer, vk::DeviceMemory)> {
+    pub fn create_index_buffer(
+        &self,
+        indices: &[u32],
+        command_pool: vk::CommandPool,
+    ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
         let buffer_size = (std::mem::size_of::<u32>() * indices.len()) as vk::DeviceSize;
 
-        let buffer_info = vk::BufferCreateInfo::default()
-            .size(buffer_size)
-            .usage(vk::BufferUsageFlags::INDEX_BUFFER)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
-
-        let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
-
-        let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
-
-        let memory_type_index = self.find_memory_type(
-            mem_requirements.memory_type_bits,
+        // staging
+        let (staging_buffer, staging_memory) = self.create_buffer(
+            buffer_size,
+            vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )?;
 
-        let alloc_info = vk::MemoryAllocateInfo::default()
-            .allocation_size(mem_requirements.size)
-            .memory_type_index(memory_type_index);
-
-        let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
-
         unsafe {
-            self.device.bind_buffer_memory(buffer, buffer_memory, 0)?;
-
             let data_ptr = self.device.map_memory(
-                buffer_memory,
+                staging_memory,
                 0,
                 buffer_size,
                 vk::MemoryMapFlags::empty(),
             )? as *mut u32;
-
             data_ptr.copy_from_nonoverlapping(indices.as_ptr(), indices.len());
+            self.device.unmap_memory(staging_memory);
+        }
 
-            self.device.unmap_memory(buffer_memory);
+        // device local
+        let buffer_info = vk::BufferCreateInfo::default()
+            .size(buffer_size)
+            .usage(vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+
+        let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
+        let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
+
+        let alloc_info = vk::MemoryAllocateInfo::default()
+            .allocation_size(mem_requirements.size)
+            .memory_type_index(
+                self.find_memory_type(mem_requirements.memory_type_bits, vk::MemoryPropertyFlags::DEVICE_LOCAL)?,
+            );
+
+        let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
+        unsafe { self.device.bind_buffer_memory(buffer, buffer_memory, 0)? };
+
+        // copy
+        let cmd = self.begin_single_time_commands(command_pool);
+        unsafe {
+            let copy_region = vk::BufferCopy::default().size(buffer_size);
+            self.device.cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
+        }
+        let queue = self.queues[self.queue_families.transfer as usize];
+        self.end_single_time_commands(cmd, queue, command_pool);
+
+        unsafe {
+            self.device.destroy_buffer(staging_buffer, None);
+            self.device.free_memory(staging_memory, None);
         }
 
         Ok((buffer, buffer_memory))

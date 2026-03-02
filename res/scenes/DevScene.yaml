@@ -52,6 +52,28 @@ root_children:
     data:
       loading_model: cube
       loaded_model: cube
+      material:
+        name: material
+        base_color:
+        - 1.0
+        - 1.0
+        - 1.0
+        - 1.0
+        metallic: 0.0
+        roughness: 0.0
+        emissive:
+        - 0.0
+        - 0.0
+        - 0.0
+        alpha_mode: OPAQUE
+        alpha_cutoff: 0.5
+        double_sided: false
+        albedo_texture_name: blue.png
+        albedo_texture_loaded_name: blue.png
+        metallic_texture_name: null
+        roughness_texture_name: null
+        normal_texture_name: null
+        emmisive_texture_name: null
   - type: Collider
     data:
       half_extents:
@@ -314,6 +336,7 @@ root_children:
     data:
       loading_model: cube
       loaded_model: cube
+      material: null
   children: []
 name: DevScene
 is_primary: true

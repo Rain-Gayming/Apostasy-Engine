@@ -1,4 +1,5 @@
 use std::{collections::BTreeMap, sync::Arc};
+use std::collections::HashMap as StdHashMap;
 
 use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
@@ -125,6 +126,7 @@ pub struct Renderer {
     pub frame_index: usize,
     pub frames: Vec<Frame>,
     pub command_pool: vk::CommandPool,
+    pub transfer_command_pool: vk::CommandPool,
     pub model_pipeline: vk::Pipeline,
     pub voxel_pipeline: vk::Pipeline,
     pub pipeline_layout: vk::PipelineLayout,
@@ -134,6 +136,11 @@ pub struct Renderer {
     pub descriptor_set_layout: vk::DescriptorSetLayout,
 
     pub egui_renderer: EguiRenderer,
+    pub preloaded_textures: StdHashMap<String, crate::engine::rendering::models::model::Texture>,
+    pub pending_texture_destroys: Vec<crate::engine::rendering::models::model::Texture>,
+    pub default_descriptor_set: vk::DescriptorSet,
+    pub default_ubo: vk::Buffer,
+    pub default_ubo_memory: vk::DeviceMemory,
 }
 
 pub fn load_engine_shader_module(
@@ -173,15 +180,21 @@ impl Renderer {
                 None,
             )?;
 
-            let descriptor_pool = context.device.create_descriptor_pool(
-                &vk::DescriptorPoolCreateInfo::default()
-                    .max_sets(100)
-                    .pool_sizes(&[vk::DescriptorPoolSize {
-                        ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                        descriptor_count: 100,
-                    }]),
-                None,
-            )?;
+                let descriptor_pool = context.device.create_descriptor_pool(
+                    &vk::DescriptorPoolCreateInfo::default()
+                        .max_sets(200)
+                        .pool_sizes(&[
+                            vk::DescriptorPoolSize {
+                                ty: vk::DescriptorType::UNIFORM_BUFFER,
+                                descriptor_count: 100,
+                            },
+                            vk::DescriptorPoolSize {
+                                ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                                descriptor_count: 100,
+                            },
+                        ]),
+                    None,
+                )?;
 
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
@@ -233,6 +246,22 @@ impl Renderer {
                 None,
             )?;
 
+            
+            let transfer_command_pool = context.device.create_command_pool(
+                &vk::CommandPoolCreateInfo::default()
+                    .queue_family_index(context.queue_families.transfer)
+                    .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER),
+                None,
+            )?;
+
+            // Preload textures from assets/textures directory using the transfer command pool
+            let preloaded = context.load_textures_from_dir(
+                "res/assets/textures",
+                transfer_command_pool,
+                descriptor_pool,
+                descriptor_set_layout,
+            );
+
             let inflight_frames_count = swapchain.images.len() as u32;
             let command_buffers = context.device.allocate_command_buffers(
                 &vk::CommandBufferAllocateInfo::default()
@@ -266,6 +295,59 @@ impl Renderer {
 
             let egui_renderer = EguiRenderer::new(&context, &swapchain, &window);
 
+                // Create a small default uniform buffer used for descriptor sets
+                let (default_ubo, default_ubo_mem) = context.create_buffer(
+                    256,
+                    vk::BufferUsageFlags::UNIFORM_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                )?;
+
+                // Allocate a default descriptor set and bind the default UBO and a fallback texture
+                let default_descriptor_set = unsafe {
+                    context
+                        .device
+                        .allocate_descriptor_sets(
+                            &vk::DescriptorSetAllocateInfo::default()
+                                .descriptor_pool(descriptor_pool)
+                                .set_layouts(&[descriptor_set_layout]),
+                        )?
+                        [0]
+                };
+
+                // Choose a fallback texture (temp.png) if available
+                let fallback_texture = preloaded.get("temp.png");
+
+                // Update descriptor set: binding 0 -> UBO, binding 1 -> image sampler (if available)
+                let buffer_info = vk::DescriptorBufferInfo::default()
+                    .buffer(default_ubo)
+                    .offset(0)
+                    .range(256);
+
+                // Prepare persistent arrays so their references live across the write set construction
+                let buffer_infos = [buffer_info];
+                let mut writes: Vec<vk::WriteDescriptorSet> = Vec::new();
+                writes.push(vk::WriteDescriptorSet::default()
+                    .dst_set(default_descriptor_set)
+                    .dst_binding(0)
+                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                    .buffer_info(&buffer_infos));
+
+                let mut image_infos: Vec<vk::DescriptorImageInfo> = Vec::new();
+                if let Some(tex) = fallback_texture {
+                    let image_info = vk::DescriptorImageInfo::default()
+                        .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                        .image_view(tex.image_view)
+                        .sampler(tex.sampler);
+                    image_infos.push(image_info);
+                    writes.push(vk::WriteDescriptorSet::default()
+                        .dst_set(default_descriptor_set)
+                        .dst_binding(1)
+                        .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                        .image_info(&image_infos));
+                }
+
+                unsafe { context.device.update_descriptor_sets(&writes, &[]) };
+
             Ok(Self {
                 frame_index: 0,
                 frames,
@@ -278,6 +360,12 @@ impl Renderer {
                 descriptor_pool,
                 descriptor_set_layout,
                 egui_renderer,
+                preloaded_textures: preloaded,
+                pending_texture_destroys: Vec::new(),
+                transfer_command_pool,
+                default_descriptor_set,
+                default_ubo,
+                default_ubo_memory: default_ubo_mem,
             })
         }
     }
@@ -294,6 +382,25 @@ impl Renderer {
             self.context
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
+
+            
+            if !self.pending_texture_destroys.is_empty() {
+                for old_tex in self.pending_texture_destroys.drain(..) {
+                    unsafe {
+                        let _ = self.context.device.free_descriptor_sets(
+                            self.descriptor_pool,
+                            &[old_tex.descriptor_set],
+                        );
+                        self.context
+                            .device
+                            .destroy_image_view(old_tex.image_view, None);
+                        self.context.device.destroy_image(old_tex.image, None);
+                        self.context.device.free_memory(old_tex.memory, None);
+                        self.context.device.destroy_sampler(old_tex.sampler, None);
+                    }
+                }
+            }
+
             self.context.device.reset_fences(&[frame.in_flight_fence])?;
             self.context
                 .device
@@ -562,39 +669,35 @@ impl Renderer {
                                     let desired_name = material.albedo_texture_name.clone();
                                     let loaded_name = material.albedo_texture_loaded_name.clone();
 
-                                    if desired_name.is_some() && desired_name != loaded_name {
-                                        // destroy previously loaded texture if present
+                                    
+                                    if desired_name.is_some()
+                                        && (desired_name != loaded_name || material.albedo_texture().is_none())
+                                    {
+                                        // defer destruction of previously loaded texture if present
                                         if let Some(old_tex) = material.take_albedo_texture() {
-                                            unsafe {
-                                                self.context
-                                                    .device
-                                                    .destroy_image_view(old_tex.image_view, None);
-                                                self.context
-                                                    .device
-                                                    .destroy_image(old_tex.image, None);
-                                                self.context
-                                                    .device
-                                                    .free_memory(old_tex.memory, None);
-                                                self.context
-                                                    .device
-                                                    .destroy_sampler(old_tex.sampler, None);
-                                            }
+                                            self.pending_texture_destroys.push(old_tex);
                                         }
 
                                         if let Some(ref texture_name) = desired_name {
-                                            if let Ok(texture) = self.context.load_texture(
+                                            // Prefer preloaded textures (loaded during renderer init)
+                                            if let Some(pre) = self.preloaded_textures.get(texture_name) {
+                                                material.set_albedo_texture(pre.clone());
+                                                material.albedo_texture_loaded_name = Some(texture_name.clone());
+                                            } else if let Ok(texture) = self.context.load_texture(
                                                 texture_name,
                                                 self.command_pool,
                                                 self.descriptor_pool,
                                                 self.descriptor_set_layout,
                                             ) {
                                                 material.set_albedo_texture(texture);
-                                                material.albedo_texture_loaded_name =
-                                                    Some(texture_name.clone());
+                                                material.albedo_texture_loaded_name = Some(texture_name.clone());
                                             }
                                         }
                                     }
 
+                                    // Bind the material's texture descriptor set if present,
+                                    // otherwise bind the renderer's default descriptor set so
+                                    // the pipeline always has a compatible set 0 bound.
                                     if let &mut Some(ref texture) = material.albedo_texture() {
                                         device.cmd_bind_descriptor_sets(
                                             command_buffer,
@@ -602,6 +705,15 @@ impl Renderer {
                                             pipeline_layout,
                                             0,
                                             &[texture.descriptor_set],
+                                            &[],
+                                        );
+                                    } else {
+                                        device.cmd_bind_descriptor_sets(
+                                            command_buffer,
+                                            vk::PipelineBindPoint::GRAPHICS,
+                                            pipeline_layout,
+                                            0,
+                                            &[self.default_descriptor_set],
                                             &[],
                                         );
                                     }
@@ -775,7 +887,9 @@ impl Renderer {
 impl Drop for Renderer {
     fn drop(&mut self) {
         unsafe {
-            self.context.device.device_wait_idle().unwrap();
+            if let Err(e) = self.context.device.device_wait_idle() {
+                eprintln!("Warning: device_wait_idle failed during renderer drop: {:?}", e);
+            }
 
             self.frames.drain(..).for_each(|frame| {
                 self.context
