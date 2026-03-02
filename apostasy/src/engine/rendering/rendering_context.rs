@@ -200,6 +200,7 @@ impl RenderingContext {
         filter: u32,
         properties: vk::MemoryPropertyFlags,
     ) -> Result<u32> {
+        // First, try to find an exact match
         for i in 0..self.physical_device.memory_properties.memory_type_count {
             if (filter & (1 << i)) != 0
                 && (self.physical_device.memory_properties.memory_types[i as usize].property_flags
@@ -209,7 +210,15 @@ impl RenderingContext {
                 return Ok(i);
             }
         }
-        Err(anyhow::anyhow!("Failed to find suitable memory type"))
+        
+        // Fallback: find any memory type that matches the filter
+        for i in 0..self.physical_device.memory_properties.memory_type_count {
+            if (filter & (1 << i)) != 0 {
+                return Ok(i);
+            }
+        }
+        
+        Err(anyhow::anyhow!("Failed to find suitable memory type with filter: {}", filter))
     }
 
     /// Creates a vertex buffer from a slice of vertices
