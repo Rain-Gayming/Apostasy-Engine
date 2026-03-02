@@ -55,7 +55,7 @@ impl Default for Material {
     fn default() -> Self {
         Self {
             name: "material".to_string(),
-            base_color: [0.0, 0.0, 0.0, 1.0],
+            base_color: [1.0, 1.0, 1.0, 1.0],
             metallic: 0.0,
             roughness: 0.0,
             emissive: [0.0, 0.0, 0.0],
