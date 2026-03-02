@@ -52,6 +52,7 @@ root_children:
     data:
       loading_model: cube
       loaded_model: cube
+      material: null
   - type: Collider
     data:
       half_extents:

@@ -235,14 +235,20 @@ pub fn collision_detection_system(world: &mut World) {
 }
 
 /// Resolves collision events by pushing the node in the opposite direction
-fn resolve_node(world: &mut World, name: &str, _offset: Vector3<f32>, normal: Vector3<f32>) {
-    let node = world.get_node_with_name_mut(name);
-
-    if let Some(node) = node {
+fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vector3<f32>) {
+   if let Some(node) = world.get_node_with_name_mut(name) {
         let (transform, velocity) = node.get_components_mut::<(&mut Transform, &mut Velocity)>();
-        if velocity.direction != Vector3::zero() {
-            velocity.add_velocity(normal);
-            apply_velocity(velocity, transform);
+
+        // apply positional correction immediately
+        transform.position += offset;
+
+        let v_dot_n = velocity.direction.x * normal.x
+            + velocity.direction.y * normal.y
+            + velocity.direction.z * normal.z;
+
+        if v_dot_n < 0.0 {
+            let correction = normal * v_dot_n;
+            velocity.direction -= correction;
         }
     }
 }
