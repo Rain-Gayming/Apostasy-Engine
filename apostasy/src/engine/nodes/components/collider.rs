@@ -57,13 +57,23 @@ impl Collider {
     }
 
     /// Returns the minimum point of the collider
-    pub fn world_min(&self, position: Vector3<f32>) -> Vector3<f32> {
-        position - self.half_extents
+    pub fn world_min(&self, position: Vector3<f32>, scale: Vector3<f32>) -> Vector3<f32> {
+        position
+            - Vector3::new(
+                self.half_extents.x * scale.x,
+                self.half_extents.y * scale.y,
+                self.half_extents.z * scale.z,
+            )
     }
 
     /// Returns the maximum point of the collider
-    pub fn world_max(&self, position: Vector3<f32>) -> Vector3<f32> {
-        position + self.half_extents
+    pub fn world_max(&self, position: Vector3<f32>, scale: Vector3<f32>) -> Vector3<f32> {
+        position
+            + Vector3::new(
+                self.half_extents.x * scale.x,
+                self.half_extents.y * scale.y,
+                self.half_extents.z * scale.z,
+            )
     }
 
     /// Returns the translation vector between two colliders
@@ -95,9 +105,14 @@ impl Collider {
     }
 
     /// Returns true when `point` lies inside (or on the surface of) the box.
-    pub fn contains_point(&self, position: Vector3<f32>, point: Vector3<f32>) -> bool {
-        let min = self.world_min(position);
-        let max = self.world_max(position);
+    pub fn contains_point(
+        &self,
+        position: Vector3<f32>,
+        point: Vector3<f32>,
+        scale: Vector3<f32>,
+    ) -> bool {
+        let min = self.world_min(position, scale);
+        let max = self.world_max(position, scale);
         point.x >= min.x
             && point.x <= max.x
             && point.y >= min.y
@@ -236,7 +251,7 @@ pub fn collision_detection_system(world: &mut World) {
 
 /// Resolves collision events by pushing the node in the opposite direction
 fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vector3<f32>) {
-   if let Some(node) = world.get_node_with_name_mut(name) {
+    if let Some(node) = world.get_node_with_name_mut(name) {
         let (transform, velocity) = node.get_components_mut::<(&mut Transform, &mut Velocity)>();
 
         // apply positional correction immediately

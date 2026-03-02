@@ -88,8 +88,8 @@ impl Raycast {
                     origin,
                     direction,
                     self.max_distance,
-                    collider.world_min(center),
-                    collider.world_max(center),
+                    collider.world_min(center, transform.scale),
+                    collider.world_max(center, transform.scale),
                 )?;
                 let point = origin + direction * t;
                 let normal = surface_normal(point, center, collider.half_extents);

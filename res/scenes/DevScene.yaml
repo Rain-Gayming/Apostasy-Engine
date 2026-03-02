@@ -344,18 +344,18 @@ root_children:
   - type: Transform
     data:
       position:
-        x: 5.650000095367432
-        y: -2.9100000858306885
-        z: 0.0
+        x: -0.6499999761581421
+        y: -3.1600000858306885
+        z: -6.019999980926514
       rotation:
         v:
           x: 0.0
-          y: 0.7071067690849304
+          y: 0.0
           z: 0.0
-        s: 0.7071067690849304
+        s: 1.0
       rotation_euler:
         x: 0.0
-        y: 90.0
+        y: 0.0
         z: 0.0
       scale:
         x: 6.230000019073486
@@ -374,30 +374,30 @@ root_children:
         y: 0.0
         z: 0.0
       global_position:
-        x: 5.650000095367432
-        y: -2.9100000858306885
-        z: 0.0
+        x: -0.6499999761581421
+        y: -3.1600000858306885
+        z: -6.019999980926514
       global_rotation:
         v:
           x: 0.0
-          y: 0.7071067690849304
+          y: 0.0
           z: 0.0
-        s: 0.7071067690849304
+        s: 1.0
       global_scale:
         x: 6.230000019073486
         y: 2.0
         z: 1.0
   - type: ModelRenderer
     data:
-      loading_model: 123
+      loading_model: cube
       loaded_model: cube
       material: null
   - type: Collider
     data:
       half_extents:
-        x: 3.0999999046325684
+        x: 0.5
         y: 1.0
-        z: 3.0999999046325684
+        z: 0.5
       offset:
         x: 0.0
         y: 0.0
