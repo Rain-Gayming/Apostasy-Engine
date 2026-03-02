@@ -550,7 +550,7 @@ impl Renderer {
                                         && let Some(ref texture_name) =
                                             material.albedo_texture_name.clone()
                                     {
-                                        let texture = self
+                                        if let Ok(texture) = self
                                             .context
                                             .load_texture(
                                                 texture_name,
@@ -558,9 +558,9 @@ impl Renderer {
                                                 self.descriptor_pool,
                                                 self.descriptor_set_layout,
                                             )
-                                            .unwrap();
-
-                                        material.set_albedo_texture(texture);
+                                        {
+                                            material.set_albedo_texture(texture);
+                                        }
                                     }
 
                                     if let &mut Some(ref texture) = material.albedo_texture() {
