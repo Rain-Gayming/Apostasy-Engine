@@ -529,17 +529,6 @@ impl Renderer {
                         let scale_bytes: [u8; 16] = std::mem::transmute(scale);
                         push_constants[160..176].copy_from_slice(&scale_bytes);
 
-                        if light.is_some() && light_transform.is_some() {
-                            let light_pos = [
-                                light_transform.clone().unwrap().global_position.x,
-                                light_transform.clone().unwrap().global_position.y,
-                                light_transform.clone().unwrap().global_position.z,
-                                0.0f32, // padding
-                            ];
-                            let light_pos_bytes: [u8; 16] = std::mem::transmute(light_pos);
-                            push_constants[212..228].copy_from_slice(&light_pos_bytes);
-                        }
-
                         let mut model_name = model_renderer.loaded_model.clone();
                         model_name.push_str(".glb");
 
@@ -629,7 +618,19 @@ impl Renderer {
                                     push_constants[196..200].copy_from_slice(&roughness_bytes);
                                     let emissive_bytes: [u8; 12] =
                                         std::mem::transmute(material.emissive);
-                                    push_constants[200..212].copy_from_slice(&emissive_bytes);
+                                    push_constants[208..220].copy_from_slice(&emissive_bytes);
+                                    push_constants[220..224].copy_from_slice(&[0u8; 4]);
+                                    if let (Some(light), Some(lt)) = (&light, &light_transform) {
+                                        let light_pos = [
+                                            lt.global_position.x,
+                                            lt.global_position.y,
+                                            lt.global_position.z,
+                                            light.strength,
+                                        ];
+                                        let light_pos_bytes: [u8; 16] =
+                                            std::mem::transmute(light_pos);
+                                        push_constants[224..240].copy_from_slice(&light_pos_bytes);
+                                    }
 
                                     device.cmd_push_constants(
                                         command_buffer,

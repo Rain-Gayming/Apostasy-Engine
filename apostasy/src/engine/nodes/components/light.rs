@@ -14,5 +14,5 @@ use serde::{Deserialize, Serialize};
     Default,
 )]
 pub struct Light {
-    pub strenght: f32,
+    pub strength: f32,
 }

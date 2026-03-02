@@ -26,18 +26,18 @@ vec3 applyQuaternion(vec4 q, vec3 v) {
     return v + 2.0 * cross(qv, cross(qv, v) + q.w * v);
 }
 
-
 void main() {
- vec3 scale = vec3(pc.scale.x, pc.scale.y, pc.scale.z);
-    vec3 scaledPosition = inPosition * scale;                
+    vec3 scale = vec3(pc.scale.x, pc.scale.y, pc.scale.z);
+    vec3 scaledPosition = inPosition * scale;
     vec3 rotatedPosition = applyQuaternion(pc.rotation, scaledPosition);
     vec3 offset = vec3(pc.offset.x, pc.offset.y, pc.offset.z);
+    vec3 worldPos = rotatedPosition + offset;
 
-    gl_Position = pc.mvp * vec4(rotatedPosition + offset, 1.0);
+    gl_Position = pc.mvp * vec4(worldPos, 1.0);
 
-    vec3 rotatedNormal = applyQuaternion(pc.rotation, inNormal / scale);
-    fragNormal = normalize(mat3(transpose(inverse(pc.model))) * rotatedNormal);
+    vec3 rotatedNormal = applyQuaternion(pc.rotation, inNormal);
+    fragNormal = normalize(rotatedNormal);
+
     fragTexCoord = inTexCoord;
-  
-    fragPos = vec3(pc.model * vec4(inPosition, 1.0));
+    fragPos = worldPos; 
 }
