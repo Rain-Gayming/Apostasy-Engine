@@ -2,7 +2,7 @@ use crate as apostasy;
 use std::fs;
 use std::path::Path;
 
-use crate::engine::editor::inspectable::{Inspectable, InspectValue};
+use crate::engine::editor::inspectable::{InspectValue, Inspectable};
 use crate::engine::rendering::{
     models::vertex::{Vertex, VertexType},
     rendering_context::RenderingContext,
@@ -40,6 +40,7 @@ pub struct Material {
     pub double_sided: bool,
     pub albedo_texture_name: Option<String>,
     albedo_color_texture: Option<Texture>,
+    pub albedo_texture_loaded_name: Option<String>,
     pub metallic_texture_name: Option<String>,
     metallic_texture: Option<Texture>,
     pub roughness_texture_name: Option<String>,
@@ -63,6 +64,7 @@ impl Default for Material {
             double_sided: false,
             albedo_texture_name: Some("temp.png".to_string()),
             albedo_color_texture: None,
+            albedo_texture_loaded_name: None,
             metallic_texture_name: None,
             metallic_texture: None,
             roughness_texture_name: None,
@@ -95,9 +97,7 @@ pub struct Mesh {
     pub material: String,
 }
 
-#[derive(
-    Component, Clone, Serialize, Deserialize, SerializableComponent,
-)]
+#[derive(Component, Clone, Serialize, Deserialize, SerializableComponent)]
 pub struct ModelRenderer {
     pub loading_model: String,
     pub loaded_model: String,
@@ -240,6 +240,7 @@ impl Material {
             double_sided: def.double_sided.unwrap_or(false),
             albedo_texture_name: def.albedo_texture.and_then(|v| v),
             albedo_color_texture: None,
+            albedo_texture_loaded_name: None,
             metallic_texture_name: def.metallic_roughness_texture.and_then(|v| v),
             metallic_texture: None,
             roughness_texture_name: None,
@@ -249,6 +250,10 @@ impl Material {
             emmisive_texture_name: def.emissive_texture.and_then(|v| v),
             emissive_texture: None,
         })
+    }
+
+    pub fn take_albedo_texture(&mut self) -> Option<Texture> {
+        self.albedo_color_texture.take()
     }
 
     pub fn serialize_material(&self) {

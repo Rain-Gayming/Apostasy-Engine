@@ -7,7 +7,7 @@ use ash::{
         PhysicalDeviceBufferDeviceAddressFeatures, PhysicalDeviceDynamicRenderingFeatures, Queue,
     },
 };
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, sync::{Arc, Mutex}};
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
@@ -31,6 +31,7 @@ pub struct RenderingContext {
     pub surface_extensions: ash::khr::surface::Instance,
     pub instance: ash::Instance,
     pub entry: ash::Entry,
+    pub last_working_texture: Mutex<Option<String>>,
 }
 pub struct RenderingContextAttributes<'window> {
     pub compatability_window: &'window Window,
@@ -166,6 +167,7 @@ impl RenderingContext {
                 surface_extensions,
                 instance,
                 entry,
+                last_working_texture: Mutex::new(None),
             })
         }
     }
@@ -719,8 +721,40 @@ impl RenderingContext {
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
     ) -> Result<Texture> {
-        let path = format!("res/assets/textures/{}", path);
-        let image = image::open(&path).expect("Failed to load image").to_rgba8();
+        let requested_full = format!("res/assets/textures/{}", path);
+        let mut actual_path = requested_full.clone();
+        let image = if std::path::Path::new(&requested_full).exists() {
+            image::open(&requested_full).map_err(|e| anyhow!("Failed to load image {}: {}", requested_full, e))?.to_rgba8()
+        } else {
+            // try last successfully loaded texture first
+            if let Some(last) = &*self.last_working_texture.lock().unwrap() {
+                if std::path::Path::new(last).exists() {
+                    actual_path = last.clone();
+                    image::open(last).map_err(|e| anyhow!("Failed to load last working image {}: {}", last, e))?.to_rgba8()
+                } else {
+                    // fallback to temp.png
+                    let fallback = "res/assets/textures/temp.png";
+                    if std::path::Path::new(fallback).exists() {
+                        actual_path = fallback.to_string();
+                        image::open(fallback).map_err(|e| anyhow!("Failed to load fallback image {}: {}", fallback, e))?.to_rgba8()
+                    } else {
+                        return Err(anyhow!("Texture {} not found and no fallback available", requested_full));
+                    }
+                }
+            } else {
+                // no last working texture recorded yet; fallback to temp.png
+                let fallback = "res/assets/textures/temp.png";
+                if std::path::Path::new(fallback).exists() {
+                    actual_path = fallback.to_string();
+                    image::open(fallback).map_err(|e| anyhow!("Failed to load fallback image {}: {}", fallback, e))?.to_rgba8()
+                } else {
+                    return Err(anyhow!("Texture {} not found and no fallback available", requested_full));
+                }
+            }
+        };
+
+        // record the successfully used texture path so it can be reused as a fallback later
+        *self.last_working_texture.lock().unwrap() = Some(actual_path.clone());
         let (width, height) = image.dimensions();
         let pixels: Vec<u8> = image.into_raw();
         let image_size = pixels.len() as vk::DeviceSize;

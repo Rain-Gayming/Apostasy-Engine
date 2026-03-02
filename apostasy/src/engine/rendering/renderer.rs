@@ -9,21 +9,24 @@ use winit::{event::WindowEvent, window::Window};
 
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
-use crate::engine::{
-    editor::{EditorStorage, style::style},
-    nodes::{
-        Node, World,
-        components::{
-            camera::{Camera, get_perspective_projection},
-            transform::Transform,
+use crate::{
+    engine::{
+        editor::{EditorStorage, style::style},
+        nodes::{
+            Node, World,
+            components::{
+                camera::{Camera, get_perspective_projection},
+                transform::Transform,
+            },
+            system::EditorUIFunction,
         },
-        system::EditorUIFunction,
+        rendering::{
+            models::model::{Material, ModelLoader, ModelRenderer},
+            rendering_context::{ImageLayoutState, RenderingContext},
+            swapchain::Swapchain,
+        },
     },
-    rendering::{
-        models::model::{Material, ModelLoader, ModelRenderer},
-        rendering_context::{ImageLayoutState, RenderingContext},
-        swapchain::Swapchain,
-    },
+    log,
 };
 
 /// A frame of the renderer
@@ -484,7 +487,8 @@ impl Renderer {
 
                 for node in world.get_all_nodes_mut() {
                     let transform = node.get_component::<Transform>().cloned();
-                    if let (Some(transform), Some(model_renderer)) = (transform, node.get_component_mut::<ModelRenderer>())
+                    if let (Some(transform), Some(model_renderer)) =
+                        (transform, node.get_component_mut::<ModelRenderer>())
                     {
                         // Add position offset
                         let offset = [
@@ -526,7 +530,7 @@ impl Renderer {
                         if let Some(model) = model {
                             for mesh in model.meshes.clone() {
                                 // Use ModelRenderer.material if set, otherwise load from model_loader
-                                     let material_to_use: Option<&mut Material> = 
+                                let material_to_use: Option<&mut Material> =
                                     if model_renderer.material.is_some() {
                                         model_renderer.material.as_mut()
                                     } else {
@@ -537,29 +541,41 @@ impl Renderer {
                                                     .materials
                                                     .insert(mesh.material.clone(), loaded);
                                             } else {
-                                                model_loader
-                                                    .materials
-                                                    .insert(mesh.material.clone(), Material::default());
+                                                model_loader.materials.insert(
+                                                    mesh.material.clone(),
+                                                    Material::default(),
+                                                );
                                             }
                                         }
                                         model_loader.get_material_mut(&mesh.material)
                                     };
 
                                 if let Some(material) = material_to_use {
-                                    if material.albedo_texture().is_none()
-                                        && let Some(ref texture_name) =
-                                            material.albedo_texture_name.clone()
-                                    {
-                                        if let Ok(texture) = self
-                                            .context
-                                            .load_texture(
+                                    // Reload texture if the requested name changed
+                                    let desired_name = material.albedo_texture_name.clone();
+                                    let loaded_name = material.albedo_texture_loaded_name.clone();
+
+                                    if desired_name.is_some() && desired_name != loaded_name {
+                                        // destroy previously loaded texture if present
+                                        if let Some(old_tex) = material.take_albedo_texture() {
+                                            unsafe {
+                                                self.context.device.destroy_image_view(old_tex.image_view, None);
+                                                self.context.device.destroy_image(old_tex.image, None);
+                                                self.context.device.free_memory(old_tex.memory, None);
+                                                self.context.device.destroy_sampler(old_tex.sampler, None);
+                                            }
+                                        }
+
+                                        if let Some(ref texture_name) = desired_name {
+                                            if let Ok(texture) = self.context.load_texture(
                                                 texture_name,
                                                 self.command_pool,
                                                 self.descriptor_pool,
                                                 self.descriptor_set_layout,
-                                            )
-                                        {
-                                            material.set_albedo_texture(texture);
+                                            ) {
+                                                material.set_albedo_texture(texture);
+                                                material.albedo_texture_loaded_name = Some(texture_name.clone());
+                                            }
                                         }
                                     }
 
