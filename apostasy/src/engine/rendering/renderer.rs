@@ -146,7 +146,7 @@ pub fn load_engine_shader_module(
 impl Renderer {
     pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
         let mut swapchain = Swapchain::new(context.clone(), window.clone())?;
-        swapchain.resize().unwrap();
+        swapchain.resize()?;
 
         let model_vertex_shader = load_engine_shader_module(context.as_ref(), "model_vert.spv")?;
         let model_fragment_shader = load_engine_shader_module(context.as_ref(), "model_frag.spv")?;
