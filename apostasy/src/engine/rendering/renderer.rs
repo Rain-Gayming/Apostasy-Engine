@@ -261,7 +261,7 @@ impl Renderer {
                 });
             }
 
-            swapchain.resize().unwrap();
+            swapchain.resize()?;
 
             let egui_renderer = EguiRenderer::new(&context, &swapchain, &window);
 
