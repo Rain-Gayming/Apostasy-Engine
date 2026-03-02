@@ -9,25 +9,22 @@ use winit::{event::WindowEvent, window::Window};
 
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
-use crate::{
-    engine::{
-        editor::{EditorStorage, style::style},
-        nodes::{
-            Node, World,
-            components::{
-                camera::{Camera, get_perspective_projection},
-                light::Light,
-                transform::Transform,
-            },
-            system::EditorUIFunction,
+use crate::engine::{
+    editor::{EditorStorage, style::style},
+    nodes::{
+        Node, World,
+        components::{
+            camera::{Camera, get_perspective_projection},
+            light::Light,
+            transform::Transform,
         },
-        rendering::{
-            models::model::{Material, ModelLoader, ModelRenderer},
-            rendering_context::{ImageLayoutState, RenderingContext},
-            swapchain::Swapchain,
-        },
+        system::EditorUIFunction,
     },
-    log,
+    rendering::{
+        models::model::{Material, ModelLoader, ModelRenderer},
+        rendering_context::{ImageLayoutState, RenderingContext},
+        swapchain::Swapchain,
+    },
 };
 
 /// A frame of the renderer

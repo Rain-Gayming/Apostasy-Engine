@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use apostasy_macros::{editor_fixed_update};
+use apostasy_macros::editor_fixed_update;
 use cgmath::{Vector3, Zero, num_traits::clamp};
 use std::{collections::HashMap, sync::Arc};
 use winit::{
@@ -127,13 +127,6 @@ impl Engine {
             compatability_window: &primary_window,
             queue_family_picker: single_queue_family,
         })?);
-        // let renderers = windows
-        //     .iter()
-        //     .map(|(id, window)| {
-        //         let renderer = Renderer::new(rendering_context.clone(), window.clone()).unwrap();
-        //         (*id, renderer)
-        //     })
-        //     .collect::<HashMap<WindowId, Renderer>>();
 
         let timer = EngineTimer::new();
 
@@ -357,6 +350,42 @@ pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
         camera_transform.calculate_rotation();
 
         let direction = camera_transform.global_rotation * input_dir;
+
+        velocity.add_velocity(direction * delta_time);
+
+        apply_velocity(velocity, camera_transform);
+        velocity.direction = Vector3::zero();
+    }
+}
+
+#[editor_fixed_update]
+pub fn editor_camera_mouse_handle(world: &mut World, delta_time: f32) {
+    if !world.is_world_hovered {
+        return;
+    }
+
+    let is_camera_move_active = world
+        .input_manager
+        .is_mousebind_active("editor_camera_move");
+    let mouse_delta = world.input_manager.mouse_delta;
+    let scroll_delta = world.input_manager.scroll_delta;
+
+    let editor_camera = world.get_global_node_with_component_mut::<Camera>();
+
+    if let Some(editor_camera) = editor_camera {
+        let (camera_transform, velocity) =
+            editor_camera.get_components_mut::<(&mut Transform, &mut Velocity)>();
+
+        let mut direction = Vector3::zero();
+
+        if is_camera_move_active {
+            direction += camera_transform.calculate_global_right() * mouse_delta.0 as f32 * 2.0;
+            direction -= camera_transform.calculate_global_up() * mouse_delta.1 as f32 * 2.0;
+        }
+
+        if scroll_delta.1 != 0.0 {
+            direction += camera_transform.calculate_global_forward() * scroll_delta.1 * 15.0;
+        }
 
         velocity.add_velocity(direction * delta_time);
 

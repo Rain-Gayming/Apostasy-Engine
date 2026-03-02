@@ -7,7 +7,7 @@ use std::{
 };
 use winit::{
     dpi::PhysicalPosition,
-    event::{DeviceEvent, MouseButton, WindowEvent},
+    event::{DeviceEvent, MouseButton, MouseScrollDelta, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
 };
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,7 +47,7 @@ pub struct InputManager {
     pub mouse_held: HashSet<MouseButton>,
     pub mouse_position: PhysicalPosition<f64>,
     pub mouse_delta: (f64, f64),
-    // scroll_delta: (f32, f32),
+    pub scroll_delta: (f32, f32),
 
     // Resets each frame
     pub keys_pressed: HashSet<PhysicalKey>,
@@ -119,6 +119,15 @@ impl Default for InputManager {
             ),
         );
 
+        default_mousebinds.insert(
+            "editor_camera_move".to_string(),
+            MouseBind::new(
+                MouseButton::Middle,
+                KeyAction::Hold,
+                "editor_camera_move".to_string(),
+            ),
+        );
+
         Self {
             keybinds: default_keybinds,
             mouse_keybinds: default_mousebinds,
@@ -126,6 +135,7 @@ impl Default for InputManager {
             mouse_held: HashSet::new(),
             mouse_position: PhysicalPosition::new(0.0, 0.0),
             mouse_delta: (0.0, 0.0),
+            scroll_delta: (0.0, 0.0),
             keys_pressed: HashSet::new(),
             keys_released: HashSet::new(),
             mouse_pressed: HashSet::new(),
@@ -214,6 +224,7 @@ impl InputManager {
         self.mouse_pressed.clear();
         self.mouse_released.clear();
         self.mouse_delta = (0.0, 0.0);
+        self.scroll_delta = (0.0, 0.0);
     }
 
     /// Calculates the input vector for 2D movement, use:
@@ -327,6 +338,13 @@ impl InputManager {
                 self.mouse_delta = delta;
                 self.mouse_position = position;
             }
+            WindowEvent::MouseWheel { delta, .. } => match delta {
+                MouseScrollDelta::LineDelta(x, y) => {
+                    println!("line delta: {x}, {y}");
+                    self.scroll_delta = (x, y);
+                }
+                _ => {}
+            },
             _ => {}
         }
     }

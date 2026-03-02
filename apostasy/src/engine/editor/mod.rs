@@ -1,10 +1,7 @@
 use crate::{
     self as apostasy,
     engine::{
-        nodes::{
-            ENGINE_SCENE_SAVE_PATH, Node,
-            scene::Scene,
-        },
+        nodes::{ENGINE_SCENE_SAVE_PATH, Node, scene::Scene},
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
 };
@@ -273,7 +270,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
         let pointer_in_rect = context
             .pointer_latest_pos()
             .map_or(false, |pos| rect.contains(pos));
-        viewer.world.is_world_hovered = pointer_in_rect && !context.wants_pointer_input();
+        viewer.world.is_world_hovered = pointer_in_rect;
     }
 }
 
