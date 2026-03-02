@@ -75,13 +75,12 @@ impl Swapchain {
         };
 
         if self.extent.width == 0 || self.extent.height == 0 {
-           
             return Ok(());
         }
 
         unsafe {
             self.context.device.device_wait_idle()?;
-self.surface.capabilities = self
+            self.surface.capabilities = self
                 .context
                 .surface_extensions
                 .get_physical_device_surface_capabilities(
@@ -89,7 +88,7 @@ self.surface.capabilities = self
                     self.surface.handle,
                 )?;
 
-           self.desired_image_count = (self.surface.capabilities.min_image_count + 1).clamp(
+            self.desired_image_count = (self.surface.capabilities.min_image_count + 1).clamp(
                 self.surface.capabilities.min_image_count,
                 if self.surface.capabilities.max_image_count != 0 {
                     self.surface.capabilities.max_image_count
@@ -97,7 +96,7 @@ self.surface.capabilities = self
                     u32::MAX
                 },
             );
- let present_mode = {
+            let present_mode = {
                 let modes = self
                     .context
                     .surface_extensions

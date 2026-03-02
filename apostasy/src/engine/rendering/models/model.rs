@@ -2,14 +2,14 @@ use crate as apostasy;
 use std::fs;
 use std::path::Path;
 
-use crate::engine::editor::inspectable::Inspectable;
+use crate::engine::editor::inspectable::{Inspectable, InspectValue};
 use crate::engine::rendering::{
     models::vertex::{Vertex, VertexType},
     rendering_context::RenderingContext,
 };
 use crate::log;
 use anyhow::Result;
-use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
+use apostasy_macros::{Component, SerializableComponent};
 use ash::vk;
 use egui::ahash::HashMap;
 use gltf::material::AlphaMode;
@@ -54,10 +54,10 @@ impl Default for Material {
     fn default() -> Self {
         Self {
             name: "material".to_string(),
-            base_color: [0.0, 0.0, 0.0, 1.0].into(),
+            base_color: [0.0, 0.0, 0.0, 1.0],
             metallic: 0.0,
             roughness: 0.0,
-            emissive: [0.0, 0.0, 0.0].into(),
+            emissive: [0.0, 0.0, 0.0],
             alpha_mode: AlphaMode::Opaque,
             alpha_cutoff: 0.5,
             double_sided: false,
@@ -96,11 +96,13 @@ pub struct Mesh {
 }
 
 #[derive(
-    Component, Clone, Inspectable, InspectValue, Serialize, Deserialize, SerializableComponent,
+    Component, Clone, Serialize, Deserialize, SerializableComponent,
 )]
 pub struct ModelRenderer {
     pub loading_model: String,
     pub loaded_model: String,
+    #[serde(skip)]
+    pub material: Option<Material>,
 }
 
 impl Default for ModelRenderer {
@@ -108,19 +110,71 @@ impl Default for ModelRenderer {
         Self {
             loading_model: "cube".to_string(),
             loaded_model: "cube".to_string(),
+            material: None,
         }
+    }
+}
+
+impl Inspectable for ModelRenderer {
+    fn inspect(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut remove = false;
+        ui.horizontal(|ui| {
+            if ui.small_button("✕").clicked() {
+                remove = true;
+            }
+            egui::CollapsingHeader::new("ModelRenderer")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("loading_model:");
+                        (&mut self.loading_model).inspect_value(ui);
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("loaded_model:");
+                        (&mut self.loaded_model).inspect_value(ui);
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("material:");
+                        match &mut self.material {
+                            Some(mat) => {
+                                if ui.small_button("Remove").clicked() {
+                                    self.material = None;
+                                } else {
+                                    egui::CollapsingHeader::new("Material")
+                                        .default_open(false)
+                                        .show(ui, |ui| {
+                                            let _ = mat.inspect(ui);
+                                        });
+                                }
+                            }
+                            None => {
+                                if ui.small_button("Add Material").clicked() {
+                                    self.material = Some(Material::default());
+                                }
+                            }
+                        }
+                    });
+                });
+        });
+        ui.separator();
+        self.on_inspect();
+        remove
+    }
+    fn on_inspect(&mut self) {}
+}
+
+impl InspectValue for ModelRenderer {
+    fn inspect_value(&mut self, ui: &mut egui::Ui) {
+        let _ = self.inspect(ui);
     }
 }
 
 const ENGINE_MATERIAL_LOCATION: &str = "res/assets/materials/";
 const ENGINE_TEXTURE_LOCATION: &str = "res/assets/textures/";
+
 impl Material {
     pub fn albedo_texture(&mut self) -> &mut Option<Texture> {
-        let path = ENGINE_TEXTURE_LOCATION.to_string() + &self.albedo_texture_name.clone().unwrap();
-        if !Path::new(&path).exists() {
-            panic!("Texture {} does not exist", path);
-        }
-
         &mut self.albedo_color_texture
     }
 
@@ -142,6 +196,59 @@ impl Material {
 
     pub fn set_albedo_texture(&mut self, texture: Texture) {
         self.albedo_color_texture = Some(texture);
+    }
+
+    pub fn load(name: &str) -> Option<Material> {
+        let path = ENGINE_MATERIAL_LOCATION.to_string() + name + ".yaml";
+        if !Path::new(&path).exists() {
+            return None;
+        }
+
+        let contents = std::fs::read_to_string(path).ok()?;
+        #[derive(serde::Deserialize)]
+        struct MaterialDef {
+            name: Option<String>,
+            base_color: Option<[f32; 4]>,
+            metallic: Option<f32>,
+            roughness: Option<f32>,
+            emissive: Option<[f32; 3]>,
+            alpha_mode: Option<String>,
+            alpha_cutoff: Option<f32>,
+            double_sided: Option<bool>,
+            albedo_texture: Option<Option<String>>,
+            metallic_roughness_texture: Option<Option<String>>,
+            normal_texture: Option<Option<String>>,
+            emissive_texture: Option<Option<String>>,
+        }
+
+        let def: MaterialDef = serde_yaml::from_str(&contents).ok()?;
+
+        let alpha_mode = match def.alpha_mode.as_deref() {
+            Some("MASK") => AlphaMode::Mask,
+            Some("BLEND") => AlphaMode::Blend,
+            _ => AlphaMode::Opaque,
+        };
+
+        Some(Material {
+            name: def.name.unwrap_or_else(|| name.to_string()),
+            base_color: def.base_color.unwrap_or([1.0, 1.0, 1.0, 1.0]),
+            metallic: def.metallic.unwrap_or(0.0),
+            roughness: def.roughness.unwrap_or(1.0),
+            emissive: def.emissive.unwrap_or([0.0, 0.0, 0.0]),
+            alpha_mode,
+            alpha_cutoff: def.alpha_cutoff.unwrap_or(0.5),
+            double_sided: def.double_sided.unwrap_or(false),
+            albedo_texture_name: def.albedo_texture.and_then(|v| v),
+            albedo_color_texture: None,
+            metallic_texture_name: def.metallic_roughness_texture.and_then(|v| v),
+            metallic_texture: None,
+            roughness_texture_name: None,
+            roughness_texture: None,
+            normal_texture_name: def.normal_texture.and_then(|v| v),
+            normal_texture: None,
+            emmisive_texture_name: def.emissive_texture.and_then(|v| v),
+            emissive_texture: None,
+        })
     }
 
     pub fn serialize_material(&self) {
@@ -200,6 +307,149 @@ impl Material {
             std::fs::create_dir_all(ENGINE_MATERIAL_LOCATION).unwrap();
         }
         std::fs::write(path, serde_yaml::to_string(&output).unwrap()).unwrap();
+    }
+}
+
+impl Inspectable for Material {
+    fn inspect(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut changed = false;
+
+        ui.horizontal(|ui| {
+            ui.label("Name:");
+            if ui.text_edit_singleline(&mut self.name).changed() {
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Base Color:");
+            let mut r = self.base_color[0] as f64;
+            let mut g = self.base_color[1] as f64;
+            let mut b = self.base_color[2] as f64;
+            let mut a = self.base_color[3] as f64;
+            ui.add(egui::DragValue::new(&mut r).speed(0.01));
+            ui.add(egui::DragValue::new(&mut g).speed(0.01));
+            ui.add(egui::DragValue::new(&mut b).speed(0.01));
+            ui.add(egui::DragValue::new(&mut a).speed(0.01));
+            let new = [r as f32, g as f32, b as f32, a as f32];
+            if new != self.base_color {
+                self.base_color = new;
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Metallic:");
+            let before = self.metallic;
+            (&mut self.metallic).inspect_value(ui);
+            if (self.metallic - before).abs() > f32::EPSILON {
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Roughness:");
+            let before = self.roughness;
+            (&mut self.roughness).inspect_value(ui);
+            if (self.roughness - before).abs() > f32::EPSILON {
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Emissive:");
+            let mut r = self.emissive[0] as f64;
+            let mut g = self.emissive[1] as f64;
+            let mut b = self.emissive[2] as f64;
+            ui.add(egui::DragValue::new(&mut r).speed(0.01));
+            ui.add(egui::DragValue::new(&mut g).speed(0.01));
+            ui.add(egui::DragValue::new(&mut b).speed(0.01));
+            let new = [r as f32, g as f32, b as f32];
+            if new != self.emissive {
+                self.emissive = new;
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Alpha Mode:");
+            let mut mode = match self.alpha_mode {
+                AlphaMode::Opaque => 0usize,
+                AlphaMode::Mask => 1usize,
+                AlphaMode::Blend => 2usize,
+            };
+            egui::ComboBox::from_label("")
+                .selected_text(match mode {
+                    0 => "OPAQUE",
+                    1 => "MASK",
+                    _ => "BLEND",
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut mode, 0, "OPAQUE");
+                    ui.selectable_value(&mut mode, 1, "MASK");
+                    ui.selectable_value(&mut mode, 2, "BLEND");
+                });
+            let new_mode = match mode {
+                0 => AlphaMode::Opaque,
+                1 => AlphaMode::Mask,
+                _ => AlphaMode::Blend,
+            };
+            if new_mode != self.alpha_mode {
+                self.alpha_mode = new_mode;
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Alpha Cutoff:");
+            let before = self.alpha_cutoff;
+            (&mut self.alpha_cutoff).inspect_value(ui);
+            if (self.alpha_cutoff - before).abs() > f32::EPSILON {
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Double Sided:");
+            let before = self.double_sided;
+            (&mut self.double_sided).inspect_value(ui);
+            if self.double_sided != before {
+                changed = true;
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Albedo Texture:");
+            (&mut self.albedo_texture_name).inspect_value(ui);
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Metallic Texture:");
+            (&mut self.metallic_texture_name).inspect_value(ui);
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Normal Texture:");
+            (&mut self.normal_texture_name).inspect_value(ui);
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Emissive Texture:");
+            (&mut self.emmisive_texture_name).inspect_value(ui);
+        });
+
+        if changed {
+            self.on_inspect();
+        }
+        changed
+    }
+
+    fn on_inspect(&mut self) {}
+}
+
+impl InspectValue for Material {
+    fn inspect_value(&mut self, ui: &mut egui::Ui) {
+        let _ = Inspectable::inspect(self, ui);
     }
 }
 
@@ -281,7 +531,12 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
             let vertex_buffer = context.create_vertex_buffer(vertices.as_slice())?;
             let index_buffer = context.create_index_buffer(&indices)?;
 
-            let material = Material::default();
+            // Determine material name from glTF primitive or fall back to 'material'
+            let material_name = primitive
+                .material()
+                .name()
+                .unwrap_or("material")
+                .to_string();
 
             meshes.push(Mesh {
                 vertex_buffer: vertex_buffer.0,
@@ -290,7 +545,7 @@ pub fn load_model(path: &str, context: &RenderingContext) -> Result<Model> {
                 index_buffer_memory: index_buffer.1,
                 index_count: indices.len() as u32,
                 vertex_type: VertexType::Model,
-                material: material.name.to_string(),
+                material: material_name,
             });
         }
     }

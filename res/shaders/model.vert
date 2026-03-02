@@ -10,6 +10,10 @@ layout(push_constant) uniform PushConstants {
     vec4 offset;
     vec4 rotation;
     vec4 scale;
+    vec4 base_color;
+    float metallic;
+    float roughness;
+    vec3 emissive;
 } pc;
 
 layout(location = 0) out vec3 fragNormal;

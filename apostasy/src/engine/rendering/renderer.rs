@@ -183,7 +183,7 @@ impl Renderer {
             )?;
 
             let push_constant_range = vk::PushConstantRange::default()
-                .stage_flags(vk::ShaderStageFlags::VERTEX)
+                .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
                 .offset(0)
                 .size(256);
 
@@ -283,7 +283,7 @@ impl Renderer {
     /// Renders the world from a perspective of a camera
     pub fn render(
         &mut self,
-        world: &World,
+        world: &mut World,
         model_loader: &mut ModelLoader,
         is_editor: bool,
     ) -> Result<()> {
@@ -482,9 +482,9 @@ impl Renderer {
                     self.model_pipeline,
                 );
 
-                for node in world.get_all_nodes() {
-                    if let Some(transform) = node.get_component::<Transform>()
-                        && let Some(model_renderer) = node.get_component::<ModelRenderer>()
+                for node in world.get_all_nodes_mut() {
+                    let transform = node.get_component::<Transform>().cloned();
+                    if let (Some(transform), Some(model_renderer)) = (transform, node.get_component_mut::<ModelRenderer>())
                     {
                         // Add position offset
                         let offset = [
@@ -516,13 +516,7 @@ impl Renderer {
                         let scale_bytes: [u8; 16] = std::mem::transmute(scale);
                         push_constants[160..176].copy_from_slice(&scale_bytes);
 
-                        device.cmd_push_constants(
-                            command_buffer,
-                            pipeline_layout,
-                            vk::ShaderStageFlags::VERTEX,
-                            0,
-                            &push_constants,
-                        );
+                        // Defer pushing constants until material values are populated
 
                         let mut model_name = model_renderer.loaded_model.clone();
                         model_name.push_str(".glb");
@@ -531,15 +525,27 @@ impl Renderer {
 
                         if let Some(model) = model {
                             for mesh in model.meshes.clone() {
-                                if model_loader.get_material(&mesh.material).is_none() {
-                                    model_loader
-                                        .materials
-                                        .insert(mesh.material.clone(), Material::default());
-                                    continue;
-                                }
-                                if let Some(material) =
-                                    model_loader.get_material_mut(&mesh.material)
-                                {
+                                // Use ModelRenderer.material if set, otherwise load from model_loader
+                                     let material_to_use: Option<&mut Material> = 
+                                    if model_renderer.material.is_some() {
+                                        model_renderer.material.as_mut()
+                                    } else {
+                                        // Load material from model_loader if not already loaded
+                                        if model_loader.get_material(&mesh.material).is_none() {
+                                            if let Some(loaded) = Material::load(&mesh.material) {
+                                                model_loader
+                                                    .materials
+                                                    .insert(mesh.material.clone(), loaded);
+                                            } else {
+                                                model_loader
+                                                    .materials
+                                                    .insert(mesh.material.clone(), Material::default());
+                                            }
+                                        }
+                                        model_loader.get_material_mut(&mesh.material)
+                                    };
+
+                                if let Some(material) = material_to_use {
                                     if material.albedo_texture().is_none()
                                         && let Some(ref texture_name) =
                                             material.albedo_texture_name.clone()
@@ -567,6 +573,29 @@ impl Renderer {
                                             &[],
                                         );
                                     }
+
+                                    // write material properties into push constants buffer
+                                    let base_bytes: [u8; 16] =
+                                        std::mem::transmute(material.base_color);
+                                    push_constants[176..192].copy_from_slice(&base_bytes);
+                                    let metallic_bytes: [u8; 4] =
+                                        std::mem::transmute(material.metallic);
+                                    push_constants[192..196].copy_from_slice(&metallic_bytes);
+                                    let roughness_bytes: [u8; 4] =
+                                        std::mem::transmute(material.roughness);
+                                    push_constants[196..200].copy_from_slice(&roughness_bytes);
+                                    let emissive_bytes: [u8; 12] =
+                                        std::mem::transmute(material.emissive);
+                                    push_constants[200..212].copy_from_slice(&emissive_bytes);
+
+                                    device.cmd_push_constants(
+                                        command_buffer,
+                                        pipeline_layout,
+                                        vk::ShaderStageFlags::VERTEX
+                                            | vk::ShaderStageFlags::FRAGMENT,
+                                        0,
+                                        &push_constants,
+                                    );
                                 }
 
                                 device.cmd_bind_vertex_buffers(

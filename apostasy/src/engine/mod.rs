@@ -243,7 +243,7 @@ impl Engine {
                     }
 
                     let _ = renderer.render(
-                        &self.world,
+                        &mut self.world,
                         &mut self.model_loader,
                         self.editor.is_editor_open,
                     );
