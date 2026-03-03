@@ -83,16 +83,31 @@ impl Raycast {
             .filter_map(|node| {
                 let transform = node.get_component::<Transform>()?;
                 let collider = node.get_component::<Collider>()?;
-                let center = transform.position + collider.offset;
-                let t = intersect_aabb(
-                    origin,
-                    direction,
-                    self.max_distance,
-                    collider.world_min(center, transform.scale),
-                    collider.world_max(center, transform.scale),
-                )?;
+
+                // Bake scale into a temporary collider to match snapshot behaviour
+                let mut scaled = collider.clone();
+                scaled.half_extents = Vector3::new(
+                    collider.half_extents.x * transform.scale.x,
+                    collider.half_extents.y * transform.scale.y,
+                    collider.half_extents.z * transform.scale.z,
+                );
+
+                let min = scaled.world_min(transform.position, Vector3::new(1.0, 1.0, 1.0));
+                let max = scaled.world_max(transform.position, Vector3::new(1.0, 1.0, 1.0));
+
+                let t = intersect_aabb(origin, direction, self.max_distance, min, max)?;
+
                 let point = origin + direction * t;
-                let normal = surface_normal(point, center, collider.half_extents);
+
+                let scaled_center = transform.position
+                    + Vector3::new(
+                        collider.offset.x * transform.scale.x,
+                        collider.offset.y * transform.scale.y,
+                        collider.offset.z * transform.scale.z,
+                    );
+
+                let normal = surface_normal(point, scaled_center, scaled.half_extents);
+
                 Some(RayHit {
                     node_name: node.name.clone(),
                     point,
@@ -137,18 +152,18 @@ fn intersect_aabb(
     }
 
     let t = if t_near < 0.0 { t_far } else { t_near };
-    if t > max_distance { None } else { Some(t) }
+    if t_near > max_distance { None } else { Some(t) }
 }
 
 fn surface_normal(
     hit_point: Vector3<f32>,
-    center: Vector3<f32>,
-    half_extents: Vector3<f32>,
+    scaled_center: Vector3<f32>,
+    scaled_half_extents: Vector3<f32>,
 ) -> Vector3<f32> {
-    let local = hit_point - center;
-    let dx = (local.x.abs() - half_extents.x).abs();
-    let dy = (local.y.abs() - half_extents.y).abs();
-    let dz = (local.z.abs() - half_extents.z).abs();
+    let local = hit_point - scaled_center;
+    let dx = (local.x.abs() - scaled_half_extents.x).abs();
+    let dy = (local.y.abs() - scaled_half_extents.y).abs();
+    let dz = (local.z.abs() - scaled_half_extents.z).abs();
 
     if dx < dy && dx < dz {
         Vector3::new(local.x.signum(), 0.0, 0.0)

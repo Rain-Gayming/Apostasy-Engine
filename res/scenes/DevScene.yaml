@@ -77,9 +77,9 @@ root_children:
   - type: Collider
     data:
       half_extents:
-        x: 7.5
-        y: 0.5
-        z: 7.5
+        x: 1.0
+        y: 1.0
+        z: 1.0
       offset:
         x: 0.0
         y: 0.0
@@ -352,8 +352,8 @@ root_children:
     data:
       position:
         x: -0.6499999761581421
-        y: -3.1600000858306885
-        z: -6.019999980926514
+        y: -2.759999990463257
+        z: -5.769999980926514
       rotation:
         v:
           x: 0.0
@@ -382,8 +382,8 @@ root_children:
         z: 0.0
       global_position:
         x: -0.6499999761581421
-        y: -3.1600000858306885
-        z: -6.019999980926514
+        y: -2.759999990463257
+        z: -5.769999980926514
       global_rotation:
         v:
           x: 0.0
@@ -402,9 +402,9 @@ root_children:
   - type: Collider
     data:
       half_extents:
-        x: 0.5
+        x: 1.0
         y: 1.0
-        z: 0.5
+        z: 1.0
       offset:
         x: 0.0
         y: 0.0

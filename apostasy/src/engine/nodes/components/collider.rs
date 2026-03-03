@@ -27,7 +27,7 @@ pub struct Collider {
 impl Default for Collider {
     fn default() -> Self {
         Self {
-            half_extents: Vector3::new(0.5, 0.5, 0.5),
+            half_extents: Vector3::new(1.0, 1.0, 1.0),
             offset: Vector3::new(0.0, 0.0, 0.0),
             is_static: false,
             is_area: false,
@@ -55,64 +55,53 @@ impl Collider {
             is_area: false,
         }
     }
-
-    /// Returns the minimum point of the collider
-    pub fn world_min(&self, position: Vector3<f32>, scale: Vector3<f32>) -> Vector3<f32> {
-        position
-            - Vector3::new(
-                self.half_extents.x * scale.x,
-                self.half_extents.y * scale.y,
-                self.half_extents.z * scale.z,
-            )
+    pub fn world_min(&self, position: Vector3<f32>, _scale: Vector3<f32>) -> Vector3<f32> {
+        let center = position + self.offset;
+        center - self.half_extents
     }
 
-    /// Returns the maximum point of the collider
-    pub fn world_max(&self, position: Vector3<f32>, scale: Vector3<f32>) -> Vector3<f32> {
-        position
-            + Vector3::new(
-                self.half_extents.x * scale.x,
-                self.half_extents.y * scale.y,
-                self.half_extents.z * scale.z,
-            )
+    pub fn world_max(&self, position: Vector3<f32>, _scale: Vector3<f32>) -> Vector3<f32> {
+        let center = position + self.offset;
+        center + self.half_extents
     }
 
-    /// Returns the translation vector between two colliders
     pub fn translation_vector_against(
         &self,
         pos_a: Vector3<f32>,
+        _size_a: Vector3<f32>,
         other: &Collider,
         pos_b: Vector3<f32>,
+        _size_b: Vector3<f32>,
     ) -> Option<Vector3<f32>> {
-        let d = pos_a - pos_b;
+        let center_a = pos_a + self.offset;
+        let center_b = pos_b + other.offset;
+        let d = center_a - center_b;
 
         let ox = self.half_extents.x + other.half_extents.x - d.x.abs();
         let oy = self.half_extents.y + other.half_extents.y - d.y.abs();
         let oz = self.half_extents.z + other.half_extents.z - d.z.abs();
 
-        // Separated on at least one axis → no collision
         if ox <= 0.0 || oy <= 0.0 || oz <= 0.0 {
             return None;
         }
 
-        // Resolve on the axis with the smallest penetration depth
         if ox <= oy && ox <= oz {
-            Some(Vector3::new(ox * d.x.signum(), 0.0, 0.0))
+            Some(Vector3::new(ox * nonzero_sign(d.x), 0.0, 0.0))
         } else if oy <= ox && oy <= oz {
-            Some(Vector3::new(0.0, oy * d.y.signum(), 0.0))
+            Some(Vector3::new(0.0, oy * nonzero_sign(d.y), 0.0))
         } else {
-            Some(Vector3::new(0.0, 0.0, oz * d.z.signum()))
+            Some(Vector3::new(0.0, 0.0, oz * nonzero_sign(d.z)))
         }
     }
 
-    /// Returns true when `point` lies inside (or on the surface of) the box.
     pub fn contains_point(
         &self,
         position: Vector3<f32>,
         point: Vector3<f32>,
-        scale: Vector3<f32>,
+        _scale: Vector3<f32>,
     ) -> bool {
-        let min = self.world_min(position, scale);
-        let max = self.world_max(position, scale);
+        let min = self.world_min(position, Vector3::new(1.0, 1.0, 1.0));
+        let max = self.world_max(position, Vector3::new(1.0, 1.0, 1.0));
         point.x >= min.x
             && point.x <= max.x
             && point.y >= min.y
@@ -120,6 +109,10 @@ impl Collider {
             && point.z >= min.z
             && point.z <= max.z
     }
+}
+
+fn nonzero_sign(v: f32) -> f32 {
+    if v >= 0.0 { 1.0 } else { -1.0 }
 }
 
 /// Contains information about a collision event
@@ -148,20 +141,41 @@ impl CollisionEvents {
 struct Snapshot {
     name: String,
     position: Vector3<f32>,
+    size: Vector3<f32>,
     collider: Collider,
 }
-
-/// Builds snapshots of all collidable nodes in the world
 fn build_snapshot(world: &World) -> Vec<Snapshot> {
     world
         .get_all_nodes()
         .into_iter()
         .filter_map(|node| {
-            let position = node.get_component::<Transform>()?.position;
-            let collider = node.get_component::<Collider>()?.clone();
+            let transform = node.get_component::<Transform>()?;
+            let position = transform.position;
+            let scale = transform.scale;
+            let mut collider = node.get_component::<Collider>()?.clone();
+
+            println!(
+                "[{}] scale={:?} half_extents={:?} baked={:?}",
+                node.name,
+                scale,
+                node.get_component::<Collider>()?.half_extents,
+                Vector3::new(
+                    node.get_component::<Collider>()?.half_extents.x * scale.x,
+                    node.get_component::<Collider>()?.half_extents.y * scale.y,
+                    node.get_component::<Collider>()?.half_extents.z * scale.z,
+                )
+            );
+            // Bake scale into half_extents so collision matches world-space mesh size
+            collider.half_extents = Vector3::new(
+                collider.half_extents.x * scale.x,
+                collider.half_extents.y * scale.y,
+                collider.half_extents.z * scale.z,
+            );
+
             Some(Snapshot {
                 name: node.name.clone(),
                 position,
+                size: Vector3::new(1.0, 1.0, 1.0),
                 collider,
             })
         })
@@ -181,11 +195,14 @@ pub fn collision_detection_system(world: &mut World) {
             let a = &snapshot[i];
             let b = &snapshot[j];
 
-            if let Some(translation_vector) =
-                a.collider
-                    .translation_vector_against(a.position, &b.collider, b.position)
-            {
-                let depth = translation_vector.magnitude2();
+            if let Some(translation_vector) = a.collider.translation_vector_against(
+                a.position,
+                a.size,
+                &b.collider,
+                b.position,
+                b.size,
+            ) {
+                let depth = translation_vector.magnitude();
                 let normal = translation_vector.normalize();
                 events.push(CollisionEvent {
                     node_a: a.name.clone(),
