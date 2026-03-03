@@ -445,10 +445,30 @@ impl World {
             .find(|node| node.get_component::<T>().is_some())
     }
 
-    pub fn get_node_with_component_mut<T: Component + 'static>(&mut self) -> Option<&mut Node> {
-        self.get_all_nodes_mut()
-            .into_iter()
-            .find(|node| node.get_component::<T>().is_some())
+    pub fn get_node_with_component_mut<T: Component + 'static>(&self) -> Option<NodeMut<'_>> {
+        fn collect(node: &Node, out: &mut Vec<*mut Node>) {
+            out.push(node as *const Node as *mut Node);
+            for child in &node.children {
+                collect(child, out);
+            }
+        }
+
+        let mut ptrs: Vec<*mut Node> = Vec::new();
+        for node in self.scene.root_node.children.iter() {
+            collect(node, &mut ptrs);
+        }
+        for node in self.global_nodes.iter() {
+            collect(node, &mut ptrs);
+        }
+
+        unsafe {
+            ptrs.into_iter()
+                .find(|&p| (*p).has_component::<T>())
+                .map(|ptr| NodeMut {
+                    ptr,
+                    _marker: std::marker::PhantomData,
+                })
+        }
     }
 
     pub fn get_global_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
@@ -572,6 +592,24 @@ impl World {
     }
 }
 pub const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
+
+pub struct NodeMut<'a> {
+    ptr: *mut Node,
+    _marker: std::marker::PhantomData<&'a mut Node>,
+}
+
+impl<'a> std::ops::Deref for NodeMut<'a> {
+    type Target = Node;
+    fn deref(&self) -> &Node {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl<'a> std::ops::DerefMut for NodeMut<'a> {
+    fn deref_mut(&mut self) -> &mut Node {
+        unsafe { &mut *self.ptr }
+    }
+}
 
 #[start]
 pub fn start_system(world: &mut World) {

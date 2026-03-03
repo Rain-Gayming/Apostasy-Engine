@@ -2,6 +2,7 @@ use apostasy::engine::{
     nodes::{
         World,
         components::{
+            camera::Camera,
             physics::Physics,
             player::Player,
             raycast::Raycast,
@@ -42,27 +43,32 @@ pub fn player_movement(world: &mut World, delta_time: f32) {
     }
 
     let player = world.get_node_with_component_mut::<Player>();
+    let camera = world.get_node_with_component_mut::<Camera>();
 
-    if let Some(player) = player {
-        let (camera_transform, velocity, physics) =
+    if let Some(mut player) = player {
+        let (player_transform, velocity, physics) =
             player.get_components_mut::<(&mut Transform, &mut Velocity, &mut Physics)>();
-        camera_transform.rotation_euler.y -= mouse_delta.0 as f32;
-        camera_transform.rotation_euler.x = clamp(
-            camera_transform.rotation_euler.x - mouse_delta.1 as f32,
-            -89.0,
-            89.0,
-        );
+        player_transform.rotation_euler.y -= mouse_delta.0 as f32;
 
-        camera_transform.calculate_rotation();
+        if let Some(mut camera) = camera {
+            let camera_transform = camera.get_component_mut::<Transform>().unwrap();
+            camera_transform.rotation_euler.x = clamp(
+                camera_transform.rotation_euler.x - mouse_delta.1 as f32,
+                -89.0,
+                89.0,
+            );
+        }
 
-        let direction = camera_transform.global_rotation * input_dir;
+        player_transform.calculate_rotation();
+
+        let direction = player_transform.global_rotation * input_dir;
 
         physics.is_gravity_enabled = !is_grounded;
 
         velocity.add_velocity(direction * delta_time);
 
         velocity.direction *= delta_time;
-        apply_velocity(velocity, camera_transform);
+        apply_velocity(velocity, player_transform);
         velocity.direction = Vector3::zero();
     }
 }

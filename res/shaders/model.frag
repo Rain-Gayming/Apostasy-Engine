@@ -29,7 +29,7 @@ void main() {
     vec3 lightDir = normalize(pc.light_pos.xyz - fragPos);
     float diff = clamp(dot(normal, lightDir), 0.0, 1.0);
     float ambient = 0.2;
-    float brightness = ambient + (1.0 - ambient) * diff * pc.light_pos.w;
+    float brightness = ambient + (0.7 - ambient) * diff * pc.light_pos.w;
     vec4 texColor = texture(texSampler, fragTexCoord);
     vec3 color = texColor.rgb * pc.base_color.rgb * brightness + pc.emissive;
     outColor = vec4(color, 1.0);
