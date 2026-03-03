@@ -74,23 +74,36 @@ impl Node {
     ///     world.add_node(Node::new());
     ///     world.get_node_mut(0).get_component::<Transform>();
     /// ```
+
     pub fn get_component<T: Component + 'static>(&self) -> Option<&T> {
         self.components
             .iter()
-            .find(|component| component.as_any().type_id() == TypeId::of::<T>())
-            .and_then(|component| component.as_any().downcast_ref())
+            .find(|c| c.as_any().type_id() == TypeId::of::<T>())
+            .and_then(|c| c.as_any().downcast_ref())
     }
 
-    /// Gets a mutable component of type T from the node
-    /// ```rust
-    ///     world.add_node(Node::new());
-    ///     world.get_node_mut(0).get_component_mut::<Transform>();
-    /// ```
     pub fn get_component_mut<T: Component + 'static>(&mut self) -> Option<&mut T> {
         self.components
             .iter_mut()
-            .find(|component| component.as_any().type_id() == TypeId::of::<T>())
-            .and_then(|component| component.as_any_mut().downcast_mut())
+            .find(|c| c.as_any().type_id() == TypeId::of::<T>())
+            .and_then(|c| c.as_any_mut().downcast_mut())
+    }
+
+    pub fn get_component_ptr<T: Component + 'static>(&self) -> Option<*mut T> {
+        self.components
+            .iter()
+            .find(|c| c.as_any().type_id() == TypeId::of::<T>())
+            .and_then(|c| {
+                let ptr = c.as_ref() as *const dyn Component as *mut dyn Component;
+                unsafe { (*ptr).as_any_mut().downcast_mut::<T>().map(|r| r as *mut T) }
+            })
+    }
+
+    pub fn component_mut<T: Component + 'static>(&self) -> Option<ComponentRef<'_, T>> {
+        self.get_component_ptr::<T>().map(|ptr| ComponentRef {
+            ptr,
+            _marker: std::marker::PhantomData,
+        })
     }
 
     /// Gets mutable components of type (T, T, ...) from the node
@@ -98,10 +111,12 @@ impl Node {
     ///     world.add_node(Node::new());
     ///     world.get_node_mut(0).get_components_mut::<(&mut Transform, &mut Velocity)>();
     /// ```
-    pub fn get_components_mut<'a, T: ComponentsMut<'a>>(&'a mut self) -> T {
+    // pub fn get_components_mut<'a, T: ComponentsMut<'a>>(&'a mut self) -> T {
+    //     T::from_node(self)
+    // }
+    pub fn get_components_mut<'a, T: ComponentsMut<'a>>(&'a self) -> T {
         T::from_node(self)
     }
-
     /// Adds a component of type T to the node
     /// ```rust
     ///     world.add_node(Node::new());
@@ -216,44 +231,6 @@ impl Node {
     }
 }
 
-pub trait ComponentsMut<'a> {
-    fn from_node(node: &'a mut Node) -> Self;
-}
-macro_rules! impl_components_mut {
-    ($($T:ident),+) => {
-
-        #[allow(nonstandard_style)]
-        impl<'a, $($T: Component + 'static),+> ComponentsMut<'a> for ($(&'a mut $T),+) {
-            fn from_node(node: &'a mut Node) -> Self {
-                $(let mut $T: Option<*mut $T> = None;)+
-
-                for component in node.components.iter_mut() {
-                    let any = component.as_any_mut();
-                    let type_id = any.type_id();
-                    $(
-                        if type_id == TypeId::of::<$T>() {
-                            if let Some(v) = any.downcast_mut::<$T>() {
-                                $T = Some(v as *mut $T);
-                            }
-                            continue;
-                        }
-                    )+
-                }
-
-                unsafe {
-                    ($(
-                        $T.map(|p| &mut *p)
-                            .unwrap_or_else(|| panic!("Error: Component ({}) not found on node", std::any::type_name::<$T>()))
-                    ),+)
-                }
-            }
-        }
-    };
-}
-impl_components_mut!(A, B);
-impl_components_mut!(A, B, C);
-impl_components_mut!(A, B, C, D);
-
 pub struct World {
     pub scene: Scene,
     pub scene_manager: SceneManager,
@@ -281,10 +258,18 @@ impl World {
         }
     }
 
+    /// Adds a node to the global node list
+    /// ```rust
+    ///     world.add_global_node(Node::new());
+    /// ```
     pub fn add_global_node(&mut self, node: Node) {
         self.global_nodes.push(node);
         self.check_node_ids();
     }
+    /// Adds a node to the scene
+    /// ```rust
+    ///     world.add_node(Node::new());
+    /// ```
     pub fn add_node(&mut self, mut node: Node) -> &mut Self {
         self.assign_ids_recursive(&mut node);
         self.scene.root_node.add_child(node);
@@ -292,10 +277,22 @@ impl World {
         self
     }
 
+    /// Adds a new node to the scene
+    /// ```rust
+    ///     world.add_new_node();
+    /// ```
     pub fn add_new_node(&mut self) {
         self.add_node(Node::new());
         self.check_node_ids();
     }
+
+    /// Gets a reference to all nodes in the world
+    /// Note: this excludes the global node
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_all_world_nodes();
+    /// ```
     pub fn get_all_world_nodes(&self) -> Vec<&Node> {
         fn collect<'a>(node: &'a Node, out: &mut Vec<&'a Node>) {
             out.push(node);
@@ -312,6 +309,12 @@ impl World {
         nodes
     }
 
+    /// Gets a mutable reference to all nodes in the world
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_all_world_nodes_mut();
+    /// ```
     pub fn get_all_world_nodes_mut(&mut self) -> Vec<&mut Node> {
         fn collect<'a>(node: &'a mut Node, out: &mut Vec<*mut Node>) {
             out.push(node as *mut Node);
@@ -329,6 +332,12 @@ impl World {
         unsafe { ptrs.into_iter().map(|p| &mut *p).collect() }
     }
 
+    /// Gets a reference to all nodes in the scene
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_all_nodes();
+    /// ```
     pub fn get_all_nodes(&self) -> Vec<&Node> {
         fn collect<'a>(node: &'a Node, out: &mut Vec<&'a Node>) {
             out.push(node);
@@ -349,6 +358,12 @@ impl World {
         nodes
     }
 
+    /// Gets a mutable reference to all nodes in the scene
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_all_nodes_mut();
+    /// ```
     pub fn get_all_nodes_mut(&mut self) -> Vec<&mut Node> {
         fn collect<'a>(node: &'a mut Node, out: &mut Vec<*mut Node>) {
             out.push(node as *mut Node);
@@ -370,18 +385,36 @@ impl World {
         unsafe { ptrs.into_iter().map(|p| &mut *p).collect() }
     }
 
+    /// Gets a reference node with the given name
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_node_with_name("Node");
+    /// ```
     pub fn get_node_with_name(&self, name: &str) -> Option<&Node> {
         self.get_all_nodes()
             .into_iter()
             .find(|node| node.name == name)
     }
 
+    /// Gets a mutable reference node with the given name
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_node_with_name_mut("Node");
+    /// ```
     pub fn get_node_with_name_mut(&mut self, name: &str) -> Option<&mut Node> {
         self.get_all_nodes_mut()
             .into_iter()
             .find(|node| node.name == name)
     }
 
+    /// Gets a reference node with the given id
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_node(0);
+    /// ```
     pub fn get_node(&self, id: u64) -> &Node {
         self.get_all_nodes()
             .into_iter()
@@ -389,6 +422,12 @@ impl World {
             .unwrap()
     }
 
+    /// Gets a mutable node with the given id
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_node_mut(0);
+    /// ```
     pub fn get_node_mut(&mut self, id: u64) -> &mut Node {
         self.get_all_nodes_mut()
             .into_iter()
@@ -396,55 +435,24 @@ impl World {
             .unwrap()
     }
 
-    pub fn start(&mut self) {
-        let mut systems = inventory::iter::<StartSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
-            (system.func)(self);
-        }
-    }
-    pub fn update(&mut self) {
-        let mut systems = inventory::iter::<UpdateSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
-            (system.func)(self);
-        }
-    }
-
-    pub fn fixed_update(&mut self, delta: f32) {
-        let mut systems = inventory::iter::<FixedUpdateSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
-            (system.func)(self, delta);
-        }
-    }
-
-    pub fn editor_fixed_update(&mut self, delta: f32) {
-        let mut systems = inventory::iter::<EditorFixedUpdateSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
-            (system.func)(self, delta);
-        }
-    }
-
-    pub fn late_update(&mut self) {
-        let mut systems = inventory::iter::<LateUpdateSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
-            (system.func)(self);
-        }
-    }
+    /// Gets the first node with a component of type T
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_node_with_component::<Transform>();
+    /// ```
     pub fn get_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
         self.get_all_nodes()
             .into_iter()
             .find(|node| node.get_component::<T>().is_some())
     }
 
+    /// Gets the first node with a component of type T multibly
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_node_with_component_mut::<Transform>();
+    /// ```
     pub fn get_node_with_component_mut<T: Component + 'static>(&self) -> Option<NodeMut<'_>> {
         fn collect(node: &Node, out: &mut Vec<*mut Node>) {
             out.push(node as *const Node as *mut Node);
@@ -471,9 +479,22 @@ impl World {
         }
     }
 
+    /// Gets a component of type T from the global node
+    /// ```rust
+    ///     world.add_global_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_global_node_with_component::<Transform>();
+    /// ```
     pub fn get_global_node_with_component<T: Component + 'static>(&self) -> Option<&Node> {
         self.global_nodes.iter().find(|n| n.has_component::<T>())
     }
+
+    /// Gets a mutable component of type T from the global node
+    /// ```rust
+    ///     world.add_global_node(Node::new());
+    ///     world.get_node_mut(0).add_component(Transform::default());
+    ///     world.get_global_node_with_component_mut::<Transform>();
+    /// ```
     pub fn get_global_node_with_component_mut<T: Component + 'static>(
         &mut self,
     ) -> Option<&mut Node> {
@@ -482,6 +503,42 @@ impl World {
             .find(|n| n.has_component::<T>())
     }
 
+    /// Adds a component of type T to the node with the given id
+    /// Note: capitalization is ignored
+    /// ```rust
+    ///     world.add_node(Node::new());
+    ///     world.get_node_mut(0).add_component_by_name(0, "transform");
+    /// ```
+    pub fn add_component_by_name(&mut self, node_id: u64, component_name: &str) -> Result<()> {
+        let registration = find_registration(component_name)
+            .ok_or_else(|| anyhow::anyhow!("Component '{}' is not registered", component_name))?;
+
+        let component = (registration.create)();
+
+        let node = self
+            .get_all_nodes_mut()
+            .into_iter()
+            .find(|n| n.id == node_id)
+            .ok_or_else(|| anyhow::anyhow!("No node with id {} found", node_id))?;
+
+        node.components.push(component);
+        Ok(())
+    }
+
+    /// Creates a new scene.
+    /// ```rust
+    ///     world.new_scene();
+    /// ```
+    pub fn new_scene(&mut self) {
+        self.scene.name = "Scene".to_string();
+        self.scene.root_node.children = Vec::new();
+        self.nodes = 0;
+    }
+
+    /// Serializes the current scene to a file
+    /// ```rust
+    ///     world.serialize_scene();
+    /// ```
     pub fn serialize_scene(&mut self) -> Result<(), std::io::Error> {
         self.check_node_ids();
         let serialized = SerializedScene {
@@ -499,6 +556,7 @@ impl World {
         std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
+    /// Deserializes a scene from a file
     pub fn deserialize_scene(&mut self, scene: String) -> Result<(), serde_yaml::Error> {
         let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene);
         let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
@@ -513,12 +571,7 @@ impl World {
         Ok(())
     }
 
-    pub fn new_scene(&mut self) {
-        self.scene.name = "Scene".to_string();
-        self.scene.root_node.children = Vec::new();
-        self.nodes = 0;
-    }
-
+    /// Serializes a scene that isn't loaded into the engine.
     pub fn serialize_scene_not_loaded(&self, scene: &Scene) -> Result<(), std::io::Error> {
         let serialized = SerializedScene {
             root_children: scene
@@ -534,6 +587,8 @@ impl World {
         std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
+    /// Checks that all node names are unique
+    /// TODO: find out if this is necessary
     pub fn check_node_names(&mut self) {
         let mut names = Vec::new();
 
@@ -558,6 +613,9 @@ impl World {
             }
         }
     }
+
+    // Checks that all nodes have unique ids
+    // NOTE: this is called automatically when adding a node
     pub fn check_node_ids(&mut self) {
         let mut next_id = 0u64;
         for node in self.get_all_nodes_mut() {
@@ -567,6 +625,8 @@ impl World {
         self.nodes = next_id;
     }
 
+    /// Assigns ids to all nodes in the tree
+    /// NOTE: this is called automatically when adding a node
     fn assign_ids_recursive(&mut self, node: &mut Node) {
         node.id = self.nodes;
         self.nodes += 1;
@@ -575,24 +635,59 @@ impl World {
         }
     }
 
-    pub fn add_component_by_name(&mut self, node_id: u64, component_name: &str) -> Result<()> {
-        let registration = find_registration(component_name)
-            .ok_or_else(|| anyhow::anyhow!("Component '{}' is not registered", component_name))?;
+    /// Runs all start systems
+    pub fn start(&mut self) {
+        let mut systems = inventory::iter::<StartSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self);
+        }
+    }
 
-        let component = (registration.create)();
+    /// Runs all update systems
+    pub fn update(&mut self) {
+        let mut systems = inventory::iter::<UpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self);
+        }
+    }
 
-        let node = self
-            .get_all_nodes_mut()
-            .into_iter()
-            .find(|n| n.id == node_id)
-            .ok_or_else(|| anyhow::anyhow!("No node with id {} found", node_id))?;
+    /// Runs all fixed update systems
+    pub fn fixed_update(&mut self, delta: f32) {
+        let mut systems = inventory::iter::<FixedUpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self, delta);
+        }
+    }
 
-        node.components.push(component);
-        Ok(())
+    /// Runs all editor fixed update systems
+    pub fn editor_fixed_update(&mut self, delta: f32) {
+        let mut systems = inventory::iter::<EditorFixedUpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self, delta);
+        }
+    }
+
+    /// Runs all late update systems
+    pub fn late_update(&mut self) {
+        let mut systems = inventory::iter::<LateUpdateSystem>().collect::<Vec<_>>();
+        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
+        systems.reverse();
+        for system in systems.iter_mut() {
+            (system.func)(self);
+        }
     }
 }
 pub const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
 
+/// Trait for getting mutable references to a single node
 pub struct NodeMut<'a> {
     ptr: *mut Node,
     _marker: std::marker::PhantomData<&'a mut Node>,
@@ -610,6 +705,70 @@ impl<'a> std::ops::DerefMut for NodeMut<'a> {
         unsafe { &mut *self.ptr }
     }
 }
+
+/// Trait for getting references to a single component from one node
+pub struct ComponentRef<'a, T> {
+    ptr: *mut T,
+    _marker: std::marker::PhantomData<&'a mut T>,
+}
+
+impl<'a, T> std::ops::Deref for ComponentRef<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        unsafe { &*self.ptr }
+    }
+}
+
+impl<'a, T> std::ops::DerefMut for ComponentRef<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { &mut *self.ptr }
+    }
+}
+
+/// Trait for getting mutable references to multiple components from one node
+pub trait ComponentsMut<'a> {
+    fn from_node(node: &'a Node) -> Self;
+}
+
+macro_rules! impl_components_mut {
+    ($($T:ident),+) => {
+        #[allow(nonstandard_style)]
+        impl<'a, $($T: Component + 'static),+> ComponentsMut<'a> for ($(&'a mut $T),+) {
+            fn from_node(node: &'a Node) -> Self {
+                $(let mut $T: Option<*mut $T> = None;)+
+
+                for component in node.components.iter() {
+                    let ptr = component.as_ref() as *const dyn Component as *mut dyn Component;
+                    let any = unsafe { (*ptr).as_any_mut() };
+                    let type_id = (*component).as_any().type_id();
+                    $(
+                        if type_id == TypeId::of::<$T>() {
+                            if let Some(v) = any.downcast_mut::<$T>() {
+                                $T = Some(v as *mut $T);
+                            }
+                            continue;
+                        }
+                    )+
+                }
+
+                unsafe {
+                    ($(
+                        $T.map(|p| &mut *p)
+                            .unwrap_or_else(|| panic!("Component ({}) not found on node", std::any::type_name::<$T>()))
+                    ),+)
+                }
+            }
+        }
+    };
+}
+
+impl_components_mut!(A, B);
+impl_components_mut!(A, B, C);
+impl_components_mut!(A, B, C, D);
+impl_components_mut!(A, B, C, D, E);
+impl_components_mut!(A, B, C, D, E, F);
+impl_components_mut!(A, B, C, D, E, F, G);
+impl_components_mut!(A, B, C, D, E, F, G, H);
 
 #[start]
 pub fn start_system(world: &mut World) {

@@ -3561,8 +3561,11 @@ dependencies = [
  "apostasy",
  "apostasy-macros",
  "cgmath",
+ "egui",
  "inventory",
  "linkme",
+ "serde",
+ "serde_yaml",
  "winit",
 ]
 

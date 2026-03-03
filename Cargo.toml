@@ -10,3 +10,6 @@ cgmath = "0.18"
 linkme = "0.3.35"
 winit = "0.30.5"
 inventory = "0.3"
+egui = "0.33.3"
+serde = {version = "1.0.183", features = ["derive"]}
+serde_yaml = "0.9"
