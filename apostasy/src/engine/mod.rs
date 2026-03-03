@@ -166,7 +166,7 @@ impl Engine {
             primary_window_id,
         };
 
-        let mut model_loader = ModelLoader::default();
+        let model_loader = ModelLoader::default();
         let editor = EditorStorage::default();
 
         // Model loading requires GPU resources (buffers). Defer loading until
@@ -217,23 +217,32 @@ impl Engine {
                     for (id, window) in pending {
                         match Renderer::new(self.rendering_context.clone(), window) {
                             Ok(renderer) => {
-                                    self.renderers.insert(id, renderer);
-                                    // Ensure models are loaded now that a renderer (and its
-                                    // Vulkan command pool) exists. Only load once.
-                                    if self.model_loader.models.is_empty() {
-                                        // retrieve the just-inserted renderer to get its command pool
-                                        if let Some(r) = self.renderers.get(&id) {
-                                            // Use the renderer's transfer command pool for staging uploads
-                                            load_models(&mut self.model_loader, &self.rendering_context, r.transfer_command_pool);
-                                            // Ensure all GPU work from model loading completed before
-                                            // proceeding to avoid destroying buffers while still in use.
-                                            unsafe {
-                                                if let Err(e) = self.rendering_context.device.device_wait_idle() {
-                                                    eprintln!("Warning: device_wait_idle failed after model load: {:?}", e);
-                                                }
+                                self.renderers.insert(id, renderer);
+                                // Ensure models are loaded now that a renderer (and its
+                                // Vulkan command pool) exists. Only load once.
+                                if self.model_loader.models.is_empty() {
+                                    // retrieve the just-inserted renderer to get its command pool
+                                    if let Some(r) = self.renderers.get(&id) {
+                                        // Use the renderer's transfer command pool for staging uploads
+                                        load_models(
+                                            &mut self.model_loader,
+                                            &self.rendering_context,
+                                            r.transfer_command_pool,
+                                        );
+                                        // Ensure all GPU work from model loading completed before
+                                        // proceeding to avoid destroying buffers while still in use.
+                                        unsafe {
+                                            if let Err(e) =
+                                                self.rendering_context.device.device_wait_idle()
+                                            {
+                                                eprintln!(
+                                                    "Warning: device_wait_idle failed after model load: {:?}",
+                                                    e
+                                                );
                                             }
                                         }
                                     }
+                                }
                             }
                             Err(e) => {
                                 eprintln!("Renderer init failed, deferring: {e}");

@@ -162,6 +162,7 @@ pub fn load_engine_shader_module(
 }
 
 impl Renderer {
+    #[allow(unnecessary_transmutes)]
     pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
         let mut swapchain = Swapchain::new(context.clone(), window.clone())?;
         swapchain.resize()?;
@@ -720,11 +721,13 @@ impl Renderer {
                                     let base_bytes: [u8; 16] =
                                         std::mem::transmute(material.base_color);
                                     push_constants[176..192].copy_from_slice(&base_bytes);
-                                    let metallic_bytes: [u8; 4] =
-                                        std::mem::transmute(material.metallic);
+                                    #[allow(unnecessary_transmutes)]
+                                    let metallic_bytes: [u8;
+                                        4] = std::mem::transmute(material.metallic);
                                     push_constants[192..196].copy_from_slice(&metallic_bytes);
-                                    let roughness_bytes: [u8; 4] =
-                                        std::mem::transmute(material.roughness);
+                                    #[allow(unnecessary_transmutes)]
+                                    let roughness_bytes: [u8;
+                                        4] = std::mem::transmute(material.roughness);
                                     push_constants[196..200].copy_from_slice(&roughness_bytes);
                                     let emissive_bytes: [u8; 12] =
                                         std::mem::transmute(material.emissive);
@@ -824,7 +827,6 @@ impl Renderer {
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
 
-            // egui draw
             self.egui_renderer.egui_renderer.cmd_draw(
                 frame.command_buffer,
                 self.swapchain.extent,

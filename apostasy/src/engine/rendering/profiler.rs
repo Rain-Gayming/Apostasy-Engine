@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use apostasy_macros::editor_ui;
 use ash::vk;
-use egui::{Color32, FontId, Pos2, Rect, Sense, Vec2};
+use egui::{Color32, FontId, Sense, Vec2};
 
 use crate::engine::{editor::EditorStorage, nodes::World};
 
@@ -308,7 +308,7 @@ fn draw_breakdown(ui: &mut egui::Ui, state: &ProfilerState, frame: &FrameData) {
 
     // Use a stable id so the open/closed state persists across frame updates
     let breakdown_id = ui.make_persistent_id("profiler_breakdown");
-    let mut breakdown_state = egui::collapsing_header::CollapsingState::load_with_default_open(
+    let breakdown_state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         breakdown_id,
         true,
@@ -325,14 +325,10 @@ fn draw_breakdown(ui: &mut egui::Ui, state: &ProfilerState, frame: &FrameData) {
         egui::CollapsingHeader::new("Flame")
             .default_open(true)
             .show(ui, |ui| {
-                let mut draw_scopes = |ui: &mut egui::Ui, scopes: &[ProfileScope], kind: &str| {
+                let draw_scopes = |ui: &mut egui::Ui, scopes: &[ProfileScope], kind: &str| {
                     for scope in scopes {
                         let indent = scope.depth as f32 * 14.0;
 
-                        // Allocate the full available width at a fixed
-                        // height. The bar fraction is painted on top.
-                        // This way the allocated size never depends on
-                        // the bar fraction, so the window can't grow.
                         let row_w = (ui.available_width() - indent).max(4.0);
                         let (rect, resp) = ui.allocate_exact_size(
                             egui::Vec2::new(row_w, 18.0),
@@ -373,19 +369,21 @@ fn draw_breakdown(ui: &mut egui::Ui, state: &ProfilerState, frame: &FrameData) {
                         );
 
                         if resp.hovered() {
-                            egui::show_tooltip_at_pointer(
-                                ui.ctx(),
+                            egui::Tooltip::always_open(
+                                ui.ctx().clone(),
                                 ui.layer_id(),
-                                egui::Id::new(format!("profiler_tip_{kind}_{}", scope.name)),
-                                |ui: &mut egui::Ui| {
-                                    ui.label(format!(
-                                        "[{kind}] {}  {:.3} ms  ({:.1}%)",
-                                        scope.name,
-                                        scope.duration_ms,
-                                        (scope.duration_ms / total_ms) * 100.0,
-                                    ));
-                                },
-                            );
+                                egui::Id::new("profiler_tooltip"),
+                                resp.rect,
+                            )
+                            .at_pointer()
+                            .show(|ui| {
+                                ui.label(format!(
+                                    "[{kind}] {}  {:.3} ms  ({:.1}%)",
+                                    scope.name,
+                                    scope.duration_ms,
+                                    (scope.duration_ms / total_ms) * 100.0,
+                                ));
+                            });
                         }
                     }
                 };
@@ -411,19 +409,17 @@ fn draw_breakdown(ui: &mut egui::Ui, state: &ProfilerState, frame: &FrameData) {
                         }
                         ui.end_row();
 
-                        let mut show_scopes =
-                            |ui: &mut egui::Ui, scopes: &[ProfileScope], kind: &str| {
-                                for scope in scopes {
-                                    ui.colored_label(scope.color, &scope.name);
-                                    ui.label(kind);
-                                    ui.label(format!("{:.3}", scope.duration_ms));
-                                    ui.label(format!(
-                                        "{:.1}%",
-                                        (scope.duration_ms / total_ms) * 100.0
-                                    ));
-                                    ui.end_row();
-                                }
-                            };
+                        let show_scopes = |ui: &mut egui::Ui,
+                                           scopes: &[ProfileScope],
+                                           kind: &str| {
+                            for scope in scopes {
+                                ui.colored_label(scope.color, &scope.name);
+                                ui.label(kind);
+                                ui.label(format!("{:.3}", scope.duration_ms));
+                                ui.label(format!("{:.1}%", (scope.duration_ms / total_ms) * 100.0));
+                                ui.end_row();
+                            }
+                        };
 
                         if state.show_cpu {
                             show_scopes(ui, &frame.cpu_scopes, "CPU");

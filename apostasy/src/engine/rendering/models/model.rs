@@ -176,7 +176,7 @@ impl InspectValue for ModelRenderer {
 }
 
 const ENGINE_MATERIAL_LOCATION: &str = "res/assets/materials/";
-const ENGINE_TEXTURE_LOCATION: &str = "res/assets/textures/";
+const _ENGINE_TEXTURE_LOCATION: &str = "res/assets/textures/";
 
 impl Material {
     pub fn albedo_texture(&mut self) -> &mut Option<Texture> {
@@ -480,7 +480,11 @@ impl ModelLoader {
     }
 }
 
-pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext, command_pool: vk::CommandPool) {
+pub fn load_models(
+    model_loader: &mut ModelLoader,
+    context: &RenderingContext,
+    command_pool: vk::CommandPool,
+) {
     for entry in fs::read_dir(MODEL_LOCATION).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -503,7 +507,11 @@ pub fn load_models(model_loader: &mut ModelLoader, context: &RenderingContext, c
 }
 
 /// Loads a model, path should be the file name, default path is "/res/models/"
-pub fn load_model(path: &str, context: &RenderingContext, command_pool: vk::CommandPool) -> Result<Model> {
+pub fn load_model(
+    path: &str,
+    context: &RenderingContext,
+    command_pool: vk::CommandPool,
+) -> Result<Model> {
     log!("loading model: {}", path);
     let (gltf, buffers, _images) = gltf::import(path)?;
 

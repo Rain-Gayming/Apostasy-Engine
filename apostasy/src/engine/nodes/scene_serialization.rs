@@ -108,7 +108,7 @@ pub fn deserialize_node(serialized: SerializedNode) -> Node {
 }
 
 fn parse_serialized_node(value: &Value) -> Option<SerializedNode> {
-    use serde_yaml::Value::{Mapping, Sequence, String as VString, Number};
+    use serde_yaml::Value::{Mapping, Sequence};
 
     let mapping = match value {
         Mapping(m) => m,
@@ -181,7 +181,9 @@ fn parse_serialized_node(value: &Value) -> Option<SerializedNode> {
 /// Parse a root sequence of SerializedNodes from a YAML value safely.
 pub fn parse_root_children_from_value(value: &Value) -> Vec<SerializedNode> {
     if let Value::Sequence(seq) = value {
-        seq.iter().filter_map(|v| parse_serialized_node(v)).collect()
+        seq.iter()
+            .filter_map(|v| parse_serialized_node(v))
+            .collect()
     } else {
         Vec::new()
     }

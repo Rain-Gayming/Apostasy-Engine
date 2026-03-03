@@ -2,14 +2,11 @@ use crate::engine::{
     editor::inspectable::Inspectable,
     nodes::{
         World,
-        components::{
-            transform::Transform,
-            velocity::{Velocity, apply_velocity},
-        },
+        components::{transform::Transform, velocity::Velocity},
     },
 };
 use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent, update};
-use cgmath::{InnerSpace, Vector3, Zero};
+use cgmath::{InnerSpace, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate as apostasy;

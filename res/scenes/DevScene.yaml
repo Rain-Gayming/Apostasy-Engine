@@ -91,8 +91,133 @@ root_children:
   id: 1
   components: []
   children: []
-- name: player
+- name: light
   id: 2
+  components:
+  - type: Light
+    data:
+      strength: 1.0
+  - type: Transform
+    data:
+      position:
+        x: -1.4500000476837158
+        y: 15.0
+        z: 0.41999998688697815
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: -1.4500000476837158
+        y: 15.0
+        z: 0.41999998688697815
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+  - type: ModelRenderer
+    data:
+      loading_model: cube
+      loaded_model: cube
+      material: null
+  children: []
+- name: Wall
+  id: 3
+  components:
+  - type: Transform
+    data:
+      position:
+        x: -0.6499999761581421
+        y: -2.759999990463257
+        z: -5.769999980926514
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 6.230000019073486
+        y: 2.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: -0.6499999761581421
+        y: -2.759999990463257
+        z: -5.769999980926514
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 6.230000019073486
+        y: 2.0
+        z: 1.0
+  - type: ModelRenderer
+    data:
+      loading_model: cube
+      loaded_model: cube
+      material: null
+  - type: Collider
+    data:
+      half_extents:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: true
+      is_area: false
+  children: []
+- name: player
+  id: 4
   components:
   - type: Transform
     data:
@@ -176,7 +301,7 @@ root_children:
       jump_speed: 0.0
   children:
   - name: camera
-    id: 3
+    id: 5
     components:
     - type: Transform
       data:
@@ -231,7 +356,7 @@ root_children:
         far: 10000.0
     children: []
   - name: ground detector
-    id: 4
+    id: 6
     components:
     - type: Raycast
       data:
@@ -287,130 +412,5 @@ root_children:
           y: 1.0
           z: 1.0
     children: []
-- name: light
-  id: 5
-  components:
-  - type: Light
-    data:
-      strength: 1.0
-  - type: Transform
-    data:
-      position:
-        x: -1.4500000476837158
-        y: 15.0
-        z: 0.41999998688697815
-      rotation:
-        v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
-      rotation_euler:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-      up:
-        x: 0.0
-        y: 1.0
-        z: 0.0
-      forward:
-        x: 0.0
-        y: 0.0
-        z: -1.0
-      right:
-        x: 1.0
-        y: 0.0
-        z: 0.0
-      global_position:
-        x: -1.4500000476837158
-        y: 15.0
-        z: 0.41999998688697815
-      global_rotation:
-        v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
-      global_scale:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-  - type: ModelRenderer
-    data:
-      loading_model: cube
-      loaded_model: cube
-      material: null
-  children: []
-- name: Wall
-  id: 6
-  components:
-  - type: Transform
-    data:
-      position:
-        x: -0.6499999761581421
-        y: -2.759999990463257
-        z: -5.769999980926514
-      rotation:
-        v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
-      rotation_euler:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      scale:
-        x: 6.230000019073486
-        y: 2.0
-        z: 1.0
-      up:
-        x: 0.0
-        y: 1.0
-        z: 0.0
-      forward:
-        x: 0.0
-        y: 0.0
-        z: -1.0
-      right:
-        x: 1.0
-        y: 0.0
-        z: 0.0
-      global_position:
-        x: -0.6499999761581421
-        y: -2.759999990463257
-        z: -5.769999980926514
-      global_rotation:
-        v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
-      global_scale:
-        x: 6.230000019073486
-        y: 2.0
-        z: 1.0
-  - type: ModelRenderer
-    data:
-      loading_model: cube
-      loaded_model: cube
-      material: null
-  - type: Collider
-    data:
-      half_extents:
-        x: 1.0
-        y: 1.0
-        z: 1.0
-      offset:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      is_static: true
-      is_area: false
-  children: []
 name: DevScene
 is_primary: true
