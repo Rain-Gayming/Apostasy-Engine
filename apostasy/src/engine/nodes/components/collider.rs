@@ -154,17 +154,6 @@ fn build_snapshot(world: &World) -> Vec<Snapshot> {
             let scale = transform.scale;
             let mut collider = node.get_component::<Collider>()?.clone();
 
-            println!(
-                "[{}] scale={:?} half_extents={:?} baked={:?}",
-                node.name,
-                scale,
-                node.get_component::<Collider>()?.half_extents,
-                Vector3::new(
-                    node.get_component::<Collider>()?.half_extents.x * scale.x,
-                    node.get_component::<Collider>()?.half_extents.y * scale.y,
-                    node.get_component::<Collider>()?.half_extents.z * scale.z,
-                )
-            );
             // Bake scale into half_extents so collision matches world-space mesh size
             collider.half_extents = Vector3::new(
                 collider.half_extents.x * scale.x,

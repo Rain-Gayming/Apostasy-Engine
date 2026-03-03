@@ -2,6 +2,7 @@ use crate::{
     self as apostasy,
     engine::{
         nodes::{ENGINE_SCENE_SAVE_PATH, Node, scene::Scene},
+        rendering::profiler::ProfilerState,
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
 };
@@ -83,6 +84,7 @@ pub struct EditorStorage {
     pub should_close: bool,
 
     pub dock_state: DockState<EditorTab>,
+    pub profiler: ProfilerState,
 }
 
 pub enum DragTarget {
@@ -143,6 +145,7 @@ impl Default for EditorStorage {
             should_close: false,
 
             dock_state: default_dock_state(),
+            profiler: ProfilerState::default(),
         }
     }
 }

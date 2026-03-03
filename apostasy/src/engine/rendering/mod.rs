@@ -1,5 +1,6 @@
 pub mod models;
 pub mod physical_device;
+pub mod profiler;
 pub mod queue_families;
 pub mod render_engine;
 pub mod renderer;

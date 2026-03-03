@@ -1,5 +1,6 @@
-use std::{collections::BTreeMap, sync::Arc};
 use std::collections::HashMap as StdHashMap;
+use std::time::Instant;
+use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
@@ -10,6 +11,7 @@ use winit::{event::WindowEvent, window::Window};
 
 const ENGINE_SHADER_DIR: &str = "res/shaders/";
 
+use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPool};
 use crate::engine::{
     editor::{EditorStorage, style::style},
     nodes::{
@@ -28,7 +30,6 @@ use crate::engine::{
     },
 };
 
-/// A frame of the renderer
 pub struct Frame {
     pub command_buffer: vk::CommandBuffer,
     pub image_available_semaphore: vk::Semaphore,
@@ -73,7 +74,6 @@ impl EguiRenderer {
             vec!["fantasy".to_owned()],
         );
         fonts.families.append(&mut new_font_family);
-
         fonts.font_data.insert(
             "fantasy".to_owned(),
             Arc::new(egui::FontData::from_static(include_bytes!(
@@ -121,7 +121,6 @@ pub struct UIFunction {
 }
 inventory::collect!(UIFunction);
 
-/// A renderer
 pub struct Renderer {
     pub frame_index: usize,
     pub frames: Vec<Frame>,
@@ -134,13 +133,24 @@ pub struct Renderer {
     pub context: Arc<RenderingContext>,
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
-
     pub egui_renderer: EguiRenderer,
     pub preloaded_textures: StdHashMap<String, crate::engine::rendering::models::model::Texture>,
     pub pending_texture_destroys: Vec<crate::engine::rendering::models::model::Texture>,
     pub default_descriptor_set: vk::DescriptorSet,
     pub default_ubo: vk::Buffer,
     pub default_ubo_memory: vk::DeviceMemory,
+
+    // Profiler
+    pub gpu_timestamps: GpuTimestampPool,
+    pub cpu_profiler: CpuProfiler,
+    pub pending_frame_data: Option<FrameData>,
+    global_frame_counter: u64,
+
+    // image states
+    pub undefined_image_state: ImageLayoutState,
+    pub render_image_state: ImageLayoutState,
+    pub depth_attachment_state: ImageLayoutState,
+    pub present_image_state: ImageLayoutState,
 }
 
 pub fn load_engine_shader_module(
@@ -158,7 +168,6 @@ impl Renderer {
 
         let model_vertex_shader = load_engine_shader_module(context.as_ref(), "model_vert.spv")?;
         let model_fragment_shader = load_engine_shader_module(context.as_ref(), "model_frag.spv")?;
-
         let voxel_vertex_shader = load_engine_shader_module(context.as_ref(), "voxel_vert.spv")?;
         let voxel_fragment_shader = load_engine_shader_module(context.as_ref(), "voxel_frag.spv")?;
 
@@ -180,21 +189,21 @@ impl Renderer {
                 None,
             )?;
 
-                let descriptor_pool = context.device.create_descriptor_pool(
-                    &vk::DescriptorPoolCreateInfo::default()
-                        .max_sets(200)
-                        .pool_sizes(&[
-                            vk::DescriptorPoolSize {
-                                ty: vk::DescriptorType::UNIFORM_BUFFER,
-                                descriptor_count: 100,
-                            },
-                            vk::DescriptorPoolSize {
-                                ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                                descriptor_count: 100,
-                            },
-                        ]),
-                    None,
-                )?;
+            let descriptor_pool = context.device.create_descriptor_pool(
+                &vk::DescriptorPoolCreateInfo::default()
+                    .max_sets(200)
+                    .pool_sizes(&[
+                        vk::DescriptorPoolSize {
+                            ty: vk::DescriptorType::UNIFORM_BUFFER,
+                            descriptor_count: 100,
+                        },
+                        vk::DescriptorPoolSize {
+                            ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                            descriptor_count: 100,
+                        },
+                    ]),
+                None,
+            )?;
 
             let push_constant_range = vk::PushConstantRange::default()
                 .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
@@ -246,7 +255,6 @@ impl Renderer {
                 None,
             )?;
 
-            
             let transfer_command_pool = context.device.create_command_pool(
                 &vk::CommandPoolCreateInfo::default()
                     .queue_family_index(context.queue_families.transfer)
@@ -254,7 +262,6 @@ impl Renderer {
                 None,
             )?;
 
-            // Preload textures from assets/textures directory using the transfer command pool
             let preloaded = context.load_textures_from_dir(
                 "res/assets/textures",
                 transfer_command_pool,
@@ -282,7 +289,6 @@ impl Renderer {
                     &vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED),
                     None,
                 )?;
-
                 frames.push(Frame {
                     command_buffer: *command_buffer,
                     image_available_semaphore,
@@ -295,58 +301,79 @@ impl Renderer {
 
             let egui_renderer = EguiRenderer::new(&context, &swapchain, &window);
 
-                // Create a small default uniform buffer used for descriptor sets
-                let (default_ubo, default_ubo_mem) = context.create_buffer(
-                    256,
-                    vk::BufferUsageFlags::UNIFORM_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-                )?;
+            let (default_ubo, default_ubo_mem) = context.create_buffer(
+                256,
+                vk::BufferUsageFlags::UNIFORM_BUFFER,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?;
 
-                // Allocate a default descriptor set and bind the default UBO and a fallback texture
-                let default_descriptor_set = unsafe {
-                    context
-                        .device
-                        .allocate_descriptor_sets(
-                            &vk::DescriptorSetAllocateInfo::default()
-                                .descriptor_pool(descriptor_pool)
-                                .set_layouts(&[descriptor_set_layout]),
-                        )?
-                        [0]
-                };
+            let default_descriptor_set = context.device.allocate_descriptor_sets(
+                &vk::DescriptorSetAllocateInfo::default()
+                    .descriptor_pool(descriptor_pool)
+                    .set_layouts(&[descriptor_set_layout]),
+            )?[0];
 
-                // Choose a fallback texture (temp.png) if available
-                let fallback_texture = preloaded.get("temp.png");
-
-                // Update descriptor set: binding 0 -> UBO, binding 1 -> image sampler (if available)
-                let buffer_info = vk::DescriptorBufferInfo::default()
-                    .buffer(default_ubo)
-                    .offset(0)
-                    .range(256);
-
-                // Prepare persistent arrays so their references live across the write set construction
-                let buffer_infos = [buffer_info];
-                let mut writes: Vec<vk::WriteDescriptorSet> = Vec::new();
-                writes.push(vk::WriteDescriptorSet::default()
+            let fallback_texture = preloaded.get("temp.png");
+            let buffer_info = vk::DescriptorBufferInfo::default()
+                .buffer(default_ubo)
+                .offset(0)
+                .range(256);
+            let buffer_infos = [buffer_info];
+            let mut writes: Vec<vk::WriteDescriptorSet> = vec![
+                vk::WriteDescriptorSet::default()
                     .dst_set(default_descriptor_set)
                     .dst_binding(0)
                     .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&buffer_infos));
-
-                let mut image_infos: Vec<vk::DescriptorImageInfo> = Vec::new();
-                if let Some(tex) = fallback_texture {
-                    let image_info = vk::DescriptorImageInfo::default()
+                    .buffer_info(&buffer_infos),
+            ];
+            let mut image_infos: Vec<vk::DescriptorImageInfo> = Vec::new();
+            if let Some(tex) = fallback_texture {
+                image_infos.push(
+                    vk::DescriptorImageInfo::default()
                         .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                         .image_view(tex.image_view)
-                        .sampler(tex.sampler);
-                    image_infos.push(image_info);
-                    writes.push(vk::WriteDescriptorSet::default()
+                        .sampler(tex.sampler),
+                );
+                writes.push(
+                    vk::WriteDescriptorSet::default()
                         .dst_set(default_descriptor_set)
                         .dst_binding(1)
                         .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                        .image_info(&image_infos));
-                }
+                        .image_info(&image_infos),
+                );
+            }
+            context.device.update_descriptor_sets(&writes, &[]);
 
-                unsafe { context.device.update_descriptor_sets(&writes, &[]) };
+            let mut gpu_timestamps = GpuTimestampPool::new(&context.device, context.queues[0]);
+            let phys_props = context
+                .instance
+                .get_physical_device_properties(context.physical_device.handle);
+            gpu_timestamps.set_timestamp_period(phys_props.limits.timestamp_period);
+
+            let undefined_image_state = ImageLayoutState {
+                layout: vk::ImageLayout::UNDEFINED,
+                access: vk::AccessFlags::empty(),
+                stage: vk::PipelineStageFlags::TOP_OF_PIPE,
+                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+            };
+            let render_image_state = ImageLayoutState {
+                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                access: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+                stage: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+            };
+            let depth_attachment_state = ImageLayoutState {
+                layout: vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
+                access: vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+                stage: vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+            };
+            let present_image_state = ImageLayoutState {
+                layout: vk::ImageLayout::PRESENT_SRC_KHR,
+                access: vk::AccessFlags::empty(),
+                stage: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+            };
 
             Ok(Self {
                 frame_index: 0,
@@ -366,38 +393,50 @@ impl Renderer {
                 default_descriptor_set,
                 default_ubo,
                 default_ubo_memory: default_ubo_mem,
+                gpu_timestamps,
+                cpu_profiler: CpuProfiler::new(),
+                global_frame_counter: 0,
+                pending_frame_data: None,
+
+                undefined_image_state,
+                render_image_state,
+                depth_attachment_state,
+                present_image_state,
             })
         }
     }
-    /// Renders the world from a perspective of a camera
+
     pub fn render(
         &mut self,
         world: &mut World,
         model_loader: &mut ModelLoader,
         is_editor: bool,
     ) -> Result<()> {
+        //CPU: whole-frame wall clock
+        let frame_wall_start = Instant::now();
+        self.cpu_profiler.begin("Frame Total");
+
         let frame = &mut self.frames[self.frame_index];
         unsafe {
-            // Wait for the image to be available
+            // CPU: fence wait
+            self.cpu_profiler.begin("Fence Wait");
             self.context
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
+            self.cpu_profiler.end(); // Fence Wait
 
-            
             if !self.pending_texture_destroys.is_empty() {
                 for old_tex in self.pending_texture_destroys.drain(..) {
-                    unsafe {
-                        let _ = self.context.device.free_descriptor_sets(
-                            self.descriptor_pool,
-                            &[old_tex.descriptor_set],
-                        );
-                        self.context
-                            .device
-                            .destroy_image_view(old_tex.image_view, None);
-                        self.context.device.destroy_image(old_tex.image, None);
-                        self.context.device.free_memory(old_tex.memory, None);
-                        self.context.device.destroy_sampler(old_tex.sampler, None);
-                    }
+                    let _ = self
+                        .context
+                        .device
+                        .free_descriptor_sets(self.descriptor_pool, &[old_tex.descriptor_set]);
+                    self.context
+                        .device
+                        .destroy_image_view(old_tex.image_view, None);
+                    self.context.device.destroy_image(old_tex.image, None);
+                    self.context.device.free_memory(old_tex.memory, None);
+                    self.context.device.destroy_sampler(old_tex.sampler, None);
                 }
             }
 
@@ -411,6 +450,10 @@ impl Renderer {
                 println!("Swapchain resized");
             }
 
+            //  CPU: egui tessellation
+            self.cpu_profiler.begin("egui Tessellate");
+
+            // egui render pass
             let full_output = self.egui_renderer.egui_ctx.end_pass();
             let clipped_primitives = self
                 .egui_renderer
@@ -430,70 +473,53 @@ impl Renderer {
                 )?;
             }
 
+            self.cpu_profiler.end(); // egui Tessellate
+
+            // egui image acquire
             let frame = &mut self.frames[self.frame_index];
 
-            // Acquire next image
+            // CPU: image acquire
+            self.cpu_profiler.begin("Acquire Image");
             let image_index = self
                 .swapchain
                 .acquire_next_image(frame.image_available_semaphore)?;
+            self.cpu_profiler.end(); // Acquire Image
 
-            // Begin the render commands
+            // start rendering
             self.context.device.begin_command_buffer(
                 frame.command_buffer,
                 &vk::CommandBufferBeginInfo::default(),
             )?;
 
-            // Undefined image state
-            let undefined_image_state = ImageLayoutState {
-                layout: vk::ImageLayout::UNDEFINED,
-                access: vk::AccessFlags::empty(),
-                stage: vk::PipelineStageFlags::TOP_OF_PIPE,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
+            // GPU: reset query pool, start frame
+            self.gpu_timestamps
+                .begin_frame(&self.context.device, frame.command_buffer);
 
-            // Rendering image state
-            let render_image_state = ImageLayoutState {
-                layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-                access: vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
-                stage: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
+            // image layout states
 
-            // Depth attachment state
-            let depth_attachment_state = ImageLayoutState {
-                layout: vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
-                access: vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-                stage: vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
-
-            // Presentable image state
-            let present_image_state = ImageLayoutState {
-                layout: vk::ImageLayout::PRESENT_SRC_KHR,
-                access: vk::AccessFlags::empty(),
-                stage: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                queue_family_index: vk::QUEUE_FAMILY_IGNORED,
-            };
-
-            // Transition the image layout from undefined to color attachment
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                undefined_image_state,
-                render_image_state,
+                self.undefined_image_state,
+                self.render_image_state,
                 vk::ImageAspectFlags::COLOR,
             );
-
-            // Transition depth image to depth attachment optimal
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.depth_image,
-                undefined_image_state,
-                depth_attachment_state,
+                self.undefined_image_state,
+                self.depth_attachment_state,
                 vk::ImageAspectFlags::DEPTH,
             );
 
-            // Begin rendering
+            // CPU: scene record / GPU: Geometry Pass
+            self.cpu_profiler.begin("Record Scene");
+            self.gpu_timestamps.begin_scope(
+                &self.context.device,
+                frame.command_buffer,
+                "Geometry Pass",
+            );
+
             self.context.begin_rendering(
                 frame.command_buffer,
                 self.swapchain.image_views[image_index as usize],
@@ -513,7 +539,6 @@ impl Renderer {
                     .min_depth(0.0)
                     .max_depth(1.0)],
             );
-
             self.context.device.cmd_set_scissor(
                 frame.command_buffer,
                 0,
@@ -526,7 +551,6 @@ impl Renderer {
             let swapchain_extent = self.swapchain.extent;
 
             let mut camera_node: Option<&Node> = None;
-
             if !is_editor {
                 for node in world.get_all_world_nodes() {
                     if node.get_component::<Camera>().is_some() {
@@ -534,7 +558,6 @@ impl Renderer {
                     }
                 }
             }
-
             if camera_node.is_none()
                 && let Some(node) = world.get_global_node_with_component::<Camera>()
                 && is_editor
@@ -544,46 +567,32 @@ impl Renderer {
 
             if let Some(camera_node) = camera_node {
                 let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
-
                 let transform = camera_node.get_component::<Transform>().unwrap();
                 let camera = camera_node.get_component::<Camera>().unwrap();
 
                 let model = Matrix4::from_scale(1.0);
-                // Camera's position as a point
                 let camera_eye = Point3::new(
                     transform.global_position.x,
                     transform.global_position.y,
                     transform.global_position.z,
                 );
-
-                // Forward direction from the camera
                 let rotated_forward = transform.calculate_global_forward();
-                // Get the up direction
                 let rotated_up = transform.calculate_global_up();
-
-                // Look point of the camera
                 let look_at = Point3::new(
                     camera_eye.x + rotated_forward.x,
                     camera_eye.y + rotated_forward.y,
                     camera_eye.z + rotated_forward.z,
                 );
-
                 let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
-
                 let projection = get_perspective_projection(camera, aspect);
-
-                // Compute Projection * View * Model
                 let mvp = projection * view * model;
 
-                // Convert matrices to bytes for push constant
                 let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
                 let model_bytes: [u8; 64] = std::mem::transmute(model);
-
                 let mut push_constants = [0u8; 256];
                 push_constants[0..64].copy_from_slice(&mvp_bytes);
                 push_constants[64..128].copy_from_slice(&model_bytes);
 
-                // Render Model pipeline objects
                 device.cmd_bind_pipeline(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
@@ -592,7 +601,6 @@ impl Renderer {
 
                 let mut light: Option<Light> = None;
                 let mut light_transform: Option<Transform> = None;
-
                 for node in world.get_all_nodes() {
                     light = node.get_component::<Light>().cloned();
                     if light.is_some() {
@@ -606,15 +614,13 @@ impl Renderer {
                     if let (Some(transform), Some(model_renderer)) =
                         (transform, node.get_component_mut::<ModelRenderer>())
                     {
-                        // Add position offset
                         let offset = [
                             transform.global_position.x,
                             transform.global_position.y,
                             transform.global_position.z,
-                            0.0f32, // padding
+                            0.0f32,
                         ];
                         let offset_bytes: [u8; 16] = std::mem::transmute(offset);
-
                         push_constants[128..144].copy_from_slice(&offset_bytes);
 
                         let rotation = [
@@ -623,7 +629,6 @@ impl Renderer {
                             transform.global_rotation.v.z,
                             transform.global_rotation.s,
                         ];
-
                         let rotation_bytes: [u8; 16] = std::mem::transmute(rotation);
                         push_constants[144..160].copy_from_slice(&rotation_bytes);
 
@@ -631,24 +636,21 @@ impl Renderer {
                             transform.global_scale.x,
                             transform.global_scale.y,
                             transform.global_scale.z,
-                            0.0f32, // padding
+                            0.0f32,
                         ];
                         let scale_bytes: [u8; 16] = std::mem::transmute(scale);
                         push_constants[160..176].copy_from_slice(&scale_bytes);
 
                         let mut model_name = model_renderer.loaded_model.clone();
                         model_name.push_str(".glb");
-
                         let model = model_loader.get_model(&model_name);
 
                         if let Some(model) = model {
                             for mesh in model.meshes.clone() {
-                                // Use ModelRenderer.material if set, otherwise load from model_loader
                                 let material_to_use: Option<&mut Material> =
                                     if model_renderer.material.is_some() {
                                         model_renderer.material.as_mut()
                                     } else {
-                                        // Load material from model_loader if not already loaded
                                         if model_loader.get_material(&mesh.material).is_none() {
                                             if let Some(loaded) = Material::load(&mesh.material) {
                                                 model_loader
@@ -665,24 +667,23 @@ impl Renderer {
                                     };
 
                                 if let Some(material) = material_to_use {
-                                    // Reload texture if the requested name changed
                                     let desired_name = material.albedo_texture_name.clone();
                                     let loaded_name = material.albedo_texture_loaded_name.clone();
 
-                                    
                                     if desired_name.is_some()
-                                        && (desired_name != loaded_name || material.albedo_texture().is_none())
+                                        && (desired_name != loaded_name
+                                            || material.albedo_texture().is_none())
                                     {
-                                        // defer destruction of previously loaded texture if present
                                         if let Some(old_tex) = material.take_albedo_texture() {
                                             self.pending_texture_destroys.push(old_tex);
                                         }
-
                                         if let Some(ref texture_name) = desired_name {
-                                            // Prefer preloaded textures (loaded during renderer init)
-                                            if let Some(pre) = self.preloaded_textures.get(texture_name) {
+                                            if let Some(pre) =
+                                                self.preloaded_textures.get(texture_name)
+                                            {
                                                 material.set_albedo_texture(pre.clone());
-                                                material.albedo_texture_loaded_name = Some(texture_name.clone());
+                                                material.albedo_texture_loaded_name =
+                                                    Some(texture_name.clone());
                                             } else if let Ok(texture) = self.context.load_texture(
                                                 texture_name,
                                                 self.command_pool,
@@ -690,14 +691,12 @@ impl Renderer {
                                                 self.descriptor_set_layout,
                                             ) {
                                                 material.set_albedo_texture(texture);
-                                                material.albedo_texture_loaded_name = Some(texture_name.clone());
+                                                material.albedo_texture_loaded_name =
+                                                    Some(texture_name.clone());
                                             }
                                         }
                                     }
 
-                                    // Bind the material's texture descriptor set if present,
-                                    // otherwise bind the renderer's default descriptor set so
-                                    // the pipeline always has a compatible set 0 bound.
                                     if let &mut Some(ref texture) = material.albedo_texture() {
                                         device.cmd_bind_descriptor_sets(
                                             command_buffer,
@@ -718,7 +717,6 @@ impl Renderer {
                                         );
                                     }
 
-                                    // write material properties into push constants buffer
                                     let base_bytes: [u8; 16] =
                                         std::mem::transmute(material.base_color);
                                     push_constants[176..192].copy_from_slice(&base_bytes);
@@ -732,6 +730,7 @@ impl Renderer {
                                         std::mem::transmute(material.emissive);
                                     push_constants[208..220].copy_from_slice(&emissive_bytes);
                                     push_constants[220..224].copy_from_slice(&[0u8; 4]);
+
                                     if let (Some(light), Some(lt)) = (&light, &light_transform) {
                                         let light_pos = [
                                             lt.global_position.x,
@@ -779,15 +778,26 @@ impl Renderer {
                     }
                 }
             }
+
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
-            // Render egui
+            // GPU: close Geometry Pass / CPU: close Record Scene
+            self.gpu_timestamps
+                .end_scope(&self.context.device, frame.command_buffer);
+            self.cpu_profiler.end(); // Record Scene
 
-            // Begin rendering again for egui
+            // CPU: egui draw  /  GPU: egui Pass
+            self.cpu_profiler.begin("egui Draw");
+            self.gpu_timestamps.begin_scope(
+                &self.context.device,
+                frame.command_buffer,
+                "egui Pass",
+            );
+
             let color_attachment = vk::RenderingAttachmentInfo::default()
                 .image_view(self.swapchain.image_views[image_index as usize])
                 .image_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                .load_op(vk::AttachmentLoadOp::LOAD) // Load existing content
+                .load_op(vk::AttachmentLoadOp::LOAD)
                 .store_op(vk::AttachmentStoreOp::STORE);
 
             let rendering_info = vk::RenderingInfo::default()
@@ -799,7 +809,6 @@ impl Renderer {
                 .device
                 .cmd_begin_rendering(frame.command_buffer, &rendering_info);
 
-            // Set viewport and scissor for egui
             self.context.device.cmd_set_viewport(
                 frame.command_buffer,
                 0,
@@ -809,37 +818,42 @@ impl Renderer {
                     .min_depth(0.0)
                     .max_depth(1.0)],
             );
-
             self.context.device.cmd_set_scissor(
                 frame.command_buffer,
                 0,
                 &[vk::Rect2D::default().extent(self.swapchain.extent)],
             );
 
-            // Render egui
+            // egui draw
             self.egui_renderer.egui_renderer.cmd_draw(
                 frame.command_buffer,
                 self.swapchain.extent,
                 full_output.pixels_per_point,
                 &clipped_primitives,
             )?;
+
             self.context.device.cmd_end_rendering(frame.command_buffer);
-            // egui render end
-            // Transition the image layout from color attachment to present
+
+            // GPU: close egui Pass / CPU: close egui Draw
+            self.gpu_timestamps
+                .end_scope(&self.context.device, frame.command_buffer);
+            self.cpu_profiler.end(); // egui Draw
+
+            // Present transition
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                render_image_state,
-                present_image_state,
+                self.render_image_state,
+                self.present_image_state,
                 vk::ImageAspectFlags::COLOR,
             );
 
-            // End the render commands
+            // ── CPU: submit & present ─────────────────────────────────────────
+            self.cpu_profiler.begin("Submit & Present");
             self.context
                 .device
                 .end_command_buffer(frame.command_buffer)?;
 
-            // Submit command buffer
             self.context.device.queue_submit(
                 self.context.queues[self.context.queue_families.graphics as usize],
                 &[vk::SubmitInfo::default()
@@ -849,38 +863,72 @@ impl Renderer {
                     .signal_semaphores(&[frame.render_finished_semaphore])],
                 frame.in_flight_fence,
             )?;
+
             self.swapchain
                 .present_image(image_index, frame.render_finished_semaphore)?;
+
+            // Close top-level CPU scopes
+            self.cpu_profiler.end();
+            self.cpu_profiler.end();
+
+            // Resolve GPU timestamps
+            self.context
+                .device
+                .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
+            let gpu_scopes = self.gpu_timestamps.resolve(&self.context.device);
+
+            //  Build and store FrameData
+            let cpu_scopes = self.cpu_profiler.drain();
+            let frame_time_ms = frame_wall_start.elapsed().as_secs_f64() * 1000.0;
+            let cpu_total_ms: f64 = cpu_scopes
+                .iter()
+                .filter(|s| s.depth == 0)
+                .map(|s| s.duration_ms)
+                .sum();
+            let gpu_total_ms: f64 = gpu_scopes.iter().map(|s| s.duration_ms).sum();
+            self.global_frame_counter += 1;
             self.frame_index = (self.frame_index + 1) % self.frames.len();
+
+            // record frame data
+            self.pending_frame_data = Some(FrameData {
+                frame_index: self.global_frame_counter,
+                frame_time_ms,
+                cpu_scopes,
+                gpu_scopes,
+                cpu_total_ms,
+                gpu_total_ms,
+            });
             Ok(())
         }
     }
 
-    pub fn window_event(&mut self, window: &Window, event: WindowEvent) -> bool {
-        let response = self
-            .egui_renderer
-            .egui_state
-            .on_window_event(window, &event);
-
-        response.consumed
-    }
-
-    pub fn resize(&mut self) -> Result<()> {
-        self.swapchain.resize()
-    }
-
-    /// Prepares egui for rendering
     pub fn prepare_egui(&mut self, window: &Window, world: &mut World, editor: &mut EditorStorage) {
         let raw_input = self.egui_renderer.egui_state.take_egui_input(window);
         self.egui_renderer.egui_ctx.begin_pass(raw_input);
 
+        if let Some(frame_data) = self.pending_frame_data.take() {
+            if !editor.profiler.paused {
+                editor.profiler.history.push(frame_data);
+            }
+        }
+
         for system in &self.egui_renderer.sorted_ui_systems {
             (system.func)(&mut self.egui_renderer.egui_ctx);
         }
-
         for system in &self.egui_renderer.sorted_editor_ui_systems {
             (system.func)(&mut self.egui_renderer.egui_ctx, world, editor);
         }
+    }
+
+    pub fn window_event(&mut self, window: &Window, event: WindowEvent) -> bool {
+        self.egui_renderer
+            .egui_state
+            .on_window_event(window, &event)
+            .consumed
+    }
+
+    pub fn resize(&mut self) -> Result<()> {
+        self.swapchain.resize()
     }
 }
 
@@ -888,8 +936,14 @@ impl Drop for Renderer {
     fn drop(&mut self) {
         unsafe {
             if let Err(e) = self.context.device.device_wait_idle() {
-                eprintln!("Warning: device_wait_idle failed during renderer drop: {:?}", e);
+                eprintln!(
+                    "Warning: device_wait_idle failed during renderer drop: {:?}",
+                    e
+                );
             }
+
+            // Destroy GPU timestamp query pool
+            self.gpu_timestamps.destroy(&self.context.device);
 
             self.frames.drain(..).for_each(|frame| {
                 self.context
