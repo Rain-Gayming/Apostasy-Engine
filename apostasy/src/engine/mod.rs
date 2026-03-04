@@ -42,6 +42,7 @@ use crate::engine::{
     windowing::WindowManager,
 };
 
+pub mod assets;
 pub mod editor;
 pub mod nodes;
 pub mod rendering;
