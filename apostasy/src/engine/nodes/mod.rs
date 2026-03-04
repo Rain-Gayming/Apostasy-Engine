@@ -10,7 +10,7 @@ use std::any::TypeId;
 
 use anyhow::Result;
 use apostasy_macros::start;
-use cgmath::{Rotation, Vector3};
+use cgmath::{Rotation, Vector2, Vector3};
 
 use crate::engine::{
     nodes::{
@@ -238,6 +238,7 @@ pub struct World {
     pub global_nodes: Vec<Node>,
     pub input_manager: InputManager,
     pub is_world_hovered: bool,
+    pub window_size: Vector2<f32>,
 }
 
 impl Default for World {
@@ -255,6 +256,7 @@ impl World {
             global_nodes: Vec::new(),
             input_manager: InputManager::default(),
             is_world_hovered: false,
+            window_size: Vector2::new(0.0, 0.0),
         }
     }
 

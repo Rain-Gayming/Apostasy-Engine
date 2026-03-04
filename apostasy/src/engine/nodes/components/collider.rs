@@ -6,7 +6,7 @@ use crate::engine::{
     },
 };
 use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent, update};
-use cgmath::{InnerSpace, Vector3};
+use cgmath::{InnerSpace, Quaternion, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate as apostasy;
@@ -15,7 +15,7 @@ use crate as apostasy;
     Component, Clone, Inspectable, InspectValue, SerializableComponent, Serialize, Deserialize,
 )]
 pub struct Collider {
-    pub half_extents: Vector3<f32>,
+    pub collider_size: Vector3<f32>,
     pub offset: Vector3<f32>,
     pub is_static: bool,
     pub is_area: bool,
@@ -24,7 +24,7 @@ pub struct Collider {
 impl Default for Collider {
     fn default() -> Self {
         Self {
-            half_extents: Vector3::new(1.0, 1.0, 1.0),
+            collider_size: Vector3::new(1.0, 1.0, 1.0),
             offset: Vector3::new(0.0, 0.0, 0.0),
             is_static: false,
             is_area: false,
@@ -34,9 +34,9 @@ impl Default for Collider {
 
 impl Collider {
     /// Creates a dynamic collider
-    pub fn new(half_extents: Vector3<f32>, offset: Vector3<f32>) -> Self {
+    pub fn new(collider_size: Vector3<f32>, offset: Vector3<f32>) -> Self {
         Self {
-            half_extents,
+            collider_size,
             offset,
             is_static: false,
             is_area: false,
@@ -44,72 +44,113 @@ impl Collider {
     }
 
     /// Creates a static collider
-    pub fn new_static(half_extents: Vector3<f32>, offset: Vector3<f32>) -> Self {
+    pub fn new_static(collider_size: Vector3<f32>, offset: Vector3<f32>) -> Self {
         Self {
-            half_extents,
+            collider_size,
             offset,
             is_static: true,
             is_area: false,
         }
     }
-    pub fn world_min(&self, position: Vector3<f32>, _scale: Vector3<f32>) -> Vector3<f32> {
-        let center = position + self.offset;
-        center - self.half_extents
+
+    /// Returns the world-space center of this collider (offset rotated by entity rotation).
+    pub fn world_center(&self, position: Vector3<f32>, rotation: Quaternion<f32>) -> Vector3<f32> {
+        position + rotate_vector(rotation, self.offset)
     }
 
-    pub fn world_max(&self, position: Vector3<f32>, _scale: Vector3<f32>) -> Vector3<f32> {
-        let center = position + self.offset;
-        center + self.half_extents
+    /// Returns the three local axes of this OBB in world space.
+    pub fn world_axes(&self, rotation: Quaternion<f32>) -> [Vector3<f32>; 3] {
+        [
+            rotate_vector(rotation, Vector3::new(1.0, 0.0, 0.0)),
+            rotate_vector(rotation, Vector3::new(0.0, 1.0, 0.0)),
+            rotate_vector(rotation, Vector3::new(0.0, 0.0, 1.0)),
+        ]
+    }
+
+    /// Returns the half-extents (collider_size is already treated as half-extents).
+    pub fn half_extents(&self) -> Vector3<f32> {
+        self.collider_size
     }
 
     pub fn translation_vector_against(
         &self,
         pos_a: Vector3<f32>,
-        _size_a: Vector3<f32>,
+        rotation_a: Quaternion<f32>,
         other: &Collider,
         pos_b: Vector3<f32>,
-        _size_b: Vector3<f32>,
+        rotation_b: Quaternion<f32>,
     ) -> Option<Vector3<f32>> {
-        let center_a = pos_a + self.offset;
-        let center_b = pos_b + other.offset;
+        let center_a = self.world_center(pos_a, rotation_a);
+        let center_b = other.world_center(pos_b, rotation_b);
+        let axes_a = self.world_axes(rotation_a);
+        let axes_b = other.world_axes(rotation_b);
+        let half_a = self.half_extents();
+        let half_b = other.half_extents();
+
+        // The vector from B's center to A's center
         let d = center_a - center_b;
 
-        let ox = self.half_extents.x + other.half_extents.x - d.x.abs();
-        let oy = self.half_extents.y + other.half_extents.y - d.y.abs();
-        let oz = self.half_extents.z + other.half_extents.z - d.z.abs();
+        let mut min_overlap = f32::MAX;
+        let mut min_axis = Vector3::new(0.0f32, 0.0, 0.0);
 
-        if ox <= 0.0 || oy <= 0.0 || oz <= 0.0 {
-            return None;
+        let face_axes: [Vector3<f32>; 6] = [
+            axes_a[0], axes_a[1], axes_a[2], axes_b[0], axes_b[1], axes_b[2],
+        ];
+
+        for axis in &face_axes {
+            // Skip near-zero axes (shouldn't happen for face normals, but be safe)
+            if axis.magnitude2() < 1e-10 {
+                continue;
+            }
+            let axis = axis.normalize();
+
+            let proj_a = project_obb(axis, &axes_a, half_a);
+            let proj_b = project_obb(axis, &axes_b, half_b);
+            let dist = d.dot(axis).abs();
+            let overlap = proj_a + proj_b - dist;
+
+            if overlap <= 0.0 {
+                return None; // Separating axis found, no collision
+            }
+            if overlap < min_overlap {
+                min_overlap = overlap;
+                // Ensure the MTV points from B toward A
+                min_axis = if d.dot(axis) >= 0.0 { axis } else { -axis };
+            }
         }
 
-        if ox <= oy && ox <= oz {
-            Some(Vector3::new(ox * nonzero_sign(d.x), 0.0, 0.0))
-        } else if oy <= ox && oy <= oz {
-            Some(Vector3::new(0.0, oy * nonzero_sign(d.y), 0.0))
-        } else {
-            Some(Vector3::new(0.0, 0.0, oz * nonzero_sign(d.z)))
-        }
+        Some(min_axis * min_overlap)
     }
 
     pub fn contains_point(
         &self,
         position: Vector3<f32>,
         point: Vector3<f32>,
-        _scale: Vector3<f32>,
+        rotation: Quaternion<f32>,
     ) -> bool {
-        let min = self.world_min(position, Vector3::new(1.0, 1.0, 1.0));
-        let max = self.world_max(position, Vector3::new(1.0, 1.0, 1.0));
-        point.x >= min.x
-            && point.x <= max.x
-            && point.y >= min.y
-            && point.y <= max.y
-            && point.z >= min.z
-            && point.z <= max.z
+        let axes = self.world_axes(rotation);
+        let half = self.half_extents();
+        let center = self.world_center(position, rotation);
+        let local = point - center;
+
+        // Project the point onto each local axis and check against half-extent
+        local.dot(axes[0]).abs() <= half.x
+            && local.dot(axes[1]).abs() <= half.y
+            && local.dot(axes[2]).abs() <= half.z
     }
 }
 
-fn nonzero_sign(v: f32) -> f32 {
-    if v >= 0.0 { 1.0 } else { -1.0 }
+fn project_obb(axis: Vector3<f32>, obb_axes: &[Vector3<f32>; 3], half: Vector3<f32>) -> f32 {
+    axis.dot(obb_axes[0]).abs() * half.x
+        + axis.dot(obb_axes[1]).abs() * half.y
+        + axis.dot(obb_axes[2]).abs() * half.z
+}
+
+/// Rotates a vector by a quaternion: q * v * q^-1
+fn rotate_vector(q: Quaternion<f32>, v: Vector3<f32>) -> Vector3<f32> {
+    let qv = Vector3::new(q.v.x, q.v.y, q.v.z);
+    let t = qv.cross(v) * 2.0;
+    v + t * q.s + qv.cross(t)
 }
 
 /// Contains information about a collision event
@@ -138,9 +179,10 @@ impl CollisionEvents {
 struct Snapshot {
     name: String,
     position: Vector3<f32>,
-    size: Vector3<f32>,
+    rotation: Quaternion<f32>,
     collider: Collider,
 }
+
 fn build_snapshot(world: &World) -> Vec<Snapshot> {
     world
         .get_all_nodes()
@@ -149,26 +191,27 @@ fn build_snapshot(world: &World) -> Vec<Snapshot> {
             let transform = node.get_component::<Transform>()?;
             let position = transform.position;
             let scale = transform.scale;
+            let rotation = transform.rotation;
             let mut collider = node.get_component::<Collider>()?.clone();
 
-            // Bake scale into half_extents so collision matches world-space mesh size
-            collider.half_extents = Vector3::new(
-                collider.half_extents.x * scale.x,
-                collider.half_extents.y * scale.y,
-                collider.half_extents.z * scale.z,
+            // Bake scale into collider_size so collision matches world-space mesh size
+            collider.collider_size = Vector3::new(
+                collider.collider_size.x * scale.x,
+                collider.collider_size.y * scale.y,
+                collider.collider_size.z * scale.z,
             );
 
             Some(Snapshot {
                 name: node.name.clone(),
                 position,
-                size: Vector3::new(1.0, 1.0, 1.0),
+                rotation,
                 collider,
             })
         })
         .collect()
 }
 
-/// Detects collisions between all nodes
+/// Detects collisions between all nodes using OBB vs OBB SAT
 #[update]
 pub fn collision_detection_system(world: &mut World) {
     let snapshot = build_snapshot(world);
@@ -183,13 +226,17 @@ pub fn collision_detection_system(world: &mut World) {
 
             if let Some(translation_vector) = a.collider.translation_vector_against(
                 a.position,
-                a.size,
+                a.rotation,
                 &b.collider,
                 b.position,
-                b.size,
+                b.rotation,
             ) {
                 let depth = translation_vector.magnitude();
-                let normal = translation_vector.normalize();
+                let normal = if depth > 1e-10 {
+                    translation_vector / depth
+                } else {
+                    Vector3::new(0.0, 1.0, 0.0)
+                };
                 events.push(CollisionEvent {
                     node_a: a.name.clone(),
                     node_b: b.name.clone(),
@@ -202,7 +249,6 @@ pub fn collision_detection_system(world: &mut World) {
     }
 
     for event in &events {
-        // get nodes, colldiers and information
         let a = world.get_node_with_name(&event.node_a);
         let b = world.get_node_with_name(&event.node_b);
 
@@ -215,30 +261,24 @@ pub fn collision_detection_system(world: &mut World) {
             let b_static = b_collider.is_static;
 
             let normal_a = event.normal;
-            let normal_b = Vector3::new(-event.normal.x, -event.normal.y, -event.normal.z);
+            let normal_b = -event.normal;
 
             match (a_static, b_static) {
-                // both are dynamic, split the correction evenly
+                // Both dynamic: split the correction evenly
                 (false, false) => {
                     let half = event.translation_vector * 0.5;
-                    let neg_half = Vector3::new(-half.x, -half.y, -half.z);
                     resolve_node(world, &event.node_a, half, normal_a);
-                    resolve_node(world, &event.node_b, neg_half, normal_b);
+                    resolve_node(world, &event.node_b, -half, normal_b);
                 }
-                // a is static,push b the full amount
+                // A is static: push B the full amount
                 (true, false) => {
-                    let neg_translation_vector = Vector3::new(
-                        -event.translation_vector.x,
-                        -event.translation_vector.y,
-                        -event.translation_vector.z,
-                    );
-                    resolve_node(world, &event.node_b, neg_translation_vector, normal_b);
+                    resolve_node(world, &event.node_b, -event.translation_vector, normal_b);
                 }
-                // b is static, push a the full amount
+                // B is static: push A the full amount
                 (false, true) => {
                     resolve_node(world, &event.node_a, event.translation_vector, normal_a);
                 }
-                // both static, do nothing
+                // Both static: do nothing
                 (true, true) => {}
             }
         }
@@ -252,21 +292,18 @@ pub fn collision_detection_system(world: &mut World) {
     }
 }
 
-/// Resolves collision events by pushing the node in the opposite direction
+/// Resolves a collision by pushing the node and cancelling inward velocity
 fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vector3<f32>) {
     if let Some(node) = world.get_node_with_name_mut(name) {
         let (transform, velocity) = node.get_components_mut::<(&mut Transform, &mut Velocity)>();
 
-        // apply positional correction immediately
+        // Apply positional correction immediately
         transform.position += offset;
 
-        let v_dot_n = velocity.direction.x * normal.x
-            + velocity.direction.y * normal.y
-            + velocity.direction.z * normal.z;
-
+        // Cancel the velocity component pointing into the surface
+        let v_dot_n = velocity.direction.dot(normal);
         if v_dot_n < 0.0 {
-            let correction = normal * v_dot_n;
-            velocity.direction -= correction;
+            velocity.direction -= normal * v_dot_n;
         }
     }
 }

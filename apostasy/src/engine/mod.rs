@@ -1,13 +1,16 @@
 use crate::{
     self as apostasy,
     engine::{
-        nodes::components::collider::{Collider, CollisionEvents},
+        nodes::components::{
+            camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
+        },
         windowing::cursor_manager::CursorManager,
     },
 };
 use anyhow::Result;
-use apostasy_macros::editor_fixed_update;
-use cgmath::{Vector3, Zero, num_traits::clamp};
+use apostasy_macros::{editor_fixed_update, editor_ui};
+use cgmath::{Vector2, Vector3, Zero, num_traits::clamp};
+use egui::Context;
 use std::{collections::HashMap, sync::Arc};
 use winit::{
     application::ApplicationHandler,
@@ -30,7 +33,7 @@ use crate::engine::{
         components::velocity::{Velocity, apply_velocity},
     },
     rendering::{
-        models::model::{ModelLoader, ModelRenderer, load_models},
+        models::model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -137,18 +140,6 @@ impl Engine {
         camera.add_component(Camera::default());
         camera.add_component(Transform::default());
         camera.add_component(Velocity::default());
-
-        let mut cube = Node::new();
-        cube.name = "cube".to_string();
-        cube.add_component(Transform::default());
-        cube.add_component(ModelRenderer::default());
-        cube.add_component(Collider::new_static(
-            Vector3::new(0.5, 0.5, 0.5),
-            Vector3::new(0.0, 0.0, 0.0),
-        ));
-        cube.get_component_mut::<Transform>().unwrap().position = Vector3::new(0.0, 0.0, 0.0);
-
-        world.add_node(cube);
         world.add_global_node(camera);
 
         let mut cursor_manager = Node::new();
@@ -324,6 +315,10 @@ impl Engine {
 
         for window in &self.window_manager.windows {
             window.1.request_redraw();
+            self.world.window_size = Vector2::new(
+                window.1.inner_size().width as f32,
+                window.1.inner_size().height as f32,
+            );
         }
         self.world.input_manager.clear_actions();
         self.world.late_update();
@@ -383,7 +378,6 @@ pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
         velocity.direction = Vector3::zero();
     }
 }
-
 #[editor_fixed_update]
 pub fn editor_camera_mouse_handle(world: &mut World, delta_time: f32) {
     if !world.is_world_hovered {
@@ -417,5 +411,49 @@ pub fn editor_camera_mouse_handle(world: &mut World, delta_time: f32) {
 
         apply_velocity(velocity, camera_transform);
         velocity.direction = Vector3::zero();
+    }
+}
+
+#[editor_ui]
+pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mut EditorStorage) {
+    if !world.is_world_hovered {
+        return;
+    }
+
+    let is_left_mouse_active = world.input_manager.is_mousebind_active("left_mouse");
+    let mouse_position = world.input_manager.mouse_position;
+
+    let aspect = world.window_size.x / world.window_size.y;
+    let window_size = world.window_size;
+
+    let editor_camera = world.get_global_node_with_component_mut::<Camera>();
+
+    if let Some(editor_camera) = editor_camera {
+        let (camera_transform, camera) =
+            editor_camera.get_components_mut::<(&mut Transform, &mut Camera)>();
+
+        if is_left_mouse_active {
+            let projection = get_perspective_projection(camera, aspect);
+
+            if let Some(hit) = pick(
+                mouse_position.x as f32,
+                mouse_position.y as f32,
+                window_size.x,
+                window_size.y,
+                projection,
+                camera_transform.position,
+                camera_transform.rotation,
+                &world.get_all_nodes(),
+                "camera",
+            ) {
+                println!("Hit: {} at distance {:.2}", hit.node_name, hit.distance);
+                let node_hit = world.get_node_with_name(hit.node_name.as_str());
+                if let Some(node_hit) = node_hit {
+                    editor.selected_node = Some(node_hit.id);
+                }
+            } else {
+                editor.selected_node = None;
+            }
+        }
     }
 }

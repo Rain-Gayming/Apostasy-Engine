@@ -76,7 +76,7 @@ root_children:
         emmisive_texture_name: null
   - type: Collider
     data:
-      half_extents:
+      collider_size:
         x: 1.0
         y: 1.0
         z: 1.0
@@ -96,12 +96,12 @@ root_children:
   components:
   - type: Light
     data:
-      strength: 1.0
+      strength: 0.25
   - type: Transform
     data:
       position:
-        x: -1.4500000476837158
-        y: 15.0
+        x: -21.1200008392334
+        y: 17.65999984741211
         z: 0.41999998688697815
       rotation:
         v:
@@ -130,8 +130,8 @@ root_children:
         y: 0.0
         z: 0.0
       global_position:
-        x: -1.4500000476837158
-        y: 15.0
+        x: -21.1200008392334
+        y: 17.65999984741211
         z: 0.41999998688697815
       global_rotation:
         v:
@@ -143,14 +143,64 @@ root_children:
         x: 1.0
         y: 1.0
         z: 1.0
-  - type: ModelRenderer
-    data:
-      loading_model: cube
-      loaded_model: cube
-      material: null
-  children: []
+  children:
+  - name: light_position_reference
+    id: 3
+    components:
+    - type: Transform
+      data:
+        position:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        rotation_euler:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        scale:
+          x: 0.5099999904632568
+          y: 0.5
+          z: 0.5
+        up:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        forward:
+          x: 0.0
+          y: 0.0
+          z: -1.0
+        right:
+          x: 1.0
+          y: 0.0
+          z: 0.0
+        global_position:
+          x: -21.1200008392334
+          y: 17.65999984741211
+          z: 0.41999998688697815
+        global_rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        global_scale:
+          x: 0.5099999904632568
+          y: 0.5
+          z: 0.5
+    - type: ModelRenderer
+      data:
+        loading_model: cube
+        loaded_model: cube
+        material: null
+    children: []
 - name: Wall
-  id: 3
+  id: 4
   components:
   - type: Transform
     data:
@@ -160,17 +210,17 @@ root_children:
         z: -5.769999980926514
       rotation:
         v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
+          x: 0.008336270228028297
+          y: 0.29569679498672485
+          z: -0.0025805069599300623
+        s: 0.9552419781684875
       rotation_euler:
-        x: 0.0
-        y: 0.0
+        x: 1.0
+        y: 34.400001525878906
         z: 0.0
       scale:
         x: 6.230000019073486
-        y: 2.0
+        y: 1.899999976158142
         z: 1.0
       up:
         x: 0.0
@@ -190,13 +240,13 @@ root_children:
         z: -5.769999980926514
       global_rotation:
         v:
-          x: 0.0
-          y: 0.0
-          z: 0.0
-        s: 1.0
+          x: 0.008336270228028297
+          y: 0.29569679498672485
+          z: -0.0025805069599300623
+        s: 0.9552419781684875
       global_scale:
         x: 6.230000019073486
-        y: 2.0
+        y: 1.899999976158142
         z: 1.0
   - type: ModelRenderer
     data:
@@ -205,7 +255,7 @@ root_children:
       material: null
   - type: Collider
     data:
-      half_extents:
+      collider_size:
         x: 1.0
         y: 1.0
         z: 1.0
@@ -217,7 +267,7 @@ root_children:
       is_area: false
   children: []
 - name: player
-  id: 4
+  id: 5
   components:
   - type: Transform
     data:
@@ -282,7 +332,7 @@ root_children:
       is_active: true
   - type: Collider
     data:
-      half_extents:
+      collider_size:
         x: 0.75
         y: 0.5
         z: 0.75
@@ -301,7 +351,7 @@ root_children:
       jump_speed: 0.0
   children:
   - name: camera
-    id: 5
+    id: 6
     components:
     - type: Transform
       data:
@@ -356,7 +406,7 @@ root_children:
         far: 10000.0
     children: []
   - name: ground detector
-    id: 6
+    id: 7
     components:
     - type: Raycast
       data:

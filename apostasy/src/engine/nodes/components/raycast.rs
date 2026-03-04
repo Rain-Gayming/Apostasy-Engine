@@ -1,4 +1,4 @@
-use cgmath::{InnerSpace, Rotation, Vector3};
+use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, SquareMatrix, Vector3, Vector4};
 use serde::{Deserialize, Serialize};
 
 use crate::engine::nodes::{
@@ -67,6 +67,18 @@ impl Raycast {
         .next()
     }
 
+    pub fn cast_from(
+        &self,
+        origin: Vector3<f32>,
+        direction: Vector3<f32>,
+        nodes: &[&Node],
+        ignore: &str,
+    ) -> Option<RayHit> {
+        self.hits(origin, direction.normalize(), nodes, |name| name != ignore)
+            .into_iter()
+            .next()
+    }
+
     fn hits<F>(
         &self,
         origin: Vector3<f32>,
@@ -84,29 +96,32 @@ impl Raycast {
                 let transform = node.get_component::<Transform>()?;
                 let collider = node.get_component::<Collider>()?;
 
-                // Bake scale into a temporary collider to match snapshot behaviour
-                let mut scaled = collider.clone();
-                scaled.half_extents = Vector3::new(
-                    collider.half_extents.x * transform.scale.x,
-                    collider.half_extents.y * transform.scale.y,
-                    collider.half_extents.z * transform.scale.z,
+                let half_extents = Vector3::new(
+                    collider.collider_size.x * transform.scale.x,
+                    collider.collider_size.y * transform.scale.y,
+                    collider.collider_size.z * transform.scale.z,
                 );
 
-                let min = scaled.world_min(transform.position, Vector3::new(1.0, 1.0, 1.0));
-                let max = scaled.world_max(transform.position, Vector3::new(1.0, 1.0, 1.0));
+                let center =
+                    transform.position + rotate_vector(transform.rotation, collider.offset);
 
-                let t = intersect_aabb(origin, direction, self.max_distance, min, max)?;
+                let axes = [
+                    rotate_vector(transform.rotation, Vector3::new(1.0, 0.0, 0.0)),
+                    rotate_vector(transform.rotation, Vector3::new(0.0, 1.0, 0.0)),
+                    rotate_vector(transform.rotation, Vector3::new(0.0, 0.0, 1.0)),
+                ];
+
+                let (t, face) = intersect_obb(
+                    origin,
+                    direction,
+                    self.max_distance,
+                    center,
+                    &axes,
+                    half_extents,
+                )?;
 
                 let point = origin + direction * t;
-
-                let scaled_center = transform.position
-                    + Vector3::new(
-                        collider.offset.x * transform.scale.x,
-                        collider.offset.y * transform.scale.y,
-                        collider.offset.z * transform.scale.z,
-                    );
-
-                let normal = surface_normal(point, scaled_center, scaled.half_extents);
+                let normal = axes[face.axis] * face.sign;
 
                 Some(RayHit {
                     node_name: node.name.clone(),
@@ -124,57 +139,147 @@ impl Raycast {
     }
 }
 
-fn intersect_aabb(
+struct HitFace {
+    axis: usize,
+    sign: f32,
+}
+
+fn intersect_obb(
     origin: Vector3<f32>,
     direction: Vector3<f32>,
     max_distance: f32,
-    min: Vector3<f32>,
-    max: Vector3<f32>,
-) -> Option<f32> {
-    let inv = Vector3::new(
-        safe_recip(direction.x),
-        safe_recip(direction.y),
-        safe_recip(direction.z),
-    );
+    center: Vector3<f32>,
+    axes: &[Vector3<f32>; 3],
+    half: Vector3<f32>,
+) -> Option<(f32, HitFace)> {
+    let delta = origin - center;
 
-    let t1 = (min.x - origin.x) * inv.x;
-    let t2 = (max.x - origin.x) * inv.x;
-    let t3 = (min.y - origin.y) * inv.y;
-    let t4 = (max.y - origin.y) * inv.y;
-    let t5 = (min.z - origin.z) * inv.z;
-    let t6 = (max.z - origin.z) * inv.z;
-
-    let t_near = t1.min(t2).max(t3.min(t4)).max(t5.min(t6));
-    let t_far = t1.max(t2).min(t3.max(t4)).min(t5.max(t6));
-
-    if t_far < 0.0 || t_near > t_far {
+    let half_diagonal = half.magnitude();
+    if delta.dot(direction) > half_diagonal {
         return None;
     }
 
-    let t = if t_near < 0.0 { t_far } else { t_near };
-    if t_near > max_distance { None } else { Some(t) }
-}
+    let half_arr = [half.x, half.y, half.z];
 
-fn surface_normal(
-    hit_point: Vector3<f32>,
-    scaled_center: Vector3<f32>,
-    scaled_half_extents: Vector3<f32>,
-) -> Vector3<f32> {
-    let local = hit_point - scaled_center;
-    let dx = (local.x.abs() - scaled_half_extents.x).abs();
-    let dy = (local.y.abs() - scaled_half_extents.y).abs();
-    let dz = (local.z.abs() - scaled_half_extents.z).abs();
+    let mut t_min = f32::NEG_INFINITY;
+    let mut t_max = f32::INFINITY;
+    let mut hit_axis = 0usize;
+    let mut hit_sign = 1.0f32;
 
-    if dx < dy && dx < dz {
-        Vector3::new(local.x.signum(), 0.0, 0.0)
-    } else if dy < dx && dy < dz {
-        Vector3::new(0.0, local.y.signum(), 0.0)
-    } else {
-        Vector3::new(0.0, 0.0, local.z.signum())
+    for i in 0..3 {
+        let e = delta.dot(axes[i]);
+        let f = direction.dot(axes[i]);
+
+        if f.abs() > 1e-8 {
+            let inv_f = 1.0 / f;
+            let t1 = (-half_arr[i] - e) * inv_f;
+            let t2 = (half_arr[i] - e) * inv_f;
+
+            let (t_near_slab, t_far_slab) = if t1 < t2 { (t1, t2) } else { (t2, t1) };
+
+            if t_near_slab > t_min {
+                t_min = t_near_slab;
+                hit_axis = i;
+                // Ray travelling in +axis direction enters the -face, so normal is -axis
+                hit_sign = -f.signum();
+            }
+            t_max = t_max.min(t_far_slab);
+
+            if t_min > t_max {
+                return None;
+            }
+        } else {
+            if e.abs() > half_arr[i] {
+                return None;
+            }
+        }
     }
+
+    // Box entirely behind ray origin
+    if t_max < 0.0 {
+        return None;
+    }
+
+    // Ray started inside box — no hit for picking
+    if t_min < 0.0 {
+        return None;
+    }
+
+    // Beyond max distance
+    if t_min > max_distance {
+        return None;
+    }
+
+    Some((
+        t_min,
+        HitFace {
+            axis: hit_axis,
+            sign: hit_sign,
+        },
+    ))
 }
 
-#[inline]
-fn safe_recip(x: f32) -> f32 {
-    if x.abs() > 1e-8 { 1.0 / x } else { f32::MAX }
+fn rotate_vector(q: cgmath::Quaternion<f32>, v: Vector3<f32>) -> Vector3<f32> {
+    let qv = Vector3::new(q.v.x, q.v.y, q.v.z);
+    let t = qv.cross(v) * 2.0;
+    v + t * q.s + qv.cross(t)
+}
+
+pub fn ray_from_mouse(
+    mouse_x: f32,
+    mouse_y: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+    projection: Matrix4<f32>,
+    camera_position: Vector3<f32>,
+    camera_rotation: Quaternion<f32>,
+) -> (Vector3<f32>, Vector3<f32>) {
+    let ndc_x = (mouse_x / viewport_width) * 2.0 - 1.0;
+    let ndc_y = (mouse_y / viewport_height) * 2.0 - 1.0;
+
+    let inv_proj = projection.invert().unwrap();
+
+    let near_clip = Vector4::new(ndc_x, ndc_y, -1.0, 1.0);
+    let near_view = inv_proj * near_clip;
+    let near_view = near_view / near_view.w;
+
+    let far_clip = Vector4::new(ndc_x, ndc_y, 1.0, 1.0);
+    let far_view = inv_proj * far_clip;
+    let far_view = far_view / far_view.w;
+
+    let view_dir = Vector3::new(
+        far_view.x - near_view.x,
+        far_view.y - near_view.y,
+        far_view.z - near_view.z,
+    )
+    .normalize();
+
+    let world_dir = rotate_vector(camera_rotation, view_dir).normalize();
+
+    (camera_position, world_dir)
+}
+
+pub fn pick(
+    mouse_x: f32,
+    mouse_y: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+    projection: Matrix4<f32>,
+    camera_position: Vector3<f32>,
+    camera_rotation: Quaternion<f32>,
+    nodes: &[&Node],
+    ignore: &str,
+) -> Option<RayHit> {
+    let (origin, direction) = ray_from_mouse(
+        mouse_x,
+        mouse_y,
+        viewport_width,
+        viewport_height,
+        projection,
+        camera_position,
+        camera_rotation,
+    );
+
+    let ray = Raycast::new(direction, f32::MAX);
+    ray.cast_from(origin, direction, nodes, ignore)
 }

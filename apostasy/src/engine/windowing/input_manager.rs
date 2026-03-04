@@ -128,6 +128,15 @@ impl Default for InputManager {
             ),
         );
 
+        default_mousebinds.insert(
+            "left_mouse".to_string(),
+            MouseBind::new(
+                MouseButton::Left,
+                KeyAction::Press,
+                "left_mouse".to_string(),
+            ),
+        );
+
         Self {
             keybinds: default_keybinds,
             mouse_keybinds: default_mousebinds,
