@@ -75,6 +75,7 @@ pub struct EditorStorage {
     pub drag_target: Option<DragTarget>,
     pub selected_node: Option<u64>,
     pub show_globals: bool,
+    pub node_to_remove: Option<u64>,
 
     // scene manager
     pub is_scene_manager_open: bool,
@@ -138,6 +139,7 @@ impl Default for EditorStorage {
             drag_target: None,
             selected_node: None,
             show_globals: false,
+            node_to_remove: None,
 
             is_scene_manager_open: false,
             scene_name: String::new(),
@@ -275,6 +277,11 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             .map_or(false, |pos| rect.contains(pos));
         viewer.world.is_world_hovered = pointer_in_rect;
     }
+
+    if let Some(id) = editor_storage.node_to_remove {
+        world.remove_node(id);
+        editor_storage.node_to_remove = None;
+    }
 }
 
 fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
@@ -391,6 +398,9 @@ fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage,
             egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, true);
 
         let _header_resp = ui.horizontal(|ui| {
+            if ui.button("X").clicked() {
+                editor_storage.node_to_remove = Some(node.id);
+            }
             ui.add_space(depth as f32 * 10.0);
 
             // Triangle toggle button
@@ -430,6 +440,9 @@ fn draw_node(ui: &mut egui::Ui, node: &Node, editor_storage: &mut EditorStorage,
         }
     } else {
         ui.horizontal(|ui| {
+            if ui.button("X").clicked() {
+                editor_storage.node_to_remove = Some(node.id);
+            }
             ui.add_space(depth as f32 * 10.0 + 16.0); // 16 to align past the toggle
             draw_node_row(ui, node, selected, editor_storage);
         });
@@ -512,11 +525,7 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
 
                 ui.horizontal(|ui| {
                     ui.label("Name: ");
-                    let text_edit = ui.text_edit_singleline(&mut node.editing_name);
-                    if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        node.name = node.editing_name.clone();
-                        editor_storage.selected_node = Some(id);
-                    }
+                    ui.text_edit_singleline(&mut node.name);
                 });
 
                 if let Some(parent) = &node.parent {
@@ -525,7 +534,19 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
                 ui.separator();
 
                 ui.horizontal(|ui| {
-                    ui.text_edit_singleline(&mut editor_storage.component_text_edit);
+                    let text_edit =
+                        ui.text_edit_singleline(&mut editor_storage.component_text_edit);
+
+                    if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        let res = node.add_component_by_name(&editor_storage.component_text_edit);
+                        if res.is_err() {
+                            editor_storage.component_text_edit = format!(
+                                "Component ({}) not found",
+                                editor_storage.component_text_edit
+                            );
+                        }
+                    }
+
                     if ui.button("Add Component").clicked() {
                         let res = node.add_component_by_name(&editor_storage.component_text_edit);
                         if res.is_err() {

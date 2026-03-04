@@ -215,6 +215,10 @@ impl Node {
     ///     world.get_node_mut(0).add_component_by_name("transform");
     /// ```
     pub fn add_component_by_name(&mut self, component_name: &str) -> Result<()> {
+        let mut component_name = component_name.to_string();
+        component_name = component_name.replace(" ", "");
+        component_name = component_name.replace("_", "");
+
         let registration =
             find_registration(component_name.to_lowercase().as_str()).ok_or_else(|| {
                 log_warn!("Component '{}' is not registered", component_name);
@@ -276,6 +280,16 @@ impl World {
         self.assign_ids_recursive(&mut node);
         self.scene.root_node.add_child(node);
         self.check_node_names();
+        self
+    }
+
+    /// Removes a node from the scene
+    /// ```rust
+    ///     world.remove_node(0);
+    /// ```
+    pub fn remove_node(&mut self, id: u64) -> &mut Self {
+        self.scene.root_node.remove_node(id);
+        self.check_node_ids();
         self
     }
 
