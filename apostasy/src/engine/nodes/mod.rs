@@ -1,8 +1,11 @@
 use crate::{
     self as apostasy,
-    engine::nodes::{
-        scene::SceneManager, scene_serialization::find_registration,
-        system::EditorFixedUpdateSystem,
+    engine::{
+        assets::ASSET_DIR,
+        nodes::{
+            scene::SceneManager, scene_serialization::find_registration,
+            system::EditorFixedUpdateSystem,
+        },
     },
     log, log_warn,
 };
@@ -567,14 +570,15 @@ impl World {
                 .collect(),
             name: self.scene.name.clone(),
             is_primary: self.scene.is_primary,
+            asset_path: self.scene.path.clone(),
         };
-        let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, self.scene.name);
+        let path = format!("{}/{}.yaml", ASSET_DIR, self.scene.name);
         std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
     /// Deserializes a scene from a file
     pub fn deserialize_scene(&mut self, scene: String) -> Result<(), serde_yaml::Error> {
-        let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene);
+        let path = format!("{}/{}.yaml", ASSET_DIR, scene);
         let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
         let serialized: SerializedScene = serde_yaml::from_str(&contents)?;
         self.scene.root_node.children = serialized
@@ -598,8 +602,9 @@ impl World {
                 .collect(),
             name: scene.name.clone(),
             is_primary: scene.is_primary,
+            asset_path: scene.path.clone(),
         };
-        let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene.name);
+        let path = format!("{}/{}.yaml", ASSET_DIR, scene.name);
         std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
@@ -701,7 +706,6 @@ impl World {
         }
     }
 }
-pub const ENGINE_SCENE_SAVE_PATH: &str = "res/scenes";
 
 /// Trait for getting mutable references to a single node
 pub struct NodeMut<'a> {

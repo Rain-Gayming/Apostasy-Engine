@@ -1,7 +1,8 @@
 use crate::{
     self as apostasy,
     engine::{
-        nodes::{ENGINE_SCENE_SAVE_PATH, Node, scene::Scene},
+        assets::ASSET_DIR,
+        nodes::{Node, scene::Scene},
         rendering::profiler::ProfilerState,
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
@@ -92,8 +93,6 @@ pub enum DragTarget {
     Parent(u64),
     Root,
 }
-
-const _ENGINE_EDITOR_SAVE_PATH: &str = "res/editor"; // keep around for future use, prefix with underscore to silence unused warning
 
 fn default_dock_state() -> DockState<EditorTab> {
     let mut state = DockState::new(vec![EditorTab::Viewport]);
@@ -306,14 +305,14 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                         let scene = world
                             .scene_manager
                             .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-                        world.scene = scene;
+                        world.scene = scene.unwrap();
                         world.check_node_ids();
                     } else {
                         world.scene_manager.get_primary_scene();
                         let scene = world
                             .scene_manager
                             .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-                        world.scene = scene;
+                        world.scene = scene.unwrap();
                         world.check_node_ids();
                     }
                     editor_storage.is_editor_open = !editor_storage.is_editor_open;
@@ -709,10 +708,7 @@ fn render_scene_manager(
                 });
                 ui.add_space(4.0);
 
-                let scene_path = format!(
-                    "{}/{}.yaml",
-                    ENGINE_SCENE_SAVE_PATH, editor_storage.scene_name
-                );
+                let scene_path = format!("{}/{}.yaml", ASSET_DIR, editor_storage.scene_name);
                 let can_add =
                     !editor_storage.scene_name.is_empty() && !Path::new(&scene_path).exists();
 
@@ -746,11 +742,9 @@ fn render_scene_manager(
                                 ui.add_space(4.0);
 
                                 if new_name != name {
-                                    let new_path =
-                                        format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, new_name);
+                                    let new_path = format!("{}/{}.yaml", ASSET_DIR, new_name);
                                     if !Path::new(&new_path).exists() {
-                                        let old_path =
-                                            format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, name);
+                                        let old_path = format!("{}/{}.yaml", ASSET_DIR, name);
                                         std::fs::rename(&old_path, &new_path).unwrap();
 
                                         if let Some(s) = world
@@ -803,7 +797,7 @@ fn render_scene_manager(
                                 ui.add_space(4.0);
                                 if ui.button("load").clicked() {
                                     let scene = world.scene_manager.load_scene(&name);
-                                    world.scene = scene;
+                                    world.scene = scene.unwrap();
                                 }
                                 if ui.button("❌").clicked() {
                                     world.scene_manager.remove_scene(&name);

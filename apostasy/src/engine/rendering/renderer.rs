@@ -9,8 +9,7 @@ use egui::{Context, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
-const ENGINE_SHADER_DIR: &str = "res/shaders/";
-
+use crate::engine::assets::ASSET_DIR;
 use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPool};
 use crate::engine::{
     editor::{EditorStorage, style::style},
@@ -157,7 +156,7 @@ pub fn load_engine_shader_module(
     context: &RenderingContext,
     path: &str,
 ) -> Result<vk::ShaderModule> {
-    let code = std::fs::read(format!("{}{}", ENGINE_SHADER_DIR, path))?;
+    let code = std::fs::read(format!("{}{}", ASSET_DIR, path))?;
     context.create_shader_module(&code)
 }
 
@@ -167,10 +166,14 @@ impl Renderer {
         let mut swapchain = Swapchain::new(context.clone(), window.clone())?;
         swapchain.resize()?;
 
-        let model_vertex_shader = load_engine_shader_module(context.as_ref(), "model_vert.spv")?;
-        let model_fragment_shader = load_engine_shader_module(context.as_ref(), "model_frag.spv")?;
-        let voxel_vertex_shader = load_engine_shader_module(context.as_ref(), "voxel_vert.spv")?;
-        let voxel_fragment_shader = load_engine_shader_module(context.as_ref(), "voxel_frag.spv")?;
+        let model_vertex_shader =
+            load_engine_shader_module(context.as_ref(), "assets/shaders/model_vert.spv")?;
+        let model_fragment_shader =
+            load_engine_shader_module(context.as_ref(), "assets/shaders/model_frag.spv")?;
+        let voxel_vertex_shader =
+            load_engine_shader_module(context.as_ref(), "assets/shaders/voxel_vert.spv")?;
+        let voxel_fragment_shader =
+            load_engine_shader_module(context.as_ref(), "assets/shaders/voxel_frag.spv")?;
 
         unsafe {
             let ubo_binding = vk::DescriptorSetLayoutBinding::default()

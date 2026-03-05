@@ -1,4 +1,5 @@
 use crate as apostasy;
+use crate::engine::assets::ASSET_DIR;
 use std::fs;
 use std::path::Path;
 
@@ -175,9 +176,6 @@ impl InspectValue for ModelRenderer {
     }
 }
 
-const ENGINE_MATERIAL_LOCATION: &str = "res/assets/materials/";
-const _ENGINE_TEXTURE_LOCATION: &str = "res/assets/textures/";
-
 impl Material {
     pub fn albedo_texture(&mut self) -> &mut Option<Texture> {
         &mut self.albedo_color_texture
@@ -204,7 +202,7 @@ impl Material {
     }
 
     pub fn load(name: &str) -> Option<Material> {
-        let path = ENGINE_MATERIAL_LOCATION.to_string() + name + ".yaml";
+        let path = ASSET_DIR.to_string() + name + ".yaml";
         if !Path::new(&path).exists() {
             return None;
         }
@@ -312,9 +310,9 @@ impl Material {
             serde_yaml::to_value(self.emmisive_texture_name.clone()).unwrap(),
         );
 
-        let path = ENGINE_MATERIAL_LOCATION.to_string() + &self.name + ".yaml";
+        let path = ASSET_DIR.to_string() + &self.name + ".yaml";
         if !Path::new(&path).exists() {
-            std::fs::create_dir_all(ENGINE_MATERIAL_LOCATION).unwrap();
+            std::fs::create_dir_all(ASSET_DIR).unwrap();
         }
         std::fs::write(path, serde_yaml::to_string(&output).unwrap()).unwrap();
     }
@@ -485,7 +483,7 @@ pub fn load_models(
     context: &RenderingContext,
     command_pool: vk::CommandPool,
 ) {
-    for entry in fs::read_dir(MODEL_LOCATION).unwrap() {
+    for entry in fs::read_dir(ASSET_DIR).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
 

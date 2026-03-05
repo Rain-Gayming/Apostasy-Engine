@@ -1,4 +1,4 @@
-use crate::{log, log_warn};
+use crate::{engine::assets::ENGINE_SETTINGS_LOCATION, log, log_warn};
 use cgmath::{Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -359,15 +359,15 @@ impl InputManager {
 
     pub fn serialize_input_manager(&self) -> Result<(), std::io::Error> {
         let keybinds = self.serialize_bindings().unwrap();
-        let path = format!("{}/{}.yaml", ENGINE_INPUT_SAVE_PATH, "input_manager");
+        let path = format!("{}/{}.yaml", ENGINE_SETTINGS_LOCATION, "input_manager");
         if !Path::new(&path).exists() {
-            std::fs::create_dir_all(ENGINE_INPUT_SAVE_PATH)?;
+            std::fs::create_dir_all(ENGINE_SETTINGS_LOCATION)?;
         }
         std::fs::write(path, keybinds)
     }
 
     pub fn deserialize_input_manager(&mut self) -> Result<(), std::io::Error> {
-        let path = format!("{}/{}.yaml", ENGINE_INPUT_SAVE_PATH, "input_manager");
+        let path = format!("{}/{}.yaml", ENGINE_SETTINGS_LOCATION, "input_manager");
 
         let contents = std::fs::read_to_string(path)?;
 
@@ -478,5 +478,3 @@ impl InputManager {
         Ok((key_bindings, mouse_bindings))
     }
 }
-
-const ENGINE_INPUT_SAVE_PATH: &str = "res/input";

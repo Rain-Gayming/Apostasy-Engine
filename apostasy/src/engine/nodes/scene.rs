@@ -1,14 +1,18 @@
 use std::path::Path;
 
-use crate::engine::nodes::{
-    ENGINE_SCENE_SAVE_PATH, Node,
-    scene_serialization::{SerializedScene, deserialize_node, serialize_node},
+use crate::engine::{
+    assets::{ASSET_DIR, AssetPath, AssetType},
+    nodes::{
+        Node,
+        scene_serialization::{SerializedScene, deserialize_node, serialize_node},
+    },
 };
 
 pub struct Scene {
     pub name: String,
     pub root_node: Box<Node>,
     pub is_primary: bool,
+    pub path: AssetPath,
 }
 
 impl Default for Scene {
@@ -25,6 +29,12 @@ impl Scene {
             name: "Scene".to_string(),
             root_node: Box::new(root_node),
             is_primary: false,
+            path: AssetPath::new(
+                "res/".to_string(),
+                "Scene".to_string(),
+                "yaml".to_string(),
+                AssetType::Scene,
+            ),
         }
     }
 }
@@ -51,23 +61,36 @@ impl SceneManager {
     }
 
     pub fn load_scenes(&mut self) {
-        let scenes = std::fs::read_dir(ENGINE_SCENE_SAVE_PATH).unwrap();
+        let scenes = std::fs::read_dir(ASSET_DIR).unwrap();
         for scene in scenes {
             let scene = scene.unwrap();
+
+            if scene.file_type().unwrap().is_dir() {
+                continue;
+            }
+
             let name = scene.file_name().into_string().unwrap();
-            let name = name.strip_suffix(".yaml").unwrap().to_string();
+            if !name.ends_with(".yaml") {
+                continue;
+            }
+            let name = name
+                .strip_suffix(".yaml")
+                .expect("Scene file isnt yaml")
+                .to_string();
 
             let scene = self.deserialize_scene(name);
-            self.scenes.push(scene);
+            if let Some(scene) = scene {
+                self.scenes.push(scene);
+            }
         }
     }
 
     pub fn serialize_scenes(&mut self) {
         for scene in self.scenes.iter_mut() {
             println!("Serializing scene: {}", scene.name);
-            let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene.name);
-            if !Path::new(ENGINE_SCENE_SAVE_PATH).exists() {
-                let _ = std::fs::create_dir_all(ENGINE_SCENE_SAVE_PATH);
+            let path = format!("{}/{}.yaml", ASSET_DIR, scene.name);
+            if !Path::new(ASSET_DIR).exists() {
+                let _ = std::fs::create_dir_all(ASSET_DIR);
             }
             let serialized = SerializedScene {
                 root_children: scene
@@ -78,18 +101,32 @@ impl SceneManager {
                     .collect(),
                 name: scene.name.clone(),
                 is_primary: scene.is_primary,
+                asset_path: scene.path.clone(),
             };
             let _ = std::fs::write(path, serde_yaml::to_string(&serialized).unwrap());
         }
     }
 
-    pub fn deserialize_scene(&mut self, scene: String) -> Scene {
-        let path = format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, scene);
+    pub fn deserialize_scene(&mut self, scene: String) -> Option<Scene> {
+        let path = format!("{}/{}.yaml", ASSET_DIR, scene);
+
+        let asset_path = match std::fs::read_to_string(&path) {
+            Ok(c) => AssetPath::new(path.clone(), scene, "yaml".to_string(), AssetType::Scene),
+            Err(err) => {
+                eprintln!("Failed to read scene file {}: {}", path, err);
+                return Some(Scene::new());
+            }
+        };
+
+        if asset_path.asset_type != AssetType::Scene {
+            return None;
+        }
+
         let contents = match std::fs::read_to_string(&path) {
             Ok(c) => c,
             Err(err) => {
                 eprintln!("Failed to read scene file {}: {}", path, err);
-                return Scene::new();
+                return Some(Scene::new());
             }
         };
 
@@ -97,7 +134,7 @@ impl SceneManager {
             Ok(v) => v,
             Err(err) => {
                 eprintln!("Failed to parse scene YAML {}: {}", path, err);
-                return Scene::new();
+                return Some(Scene::new());
             }
         };
 
@@ -105,8 +142,9 @@ impl SceneManager {
 
         // root_children
         if let Some(root_children_value) = value.get("root_children") {
-            let parsed = crate::engine::nodes::scene_serialization::
-                parse_root_children_from_value(root_children_value);
+            let parsed = crate::engine::nodes::scene_serialization::parse_root_children_from_value(
+                root_children_value,
+            );
             scene.root_node.children = parsed.into_iter().map(deserialize_node).collect();
         }
 
@@ -120,16 +158,20 @@ impl SceneManager {
             scene.is_primary = p;
         }
 
-        scene
+        Some(scene)
     }
 
-    pub fn load_scene(&mut self, name: &str) -> Scene {
-        self.deserialize_scene(name.to_string())
+    pub fn load_scene(&mut self, name: &str) -> Option<Scene> {
+        if let Some(_) = self.deserialize_scene(name.to_string()) {
+            self.deserialize_scene(name.to_string())
+        } else {
+            None
+        }
     }
 
     pub fn remove_scene(&mut self, name: &str) {
         self.scenes.retain(|scene| scene.name != name);
-        std::fs::remove_file(format!("{}/{}.yaml", ENGINE_SCENE_SAVE_PATH, name)).unwrap();
+        std::fs::remove_file(format!("{}/{}.yaml", ASSET_DIR, name)).unwrap();
     }
 
     pub fn set_scene_primary(&mut self, name: &str, is_primary: bool) {
