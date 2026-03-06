@@ -1,11 +1,8 @@
 use crate::{
     self as apostasy,
-    engine::{
-        assets::ASSET_DIR,
-        nodes::{
-            scene::SceneManager, scene_serialization::find_registration,
-            system::EditorFixedUpdateSystem,
-        },
+    engine::nodes::{
+        scene::SceneManager, scene_serialization::find_registration,
+        system::EditorFixedUpdateSystem,
     },
     log, log_warn,
 };
@@ -559,53 +556,56 @@ impl World {
     ///     world.serialize_scene();
     /// ```
     pub fn serialize_scene(&mut self) -> Result<(), std::io::Error> {
-        self.check_node_ids();
-        let serialized = SerializedScene {
-            root_children: self
-                .scene
-                .root_node
-                .children
-                .iter()
-                .map(serialize_node)
-                .collect(),
-            name: self.scene.name.clone(),
-            is_primary: self.scene.is_primary,
-            asset_path: self.scene.path.clone(),
-        };
-        let path = format!("{}/{}.yaml", ASSET_DIR, self.scene.name);
-        std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
+        // self.check_node_ids();
+        // let serialized = SerializedScene {
+        //     root_children: self
+        //         .scene
+        //         .root_node
+        //         .children
+        //         .iter()
+        //         .map(serialize_node)
+        //         .collect(),
+        //     name: self.scene.name.clone(),
+        //     is_primary: self.scene.is_primary,
+        //     asset_path: self.scene.path.clone(),
+        // };
+        // let path = format!("{}/{}.yaml", ASSET_DIR, self.scene.name);
+        // std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
+        //
+        Ok(())
     }
 
     /// Deserializes a scene from a file
     pub fn deserialize_scene(&mut self, scene: String) -> Result<(), serde_yaml::Error> {
-        let path = format!("{}/{}.yaml", ASSET_DIR, scene);
-        let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
-        let serialized: SerializedScene = serde_yaml::from_str(&contents)?;
-        self.scene.root_node.children = serialized
-            .root_children
-            .into_iter()
-            .map(deserialize_node)
-            .collect();
-
-        self.check_node_ids();
+        // let path = format!("{}/{}.yaml", ASSET_DIR, scene);
+        // let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
+        // let serialized: SerializedScene = serde_yaml::from_str(&contents)?;
+        // self.scene.root_node.children = serialized
+        //     .root_children
+        //     .into_iter()
+        //     .map(deserialize_node)
+        //     .collect();
+        //
+        // self.check_node_ids();
         Ok(())
     }
 
     /// Serializes a scene that isn't loaded into the engine.
     pub fn serialize_scene_not_loaded(&self, scene: &Scene) -> Result<(), std::io::Error> {
-        let serialized = SerializedScene {
-            root_children: scene
-                .root_node
-                .children
-                .iter()
-                .map(serialize_node)
-                .collect(),
-            name: scene.name.clone(),
-            is_primary: scene.is_primary,
-            asset_path: scene.path.clone(),
-        };
-        let path = format!("{}/{}.yaml", ASSET_DIR, scene.name);
-        std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
+        // let serialized = SerializedScene {
+        //     root_children: scene
+        //         .root_node
+        //         .children
+        //         .iter()
+        //         .map(serialize_node)
+        //         .collect(),
+        //     name: scene.name.clone(),
+        //     is_primary: scene.is_primary,
+        //     asset_path: scene.path.clone(),
+        // };
+        // let path = format!("{}/{}.yaml", ASSET_DIR, scene.name);
+        // std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
+        Ok(())
     }
 
     /// Checks that all node names are unique

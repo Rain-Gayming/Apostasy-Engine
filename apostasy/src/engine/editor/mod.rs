@@ -1,7 +1,6 @@
 use crate::{
     self as apostasy,
     engine::{
-        assets::ASSET_DIR,
         nodes::{Node, scene::Scene},
         rendering::profiler::ProfilerState,
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
@@ -701,111 +700,111 @@ fn render_scene_manager(
             if ui.button("Close").clicked() {
                 editor_storage.is_scene_manager_open = false;
             }
-            ui.collapsing("Add Scene", |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Name:");
-                    ui.text_edit_singleline(&mut editor_storage.scene_name);
-                });
-                ui.add_space(4.0);
-
-                let scene_path = format!("{}/{}.yaml", ASSET_DIR, editor_storage.scene_name);
-                let can_add =
-                    !editor_storage.scene_name.is_empty() && !Path::new(&scene_path).exists();
-
-                ui.add_enabled_ui(can_add, |ui| {
-                    if ui.button("Add Scene").clicked() {
-                        let mut scene = Scene::new();
-                        scene.name = editor_storage.scene_name.clone();
-                        world.serialize_scene_not_loaded(&scene).unwrap();
-                        world.scene_manager.scenes.push(scene);
-                        editor_storage.scene_name.clear();
-                    }
-                });
-            });
-
-            ui.separator();
-            ui.collapsing("Scenes", |ui| {
-                ScrollArea::vertical()
-                    .id_salt("scenes_scroll")
-                    .show(ui, |ui| {
-                        let scene_names: Vec<String> = world
-                            .scene_manager
-                            .scenes
-                            .iter()
-                            .map(|s| s.name.clone())
-                            .collect();
-
-                        for name in scene_names {
-                            ui.horizontal(|ui| {
-                                let mut new_name = name.clone();
-                                ui.text_edit_singleline(&mut new_name);
-                                ui.add_space(4.0);
-
-                                if new_name != name {
-                                    let new_path = format!("{}/{}.yaml", ASSET_DIR, new_name);
-                                    if !Path::new(&new_path).exists() {
-                                        let old_path = format!("{}/{}.yaml", ASSET_DIR, name);
-                                        std::fs::rename(&old_path, &new_path).unwrap();
-
-                                        if let Some(s) = world
-                                            .scene_manager
-                                            .scenes
-                                            .iter_mut()
-                                            .find(|s| s.name == name)
-                                        {
-                                            s.name = new_name.clone();
-                                        }
-                                        if world.scene.name == name {
-                                            world.scene.name = new_name.clone();
-                                        }
-                                        if let Some(s) = world
-                                            .scene_manager
-                                            .scenes
-                                            .iter()
-                                            .find(|s| s.name == new_name)
-                                        {
-                                            world.serialize_scene_not_loaded(s).unwrap();
-                                        }
-                                    }
-                                }
-
-                                let (is_primary, scene_exists) = world
-                                    .scene_manager
-                                    .scenes
-                                    .iter()
-                                    .find(|s| s.name == new_name)
-                                    .map(|s| (s.is_primary, true))
-                                    .unwrap_or((false, false));
-
-                                if scene_exists {
-                                    let mut primary = is_primary;
-                                    if ui.checkbox(&mut primary, "Primary").clicked() {
-                                        world
-                                            .scene_manager
-                                            .set_scene_primary(&new_name, !is_primary);
-                                        if let Some(s) = world
-                                            .scene_manager
-                                            .scenes
-                                            .iter()
-                                            .find(|s| s.name == new_name)
-                                        {
-                                            world.serialize_scene_not_loaded(s).unwrap();
-                                        }
-                                    }
-                                }
-
-                                ui.add_space(4.0);
-                                if ui.button("load").clicked() {
-                                    let scene = world.scene_manager.load_scene(&name);
-                                    world.scene = scene.unwrap();
-                                }
-                                if ui.button("❌").clicked() {
-                                    world.scene_manager.remove_scene(&name);
-                                }
-                            });
-                        }
-                    });
-            });
+            // ui.collapsing("Add Scene", |ui| {
+            //     ui.horizontal(|ui| {
+            //         ui.label("Name:");
+            //         ui.text_edit_singleline(&mut editor_storage.scene_name);
+            //     });
+            //     ui.add_space(4.0);
+            //
+            //     let scene_path = format!("{}/{}.yaml", ASSET_DIR, editor_storage.scene_name);
+            //     let can_add =
+            //         !editor_storage.scene_name.is_empty() && !Path::new(&scene_path).exists();
+            //
+            //     ui.add_enabled_ui(can_add, |ui| {
+            //         if ui.button("Add Scene").clicked() {
+            //             let mut scene = Scene::new();
+            //             scene.name = editor_storage.scene_name.clone();
+            //             world.serialize_scene_not_loaded(&scene).unwrap();
+            //             world.scene_manager.scenes.push(scene);
+            //             editor_storage.scene_name.clear();
+            //         }
+            //     });
+            // });
+            //
+            // ui.separator();
+            // ui.collapsing("Scenes", |ui| {
+            //     ScrollArea::vertical()
+            //         .id_salt("scenes_scroll")
+            //         .show(ui, |ui| {
+            //             let scene_names: Vec<String> = world
+            //                 .scene_manager
+            //                 .scenes
+            //                 .iter()
+            //                 .map(|s| s.name.clone())
+            //                 .collect();
+            //
+            //             for name in scene_names {
+            //                 ui.horizontal(|ui| {
+            //                     let mut new_name = name.clone();
+            //                     ui.text_edit_singleline(&mut new_name);
+            //                     ui.add_space(4.0);
+            //
+            //                     if new_name != name {
+            //                         let new_path = format!("{}/{}.yaml", ASSET_DIR, new_name);
+            //                         if !Path::new(&new_path).exists() {
+            //                             let old_path = format!("{}/{}.yaml", ASSET_DIR, name);
+            //                             std::fs::rename(&old_path, &new_path).unwrap();
+            //
+            //                             if let Some(s) = world
+            //                                 .scene_manager
+            //                                 .scenes
+            //                                 .iter_mut()
+            //                                 .find(|s| s.name == name)
+            //                             {
+            //                                 s.name = new_name.clone();
+            //                             }
+            //                             if world.scene.name == name {
+            //                                 world.scene.name = new_name.clone();
+            //                             }
+            //                             if let Some(s) = world
+            //                                 .scene_manager
+            //                                 .scenes
+            //                                 .iter()
+            //                                 .find(|s| s.name == new_name)
+            //                             {
+            //                                 world.serialize_scene_not_loaded(s).unwrap();
+            //                             }
+            //                         }
+            //                     }
+            //
+            //                     let (is_primary, scene_exists) = world
+            //                         .scene_manager
+            //                         .scenes
+            //                         .iter()
+            //                         .find(|s| s.name == new_name)
+            //                         .map(|s| (s.is_primary, true))
+            //                         .unwrap_or((false, false));
+            //
+            //                     if scene_exists {
+            //                         let mut primary = is_primary;
+            //                         if ui.checkbox(&mut primary, "Primary").clicked() {
+            //                             world
+            //                                 .scene_manager
+            //                                 .set_scene_primary(&new_name, !is_primary);
+            //                             if let Some(s) = world
+            //                                 .scene_manager
+            //                                 .scenes
+            //                                 .iter()
+            //                                 .find(|s| s.name == new_name)
+            //                             {
+            //                                 world.serialize_scene_not_loaded(s).unwrap();
+            //                             }
+            //                         }
+            //                     }
+            //
+            //                     ui.add_space(4.0);
+            //                     if ui.button("load").clicked() {
+            //                         let scene = world.scene_manager.load_scene(&name);
+            //                         world.scene = scene.unwrap();
+            //                     }
+            //                     if ui.button("❌").clicked() {
+            //                         world.scene_manager.remove_scene(&name);
+            //                     }
+            //                 });
+            //             }
+            //         });
+            // });
         });
 }
 

@@ -9,7 +9,6 @@ use egui::{Context, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
-use crate::engine::assets::ASSET_DIR;
 use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPool};
 use crate::engine::{
     editor::{EditorStorage, style::style},
