@@ -1,4 +1,3 @@
-use crate::engine::rendering::models::model::Texture;
 use anyhow::{Result, anyhow};
 use ash::{
     khr::{surface, swapchain},
@@ -7,14 +6,20 @@ use ash::{
         PhysicalDeviceBufferDeviceAddressFeatures, PhysicalDeviceDynamicRenderingFeatures, Queue,
     },
 };
-use std::{collections::HashSet, sync::{Arc, Mutex}};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+};
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
 };
 
 use crate::engine::rendering::{
-    models::vertex::{Vertex, VertexDefinition, VoxelVertex},
+    models::{
+        texture::GpuTexture,
+        vertex::{Vertex, VertexDefinition, VoxelVertex},
+    },
     physical_device::PhysicalDevice,
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
     surface::Surface,
@@ -180,7 +185,7 @@ impl RenderingContext {
         command_pool: vk::CommandPool,
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
-    ) -> std::collections::HashMap<String, Texture> {
+    ) -> std::collections::HashMap<String, GpuTexture> {
         let mut map = std::collections::HashMap::new();
         let path = std::path::Path::new(dir);
         if !path.exists() || !path.is_dir() {
@@ -196,8 +201,17 @@ impl RenderingContext {
                 if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
                     match ext.to_lowercase().as_str() {
                         "png" | "jpg" | "jpeg" | "bmp" | "tga" | "gif" | "webp" => {
-                            if let Some(fname) = p.file_name().and_then(|s| s.to_str()).map(|s| s.to_string()) {
-                                match self.load_texture(&fname, command_pool, descriptor_pool, descriptor_set_layout) {
+                            if let Some(fname) = p
+                                .file_name()
+                                .and_then(|s| s.to_str())
+                                .map(|s| s.to_string())
+                            {
+                                match self.load_texture(
+                                    &fname,
+                                    command_pool,
+                                    descriptor_pool,
+                                    descriptor_set_layout,
+                                ) {
                                     Ok(tex) => {
                                         map.insert(fname.clone(), tex);
                                     }
@@ -256,15 +270,18 @@ impl RenderingContext {
                 return Ok(i);
             }
         }
-        
+
         // Fallback: find any memory type that matches the filter
         for i in 0..self.physical_device.memory_properties.memory_type_count {
             if (filter & (1 << i)) != 0 {
                 return Ok(i);
             }
         }
-        
-        Err(anyhow::anyhow!("Failed to find suitable memory type with filter: {}", filter))
+
+        Err(anyhow::anyhow!(
+            "Failed to find suitable memory type with filter: {}",
+            filter
+        ))
     }
 
     /// Creates a vertex buffer from a slice of vertices
@@ -283,9 +300,12 @@ impl RenderingContext {
         )?;
 
         unsafe {
-            let data_ptr = self
-                .device
-                .map_memory(staging_memory, 0, buffer_size, vk::MemoryMapFlags::empty())? as *mut T;
+            let data_ptr = self.device.map_memory(
+                staging_memory,
+                0,
+                buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )? as *mut T;
             data_ptr.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
             self.device.unmap_memory(staging_memory);
         }
@@ -301,12 +321,10 @@ impl RenderingContext {
 
         let alloc_info = vk::MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
-            .memory_type_index(
-                self.find_memory_type(
-                    mem_requirements.memory_type_bits,
-                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                )?,
-            );
+            .memory_type_index(self.find_memory_type(
+                mem_requirements.memory_type_bits,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            )?);
 
         let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
         unsafe { self.device.bind_buffer_memory(buffer, buffer_memory, 0)? };
@@ -315,7 +333,8 @@ impl RenderingContext {
         let cmd = self.begin_single_time_commands(command_pool);
         unsafe {
             let copy_region = vk::BufferCopy::default().size(buffer_size);
-            self.device.cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
+            self.device
+                .cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
         }
         let queue = self.queues[self.queue_families.transfer as usize];
         self.end_single_time_commands(cmd, queue, command_pool);
@@ -365,9 +384,10 @@ impl RenderingContext {
 
         let alloc_info = vk::MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
-            .memory_type_index(
-                self.find_memory_type(mem_requirements.memory_type_bits, vk::MemoryPropertyFlags::DEVICE_LOCAL)?,
-            );
+            .memory_type_index(self.find_memory_type(
+                mem_requirements.memory_type_bits,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            )?);
 
         let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
         unsafe { self.device.bind_buffer_memory(buffer, buffer_memory, 0)? };
@@ -376,7 +396,8 @@ impl RenderingContext {
         let cmd = self.begin_single_time_commands(command_pool);
         unsafe {
             let copy_region = vk::BufferCopy::default().size(buffer_size);
-            self.device.cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
+            self.device
+                .cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
         }
         let queue = self.queues[self.queue_families.transfer as usize];
         self.end_single_time_commands(cmd, queue, command_pool);
@@ -799,25 +820,36 @@ impl RenderingContext {
         command_pool: vk::CommandPool,
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
-    ) -> Result<Texture> {
+    ) -> Result<GpuTexture> {
         let requested_full = format!("res/assets/textures/{}", path);
         let mut actual_path = requested_full.clone();
         let image = if std::path::Path::new(&requested_full).exists() {
-            image::open(&requested_full).map_err(|e| anyhow!("Failed to load image {}: {}", requested_full, e))?.to_rgba8()
+            image::open(&requested_full)
+                .map_err(|e| anyhow!("Failed to load image {}: {}", requested_full, e))?
+                .to_rgba8()
         } else {
             // try last successfully loaded texture first
             if let Some(last) = &*self.last_working_texture.lock().unwrap() {
                 if std::path::Path::new(last).exists() {
                     actual_path = last.clone();
-                    image::open(last).map_err(|e| anyhow!("Failed to load last working image {}: {}", last, e))?.to_rgba8()
+                    image::open(last)
+                        .map_err(|e| anyhow!("Failed to load last working image {}: {}", last, e))?
+                        .to_rgba8()
                 } else {
                     // fallback to temp.png
                     let fallback = "res/assets/textures/temp.png";
                     if std::path::Path::new(fallback).exists() {
                         actual_path = fallback.to_string();
-                        image::open(fallback).map_err(|e| anyhow!("Failed to load fallback image {}: {}", fallback, e))?.to_rgba8()
+                        image::open(fallback)
+                            .map_err(|e| {
+                                anyhow!("Failed to load fallback image {}: {}", fallback, e)
+                            })?
+                            .to_rgba8()
                     } else {
-                        return Err(anyhow!("Texture {} not found and no fallback available", requested_full));
+                        return Err(anyhow!(
+                            "Texture {} not found and no fallback available",
+                            requested_full
+                        ));
                     }
                 }
             } else {
@@ -825,9 +857,14 @@ impl RenderingContext {
                 let fallback = "res/assets/textures/temp.png";
                 if std::path::Path::new(fallback).exists() {
                     actual_path = fallback.to_string();
-                    image::open(fallback).map_err(|e| anyhow!("Failed to load fallback image {}: {}", fallback, e))?.to_rgba8()
+                    image::open(fallback)
+                        .map_err(|e| anyhow!("Failed to load fallback image {}: {}", fallback, e))?
+                        .to_rgba8()
                 } else {
-                    return Err(anyhow!("Texture {} not found and no fallback available", requested_full));
+                    return Err(anyhow!(
+                        "Texture {} not found and no fallback available",
+                        requested_full
+                    ));
                 }
             }
         };
@@ -958,12 +995,13 @@ impl RenderingContext {
             sampler,
         );
 
-        Ok(Texture {
+        Ok(GpuTexture {
             image: vk_image,
             image_view,
             memory: image_memory,
             sampler,
             descriptor_set,
+            name: path.to_string(),
         })
     }
 

@@ -30,9 +30,6 @@ pub fn player_movement(world: &mut World, delta_time: f32) {
         .input_manager
         .input_vector_3d("right", "left", "up", "down", "backward", "forward");
 
-    let _children = world.get_all_nodes();
-    let _nodes = world.get_all_nodes();
-
     let player = world.get_node_with_component_mut::<Player>();
     let camera = world.get_node_with_component_mut::<Camera>();
 
@@ -60,7 +57,6 @@ pub fn player_movement(world: &mut World, delta_time: f32) {
         }
 
         // physics.is_gravity_enabled = !is_grounded;
-
         velocity.add_velocity(direction * delta_time);
 
         velocity.direction *= delta_time;

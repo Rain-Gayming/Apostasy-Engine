@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_yaml;
 
 use super::Node;
-use crate::engine::{assets::AssetPath, nodes::component::Component};
+use crate::engine::nodes::component::Component;
 use serde_yaml::Value;
 
 #[derive(Serialize, Deserialize)]
@@ -28,7 +28,6 @@ pub struct SerializedScene {
     pub root_children: Vec<SerializedNode>,
     pub name: String,
     pub is_primary: bool,
-    pub asset_path: AssetPath,
 }
 
 /// A component registrator, used to serialize and deserialize components

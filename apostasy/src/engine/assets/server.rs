@@ -200,7 +200,6 @@ impl AssetServer {
         let (full_path, loader_arc) = {
             let inner = self.inner.read().unwrap();
             let full_path = inner.root.join(path.as_ref());
-
             let ext = full_path
                 .extension()
                 .and_then(|e| e.to_str())
@@ -215,12 +214,10 @@ impl AssetServer {
                 })?;
 
             (full_path, Arc::clone(&inner.loaders[idx]))
-        }; // ← read lock released here
+        };
 
-        // Step 2 — run the loader with no lock held at all.
         let outcome = loader_arc.load_erased(&full_path);
 
-        // Step 3 — commit the outcome under a fresh write lock.
         let id = {
             let mut inner = self.inner.write().unwrap();
             match outcome {
@@ -233,12 +230,13 @@ impl AssetServer {
                     message,
                     mark_failed,
                 } => {
+                    println!("marking failed");
+                    println!("{}", message);
                     mark_failed(&mut inner, id, message.clone());
                     return Err(AssetLoadError::other(message));
                 }
             }
         };
-
         Ok(Handle::with_id(id))
     }
 
@@ -306,20 +304,28 @@ impl AssetServer {
         &self,
         handle: Handle<T>,
     ) -> Option<impl std::ops::DerefMut<Target = T> + '_> {
-        let inner = self.inner.write().unwrap();
-        // Verify the asset exists before returning the guard
-        let exists = inner
-            .typed_storage::<T>()
-            .map(|s| s.assets.contains_key(&handle.id))
-            .unwrap_or(false);
-        if !exists {
-            return None;
+        {
+            let inner = self.inner.write().unwrap();
+
+            let exists = inner
+                .typed_storage::<T>()
+                .map(|s| s.assets.contains_key(&handle.id))
+                .unwrap_or(false);
+            if !exists {
+                return None;
+            }
         }
+
         Some(AssetMutRef {
             _guard: self.inner.write().unwrap(),
             id: handle.id,
             _marker: std::marker::PhantomData::<T>,
         })
+    }
+
+    pub fn get_cloned<T: Asset + Clone>(&self, handle: Handle<T>) -> Option<T> {
+        let inner = self.inner.read().unwrap();
+        inner.typed_storage::<T>()?.assets.get(&handle.id).cloned()
     }
 
     pub fn load_state<T: Asset>(&self, handle: Handle<T>) -> AssetLoadState {

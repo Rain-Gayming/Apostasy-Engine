@@ -32,9 +32,13 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
             fn type_name(&self) -> &'static str {
                 #type_name_str
             }
-            fn inspect(&mut self, ui: &mut egui::Ui) -> bool {
-        apostasy::engine::editor::inspectable::Inspectable::inspect(self, ui)
-    }
+            fn inspect(
+                &mut self,
+                ui: &mut egui::Ui,
+                editor_storage: &mut apostasy::engine::editor::EditorStorage,
+            ) -> bool {
+                apostasy::engine::editor::inspectable::Inspectable::inspect(self, ui, editor_storage)
+            }
         }
     };
     output.into()
@@ -361,7 +365,7 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
             quote! {
                 ui.horizontal(|ui| {
                     ui.label(#field_label);
-                    apostasy::engine::editor::inspectable::InspectValue::inspect_value(&mut self.#field_name, ui);
+                    apostasy::engine::editor::inspectable::InspectValue::inspect_value(&mut self.#field_name, ui, editor_storage);
                 });
             }
         })
@@ -369,7 +373,11 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl apostasy::engine::editor::inspectable::Inspectable for #name {
-            fn inspect(&mut self, ui: &mut egui::Ui) -> bool {
+            fn inspect(
+                &mut self,
+                ui: &mut egui::Ui,
+                editor_storage: &mut apostasy::engine::editor::EditorStorage,
+            ) -> bool {
                 let mut remove = false;
                 ui.horizontal(|ui| {
                     if ui.small_button("✕").clicked() {
@@ -398,8 +406,12 @@ pub fn inspect_value_derive(input: TokenStream) -> TokenStream {
     let expanded = quote! {
 
         impl apostasy::engine::editor::inspectable::InspectValue for #name {
-            fn inspect_value(&mut self, ui: &mut egui::Ui) {
-                self.inspect(ui);
+            fn inspect_value(
+                &mut self,
+                ui: &mut egui::Ui,
+                editor_storage: &mut apostasy::engine::editor::EditorStorage,
+            ) {
+                self.inspect(ui, editor_storage);
             }
         }
     };

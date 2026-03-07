@@ -1,9 +1,4 @@
-use std::path::Path;
-
-use crate::engine::nodes::{
-    Node,
-    scene_serialization::{SerializedScene, deserialize_node, serialize_node},
-};
+use crate::engine::nodes::Node;
 
 pub struct Scene {
     pub name: String,

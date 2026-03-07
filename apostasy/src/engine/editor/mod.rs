@@ -1,19 +1,23 @@
 use crate::{
     self as apostasy,
     engine::{
-        nodes::{Node, scene::Scene},
+        assets::server::AssetServer,
+        nodes::Node,
         rendering::profiler::ProfilerState,
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
 };
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock},
+};
 
 use crate::engine::editor::console_commands::render_console_ui;
-use crate::{engine::nodes::World, log};
+use crate::engine::nodes::World;
 use apostasy_macros::editor_ui;
 use egui::{
-    Align2, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
-    TopBottomPanel, Ui, Vec2, Window, pos2,
+    Align2, Button, Color32, Context, FontFamily, FontId, RichText, ScrollArea, SelectableLabel,
+    Sense, Stroke, TopBottomPanel, Ui, Vec2, Window, pos2,
 };
 use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
 use serde::{Deserialize, Serialize};
@@ -51,6 +55,8 @@ pub struct EditorStorage {
     // file tree
     pub file_tree_search: String,
     pub file_tree: Option<FileNode>,
+    pub selected_tree_node: Option<String>,
+    pub file_dragging: bool,
 
     // console
     pub is_console_open: bool,
@@ -86,6 +92,7 @@ pub struct EditorStorage {
 
     pub dock_state: DockState<EditorTab>,
     pub profiler: ProfilerState,
+    pub asset_server: Arc<RwLock<AssetServer>>,
 }
 
 pub enum DragTarget {
@@ -108,13 +115,15 @@ fn default_dock_state() -> DockState<EditorTab> {
     state
 }
 
-impl Default for EditorStorage {
-    fn default() -> Self {
+impl EditorStorage {
+    pub fn default(asset_server: Arc<RwLock<AssetServer>>) -> Self {
         Self {
             component_text_edit: String::new(),
 
             file_tree_search: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
+            selected_tree_node: None,
+            file_dragging: false,
 
             is_editor_open: true,
 
@@ -146,10 +155,12 @@ impl Default for EditorStorage {
 
             dock_state: default_dock_state(),
             profiler: ProfilerState::default(),
+            asset_server,
         }
     }
 }
 
+#[derive(Clone)]
 pub struct FileNode {
     pub name: String,
     pub path: PathBuf,
@@ -561,7 +572,7 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
                 let mut to_remove: Option<usize> = None;
 
                 for (i, component) in node.components.iter_mut().enumerate() {
-                    if component.inspect(ui) {
+                    if component.inspect(ui, editor_storage) {
                         to_remove = Some(i);
                     }
                 }
@@ -593,20 +604,30 @@ pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage
             ui.text_edit_singleline(&mut editor_storage.file_tree_search);
             ui.separator();
 
-            if let Some(tree) = &editor_storage.file_tree {
-                if editor_storage.file_tree_search.is_empty() {
-                    render_file_tree(ui, tree, 0, editor_storage.file_tree_search.clone());
-                } else {
-                    let files = get_all_files(&tree.path);
-                    let search = editor_storage.file_tree_search.to_lowercase();
-                    for file in files {
-                        if file.name.to_lowercase().contains(&search) {
-                            render_file_tree(ui, &file, 0, editor_storage.file_tree_search.clone());
-                        }
+            let tree = editor_storage.file_tree.clone().unwrap();
+
+            if editor_storage.file_tree_search.is_empty() {
+                render_file_tree(
+                    ui,
+                    &tree,
+                    0,
+                    editor_storage.file_tree_search.clone(),
+                    editor_storage,
+                );
+            } else {
+                let files = get_all_files(&tree.path);
+                let search = editor_storage.file_tree_search.to_lowercase();
+                for file in files {
+                    if file.name.to_lowercase().contains(&search) {
+                        render_file_tree(
+                            ui,
+                            &file,
+                            0,
+                            editor_storage.file_tree_search.clone(),
+                            editor_storage,
+                        );
                     }
                 }
-            } else {
-                ui.label(RichText::new("res/ not found").color(Color32::from_rgb(200, 80, 80)));
             }
 
             ui.allocate_space(ui.available_size());
@@ -628,7 +649,13 @@ fn get_all_files(path: &Path) -> Vec<FileNode> {
     files
 }
 
-fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize, search: String) {
+fn render_file_tree(
+    ui: &mut Ui,
+    node: &FileNode,
+    depth: usize,
+    search: String,
+    editor_storage: &mut EditorStorage,
+) {
     let indent = depth as f32 * 12.0;
     let search_lc = search.to_lowercase();
     let name_lc = node.name.to_lowercase();
@@ -660,7 +687,7 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize, search: String) 
             .show(ui, |ui| {
                 ui.add_space(2.0);
                 for child in &node.children {
-                    render_file_tree(ui, child, depth + 1, search.clone());
+                    render_file_tree(ui, child, depth + 1, search.clone(), editor_storage);
                 }
             });
     } else if search_lc.is_empty() || name_lc.contains(&search_lc) {
@@ -676,11 +703,33 @@ fn render_file_tree(ui: &mut Ui, node: &FileNode, depth: usize, search: String) 
                 "wav" | "mp3" | "ogg" => "🔊",
                 _ => "📃",
             };
-            let label = ui.selectable_label(false, format!("{} {}", icon, node.name));
-            if label.double_clicked() {
-                log!("Open: {:?}", node.path);
+
+            let formatted_name = format!("{} {}", icon, node.name);
+            let response = ui.add(Button::new(formatted_name.clone()).sense(Sense::drag()));
+
+            if response.drag_started() {
+                editor_storage.selected_tree_node = Some(node.path.to_str().unwrap().to_string());
+                println!("selected: {}", node.path.to_str().unwrap());
+                editor_storage.file_dragging = true;
+            } else if response.drag_stopped() {
+                editor_storage.selected_tree_node = None;
+                editor_storage.file_dragging = false;
             }
-            label.on_hover_text(node.path.to_string_lossy());
+
+            if response.dragged() {
+                egui::Tooltip::always_open(
+                    ui.ctx().clone(),
+                    ui.layer_id(),
+                    egui::Id::new("file_drag_tooltip"),
+                    response.rect,
+                )
+                .at_pointer()
+                .show(|ui| {
+                    ui.label(formatted_name);
+                });
+            }
+
+            response.on_hover_text(node.path.to_string_lossy());
         });
     }
 }

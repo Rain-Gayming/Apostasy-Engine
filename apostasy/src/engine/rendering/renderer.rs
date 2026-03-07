@@ -1,4 +1,5 @@
-use std::collections::HashMap as StdHashMap;
+use std::mem::transmute;
+use std::sync::RwLock;
 use std::time::Instant;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -9,6 +10,13 @@ use egui::{Context, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
 
+use crate::engine::assets::handle::Handle;
+use crate::engine::assets::server::AssetServer;
+use crate::engine::rendering::models::gltf_loader::GltfLoader;
+use crate::engine::rendering::models::material::MaterialAsset;
+use crate::engine::rendering::models::model::GpuModel;
+use crate::engine::rendering::models::shader::ShaderSpirv;
+use crate::engine::rendering::models::texture::{GpuTexture, GpuTextureLoader};
 use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPool};
 use crate::engine::{
     editor::{EditorStorage, style::style},
@@ -22,7 +30,7 @@ use crate::engine::{
         system::EditorUIFunction,
     },
     rendering::{
-        models::model::{Material, ModelLoader, ModelRenderer},
+        models::model::ModelRenderer,
         rendering_context::{ImageLayoutState, RenderingContext},
         swapchain::Swapchain,
     },
@@ -124,16 +132,14 @@ pub struct Renderer {
     pub frames: Vec<Frame>,
     pub command_pool: vk::CommandPool,
     pub transfer_command_pool: vk::CommandPool,
-    pub model_pipeline: vk::Pipeline,
     pub voxel_pipeline: vk::Pipeline,
+    pub model_pipeline: vk::Pipeline,
     pub pipeline_layout: vk::PipelineLayout,
     pub swapchain: Swapchain,
     pub context: Arc<RenderingContext>,
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
     pub egui_renderer: EguiRenderer,
-    pub preloaded_textures: StdHashMap<String, crate::engine::rendering::models::model::Texture>,
-    pub pending_texture_destroys: Vec<crate::engine::rendering::models::model::Texture>,
     pub default_descriptor_set: vk::DescriptorSet,
     pub default_ubo: vk::Buffer,
     pub default_ubo_memory: vk::DeviceMemory,
@@ -151,28 +157,39 @@ pub struct Renderer {
     pub present_image_state: ImageLayoutState,
 }
 
-pub fn load_engine_shader_module(
-    context: &RenderingContext,
-    path: &str,
-) -> Result<vk::ShaderModule> {
-    let code = std::fs::read(format!("{}{}", ASSET_DIR, path))?;
-    context.create_shader_module(&code)
-}
-
 impl Renderer {
     #[allow(unnecessary_transmutes)]
-    pub fn new(context: Arc<RenderingContext>, window: Arc<Window>) -> Result<Self> {
+    pub fn new(
+        context: Arc<RenderingContext>,
+        window: Arc<Window>,
+        asset_server: &mut Arc<RwLock<AssetServer>>,
+    ) -> Result<Self> {
         let mut swapchain = Swapchain::new(context.clone(), window.clone())?;
         swapchain.resize()?;
 
-        let model_vertex_shader =
-            load_engine_shader_module(context.as_ref(), "assets/shaders/model_vert.spv")?;
-        let model_fragment_shader =
-            load_engine_shader_module(context.as_ref(), "assets/shaders/model_frag.spv")?;
-        let voxel_vertex_shader =
-            load_engine_shader_module(context.as_ref(), "assets/shaders/voxel_vert.spv")?;
-        let voxel_fragment_shader =
-            load_engine_shader_module(context.as_ref(), "assets/shaders/voxel_frag.spv")?;
+        let mut asset_server = asset_server.write().unwrap();
+
+        let mvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_vert.spv")?;
+        let mfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_frag.spv")?;
+        let vvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/voxel_vert.spv")?;
+        let vfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/voxel_frag.spv")?;
+
+        let model_vertex_shader = asset_server
+            .get(mvs_handle)
+            .unwrap()
+            .create_module(&context.device)?;
+        let model_fragment_shader = asset_server
+            .get(mfs_handle)
+            .unwrap()
+            .create_module(&context.device)?;
+        let voxel_vertex_shader = asset_server
+            .get(vvs_handle)
+            .unwrap()
+            .create_module(&context.device)?;
+        let voxel_fragment_shader = asset_server
+            .get(vfs_handle)
+            .unwrap()
+            .create_module(&context.device)?;
 
         unsafe {
             let ubo_binding = vk::DescriptorSetLayoutBinding::default()
@@ -378,6 +395,14 @@ impl Renderer {
                 queue_family_index: vk::QUEUE_FAMILY_IGNORED,
             };
 
+            asset_server.register_loader(GltfLoader::new(context.clone(), command_pool));
+            asset_server.register_loader(GpuTextureLoader::new(
+                context.clone(),
+                command_pool,
+                descriptor_pool,
+                descriptor_set_layout,
+            ));
+
             Ok(Self {
                 frame_index: 0,
                 frames,
@@ -390,8 +415,6 @@ impl Renderer {
                 descriptor_pool,
                 descriptor_set_layout,
                 egui_renderer,
-                preloaded_textures: preloaded,
-                pending_texture_destroys: Vec::new(),
                 transfer_command_pool,
                 default_descriptor_set,
                 default_ubo,
@@ -412,7 +435,7 @@ impl Renderer {
     pub fn render(
         &mut self,
         world: &mut World,
-        model_loader: &mut ModelLoader,
+        asset_server: &Arc<RwLock<AssetServer>>,
         is_editor: bool,
     ) -> Result<()> {
         //CPU: whole-frame wall clock
@@ -427,21 +450,6 @@ impl Renderer {
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
             self.cpu_profiler.end(); // Fence Wait
-
-            if !self.pending_texture_destroys.is_empty() {
-                for old_tex in self.pending_texture_destroys.drain(..) {
-                    let _ = self
-                        .context
-                        .device
-                        .free_descriptor_sets(self.descriptor_pool, &[old_tex.descriptor_set]);
-                    self.context
-                        .device
-                        .destroy_image_view(old_tex.image_view, None);
-                    self.context.device.destroy_image(old_tex.image, None);
-                    self.context.device.free_memory(old_tex.memory, None);
-                    self.context.device.destroy_sampler(old_tex.sampler, None);
-                }
-            }
 
             self.context.device.reset_fences(&[frame.in_flight_fence])?;
             self.context
@@ -590,8 +598,8 @@ impl Renderer {
                 let projection = get_perspective_projection(camera, aspect);
                 let mvp = projection * view * model;
 
-                let mvp_bytes: [u8; 64] = std::mem::transmute(mvp);
-                let model_bytes: [u8; 64] = std::mem::transmute(model);
+                let mvp_bytes: [u8; 64] = transmute(mvp);
+                let model_bytes: [u8; 64] = transmute(model);
                 let mut push_constants = [0u8; 256];
                 push_constants[0..64].copy_from_slice(&mvp_bytes);
                 push_constants[64..128].copy_from_slice(&model_bytes);
@@ -623,7 +631,7 @@ impl Renderer {
                             transform.global_position.z,
                             0.0f32,
                         ];
-                        let offset_bytes: [u8; 16] = std::mem::transmute(offset);
+                        let offset_bytes: [u8; 16] = transmute(offset);
                         push_constants[128..144].copy_from_slice(&offset_bytes);
 
                         let rotation = [
@@ -632,7 +640,7 @@ impl Renderer {
                             transform.global_rotation.v.z,
                             transform.global_rotation.s,
                         ];
-                        let rotation_bytes: [u8; 16] = std::mem::transmute(rotation);
+                        let rotation_bytes: [u8; 16] = transmute(rotation);
                         push_constants[144..160].copy_from_slice(&rotation_bytes);
 
                         let scale = [
@@ -641,122 +649,157 @@ impl Renderer {
                             transform.global_scale.z,
                             0.0f32,
                         ];
-                        let scale_bytes: [u8; 16] = std::mem::transmute(scale);
+                        let scale_bytes: [u8; 16] = transmute(scale);
                         push_constants[160..176].copy_from_slice(&scale_bytes);
 
-                        let mut model_name = model_renderer.loaded_model.clone();
-                        model_name.push_str(".glb");
-                        let model = model_loader.get_model(&model_name);
+                        let model_name = model_renderer.loaded_model.clone();
 
-                        if let Some(model) = model {
+                        let model: Option<Handle<GpuModel>>;
+                        // if let Some(model) = model_renderer.model_handle {
+                        //     model = Some(model);
+                        // } else {
+                        //     let model_handle: Handle<GpuModel> = asset_server.load(model_name)?;
+                        //     let model = asset_server.get(model_handle).unwrap().clone();
+                        //     model_renderer.model_handle = Some(model_handle);
+                        //     model = Some(model);
+                        // }
+
+                        {
+                            let asset_server = asset_server.write().unwrap();
+                            if model_renderer.model_handle.is_some() {
+                                model = model_renderer.model_handle;
+                            } else {
+                                let model_handle: Handle<GpuModel> =
+                                    asset_server.load(model_name)?;
+                                model_renderer.model_handle = Some(model_handle);
+                                model = Some(model_handle);
+                            }
+
+                            let model = model.unwrap();
+                            let model = asset_server.get(model).unwrap().clone();
                             for mesh in model.meshes.clone() {
-                                let material_to_use: Option<&mut Material> =
-                                    if model_renderer.material.is_some() {
-                                        model_renderer.material.as_mut()
-                                    } else {
-                                        if model_loader.get_material(&mesh.material).is_none() {
-                                            if let Some(loaded) = Material::load(&mesh.material) {
-                                                model_loader
-                                                    .materials
-                                                    .insert(mesh.material.clone(), loaded);
-                                            } else {
-                                                model_loader.materials.insert(
-                                                    mesh.material.clone(),
-                                                    Material::default(),
-                                                );
+                                let mat_handle: Handle<MaterialAsset> =
+                                    if let Some(ref mat) = model_renderer.material {
+                                        match model_renderer.material_handle {
+                                            Some(h) => h,
+                                            None => {
+                                                let h = asset_server.insert(mat.clone());
+                                                model_renderer.material_handle = Some(h);
+                                                h
                                             }
                                         }
-                                        model_loader.get_material_mut(&mesh.material)
+                                    } else {
+                                        if let Some(&h) = model_renderer
+                                            .mesh_material_handles
+                                            .get(&mesh.material_name)
+                                        {
+                                            h
+                                        } else {
+                                            let h = asset_server
+                                                .load_cached::<MaterialAsset>(&format!(
+                                                    "{}.yaml",
+                                                    mesh.material_name
+                                                ))
+                                                .unwrap_or_else(|_| {
+                                                    asset_server.insert(MaterialAsset::default())
+                                                });
+                                            model_renderer
+                                                .mesh_material_handles
+                                                .insert(mesh.material_name.clone(), h);
+                                            h
+                                        }
                                     };
 
-                                if let Some(material) = material_to_use {
-                                    let desired_name = material.albedo_texture_name.clone();
-                                    let loaded_name = material.albedo_texture_loaded_name.clone();
+                                let needs_resolve = asset_server
+                                    .get_cloned::<MaterialAsset>(mat_handle)
+                                    .map(|m| !m.textures_resolved)
+                                    .unwrap_or(false);
 
-                                    if desired_name.is_some()
-                                        && (desired_name != loaded_name
-                                            || material.albedo_texture().is_none())
-                                    {
-                                        if let Some(old_tex) = material.take_albedo_texture() {
-                                            self.pending_texture_destroys.push(old_tex);
-                                        }
-                                        if let Some(ref texture_name) = desired_name {
-                                            if let Some(pre) =
-                                                self.preloaded_textures.get(texture_name)
-                                            {
-                                                material.set_albedo_texture(pre.clone());
-                                                material.albedo_texture_loaded_name =
-                                                    Some(texture_name.clone());
-                                            } else if let Ok(texture) = self.context.load_texture(
-                                                texture_name,
-                                                self.command_pool,
-                                                self.descriptor_pool,
-                                                self.descriptor_set_layout,
-                                            ) {
-                                                material.set_albedo_texture(texture);
-                                                material.albedo_texture_loaded_name =
-                                                    Some(texture_name.clone());
-                                            }
-                                        }
-                                    }
+                                if needs_resolve {
+                                    let (
+                                        albedo_name,
+                                        metallic_name,
+                                        roughness_name,
+                                        normal_name,
+                                        emissive_name,
+                                    ) = {
+                                        let mat = asset_server
+                                            .get_cloned::<MaterialAsset>(mat_handle)
+                                            .unwrap();
+                                        (
+                                            mat.albedo_texture_name.clone(),
+                                            mat.metallic_texture_name.clone(),
+                                            mat.roughness_texture_name.clone(),
+                                            mat.normal_texture_name.clone(),
+                                            mat.emissive_texture_name.clone(),
+                                        )
+                                    };
 
-                                    if let &mut Some(ref texture) = material.albedo_texture() {
-                                        device.cmd_bind_descriptor_sets(
-                                            command_buffer,
-                                            vk::PipelineBindPoint::GRAPHICS,
-                                            pipeline_layout,
-                                            0,
-                                            &[texture.descriptor_set],
-                                            &[],
-                                        );
-                                    } else {
-                                        device.cmd_bind_descriptor_sets(
-                                            command_buffer,
-                                            vk::PipelineBindPoint::GRAPHICS,
-                                            pipeline_layout,
-                                            0,
-                                            &[self.default_descriptor_set],
-                                            &[],
-                                        );
-                                    }
+                                    println!("getting textures");
+                                    let albedo_h = resolve_texture(&albedo_name, &asset_server);
+                                    let metallic_h = resolve_texture(&metallic_name, &asset_server);
+                                    let roughness_h =
+                                        resolve_texture(&roughness_name, &asset_server);
+                                    let normal_h = resolve_texture(&normal_name, &asset_server);
+                                    let emissive_h = resolve_texture(&emissive_name, &asset_server);
 
-                                    let base_bytes: [u8; 16] =
-                                        std::mem::transmute(material.base_color);
-                                    push_constants[176..192].copy_from_slice(&base_bytes);
-                                    #[allow(unnecessary_transmutes)]
-                                    let metallic_bytes: [u8;
-                                        4] = std::mem::transmute(material.metallic);
-                                    push_constants[192..196].copy_from_slice(&metallic_bytes);
-                                    #[allow(unnecessary_transmutes)]
-                                    let roughness_bytes: [u8;
-                                        4] = std::mem::transmute(material.roughness);
-                                    push_constants[196..200].copy_from_slice(&roughness_bytes);
-                                    let emissive_bytes: [u8; 12] =
-                                        std::mem::transmute(material.emissive);
-                                    push_constants[208..220].copy_from_slice(&emissive_bytes);
-                                    push_constants[220..224].copy_from_slice(&[0u8; 4]);
-
-                                    if let (Some(light), Some(lt)) = (&light, &light_transform) {
-                                        let light_pos = [
-                                            lt.global_position.x,
-                                            lt.global_position.y,
-                                            lt.global_position.z,
-                                            light.strength,
-                                        ];
-                                        let light_pos_bytes: [u8; 16] =
-                                            std::mem::transmute(light_pos);
-                                        push_constants[224..240].copy_from_slice(&light_pos_bytes);
-                                    }
-
-                                    device.cmd_push_constants(
-                                        command_buffer,
-                                        pipeline_layout,
-                                        vk::ShaderStageFlags::VERTEX
-                                            | vk::ShaderStageFlags::FRAGMENT,
-                                        0,
-                                        &push_constants,
-                                    );
+                                    let mut mat = asset_server.get_mut(mat_handle).unwrap();
+                                    mat.albedo_handle = albedo_h;
+                                    mat.metallic_handle = metallic_h;
+                                    mat.roughness_handle = roughness_h;
+                                    mat.normal_handle = normal_h;
+                                    mat.emissive_handle = emissive_h;
+                                    mat.textures_resolved = true;
                                 }
+
+                                let mat = asset_server
+                                    .get_cloned::<MaterialAsset>(mat_handle)
+                                    .unwrap();
+
+                                let descriptor_set = mat
+                                    .albedo_handle
+                                    .and_then(|h| asset_server.get_cloned::<GpuTexture>(h))
+                                    .map(|tex| tex.descriptor_set)
+                                    .unwrap_or(self.default_descriptor_set);
+
+                                device.cmd_bind_descriptor_sets(
+                                    command_buffer,
+                                    vk::PipelineBindPoint::GRAPHICS,
+                                    pipeline_layout,
+                                    0,
+                                    &[descriptor_set],
+                                    &[],
+                                );
+
+                                let base_bytes: [u8; 16] = transmute(mat.base_color);
+                                let metallic_bytes: [u8; 4] = f32::to_ne_bytes(mat.metallic);
+                                let roughness_bytes: [u8; 4] = f32::to_ne_bytes(mat.roughness);
+                                let emissive_bytes: [u8; 12] = transmute(mat.emissive);
+
+                                push_constants[176..192].copy_from_slice(&base_bytes);
+                                push_constants[192..196].copy_from_slice(&metallic_bytes);
+                                push_constants[196..200].copy_from_slice(&roughness_bytes);
+                                push_constants[208..220].copy_from_slice(&emissive_bytes);
+                                push_constants[220..224].copy_from_slice(&[0u8; 4]);
+
+                                if let (Some(light), Some(lt)) = (&light, &light_transform) {
+                                    let light_pos = [
+                                        lt.global_position.x,
+                                        lt.global_position.y,
+                                        lt.global_position.z,
+                                        light.strength,
+                                    ];
+                                    let light_pos_bytes: [u8; 16] = transmute(light_pos);
+                                    push_constants[224..240].copy_from_slice(&light_pos_bytes);
+                                }
+
+                                device.cmd_push_constants(
+                                    command_buffer,
+                                    pipeline_layout,
+                                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                                    0,
+                                    &push_constants,
+                                );
 
                                 device.cmd_bind_vertex_buffers(
                                     command_buffer,
@@ -978,4 +1021,17 @@ impl Drop for Renderer {
                 .destroy_pipeline_layout(self.pipeline_layout, None);
         }
     }
+}
+fn resolve_texture(name: &Option<String>, server: &AssetServer) -> Option<Handle<GpuTexture>> {
+    let name = name.as_ref()?;
+
+    let exists = std::path::Path::new(name).exists()
+        || std::path::Path::new(&format!("{}{}", "res/assets/textures/", name)).exists()
+        || std::path::Path::new(&format!("{}textures/{}", "res/assets/textures", name)).exists();
+
+    if !exists {
+        return None;
+    }
+
+    server.load_cached::<GpuTexture>(name).ok()
 }

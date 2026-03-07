@@ -1,5 +1,5 @@
-use crate::{self as apostasy, engine::nodes::components::transform::Transform};
 use crate::engine::editor::inspectable::Inspectable;
+use crate::{self as apostasy, engine::nodes::components::transform::Transform};
 use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
 use cgmath::Vector3;
 use serde::{Deserialize, Serialize};

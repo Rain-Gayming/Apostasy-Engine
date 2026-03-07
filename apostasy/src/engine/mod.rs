@@ -1,9 +1,11 @@
 use crate::{
     self as apostasy,
     engine::{
+        assets::server::AssetServer,
         nodes::components::{
             camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
         },
+        rendering::models::{model::ModelRenderer, shader::ShaderLoader},
         windowing::cursor_manager::CursorManager,
     },
 };
@@ -11,7 +13,10 @@ use anyhow::Result;
 use apostasy_macros::{editor_fixed_update, editor_ui};
 use cgmath::{Vector2, Vector3, Zero, num_traits::clamp};
 use egui::Context;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId},
@@ -33,7 +38,6 @@ use crate::engine::{
         components::velocity::{Velocity, apply_velocity},
     },
     rendering::{
-        models::model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -110,7 +114,7 @@ pub struct Engine {
     pub timer: EngineTimer,
     pub world: World,
     pub editor: EditorStorage,
-    pub model_loader: ModelLoader,
+    pub asset_server: Arc<RwLock<AssetServer>>,
     pending_windows: Vec<(WindowId, Arc<Window>)>,
     renderers_initialized: bool,
 }
@@ -153,16 +157,24 @@ impl Engine {
         events_node.add_component(CollisionEvents::new());
         world.add_global_node(events_node);
 
+        let mut dev_cube = Node::new();
+        dev_cube.name = "dev_cube".to_string();
+        dev_cube.add_component(Transform::default());
+        dev_cube.add_component(ModelRenderer::default());
+        world.add_node(dev_cube);
+
         let window_manager = WindowManager {
             windows,
             primary_window_id,
         };
 
-        let model_loader = ModelLoader::default();
-        let editor = EditorStorage::default();
+        let mut asset_server = Arc::new(RwLock::new(AssetServer::new("res/")));
+        {
+            let mut asset_server = asset_server.write().unwrap();
+            asset_server.register_loader(ShaderLoader);
+        }
 
-        // Model loading requires GPU resources (buffers). Defer loading until
-        // after a renderer (and its command pool) has been created.
+        let editor = EditorStorage::default(asset_server.clone());
 
         let pending_windows = vec![(primary_window_id, primary_window.clone())];
 
@@ -173,7 +185,7 @@ impl Engine {
             timer,
             world,
             editor,
-            model_loader,
+            asset_server,
             pending_windows,
             renderers_initialized: false,
         })
@@ -207,34 +219,13 @@ impl Engine {
                 if !self.renderers_initialized && !self.pending_windows.is_empty() {
                     let pending = std::mem::take(&mut self.pending_windows);
                     for (id, window) in pending {
-                        match Renderer::new(self.rendering_context.clone(), window) {
+                        match Renderer::new(
+                            self.rendering_context.clone(),
+                            window,
+                            &mut self.asset_server,
+                        ) {
                             Ok(renderer) => {
                                 self.renderers.insert(id, renderer);
-                                // Ensure models are loaded now that a renderer (and its
-                                // Vulkan command pool) exists. Only load once.
-                                if self.model_loader.models.is_empty() {
-                                    // retrieve the just-inserted renderer to get its command pool
-                                    if let Some(r) = self.renderers.get(&id) {
-                                        // Use the renderer's transfer command pool for staging uploads
-                                        load_models(
-                                            &mut self.model_loader,
-                                            &self.rendering_context,
-                                            r.transfer_command_pool,
-                                        );
-                                        // Ensure all GPU work from model loading completed before
-                                        // proceeding to avoid destroying buffers while still in use.
-                                        unsafe {
-                                            if let Err(e) =
-                                                self.rendering_context.device.device_wait_idle()
-                                            {
-                                                eprintln!(
-                                                    "Warning: device_wait_idle failed after model load: {:?}",
-                                                    e
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
                             }
                             Err(e) => {
                                 eprintln!("Renderer init failed, deferring: {e}");
@@ -255,7 +246,7 @@ impl Engine {
 
                     let _ = renderer.render(
                         &mut self.world,
-                        &mut self.model_loader,
+                        &self.asset_server,
                         self.editor.is_editor_open,
                     );
                 }
@@ -333,7 +324,11 @@ impl Engine {
         let window = Arc::new(event_loop.create_window(attributes)?);
         let window_id = window.id();
 
-        let renderer = Renderer::new(self.rendering_context.clone(), window)?;
+        let renderer = Renderer::new(
+            self.rendering_context.clone(),
+            window,
+            &mut self.asset_server,
+        )?;
         self.renderers.insert(window_id, renderer);
         Ok(window_id)
     }
