@@ -29,6 +29,7 @@ pub struct GpuTextureLoader {
     pub command_pool: vk::CommandPool,
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
+    pub default_ubo: vk::Buffer,
 }
 
 impl GpuTextureLoader {
@@ -37,12 +38,14 @@ impl GpuTextureLoader {
         command_pool: vk::CommandPool,
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
+        default_ubo: vk::Buffer,
     ) -> Self {
         Self {
             context,
             command_pool,
             descriptor_pool,
             descriptor_set_layout,
+            default_ubo,
         }
     }
 }
@@ -61,6 +64,8 @@ impl AssetLoader for GpuTextureLoader {
             .unwrap_or("texture")
             .to_string();
 
+        println!("path: {}", path.display());
+
         let path_str = path
             .to_str()
             .ok_or_else(|| AssetLoadError::other("Non-UTF-8 path"))?;
@@ -72,6 +77,7 @@ impl AssetLoader for GpuTextureLoader {
                 self.command_pool,
                 self.descriptor_pool,
                 self.descriptor_set_layout,
+                self.default_ubo,
             )
             .map_err(|e: Error| AssetLoadError::other(e.to_string()))?;
 

@@ -1,4 +1,5 @@
 use std::mem::transmute;
+use std::path::Path;
 use std::sync::RwLock;
 use std::time::Instant;
 use std::{collections::BTreeMap, sync::Arc};
@@ -282,13 +283,6 @@ impl Renderer {
                 None,
             )?;
 
-            let preloaded = context.load_textures_from_dir(
-                "res/assets/textures",
-                transfer_command_pool,
-                descriptor_pool,
-                descriptor_set_layout,
-            );
-
             let inflight_frames_count = swapchain.images.len() as u32;
             let command_buffers = context.device.allocate_command_buffers(
                 &vk::CommandBufferAllocateInfo::default()
@@ -333,36 +327,19 @@ impl Renderer {
                     .set_layouts(&[descriptor_set_layout]),
             )?[0];
 
-            let fallback_texture = preloaded.get("temp.png");
-            let buffer_info = vk::DescriptorBufferInfo::default()
+            let ubo_info = vk::DescriptorBufferInfo::default()
                 .buffer(default_ubo)
                 .offset(0)
                 .range(256);
-            let buffer_infos = [buffer_info];
-            let mut writes: Vec<vk::WriteDescriptorSet> = vec![
-                vk::WriteDescriptorSet::default()
+
+            context.device.update_descriptor_sets(
+                &[vk::WriteDescriptorSet::default()
                     .dst_set(default_descriptor_set)
                     .dst_binding(0)
                     .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&buffer_infos),
-            ];
-            let mut image_infos: Vec<vk::DescriptorImageInfo> = Vec::new();
-            if let Some(tex) = fallback_texture {
-                image_infos.push(
-                    vk::DescriptorImageInfo::default()
-                        .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                        .image_view(tex.image_view)
-                        .sampler(tex.sampler),
-                );
-                writes.push(
-                    vk::WriteDescriptorSet::default()
-                        .dst_set(default_descriptor_set)
-                        .dst_binding(1)
-                        .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                        .image_info(&image_infos),
-                );
-            }
-            context.device.update_descriptor_sets(&writes, &[]);
+                    .buffer_info(&[ubo_info])],
+                &[],
+            );
 
             let mut gpu_timestamps = GpuTimestampPool::new(&context.device, context.queues[0]);
             let phys_props = context
@@ -396,11 +373,13 @@ impl Renderer {
             };
 
             asset_server.register_loader(GltfLoader::new(context.clone(), command_pool));
+            // ---- CHANGED: pass default_ubo into loader ----
             asset_server.register_loader(GpuTextureLoader::new(
                 context.clone(),
                 command_pool,
                 descriptor_pool,
                 descriptor_set_layout,
+                default_ubo,
             ));
 
             Ok(Self {
@@ -423,7 +402,6 @@ impl Renderer {
                 cpu_profiler: CpuProfiler::new(),
                 global_frame_counter: 0,
                 pending_frame_data: None,
-
                 undefined_image_state,
                 render_image_state,
                 depth_attachment_state,
@@ -431,7 +409,6 @@ impl Renderer {
             })
         }
     }
-
     pub fn render(
         &mut self,
         world: &mut World,
@@ -610,6 +587,15 @@ impl Renderer {
                     self.model_pipeline,
                 );
 
+                device.cmd_bind_descriptor_sets(
+                    command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    pipeline_layout,
+                    0,
+                    &[self.default_descriptor_set],
+                    &[],
+                );
+
                 let mut light: Option<Light> = None;
                 let mut light_transform: Option<Transform> = None;
                 for node in world.get_all_nodes() {
@@ -678,26 +664,20 @@ impl Renderer {
                             let model = model.unwrap();
                             let model = asset_server.get(model).unwrap().clone();
                             for mesh in model.meshes.clone() {
-                                let mat_handle: Handle<MaterialAsset> =
-                                    if let Some(ref mat) = model_renderer.material {
-                                        match model_renderer.material_handle {
-                                            Some(h) => h,
-                                            None => {
-                                                let h = asset_server.insert(mat.clone());
-                                                model_renderer.material_handle = Some(h);
-                                                h
-                                            }
-                                        }
-                                    } else {
+                                let mut mat_handle: Option<Handle<MaterialAsset>> = None;
+
+                                // if theres no set material path, try load the meshes material
+                                if model_renderer.material_path.is_empty() {
+                                    {
                                         if let Some(&h) = model_renderer
                                             .mesh_material_handles
                                             .get(&mesh.material_name)
                                         {
-                                            h
+                                            mat_handle = Some(h);
                                         } else {
                                             let h = asset_server
                                                 .load_cached::<MaterialAsset>(&format!(
-                                                    "{}.yaml",
+                                                    "{}.material",
                                                     mesh.material_name
                                                 ))
                                                 .unwrap_or_else(|_| {
@@ -706,16 +686,38 @@ impl Renderer {
                                             model_renderer
                                                 .mesh_material_handles
                                                 .insert(mesh.material_name.clone(), h);
-                                            h
+                                            mat_handle = Some(h);
                                         }
                                     };
+                                } else {
+                                    let material_handle = asset_server.load::<MaterialAsset>(
+                                        model_renderer.material_path.clone(),
+                                    );
+                                    if material_handle.is_ok() {
+                                        mat_handle = Some(material_handle.unwrap());
+                                        model_renderer.material_handle = Some(mat_handle.unwrap());
+                                    } else {
+                                        println!("material not loaded from handle path");
+                                        if let Some(ref mat) = model_renderer.material {
+                                            match model_renderer.material_handle {
+                                                Some(h) => mat_handle = Some(h),
+                                                None => {
+                                                    let h = asset_server.insert(mat.clone());
+                                                    model_renderer.material_handle = Some(h);
+                                                    mat_handle = Some(h);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
 
-                                let needs_resolve = asset_server
+                                let mat_handle = mat_handle.unwrap();
+
+                                if !asset_server
                                     .get_cloned::<MaterialAsset>(mat_handle)
-                                    .map(|m| !m.textures_resolved)
-                                    .unwrap_or(false);
-
-                                if needs_resolve {
+                                    .unwrap()
+                                    .textures_resolved
+                                {
                                     let (
                                         albedo_name,
                                         metallic_name,
@@ -735,8 +737,8 @@ impl Renderer {
                                         )
                                     };
 
-                                    println!("getting textures");
                                     let albedo_h = resolve_texture(&albedo_name, &asset_server);
+
                                     let metallic_h = resolve_texture(&metallic_name, &asset_server);
                                     let roughness_h =
                                         resolve_texture(&roughness_name, &asset_server);
@@ -744,30 +746,39 @@ impl Renderer {
                                     let emissive_h = resolve_texture(&emissive_name, &asset_server);
 
                                     let mut mat = asset_server.get_mut(mat_handle).unwrap();
-                                    mat.albedo_handle = albedo_h;
+
+                                    mat.albedo_handle = if albedo_h.is_none() {
+                                        let albedo_h = resolve_texture(
+                                            &".engine/temp.png".to_string(),
+                                            &asset_server,
+                                        );
+                                        albedo_h
+                                    } else {
+                                        albedo_h
+                                    };
                                     mat.metallic_handle = metallic_h;
                                     mat.roughness_handle = roughness_h;
                                     mat.normal_handle = normal_h;
                                     mat.emissive_handle = emissive_h;
+
                                     mat.textures_resolved = true;
                                 }
 
-                                let mat = asset_server
+                                let mut mat = asset_server
                                     .get_cloned::<MaterialAsset>(mat_handle)
                                     .unwrap();
 
-                                let descriptor_set = mat
-                                    .albedo_handle
-                                    .and_then(|h| asset_server.get_cloned::<GpuTexture>(h))
-                                    .map(|tex| tex.descriptor_set)
-                                    .unwrap_or(self.default_descriptor_set);
+                                let albedo_h = mat.albedo_handle.unwrap();
+                                let albedo_texture =
+                                    asset_server.get_cloned::<GpuTexture>(albedo_h).unwrap();
+                                let albedo_descriptor_set = albedo_texture.descriptor_set;
 
                                 device.cmd_bind_descriptor_sets(
                                     command_buffer,
                                     vk::PipelineBindPoint::GRAPHICS,
                                     pipeline_layout,
                                     0,
-                                    &[descriptor_set],
+                                    &[albedo_descriptor_set],
                                     &[],
                                 );
 
@@ -1022,16 +1033,8 @@ impl Drop for Renderer {
         }
     }
 }
-fn resolve_texture(name: &Option<String>, server: &AssetServer) -> Option<Handle<GpuTexture>> {
-    let name = name.as_ref()?;
 
-    let exists = std::path::Path::new(name).exists()
-        || std::path::Path::new(&format!("{}{}", "res/assets/textures/", name)).exists()
-        || std::path::Path::new(&format!("{}textures/{}", "res/assets/textures", name)).exists();
-
-    if !exists {
-        return None;
-    }
-
+fn resolve_texture(name: &String, server: &AssetServer) -> Option<Handle<GpuTexture>> {
+    println!("resolving: {}", name);
     server.load_cached::<GpuTexture>(name).ok()
 }

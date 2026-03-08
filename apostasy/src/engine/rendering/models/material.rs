@@ -2,7 +2,6 @@ use std::path::Path;
 
 use crate::engine::assets::asset::{Asset, AssetLoadError, AssetLoader};
 use crate::engine::assets::handle::Handle;
-use crate::engine::assets::server::AssetServer;
 use crate::engine::rendering::models::texture::GpuTexture;
 use gltf::material::AlphaMode;
 use serde::{Deserialize, Serialize};
@@ -19,11 +18,11 @@ pub struct MaterialAsset {
     pub alpha_cutoff: f32,
     pub double_sided: bool,
 
-    pub albedo_texture_name: Option<String>,
-    pub metallic_texture_name: Option<String>,
-    pub roughness_texture_name: Option<String>,
-    pub normal_texture_name: Option<String>,
-    pub emissive_texture_name: Option<String>,
+    pub albedo_texture_name: String,
+    pub metallic_texture_name: String,
+    pub roughness_texture_name: String,
+    pub normal_texture_name: String,
+    pub emissive_texture_name: String,
 
     #[serde(skip)]
     pub textures_resolved: bool,
@@ -56,11 +55,11 @@ impl Default for MaterialAsset {
             alpha_mode: AlphaMode::Opaque,
             alpha_cutoff: 0.5,
             double_sided: false,
-            albedo_texture_name: Some("temp.png".to_string()),
-            metallic_texture_name: None,
-            roughness_texture_name: None,
-            normal_texture_name: None,
-            emissive_texture_name: None,
+            albedo_texture_name: ".engine/temp.png".to_string(),
+            metallic_texture_name: "".to_string(),
+            roughness_texture_name: "".to_string(),
+            normal_texture_name: "".to_string(),
+            emissive_texture_name: "".to_string(),
             textures_resolved: false,
             albedo_handle: None,
             metallic_handle: None,
@@ -72,21 +71,11 @@ impl Default for MaterialAsset {
 }
 
 impl MaterialAsset {
-    pub fn resolve_textures(&mut self, server: &crate::engine::assets::server::AssetServer) {
-        self.albedo_handle = resolve_one(&self.albedo_texture_name, server);
-        self.metallic_handle = resolve_one(&self.metallic_texture_name, server);
-        self.roughness_handle = resolve_one(&self.roughness_texture_name, server);
-        self.normal_handle = resolve_one(&self.normal_texture_name, server);
-        self.emissive_handle = resolve_one(&self.emissive_texture_name, server);
-        self.textures_resolved = true;
-    }
-
     pub fn has_albedo(&self) -> bool {
         self.albedo_handle.is_some()
     }
 
-    pub fn save(&self) {
-        let path = format!("{}{}.yaml", "res/assets/materials", self.name);
+    pub fn save(&self, path: String) {
         match serde_yaml::to_string(self) {
             Ok(yaml) => {
                 if let Err(e) = std::fs::write(&path, yaml) {
@@ -118,7 +107,7 @@ impl AssetLoader for MaterialLoader {
     type Asset = MaterialAsset;
 
     fn extensions(&self) -> &[&str] {
-        &["yaml", "yml"]
+        &["material"]
     }
 
     fn load_sync(&self, path: &Path) -> Result<MaterialAsset, AssetLoadError> {

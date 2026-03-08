@@ -5,7 +5,7 @@ use crate::{
         nodes::components::{
             camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
         },
-        rendering::models::{model::ModelRenderer, shader::ShaderLoader},
+        rendering::models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
         windowing::cursor_manager::CursorManager,
     },
 };
@@ -172,6 +172,7 @@ impl Engine {
         {
             let mut asset_server = asset_server.write().unwrap();
             asset_server.register_loader(ShaderLoader);
+            asset_server.register_loader(MaterialLoader);
         }
 
         let editor = EditorStorage::default(asset_server.clone());

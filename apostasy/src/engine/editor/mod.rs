@@ -1,9 +1,9 @@
 use crate::{
     self as apostasy,
     engine::{
-        assets::server::AssetServer,
+        assets::{handle::Handle, server::AssetServer},
         nodes::Node,
-        rendering::profiler::ProfilerState,
+        rendering::{models::material::MaterialAsset, profiler::ProfilerState},
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
 };
@@ -20,6 +20,7 @@ use egui::{
     Sense, Stroke, TopBottomPanel, Ui, Vec2, Window, pos2,
 };
 use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
+use gltf::material::AlphaMode;
 use serde::{Deserialize, Serialize};
 use winit::{event::MouseButton, keyboard::PhysicalKey};
 
@@ -34,6 +35,7 @@ pub enum EditorTab {
     Files,
     Console,
     Viewport,
+    AssetEditor,
 }
 
 impl std::fmt::Display for EditorTab {
@@ -44,6 +46,7 @@ impl std::fmt::Display for EditorTab {
             EditorTab::Files => write!(f, "Files"),
             EditorTab::Console => write!(f, "Console"),
             EditorTab::Viewport => write!(f, "Viewport"),
+            EditorTab::AssetEditor => write!(f, "Asset Editor"),
         }
     }
 }
@@ -52,9 +55,11 @@ pub struct EditorStorage {
     pub component_text_edit: String,
     pub is_editor_open: bool,
 
+    pub was_dragging_last_frame: bool,
     // file tree
     pub file_tree_search: String,
     pub file_tree: Option<FileNode>,
+    pub dragged_tree_node: Option<String>,
     pub selected_tree_node: Option<String>,
     pub file_dragging: bool,
 
@@ -105,12 +110,14 @@ fn default_dock_state() -> DockState<EditorTab> {
 
     let surface = state.main_surface_mut();
 
-    let [_viewport, hierarchy] =
+    let [viewport, _hierarchy] =
         surface.split_left(NodeIndex::root(), 0.2, vec![EditorTab::Hierarchy]);
 
     let [_, _inspector] = surface.split_right(NodeIndex::root(), 0.75, vec![EditorTab::Inspector]);
 
-    surface.split_below(hierarchy, 0.6, vec![EditorTab::Files, EditorTab::Console]);
+    let [_console, file_tree] =
+        surface.split_below(_hierarchy, 0.6, vec![EditorTab::Files, EditorTab::Console]);
+    surface.split_below(_inspector, 0.6, vec![EditorTab::AssetEditor]);
 
     state
 }
@@ -122,8 +129,10 @@ impl EditorStorage {
 
             file_tree_search: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
+            dragged_tree_node: None,
             selected_tree_node: None,
             file_dragging: false,
+            was_dragging_last_frame: false,
 
             is_editor_open: true,
 
@@ -219,6 +228,7 @@ impl<'a> TabViewer for EditorTabViewer<'a> {
         match tab {
             EditorTab::Hierarchy => render_hierarchy(ui, self.world, self.editor_storage),
             EditorTab::Inspector => render_inspector(ui, self.world, self.editor_storage),
+            EditorTab::AssetEditor => asset_render_editor(ui, self.world, self.editor_storage),
             EditorTab::Files => render_file_tree_ui(ui, self.editor_storage),
             EditorTab::Console => render_console_ui(ui, self.world, self.editor_storage),
             EditorTab::Viewport => {
@@ -585,6 +595,218 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
             });
     }
 }
+
+pub fn asset_render_editor(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorStorage) {
+    ui.separator();
+    if let Some(path) = &editor_storage.selected_tree_node {
+        ScrollArea::vertical()
+            .id_salt("asset_editor_scroll")
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                if path.ends_with(".material") {
+                    ui.label("MATERIAL");
+
+                    let asset_server = editor_storage.asset_server.write().unwrap();
+                    let material_handle: Handle<MaterialAsset> =
+                        asset_server.load(path[4..].to_string()).unwrap();
+                    let mut material = asset_server.get_mut(material_handle).unwrap();
+
+                    ui.horizontal(|ui| {
+                        ui.label("base color:");
+                        let mut r = material.base_color[0].clone() as f64;
+                        let mut g = material.base_color[1].clone() as f64;
+                        let mut b = material.base_color[2].clone() as f64;
+                        let mut a = material.base_color[3].clone() as f64;
+                        ui.add(egui::DragValue::new(&mut r).speed(0.01));
+                        ui.add(egui::DragValue::new(&mut g).speed(0.01));
+                        ui.add(egui::DragValue::new(&mut b).speed(0.01));
+                        ui.add(egui::DragValue::new(&mut a).speed(0.01));
+                        let new = [r as f32, g as f32, b as f32, a as f32];
+                        if new != material.base_color {
+                            material.base_color = new;
+                            material.save(path.clone());
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("metallic:");
+                        let mut before = material.metallic;
+                        ui.add(egui::DragValue::new(&mut before).speed(0.01));
+                        if material.metallic != before {
+                            material.metallic = before;
+                            material.save(path.clone());
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("roughness:");
+                        let mut before = material.roughness.clone();
+                        ui.add(egui::DragValue::new(&mut before).speed(0.01));
+                        if material.roughness != before {
+                            material.roughness = before;
+                            material.save(path.clone());
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("emissive:");
+                        let mut r = material.emissive[0].clone() as f64;
+                        let mut g = material.emissive[1].clone() as f64;
+                        let mut b = material.emissive[2].clone() as f64;
+                        ui.add(egui::DragValue::new(&mut r).speed(0.01));
+                        ui.add(egui::DragValue::new(&mut g).speed(0.01));
+                        ui.add(egui::DragValue::new(&mut b).speed(0.01));
+                        let new = [r as f32, g as f32, b as f32];
+                        if new != material.emissive {
+                            material.emissive = new;
+                            material.save(path.clone());
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("alpha mode:");
+                        let mut mode = match material.alpha_mode {
+                            AlphaMode::Opaque => 0usize,
+                            AlphaMode::Mask => 1usize,
+                            AlphaMode::Blend => 2usize,
+                        };
+                        egui::ComboBox::from_label("")
+                            .selected_text(match mode {
+                                0 => "OPAQUE",
+                                1 => "MASK",
+                                _ => "BLEND",
+                            })
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(&mut mode, 0, "OPAQUE");
+                                ui.selectable_value(&mut mode, 1, "MASK");
+                                ui.selectable_value(&mut mode, 2, "BLEND");
+                            });
+                        let new_mode = match mode {
+                            0 => AlphaMode::Opaque,
+                            1 => AlphaMode::Mask,
+                            _ => AlphaMode::Blend,
+                        };
+                        if new_mode != material.alpha_mode {
+                            material.alpha_mode = new_mode;
+                            material.save(path.clone());
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("alpha cutoff:");
+                        let mut before = material.alpha_cutoff.clone();
+                        ui.add(egui::DragValue::new(&mut before).speed(0.01));
+                        if material.alpha_cutoff != before {
+                            material.alpha_cutoff = before;
+                            material.save(path.clone());
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("double sided:");
+                        let mut before = material.double_sided.clone();
+                        ui.checkbox(&mut before, "");
+                        if material.double_sided != before {
+                            material.double_sided = before;
+                            material.save(path.clone());
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("textures resolved:");
+                        let mut before = material.textures_resolved.clone();
+                        ui.checkbox(&mut before, "");
+                        if material.textures_resolved != before {
+                            material.textures_resolved = before;
+                            material.save(path.clone());
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("albedo texture:");
+
+                        let albedo_path = if material.albedo_texture_name.is_empty() {
+                            "No texture".to_string()
+                        } else {
+                            material
+                                .albedo_texture_name
+                                .split(".")
+                                .next()
+                                .unwrap()
+                                .to_string()
+                        };
+                        let response = ui.add(
+                            Button::new(albedo_path)
+                                .sense(Sense::drag())
+                                .sense(Sense::hover())
+                                .sense(Sense::click())
+                                .min_size(Vec2::new(100.0, 25.0)),
+                        );
+
+                        if response.contains_pointer() {
+                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
+                                if tree_node.ends_with(".png") {
+                                    egui::Tooltip::always_open(
+                                        ui.ctx().clone(),
+                                        ui.layer_id(),
+                                        egui::Id::new("file_drag_tooltip_2"),
+                                        response.rect,
+                                    )
+                                    .at_pointer()
+                                    .show(|ui| {
+                                        ui.label("set texture");
+                                    });
+                                } else {
+                                    egui::Tooltip::always_open(
+                                        ui.ctx().clone(),
+                                        ui.layer_id(),
+                                        egui::Id::new("drag_hint"),
+                                        response.rect,
+                                    )
+                                    .at_pointer()
+                                    .show(|ui| {
+                                        ui.label("Drag any .png file here");
+                                    });
+                                }
+                            } else {
+                                egui::Tooltip::always_open(
+                                    ui.ctx().clone(),
+                                    ui.layer_id(),
+                                    egui::Id::new("drag_hint"),
+                                    response.rect,
+                                )
+                                .at_pointer()
+                                .show(|ui| {
+                                    ui.label("Drag any .png file here");
+                                });
+                            }
+                        }
+
+                        let pointer_pos = ui.ctx().pointer_latest_pos();
+                        let is_over = pointer_pos.map_or(false, |pos| response.rect.contains(pos));
+                        let pointer_released = ui.input(|i| i.pointer.any_released());
+
+                        if is_over && pointer_released {
+                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
+                                if tree_node.ends_with(".png") {
+                                    let file_path = tree_node[4..].to_string();
+                                    // split off after "res/"
+                                    println!("path: {}", path);
+
+                                    material.albedo_texture_name = file_path.clone();
+                                    material.albedo_handle = None;
+                                    material.textures_resolved = false;
+                                    material.save(path.clone());
+
+                                    println!("A: {:?}", material.albedo_texture_name);
+
+                                    editor_storage.file_dragging = false;
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+    }
+}
+
 pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage) {
     ui.style_mut().visuals.override_text_color = Some(Color32::from_gray(210));
     ScrollArea::vertical()
@@ -659,37 +881,43 @@ fn render_file_tree(
     let indent = depth as f32 * 12.0;
     let search_lc = search.to_lowercase();
     let name_lc = node.name.to_lowercase();
+    if !editor_storage.file_dragging && editor_storage.was_dragging_last_frame {
+        editor_storage.was_dragging_last_frame = false;
+        editor_storage.dragged_tree_node = None;
+    }
 
     if node.is_dir {
-        let id = ui.make_persistent_id(&node.path);
-        egui::CollapsingHeader::new(&node.name)
-            .id_salt(id)
-            .default_open(depth == 0)
-            .icon(|ui, openness, response| {
-                let rect = response.rect;
-                let color = Color32::from_gray(180);
-                let points = if openness > 0.5 {
-                    vec![
-                        pos2(rect.left(), rect.top()),
-                        pos2(rect.right(), rect.top()),
-                        pos2(rect.center().x, rect.bottom()),
-                    ]
-                } else {
-                    vec![
-                        pos2(rect.left(), rect.top()),
-                        pos2(rect.right(), rect.center().y),
-                        pos2(rect.left(), rect.bottom()),
-                    ]
-                };
-                ui.painter()
-                    .add(epaint::Shape::convex_polygon(points, color, Stroke::NONE));
-            })
-            .show(ui, |ui| {
-                ui.add_space(2.0);
-                for child in &node.children {
-                    render_file_tree(ui, child, depth + 1, search.clone(), editor_storage);
-                }
-            });
+        if *node.path != *"res/.engine" {
+            let id = ui.make_persistent_id(&node.path);
+            egui::CollapsingHeader::new(&node.name)
+                .id_salt(id)
+                .default_open(depth == 0)
+                .icon(|ui, openness, response| {
+                    let rect = response.rect;
+                    let color = Color32::from_gray(180);
+                    let points = if openness > 0.5 {
+                        vec![
+                            pos2(rect.left(), rect.top()),
+                            pos2(rect.right(), rect.top()),
+                            pos2(rect.center().x, rect.bottom()),
+                        ]
+                    } else {
+                        vec![
+                            pos2(rect.left(), rect.top()),
+                            pos2(rect.right(), rect.center().y),
+                            pos2(rect.left(), rect.bottom()),
+                        ]
+                    };
+                    ui.painter()
+                        .add(epaint::Shape::convex_polygon(points, color, Stroke::NONE));
+                })
+                .show(ui, |ui| {
+                    ui.add_space(2.0);
+                    for child in &node.children {
+                        render_file_tree(ui, child, depth + 1, search.clone(), editor_storage);
+                    }
+                });
+        }
     } else if search_lc.is_empty() || name_lc.contains(&search_lc) {
         ui.horizontal(|ui| {
             ui.add_space(indent);
@@ -705,14 +933,18 @@ fn render_file_tree(
             };
 
             let formatted_name = format!("{} {}", icon, node.name);
-            let response = ui.add(Button::new(formatted_name.clone()).sense(Sense::drag()));
+            let response =
+                ui.add(Button::new(formatted_name.clone()).sense(Sense::click_and_drag()));
 
-            if response.drag_started() {
+            if response.clicked() {
                 editor_storage.selected_tree_node = Some(node.path.to_str().unwrap().to_string());
                 println!("selected: {}", node.path.to_str().unwrap());
+            }
+
+            if response.drag_started() {
+                editor_storage.dragged_tree_node = Some(node.path.to_str().unwrap().to_string());
                 editor_storage.file_dragging = true;
             } else if response.drag_stopped() {
-                editor_storage.selected_tree_node = None;
                 editor_storage.file_dragging = false;
             }
 
@@ -728,8 +960,6 @@ fn render_file_tree(
                     ui.label(formatted_name);
                 });
             }
-
-            response.on_hover_text(node.path.to_string_lossy());
         });
     }
 }
@@ -1073,8 +1303,6 @@ fn render_input_manager(
             );
         });
 }
-
-// ── Key code helpers (unchanged) ───────────────────────────────────────────────
 
 pub fn parse_key_code(s: &str) -> Option<winit::keyboard::KeyCode> {
     match s {

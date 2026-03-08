@@ -40,6 +40,7 @@ pub struct GpuMesh {
 #[derive(Component, Clone, Serialize, Deserialize, SerializableComponent)]
 pub struct ModelRenderer {
     pub loaded_model: String,
+    pub material_path: String,
     pub material: Option<MaterialAsset>,
     #[serde(skip)]
     pub model_handle: Option<Handle<GpuModel>>,
@@ -52,6 +53,7 @@ impl Default for ModelRenderer {
     fn default() -> Self {
         Self {
             loaded_model: "cube.glb".to_string(),
+            material_path: "".to_string(),
             material: None,
             model_handle: None,
             material_handle: None,
@@ -74,13 +76,12 @@ impl Inspectable for ModelRenderer {
                         ui.label("model:");
                         let response = ui.add(
                             Button::new(self.loaded_model.clone())
-                                .sense(Sense::drag())
                                 .sense(Sense::hover())
                                 .min_size(Vec2::new(100.0, 25.0)),
                         );
 
                         if response.contains_pointer() {
-                            if let Some(tree_node) = &editor_storage.selected_tree_node {
+                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
                                 if tree_node.ends_with(".glb") {
                                     egui::Tooltip::always_open(
                                         ui.ctx().clone(),
@@ -104,22 +105,6 @@ impl Inspectable for ModelRenderer {
                                         ui.label("Drag any .glb file here");
                                     });
                                 }
-                            }
-                        }
-
-                        if response.hovered() {
-                            if let Some(tree_node) = &editor_storage.selected_tree_node {
-                                if tree_node.ends_with(".glb") {
-                                    let mut path = tree_node.to_string();
-                                    // split off after "res/"
-                                    let path = path.split_off(4);
-                                    println!("path: {}", path);
-
-                                    self.loaded_model = path;
-                                    self.model_handle = None;
-
-                                    editor_storage.file_dragging = false;
-                                }
                             } else {
                                 egui::Tooltip::always_open(
                                     ui.ctx().clone(),
@@ -131,6 +116,105 @@ impl Inspectable for ModelRenderer {
                                 .show(|ui| {
                                     ui.label("Drag any .glb file here");
                                 });
+                            }
+                        }
+                        let pointer_pos = ui.ctx().pointer_latest_pos();
+                        let is_over = pointer_pos.map_or(false, |pos| response.rect.contains(pos));
+                        let pointer_released = ui.input(|i| i.pointer.any_released());
+
+                        if is_over && pointer_released {
+                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
+                                if tree_node.ends_with(".glb") {
+                                    let path = tree_node[4..].to_string();
+                                    self.loaded_model = path;
+                                    self.model_handle = None;
+                                    editor_storage.file_dragging = false;
+                                    editor_storage.dragged_tree_node = None;
+                                }
+                            }
+                        }
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("material:");
+
+                        let material_name = if self.material_path.is_empty() {
+                            "No material".to_string()
+                        } else {
+                            self.material_path.split(".").next().unwrap().to_string()
+                        };
+
+                        let response = ui.add(
+                            Button::new(material_name)
+                                .sense(Sense::drag())
+                                .sense(Sense::hover())
+                                .sense(Sense::click())
+                                .min_size(Vec2::new(100.0, 25.0)),
+                        );
+
+                        if response.middle_clicked() {
+                            println!("secondary clicked");
+                            self.material_path = "".to_string();
+                            self.material_handle = None;
+                            self.material = None;
+                        }
+                        if response.contains_pointer() {
+                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
+                                if tree_node.ends_with(".material") {
+                                    egui::Tooltip::always_open(
+                                        ui.ctx().clone(),
+                                        ui.layer_id(),
+                                        egui::Id::new("file_drag_tooltip_2"),
+                                        response.rect,
+                                    )
+                                    .at_pointer()
+                                    .show(|ui| {
+                                        ui.label("set material");
+                                    });
+                                } else {
+                                    egui::Tooltip::always_open(
+                                        ui.ctx().clone(),
+                                        ui.layer_id(),
+                                        egui::Id::new("drag_hint"),
+                                        response.rect,
+                                    )
+                                    .at_pointer()
+                                    .show(|ui| {
+                                        ui.label("Drag any .material file here");
+                                    });
+                                }
+                            } else {
+                                egui::Tooltip::always_open(
+                                    ui.ctx().clone(),
+                                    ui.layer_id(),
+                                    egui::Id::new("drag_hint"),
+                                    response.rect,
+                                )
+                                .at_pointer()
+                                .show(|ui| {
+                                    ui.label("Drag any .material file here");
+                                });
+                            }
+                        }
+
+                        let pointer_pos = ui.ctx().pointer_latest_pos();
+                        let is_over = pointer_pos.map_or(false, |pos| response.rect.contains(pos));
+                        let pointer_released = ui.input(|i| i.pointer.any_released());
+
+                        if is_over && pointer_released {
+                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
+                                if tree_node.ends_with(".material") {
+                                    let mut path = tree_node.to_string();
+                                    // split off after "res/"
+                                    let path = path.split_off(4);
+                                    println!("path: {}", path);
+
+                                    self.material_path = path;
+                                    self.material_handle = None;
+                                    self.material = None;
+
+                                    editor_storage.file_dragging = false;
+                                }
                             }
                         }
                     });
