@@ -1,8 +1,8 @@
 name: material
 base_color:
-- 0.91
-- 1.83
-- 1.3
+- 1.62
+- -9.07
+- 1.96
 - 3.3
 metallic: 0.23
 roughness: -0.05
@@ -18,3 +18,9 @@ metallic_texture_name: ''
 roughness_texture_name: ''
 normal_texture_name: ''
 emissive_texture_name: ''
+textures_resolved: true
+albedo_handle: 1109
+metallic_handle: null
+roughness_handle: null
+normal_handle: null
+emissive_handle: null

@@ -52,7 +52,7 @@ pub struct ModelRenderer {
 impl Default for ModelRenderer {
     fn default() -> Self {
         Self {
-            loaded_model: "cube.glb".to_string(),
+            loaded_model: ".engine/cube.glb".to_string(),
             material_path: "".to_string(),
             material: None,
             model_handle: None,

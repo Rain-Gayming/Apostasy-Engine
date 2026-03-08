@@ -55,7 +55,7 @@ impl Default for MaterialAsset {
             alpha_mode: AlphaMode::Opaque,
             alpha_cutoff: 0.5,
             double_sided: false,
-            albedo_texture_name: ".engine/temp.png".to_string(),
+            albedo_texture_name: ".engine/missing-texture.png".to_string(),
             metallic_texture_name: "".to_string(),
             roughness_texture_name: "".to_string(),
             normal_texture_name: "".to_string(),

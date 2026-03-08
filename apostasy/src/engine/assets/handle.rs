@@ -100,6 +100,6 @@ impl<'de, T> Deserialize<'de> for Handle<T> {
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(Handle::new())
+        Ok(Handle::with_id(u64::deserialize(deserializer)?))
     }
 }

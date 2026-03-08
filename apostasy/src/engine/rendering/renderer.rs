@@ -675,14 +675,7 @@ impl Renderer {
                                         {
                                             mat_handle = Some(h);
                                         } else {
-                                            let h = asset_server
-                                                .load_cached::<MaterialAsset>(&format!(
-                                                    "{}.material",
-                                                    mesh.material_name
-                                                ))
-                                                .unwrap_or_else(|_| {
-                                                    asset_server.insert(MaterialAsset::default())
-                                                });
+                                            let h = asset_server.insert(MaterialAsset::default());
                                             model_renderer
                                                 .mesh_material_handles
                                                 .insert(mesh.material_name.clone(), h);
@@ -713,10 +706,6 @@ impl Renderer {
 
                                 let mat_handle = mat_handle.unwrap();
 
-                                if !asset_server
-                                    .get_cloned::<MaterialAsset>(mat_handle)
-                                    .unwrap()
-                                    .textures_resolved
                                 {
                                     let (
                                         albedo_name,
@@ -764,23 +753,24 @@ impl Renderer {
                                     mat.textures_resolved = true;
                                 }
 
-                                let mut mat = asset_server
+                                let mat = asset_server
                                     .get_cloned::<MaterialAsset>(mat_handle)
                                     .unwrap();
 
-                                let albedo_h = mat.albedo_handle.unwrap();
-                                let albedo_texture =
-                                    asset_server.get_cloned::<GpuTexture>(albedo_h).unwrap();
-                                let albedo_descriptor_set = albedo_texture.descriptor_set;
+                                if let Some(albedo_h) = mat.albedo_handle {
+                                    let albedo_texture =
+                                        asset_server.get_cloned::<GpuTexture>(albedo_h).unwrap();
+                                    let albedo_descriptor_set = albedo_texture.descriptor_set;
 
-                                device.cmd_bind_descriptor_sets(
-                                    command_buffer,
-                                    vk::PipelineBindPoint::GRAPHICS,
-                                    pipeline_layout,
-                                    0,
-                                    &[albedo_descriptor_set],
-                                    &[],
-                                );
+                                    device.cmd_bind_descriptor_sets(
+                                        command_buffer,
+                                        vk::PipelineBindPoint::GRAPHICS,
+                                        pipeline_layout,
+                                        0,
+                                        &[albedo_descriptor_set],
+                                        &[],
+                                    );
+                                }
 
                                 let base_bytes: [u8; 16] = transmute(mat.base_color);
                                 let metallic_bytes: [u8; 4] = f32::to_ne_bytes(mat.metallic);
@@ -1035,6 +1025,5 @@ impl Drop for Renderer {
 }
 
 fn resolve_texture(name: &String, server: &AssetServer) -> Option<Handle<GpuTexture>> {
-    println!("resolving: {}", name);
     server.load_cached::<GpuTexture>(name).ok()
 }
