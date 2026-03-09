@@ -1,23 +1,28 @@
-use crate::engine::nodes::{Node, scene_serialization::deserialize_node};
+use crate::engine::nodes::{
+    Node,
+    scene_serialization::{deserialize_node, parse_root_children_from_value},
+};
 
 pub struct Scene {
     pub name: String,
+    pub path: String,
     pub root_node: Box<Node>,
     pub is_primary: bool,
 }
 
 impl Default for Scene {
     fn default() -> Self {
-        Self::new()
+        Self::new("new_scene".to_string())
     }
 }
 
 impl Scene {
-    pub fn new() -> Self {
+    pub fn new(path: String) -> Self {
         let mut root_node = Node::new();
         root_node.name = "root".to_string();
         Self {
             name: "Scene".to_string(),
+            path,
             root_node: Box::new(root_node),
             is_primary: false,
         }
@@ -46,11 +51,7 @@ impl SceneManager {
     }
 
     pub fn load_scene(&mut self, name: &str) -> Option<Scene> {
-        if let Some(_) = deserialize_scene(name.to_string()) {
-            deserialize_scene(name.to_string())
-        } else {
-            None
-        }
+        deserialize_scene(name.to_string())
     }
 
     pub fn remove_scene(&mut self, path: &str) {
@@ -84,7 +85,7 @@ pub fn deserialize_scene(path: String) -> Option<Scene> {
         Ok(c) => c,
         Err(err) => {
             eprintln!("Failed to read scene file {}: {}", path, err);
-            return Some(Scene::new());
+            return Some(Scene::new(path));
         }
     };
 
@@ -92,17 +93,15 @@ pub fn deserialize_scene(path: String) -> Option<Scene> {
         Ok(v) => v,
         Err(err) => {
             eprintln!("Failed to parse scene YAML {}: {}", path, err);
-            return Some(Scene::new());
+            return Some(Scene::new(path));
         }
     };
 
-    let mut scene = Scene::new();
+    let mut scene = Scene::new(path.clone());
 
     // root_children
     if let Some(root_children_value) = value.get("root_children") {
-        let parsed = crate::engine::nodes::scene_serialization::parse_root_children_from_value(
-            root_children_value,
-        );
+        let parsed = parse_root_children_from_value(root_children_value);
         scene.root_node.children = parsed.into_iter().map(deserialize_node).collect();
     }
 
@@ -115,7 +114,6 @@ pub fn deserialize_scene(path: String) -> Option<Scene> {
     if let Some(p) = value.get("is_primary").and_then(|v| v.as_bool()) {
         scene.is_primary = p;
     }
-    let scene = Scene::new();
 
     Some(scene)
 }

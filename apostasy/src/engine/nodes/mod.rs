@@ -254,7 +254,7 @@ impl Default for World {
 impl World {
     pub fn new() -> Self {
         Self {
-            scene: Scene::new(),
+            scene: Scene::new(".engine/default.scene".to_string()),
             scene_manager: SceneManager::new(),
             nodes: 0,
             global_nodes: Vec::new(),
@@ -556,23 +556,21 @@ impl World {
     ///     world.serialize_scene();
     /// ```
     pub fn serialize_scene(&mut self) -> Result<(), std::io::Error> {
-        // self.check_node_ids();
-        // let serialized = SerializedScene {
-        //     root_children: self
-        //         .scene
-        //         .root_node
-        //         .children
-        //         .iter()
-        //         .map(serialize_node)
-        //         .collect(),
-        //     name: self.scene.name.clone(),
-        //     is_primary: self.scene.is_primary,
-        //     asset_path: self.scene.path.clone(),
-        // };
-        // let path = format!("{}/{}.yaml", ASSET_DIR, self.scene.name);
-        // std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
-        //
-        Ok(())
+        self.check_node_ids();
+        let path = self.scene.path.clone();
+        let serialized = SerializedScene {
+            root_children: self
+                .scene
+                .root_node
+                .children
+                .iter()
+                .map(serialize_node)
+                .collect(),
+            path: path.clone(),
+            name: self.scene.name.clone(),
+            is_primary: self.scene.is_primary,
+        };
+        std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
     /// Deserializes a scene from a file

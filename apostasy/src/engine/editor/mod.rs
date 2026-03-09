@@ -6,6 +6,7 @@ use crate::{
         rendering::{models::material::MaterialAsset, profiler::ProfilerState},
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
+    log,
 };
 use std::{
     path::{Path, PathBuf},
@@ -62,6 +63,7 @@ pub struct EditorStorage {
     pub dragged_tree_node: Option<String>,
     pub selected_tree_node: Option<String>,
     pub file_dragging: bool,
+    pub scene_to_open: Option<String>,
 
     // console
     pub is_console_open: bool,
@@ -133,6 +135,7 @@ impl EditorStorage {
             selected_tree_node: None,
             file_dragging: false,
             was_dragging_last_frame: false,
+            scene_to_open: None,
 
             is_editor_open: true,
 
@@ -300,6 +303,12 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
     if let Some(id) = editor_storage.node_to_remove {
         world.remove_node(id);
         editor_storage.node_to_remove = None;
+    }
+
+    if let Some(scene_path) = &editor_storage.scene_to_open {
+        let scene = world.scene_manager.load_scene(scene_path);
+        world.scene = scene.unwrap();
+        editor_storage.scene_to_open = None;
     }
 }
 
@@ -924,7 +933,7 @@ fn render_file_tree(
             let ext = node.path.extension().and_then(|e| e.to_str()).unwrap_or("");
             let icon = match ext {
                 "png" | "jpg" | "jpeg" | "webp" => "🖼",
-                "glsl" | "vert" | "frag" | "wgsl" => "🔷",
+                "glsl" | "vert" | "frag" | "spv" | "wgsl" => "🔷",
                 "rs" => "🦀",
                 "toml" | "json" | "yaml" | "yml" => "📄",
                 "ttf" | "otf" => "🔤",
@@ -935,6 +944,13 @@ fn render_file_tree(
             let formatted_name = format!("{} {}", icon, node.name);
             let response =
                 ui.add(Button::new(formatted_name.clone()).sense(Sense::click_and_drag()));
+
+            if response.double_clicked() {
+                if formatted_name.ends_with(".scene") {
+                    log!("Open: {:?}", node.path);
+                    editor_storage.scene_to_open = Some(node.path.to_str().unwrap().to_string());
+                }
+            }
 
             if response.clicked() {
                 editor_storage.selected_tree_node = Some(node.path.to_str().unwrap().to_string());

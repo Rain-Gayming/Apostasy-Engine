@@ -30,6 +30,7 @@ pub struct SerializedNode {
 pub struct SerializedScene {
     pub root_children: Vec<SerializedNode>,
     pub name: String,
+    pub path: String,
     pub is_primary: bool,
 }
 impl Asset for SerializedScene {
@@ -52,12 +53,13 @@ impl AssetLoader for SceneLoader {
             source: e,
         })?;
 
-        let scene: SerializedScene =
+        let mut scene: SerializedScene =
             serde_yaml::from_str(&src).map_err(|e| AssetLoadError::Parse {
                 path: path.display().to_string(),
                 message: e.to_string(),
             })?;
 
+        scene.path = path.display().to_string();
         Ok(scene)
     }
 }
