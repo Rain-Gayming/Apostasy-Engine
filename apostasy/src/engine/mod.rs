@@ -1,9 +1,12 @@
 use crate::{
     self as apostasy,
     engine::{
-        assets::server::AssetServer,
-        nodes::components::{
-            camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
+        assets::{asset, server::AssetServer},
+        nodes::{
+            components::{
+                camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
+            },
+            scene_serialization::{SceneLoader, SerializedScene},
         },
         rendering::models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
         windowing::cursor_manager::CursorManager,
@@ -168,11 +171,12 @@ impl Engine {
             primary_window_id,
         };
 
-        let mut asset_server = Arc::new(RwLock::new(AssetServer::new("res/")));
+        let asset_server = Arc::new(RwLock::new(AssetServer::new("res/")));
         {
             let mut asset_server = asset_server.write().unwrap();
             asset_server.register_loader(ShaderLoader);
             asset_server.register_loader(MaterialLoader);
+            asset_server.register_loader(SceneLoader);
         }
 
         let editor = EditorStorage::default(asset_server.clone());

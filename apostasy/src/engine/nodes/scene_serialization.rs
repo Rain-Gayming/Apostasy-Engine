@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 use serde_yaml;
 
 use super::Node;
-use crate::engine::nodes::component::Component;
+use crate::engine::{
+    assets::asset::{Asset, AssetLoadError, AssetLoader},
+    nodes::component::Component,
+};
 use serde_yaml::Value;
 
 #[derive(Serialize, Deserialize)]
@@ -28,6 +31,35 @@ pub struct SerializedScene {
     pub root_children: Vec<SerializedNode>,
     pub name: String,
     pub is_primary: bool,
+}
+impl Asset for SerializedScene {
+    fn asset_type_name() -> &'static str {
+        "Scene"
+    }
+}
+
+pub struct SceneLoader;
+
+impl AssetLoader for SceneLoader {
+    type Asset = SerializedScene;
+    fn extensions(&self) -> &[&str] {
+        &["scene"]
+    }
+
+    fn load_sync(&self, path: &std::path::Path) -> Result<SerializedScene, AssetLoadError> {
+        let src = std::fs::read_to_string(path).map_err(|e| AssetLoadError::Io {
+            path: path.display().to_string(),
+            source: e,
+        })?;
+
+        let scene: SerializedScene =
+            serde_yaml::from_str(&src).map_err(|e| AssetLoadError::Parse {
+                path: path.display().to_string(),
+                message: e.to_string(),
+            })?;
+
+        Ok(scene)
+    }
 }
 
 /// A component registrator, used to serialize and deserialize components
