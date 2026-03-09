@@ -2,7 +2,7 @@ use crate::{
     self as apostasy,
     engine::{
         assets::{handle::Handle, server::AssetServer},
-        nodes::Node,
+        nodes::{Node, scene::Scene},
         rendering::{models::material::MaterialAsset, profiler::ProfilerState},
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
@@ -94,6 +94,7 @@ pub struct EditorStorage {
     pub is_scene_manager_open: bool,
     pub scene_name: String,
     pub last_scene_name: String,
+    pub scene_to_add: Option<String>,
 
     pub should_close: bool,
 
@@ -164,6 +165,7 @@ impl EditorStorage {
             scene_name: String::new(),
             last_scene_name: String::new(),
             should_close: false,
+            scene_to_add: None,
 
             dock_state: default_dock_state(),
             profiler: ProfilerState::default(),
@@ -995,111 +997,116 @@ fn render_scene_manager(
             if ui.button("Close").clicked() {
                 editor_storage.is_scene_manager_open = false;
             }
-            // ui.collapsing("Add Scene", |ui| {
-            //     ui.horizontal(|ui| {
-            //         ui.label("Name:");
-            //         ui.text_edit_singleline(&mut editor_storage.scene_name);
-            //     });
-            //     ui.add_space(4.0);
-            //
-            //     let scene_path = format!("{}/{}.yaml", ASSET_DIR, editor_storage.scene_name);
-            //     let can_add =
-            //         !editor_storage.scene_name.is_empty() && !Path::new(&scene_path).exists();
-            //
-            //     ui.add_enabled_ui(can_add, |ui| {
-            //         if ui.button("Add Scene").clicked() {
-            //             let mut scene = Scene::new();
-            //             scene.name = editor_storage.scene_name.clone();
-            //             world.serialize_scene_not_loaded(&scene).unwrap();
-            //             world.scene_manager.scenes.push(scene);
-            //             editor_storage.scene_name.clear();
-            //         }
-            //     });
-            // });
-            //
-            // ui.separator();
-            // ui.collapsing("Scenes", |ui| {
-            //     ScrollArea::vertical()
-            //         .id_salt("scenes_scroll")
-            //         .show(ui, |ui| {
-            //             let scene_names: Vec<String> = world
-            //                 .scene_manager
-            //                 .scenes
-            //                 .iter()
-            //                 .map(|s| s.name.clone())
-            //                 .collect();
-            //
-            //             for name in scene_names {
-            //                 ui.horizontal(|ui| {
-            //                     let mut new_name = name.clone();
-            //                     ui.text_edit_singleline(&mut new_name);
-            //                     ui.add_space(4.0);
-            //
-            //                     if new_name != name {
-            //                         let new_path = format!("{}/{}.yaml", ASSET_DIR, new_name);
-            //                         if !Path::new(&new_path).exists() {
-            //                             let old_path = format!("{}/{}.yaml", ASSET_DIR, name);
-            //                             std::fs::rename(&old_path, &new_path).unwrap();
-            //
-            //                             if let Some(s) = world
-            //                                 .scene_manager
-            //                                 .scenes
-            //                                 .iter_mut()
-            //                                 .find(|s| s.name == name)
-            //                             {
-            //                                 s.name = new_name.clone();
-            //                             }
-            //                             if world.scene.name == name {
-            //                                 world.scene.name = new_name.clone();
-            //                             }
-            //                             if let Some(s) = world
-            //                                 .scene_manager
-            //                                 .scenes
-            //                                 .iter()
-            //                                 .find(|s| s.name == new_name)
-            //                             {
-            //                                 world.serialize_scene_not_loaded(s).unwrap();
-            //                             }
-            //                         }
-            //                     }
-            //
-            //                     let (is_primary, scene_exists) = world
-            //                         .scene_manager
-            //                         .scenes
-            //                         .iter()
-            //                         .find(|s| s.name == new_name)
-            //                         .map(|s| (s.is_primary, true))
-            //                         .unwrap_or((false, false));
-            //
-            //                     if scene_exists {
-            //                         let mut primary = is_primary;
-            //                         if ui.checkbox(&mut primary, "Primary").clicked() {
-            //                             world
-            //                                 .scene_manager
-            //                                 .set_scene_primary(&new_name, !is_primary);
-            //                             if let Some(s) = world
-            //                                 .scene_manager
-            //                                 .scenes
-            //                                 .iter()
-            //                                 .find(|s| s.name == new_name)
-            //                             {
-            //                                 world.serialize_scene_not_loaded(s).unwrap();
-            //                             }
-            //                         }
-            //                     }
-            //
-            //                     ui.add_space(4.0);
-            //                     if ui.button("load").clicked() {
-            //                         let scene = world.scene_manager.load_scene(&name);
-            //                         world.scene = scene.unwrap();
-            //                     }
-            //                     if ui.button("❌").clicked() {
-            //                         world.scene_manager.remove_scene(&name);
-            //                     }
-            //                 });
-            //             }
-            //         });
-            // });
+            ui.collapsing("Add Scene", |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Name:");
+                    ui.text_edit_singleline(&mut editor_storage.scene_name);
+                });
+                ui.add_space(4.0);
+
+                let scene_path = editor_storage.scene_name.clone();
+                let can_add =
+                    !editor_storage.scene_name.is_empty() && !Path::new(&scene_path).exists();
+
+                ui.add_enabled_ui(can_add, |ui| {
+                    if ui.button("Add Scene").clicked() {
+                        let mut scene = Scene::new(scene_path);
+                        scene.name = editor_storage.scene_name.clone();
+                        world.serialize_scene_not_loaded(&scene).unwrap();
+                        world.scene_manager.scenes.push(scene);
+                        editor_storage.scene_name.clear();
+                    }
+                });
+            });
+
+            ui.separator();
+            ui.collapsing("Scenes", |ui| {
+                ScrollArea::vertical()
+                    .id_salt("scenes_scroll")
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Add Scene");
+
+                            let (is_file, path) = file_dragging_ui(
+                                ui,
+                                editor_storage,
+                                "Add Scene".to_string(),
+                                ".scene".to_string(),
+                                "Scene".to_string(),
+                            );
+
+                            if is_file {
+                                editor_storage.scene_to_add = Some(path);
+                                editor_storage.file_dragging = false;
+                            }
+
+                            if ui.button("Add Scene").clicked() {
+                                let scene = world
+                                    .scene_manager
+                                    .load_scene(&editor_storage.scene_to_add.clone().unwrap())
+                                    .unwrap();
+
+                                for manager_scene in world.scene_manager.scenes.iter() {
+                                    if manager_scene.path == scene.path {
+                                        log!("Scene already exists");
+                                        return;
+                                    }
+                                }
+
+                                world.scene_manager.scenes.push(scene);
+                                editor_storage.scene_to_add = None;
+                            }
+                        });
+
+                        let scene_names: Vec<String> = world
+                            .scene_manager
+                            .scenes
+                            .iter()
+                            .map(|s| s.name.clone())
+                            .collect();
+
+                        for name in scene_names {
+                            ui.horizontal(|ui| {
+                                let new_name = name.clone();
+                                ui.label(new_name.clone());
+
+                                let (is_primary, scene_exists) = world
+                                    .scene_manager
+                                    .scenes
+                                    .iter()
+                                    .find(|s| s.name == new_name)
+                                    .map(|s| (s.is_primary, true))
+                                    .unwrap_or((false, false));
+
+                                if scene_exists {
+                                    let mut primary = is_primary;
+                                    if ui.checkbox(&mut primary, "Primary").clicked() {
+                                        world
+                                            .scene_manager
+                                            .set_scene_primary(&new_name, !is_primary);
+                                        if let Some(s) = world
+                                            .scene_manager
+                                            .scenes
+                                            .iter()
+                                            .find(|s| s.name == new_name)
+                                        {
+                                            world.serialize_scene_not_loaded(s).unwrap();
+                                        }
+                                    }
+                                }
+
+                                ui.add_space(4.0);
+                                if ui.button("load").clicked() {
+                                    let scene = world.scene_manager.load_scene(&name);
+                                    world.scene = scene.unwrap();
+                                }
+                                if ui.button("❌").clicked() {
+                                    world.scene_manager.remove_scene(&name);
+                                }
+                            });
+                        }
+                    });
+            });
         });
 }
 
@@ -1488,3 +1495,78 @@ const ALL_KEY_CODES: &[&str] = &[
     "Numpad8",
     "Numpad9",
 ];
+
+/// Implimentaiton for a button that can accept a file of a certain type
+/// returns true if the file was accepted and it's file path
+pub fn file_dragging_ui(
+    ui: &mut Ui,
+    editor_storage: &mut EditorStorage,
+    button_text: String,
+    extension: String,
+    file_type: String,
+) -> (bool, String) {
+    let tool_tip_text = format!("Drag any {} file here", file_type);
+    let response = ui.add(
+        Button::new(button_text)
+            .sense(Sense::drag())
+            .sense(Sense::hover())
+            .sense(Sense::click())
+            .min_size(Vec2::new(100.0, 25.0)),
+    );
+
+    if response.contains_pointer() {
+        if let Some(tree_node) = &editor_storage.dragged_tree_node {
+            if tree_node.ends_with(extension.clone().as_str()) {
+                egui::Tooltip::always_open(
+                    ui.ctx().clone(),
+                    ui.layer_id(),
+                    egui::Id::new("file_drag_tooltip_2"),
+                    response.rect,
+                )
+                .at_pointer()
+                .show(|ui| {
+                    ui.label(format!("Set {}", file_type));
+                });
+            } else {
+                egui::Tooltip::always_open(
+                    ui.ctx().clone(),
+                    ui.layer_id(),
+                    egui::Id::new("drag_hint"),
+                    response.rect,
+                )
+                .at_pointer()
+                .show(|ui| {
+                    ui.label(tool_tip_text.clone());
+                });
+            }
+        } else {
+            egui::Tooltip::always_open(
+                ui.ctx().clone(),
+                ui.layer_id(),
+                egui::Id::new("drag_hint"),
+                response.rect,
+            )
+            .at_pointer()
+            .show(|ui| {
+                ui.label(format!("Drag any {} file here", file_type));
+            });
+        }
+    }
+
+    let pointer_pos = ui.ctx().pointer_latest_pos();
+    let is_over = pointer_pos.map_or(false, |pos| response.rect.contains(pos));
+    let pointer_released = ui.input(|i| i.pointer.any_released());
+
+    if is_over && pointer_released {
+        if let Some(tree_node) = &editor_storage.dragged_tree_node {
+            if tree_node.ends_with(extension.clone().as_str()) {
+                let file_path = tree_node[4..].to_string();
+                // split off after "res/"
+                println!("path: {}", file_path);
+
+                return (true, file_path);
+            }
+        }
+    }
+    (false, "".to_string())
+}
