@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::engine::{assets::server::AssetServer, editor::EditorStorage};
+use crate::engine::editor::EditorStorage;
 
 pub trait Component: ComponentClone {
     fn name() -> &'static str

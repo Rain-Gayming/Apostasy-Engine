@@ -1,12 +1,12 @@
 use crate::{
     self as apostasy,
     engine::{
-        assets::{asset, server::AssetServer},
+        assets::server::AssetServer,
         nodes::{
             components::{
                 camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
             },
-            scene_serialization::{SceneLoader, SerializedScene},
+            scene_serialization::SceneLoader,
         },
         rendering::models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
         windowing::cursor_manager::CursorManager,

@@ -7,6 +7,7 @@ use crate::engine::assets::asset::*;
 use crate::engine::assets::handle::*;
 
 /// Type-erased asset storage for a single asset type
+#[allow(unused)]
 trait AssetStorage: Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -66,6 +67,7 @@ enum LoadOutcome {
     },
 }
 
+#[allow(unused)]
 trait ErasedLoader: Send + Sync {
     fn extensions(&self) -> &[&str];
     fn load_erased(&self, path: &Path) -> LoadOutcome;

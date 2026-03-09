@@ -17,7 +17,7 @@ use crate::engine::{
         component::Component,
         components::transform::{ParentGlobal, Transform},
         scene::Scene,
-        scene_serialization::{SerializedScene, deserialize_node, serialize_node},
+        scene_serialization::{SerializedScene, serialize_node},
         system::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
     },
     windowing::input_manager::InputManager,
@@ -574,7 +574,7 @@ impl World {
     }
 
     /// Deserializes a scene from a file
-    pub fn deserialize_scene(&mut self, scene: String) -> Result<(), serde_yaml::Error> {
+    pub fn deserialize_scene(&mut self, _scene: String) -> Result<(), serde_yaml::Error> {
         // let path = format!("{}/{}.yaml", ASSET_DIR, scene);
         // let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
         // let serialized: SerializedScene = serde_yaml::from_str(&contents)?;
@@ -589,7 +589,7 @@ impl World {
     }
 
     /// Serializes a scene that isn't loaded into the engine.
-    pub fn serialize_scene_not_loaded(&self, scene: &Scene) -> Result<(), std::io::Error> {
+    pub fn serialize_scene_not_loaded(&self, _scene: &Scene) -> Result<(), std::io::Error> {
         // let serialized = SerializedScene {
         //     root_children: scene
         //         .root_node

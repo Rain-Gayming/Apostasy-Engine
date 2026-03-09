@@ -17,8 +17,8 @@ use crate::engine::editor::console_commands::render_console_ui;
 use crate::engine::nodes::World;
 use apostasy_macros::editor_ui;
 use egui::{
-    Align2, Button, Color32, Context, FontFamily, FontId, RichText, ScrollArea, SelectableLabel,
-    Sense, Stroke, TopBottomPanel, Ui, Vec2, Window, pos2,
+    Align2, Button, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
+    TopBottomPanel, Ui, Vec2, Window, pos2,
 };
 use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
 use gltf::material::AlphaMode;
@@ -113,12 +113,12 @@ fn default_dock_state() -> DockState<EditorTab> {
 
     let surface = state.main_surface_mut();
 
-    let [viewport, _hierarchy] =
+    let [_viewport, _hierarchy] =
         surface.split_left(NodeIndex::root(), 0.2, vec![EditorTab::Hierarchy]);
 
     let [_, _inspector] = surface.split_right(NodeIndex::root(), 0.75, vec![EditorTab::Inspector]);
 
-    let [_console, file_tree] =
+    let [_console, _file_tree] =
         surface.split_below(_hierarchy, 0.6, vec![EditorTab::Files, EditorTab::Console]);
     surface.split_below(_inspector, 0.6, vec![EditorTab::AssetEditor]);
 
@@ -607,7 +607,7 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
     }
 }
 
-pub fn asset_render_editor(ui: &mut Ui, world: &mut World, editor_storage: &mut EditorStorage) {
+pub fn asset_render_editor(ui: &mut Ui, _world: &mut World, editor_storage: &mut EditorStorage) {
     ui.separator();
     if let Some(path) = &editor_storage.selected_tree_node {
         ScrollArea::vertical()

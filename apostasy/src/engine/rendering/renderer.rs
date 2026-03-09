@@ -1,5 +1,4 @@
 use std::mem::transmute;
-use std::path::Path;
 use std::sync::RwLock;
 use std::time::Instant;
 use std::{collections::BTreeMap, sync::Arc};

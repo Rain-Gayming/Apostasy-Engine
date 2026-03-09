@@ -42,7 +42,7 @@ impl Default for SceneManager {
 
 impl SceneManager {
     pub fn new() -> Self {
-        let mut scene_manager = Self {
+        let scene_manager = Self {
             scenes: Vec::new(),
             primary_scene: None,
         };

@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate as apostasy;
 use crate::engine::assets::asset::Asset;
 use crate::engine::assets::handle::Handle;
-use crate::engine::assets::server::AssetServer;
 use crate::engine::editor::{EditorStorage, file_dragging_ui};
 use crate::engine::rendering::models::material::MaterialAsset;
 
@@ -11,7 +10,6 @@ use crate::engine::editor::inspectable::{InspectValue, Inspectable};
 use crate::engine::rendering::models::vertex::VertexType;
 use apostasy_macros::{Component, SerializableComponent};
 use ash::vk::{self};
-use egui::{Button, Label, Sense, Vec2};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug)]

@@ -87,20 +87,6 @@ impl MaterialAsset {
     }
 }
 
-fn resolve_one(
-    name: &Option<String>,
-    server: &crate::engine::assets::server::AssetServer,
-) -> Option<Handle<GpuTexture>> {
-    let name = name.as_ref()?;
-    match server.load_cached::<GpuTexture>(name) {
-        Ok(h) => Some(h),
-        Err(e) => {
-            eprintln!("[MaterialAsset] Could not load texture '{}': {}", name, e);
-            None
-        }
-    }
-}
-
 pub struct MaterialLoader;
 
 impl AssetLoader for MaterialLoader {
