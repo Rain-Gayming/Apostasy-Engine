@@ -41,11 +41,13 @@ pub struct GpuMesh {
 pub struct ModelRenderer {
     pub loaded_model: String,
     pub material_path: String,
+    #[serde(skip)]
     pub material: Option<MaterialAsset>,
     #[serde(skip)]
     pub model_handle: Option<Handle<GpuModel>>,
     #[serde(skip)]
     pub material_handle: Option<Handle<MaterialAsset>>,
+    #[serde(skip)]
     pub mesh_material_handles: HashMap<String, Handle<MaterialAsset>>,
 }
 
