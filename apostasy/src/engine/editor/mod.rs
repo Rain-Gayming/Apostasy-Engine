@@ -4,7 +4,7 @@ use crate::{
         assets::{handle::Handle, server::AssetServer},
         nodes::{
             Node,
-            components::transform::Transform,
+            components::{light::Light, transform::Transform},
             scene::{Scene, serialize_scene},
         },
         rendering::{
@@ -23,6 +23,7 @@ use std::{
 use crate::engine::editor::console_commands::render_console_ui;
 use crate::engine::nodes::World;
 use apostasy_macros::editor_ui;
+use cgmath::Vector3;
 use egui::{
     Align2, Button, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
     TopBottomPanel, Ui, Vec2, Window, pos2,
@@ -979,6 +980,16 @@ fn render_file_tree(
                     model_renderer.loaded_model = model_path;
                     scene_node.add_component(model_renderer);
                     scene_node.add_component(Transform::default());
+
+                    let mut light = Node::new();
+                    light.name = "light".to_string();
+                    let mut transform = Transform::default();
+                    transform.position = Vector3::new(-10.0, 15.0, 0.0);
+                    light.add_component(transform);
+                    light.add_component(Light::default());
+                    light.id = 1;
+                    scene_node.add_child(light);
+
                     scene.root_node.add_child(scene_node);
 
                     let path = scene.path.clone();
@@ -990,6 +1001,42 @@ fn render_file_tree(
                     editor_storage.scene_to_open = Some(path);
 
                     println!("Scene loaded");
+                }
+
+                if formatted_name.ends_with(".material") {
+                    // create a new scene
+                    let mut scene = Scene::new("res/.engine/model_preview.scene".to_string());
+
+                    // create a new node
+                    let mut scene_node = Node::new();
+
+                    // add a model renderer to the scene
+                    // it automatically loads the clicked model
+                    let mut model_renderer = ModelRenderer::default();
+                    let model_path = node.path.display().to_string()[4..].to_string();
+                    model_renderer.loaded_model = ".engine/sphere.glb".to_string();
+                    model_renderer.material_path = model_path;
+                    scene_node.add_component(model_renderer);
+                    scene_node.add_component(Transform::default());
+
+                    let mut light = Node::new();
+                    light.name = "light".to_string();
+                    let mut transform = Transform::default();
+                    transform.position = Vector3::new(-10.0, 15.0, 0.0);
+                    light.add_component(transform);
+                    light.add_component(Light::default());
+                    light.id = 1;
+                    scene_node.add_child(light);
+
+                    scene.root_node.add_child(scene_node);
+
+                    let path = scene.path.clone();
+                    let res = serialize_scene(scene);
+
+                    println!("res: {:?}", res);
+
+                    // load the scene
+                    editor_storage.scene_to_open = Some(path);
                 }
             }
 

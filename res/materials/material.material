@@ -13,7 +13,7 @@ emissive:
 alpha_mode: OPAQUE
 alpha_cutoff: 0.5
 double_sided: false
-albedo_texture_name: angry.png
+albedo_texture_name: sad.png
 metallic_texture_name: ''
 roughness_texture_name: ''
 normal_texture_name: ''
