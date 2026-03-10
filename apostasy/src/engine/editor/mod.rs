@@ -2,8 +2,15 @@ use crate::{
     self as apostasy,
     engine::{
         assets::{handle::Handle, server::AssetServer},
-        nodes::{Node, scene::Scene},
-        rendering::{models::material::MaterialAsset, profiler::ProfilerState},
+        nodes::{
+            Node,
+            components::transform::Transform,
+            scene::{Scene, serialize_scene},
+        },
+        rendering::{
+            models::{material::MaterialAsset, model::ModelRenderer},
+            profiler::ProfilerState,
+        },
         windowing::input_manager::{KeyAction, KeyBind, MouseBind},
     },
     log,
@@ -101,6 +108,7 @@ pub struct EditorStorage {
     pub dock_state: DockState<EditorTab>,
     pub profiler: ProfilerState,
     pub asset_server: Arc<RwLock<AssetServer>>,
+    pub world: Arc<RwLock<World>>,
 }
 
 pub enum DragTarget {
@@ -126,7 +134,7 @@ fn default_dock_state() -> DockState<EditorTab> {
 }
 
 impl EditorStorage {
-    pub fn default(asset_server: Arc<RwLock<AssetServer>>) -> Self {
+    pub fn default(asset_server: Arc<RwLock<AssetServer>>, world: Arc<RwLock<World>>) -> Self {
         Self {
             component_text_edit: String::new(),
 
@@ -170,6 +178,7 @@ impl EditorStorage {
             dock_state: default_dock_state(),
             profiler: ProfilerState::default(),
             asset_server,
+            world,
         }
     }
 }
@@ -244,6 +253,7 @@ impl<'a> TabViewer for EditorTabViewer<'a> {
                 ui.painter().rect_filled(rect, 0.0, Color32::TRANSPARENT);
                 ui.allocate_space(ui.available_size());
             }
+            _ => {}
         }
     }
 
@@ -268,6 +278,12 @@ impl<'a> TabViewer for EditorTabViewer<'a> {
 
 #[editor_ui]
 pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &mut EditorStorage) {
+    if let Some(scene_path) = &editor_storage.scene_to_open {
+        let scene = world.scene_manager.load_scene(scene_path);
+        world.scene = scene.unwrap();
+        editor_storage.scene_to_open = None;
+    }
+
     render_top_bar(context, world, editor_storage);
 
     if !editor_storage.is_editor_open {
@@ -275,6 +291,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
     }
     render_scene_manager(context, world, editor_storage);
     render_input_manager(context, world, editor_storage);
+
     let mut dock_state = std::mem::replace(&mut editor_storage.dock_state, default_dock_state());
 
     let mut viewer = EditorTabViewer {
@@ -305,12 +322,6 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
     if let Some(id) = editor_storage.node_to_remove {
         world.remove_node(id);
         editor_storage.node_to_remove = None;
-    }
-
-    if let Some(scene_path) = &editor_storage.scene_to_open {
-        let scene = world.scene_manager.load_scene(scene_path);
-        world.scene = scene.unwrap();
-        editor_storage.scene_to_open = None;
     }
 }
 
@@ -951,6 +962,34 @@ fn render_file_tree(
                 if formatted_name.ends_with(".scene") {
                     log!("Open: {:?}", node.path);
                     editor_storage.scene_to_open = Some(node.path.to_str().unwrap().to_string());
+                }
+                // if the file is a .glb file
+                // open a preview scene
+                if formatted_name.ends_with(".glb") {
+                    // create a new scene
+                    let mut scene = Scene::new("res/.engine/model_preview.scene".to_string());
+
+                    // create a new node
+                    let mut scene_node = Node::new();
+
+                    // add a model renderer to the scene
+                    // it automatically loads the clicked model
+                    let mut model_renderer = ModelRenderer::default();
+                    let model_path = node.path.display().to_string()[4..].to_string();
+                    model_renderer.loaded_model = model_path;
+                    scene_node.add_component(model_renderer);
+                    scene_node.add_component(Transform::default());
+                    scene.root_node.add_child(scene_node);
+
+                    let path = scene.path.clone();
+                    let res = serialize_scene(scene);
+
+                    println!("res: {:?}", res);
+
+                    // load the scene
+                    editor_storage.scene_to_open = Some(path);
+
+                    println!("Scene loaded");
                 }
             }
 

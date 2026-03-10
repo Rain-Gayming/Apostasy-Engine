@@ -115,7 +115,7 @@ pub struct Engine {
     pub rendering_context: Arc<RenderingContext>,
     pub window_manager: WindowManager,
     pub timer: EngineTimer,
-    pub world: World,
+    pub world: Arc<RwLock<World>>,
     pub editor: EditorStorage,
     pub asset_server: Arc<RwLock<AssetServer>>,
     pending_windows: Vec<(WindowId, Arc<Window>)>,
@@ -179,7 +179,8 @@ impl Engine {
             asset_server.register_loader(SceneLoader);
         }
 
-        let editor = EditorStorage::default(asset_server.clone());
+        let world = Arc::new(RwLock::new(world));
+        let editor = EditorStorage::default(asset_server.clone(), world.clone());
 
         let pending_windows = vec![(primary_window_id, primary_window.clone())];
 
@@ -207,7 +208,10 @@ impl Engine {
             renderer.window_event(window, event.clone());
         }
 
-        self.world.input_manager.handle_input_event(event.clone());
+        {
+            let mut world = self.world.write().unwrap();
+            world.input_manager.handle_input_event(event.clone());
+        }
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -241,19 +245,25 @@ impl Engine {
                     self.renderers_initialized = true;
                 }
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    for window in &self.window_manager.windows {
-                        renderer.prepare_egui(window.1, &mut self.world, &mut self.editor);
+                    {
+                        let mut world = self.world.write().unwrap();
+                        for window in &self.window_manager.windows {
+                            renderer.prepare_egui(window.1, &mut world, &mut self.editor);
 
-                        if self.editor.should_close {
-                            event_loop.exit();
+                            if self.editor.should_close {
+                                event_loop.exit();
+                            }
                         }
                     }
 
-                    let _ = renderer.render(
-                        &mut self.world,
-                        &self.asset_server,
-                        self.editor.is_editor_open,
-                    );
+                    {
+                        let mut world = self.world.write().unwrap();
+                        let _ = renderer.render(
+                            &mut world,
+                            &self.asset_server,
+                            self.editor.is_editor_open,
+                        );
+                    }
                 }
             }
             WindowEvent::KeyboardInput { .. } => {}
@@ -272,53 +282,54 @@ impl Engine {
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
-        self.world.input_manager.handle_device_event(event.clone());
-        if self
-            .world
-            .input_manager
-            .is_mousebind_active("editor_camera_look")
         {
-            if !self.world.is_world_hovered {
-                return;
+            let mut world = self.world.write().unwrap();
+            world.input_manager.handle_device_event(event.clone());
+            if world
+                .input_manager
+                .is_mousebind_active("editor_camera_look")
+            {
+                if !world.is_world_hovered {
+                    return;
+                }
+                let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
+                let cursor_manager = cursor_manager
+                    .unwrap()
+                    .get_component_mut::<CursorManager>()
+                    .unwrap();
+                cursor_manager.grab_cursor(&mut self.window_manager);
+            } else {
+                let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
+                let cursor_manager = cursor_manager
+                    .unwrap()
+                    .get_component_mut::<CursorManager>()
+                    .unwrap();
+                cursor_manager.ungrab_cursor(&mut self.window_manager);
             }
-            let cursor_manager = self
-                .world
-                .get_global_node_with_component_mut::<CursorManager>();
-            let cursor_manager = cursor_manager
-                .unwrap()
-                .get_component_mut::<CursorManager>()
-                .unwrap();
-            cursor_manager.grab_cursor(&mut self.window_manager);
-        } else {
-            let cursor_manager = self
-                .world
-                .get_global_node_with_component_mut::<CursorManager>();
-            let cursor_manager = cursor_manager
-                .unwrap()
-                .get_component_mut::<CursorManager>()
-                .unwrap();
-            cursor_manager.ungrab_cursor(&mut self.window_manager);
         }
     }
 
     pub fn request_redraw(&mut self) {
-        self.world.update();
+        {
+            let mut world = self.world.write().unwrap();
+            world.update();
 
-        if self.editor.is_editor_open {
-            self.world.editor_fixed_update(self.timer.tick().fixed_dt);
-        } else {
-            self.world.fixed_update(self.timer.tick().fixed_dt);
-        }
+            if self.editor.is_editor_open {
+                world.editor_fixed_update(self.timer.tick().fixed_dt);
+            } else {
+                world.fixed_update(self.timer.tick().fixed_dt);
+            }
 
-        for window in &self.window_manager.windows {
-            window.1.request_redraw();
-            self.world.window_size = Vector2::new(
-                window.1.inner_size().width as f32,
-                window.1.inner_size().height as f32,
-            );
+            for window in &self.window_manager.windows {
+                window.1.request_redraw();
+                world.window_size = Vector2::new(
+                    window.1.inner_size().width as f32,
+                    window.1.inner_size().height as f32,
+                );
+            }
+            world.input_manager.clear_actions();
+            world.late_update();
         }
-        self.world.input_manager.clear_actions();
-        self.world.late_update();
     }
 
     pub fn create_window(

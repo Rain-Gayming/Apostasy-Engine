@@ -589,21 +589,20 @@ impl World {
     }
 
     /// Serializes a scene that isn't loaded into the engine.
-    pub fn serialize_scene_not_loaded(&self, _scene: &Scene) -> Result<(), std::io::Error> {
-        // let serialized = SerializedScene {
-        //     root_children: scene
-        //         .root_node
-        //         .children
-        //         .iter()
-        //         .map(serialize_node)
-        //         .collect(),
-        //     name: scene.name.clone(),
-        //     is_primary: scene.is_primary,
-        //     asset_path: scene.path.clone(),
-        // };
-        // let path = format!("{}/{}.yaml", ASSET_DIR, scene.name);
-        // std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
-        Ok(())
+    pub fn serialize_scene_not_loaded(&self, scene: &Scene) -> Result<(), std::io::Error> {
+        let path = scene.path.clone();
+        let serialized = SerializedScene {
+            root_children: scene
+                .root_node
+                .children
+                .iter()
+                .map(serialize_node)
+                .collect(),
+            name: scene.name.clone(),
+            is_primary: scene.is_primary,
+            path: scene.path.clone(),
+        };
+        std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
     }
 
     /// Checks that all node names are unique

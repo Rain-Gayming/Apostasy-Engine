@@ -1,6 +1,8 @@
 use crate::engine::nodes::{
     Node,
-    scene_serialization::{deserialize_node, parse_root_children_from_value},
+    scene_serialization::{
+        SerializedScene, deserialize_node, parse_root_children_from_value, serialize_node,
+    },
 };
 
 pub struct Scene {
@@ -116,4 +118,20 @@ pub fn deserialize_scene(path: String) -> Option<Scene> {
     }
 
     Some(scene)
+}
+
+pub fn serialize_scene(scene: Scene) -> Result<(), std::io::Error> {
+    let path = scene.path.clone();
+    let serialized = SerializedScene {
+        root_children: scene
+            .root_node
+            .children
+            .iter()
+            .map(serialize_node)
+            .collect(),
+        path: path.clone(),
+        name: scene.name.clone(),
+        is_primary: scene.is_primary,
+    };
+    std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
 }
