@@ -4,8 +4,13 @@ use crate::{
         assets::{handle::Handle, server::AssetServer},
         nodes::{
             Node,
-            components::{light::Light, transform::Transform},
-            scene::{Scene, serialize_scene},
+            components::{
+                camera::{Camera, get_perspective_projection},
+                light::Light,
+                raycast::ray_from_mouse,
+                transform::Transform,
+            },
+            scene::{Scene, SceneInstance, serialize_scene},
         },
         rendering::{
             models::{material::MaterialAsset, model::ModelRenderer},
@@ -23,7 +28,7 @@ use std::{
 use crate::engine::editor::console_commands::render_console_ui;
 use crate::engine::nodes::World;
 use apostasy_macros::editor_ui;
-use cgmath::Vector3;
+use cgmath::{Rotation, SquareMatrix, Vector3};
 use egui::{
     Align2, Button, Color32, Context, FontFamily, FontId, RichText, ScrollArea, Sense, Stroke,
     TopBottomPanel, Ui, Vec2, Window, pos2,
@@ -109,7 +114,9 @@ pub struct EditorStorage {
     pub dock_state: DockState<EditorTab>,
     pub profiler: ProfilerState,
     pub asset_server: Arc<RwLock<AssetServer>>,
-    pub world: Arc<RwLock<World>>,
+
+    pub viewport_drag_preview_id: Option<u64>,
+    pub viewport_drag_model: Option<String>,
 }
 
 pub enum DragTarget {
@@ -179,7 +186,8 @@ impl EditorStorage {
             dock_state: default_dock_state(),
             profiler: ProfilerState::default(),
             asset_server,
-            world,
+            viewport_drag_preview_id: None,
+            viewport_drag_model: None,
         }
     }
 }
@@ -244,7 +252,7 @@ impl<'a> TabViewer for EditorTabViewer<'a> {
             EditorTab::Hierarchy => render_hierarchy(ui, self.world, self.editor_storage),
             EditorTab::Inspector => render_inspector(ui, self.world, self.editor_storage),
             EditorTab::AssetEditor => asset_render_editor(ui, self.world, self.editor_storage),
-            EditorTab::Files => render_file_tree_ui(ui, self.editor_storage),
+            EditorTab::Files => render_file_tree_ui(ui, self.editor_storage, self.world),
             EditorTab::Console => render_console_ui(ui, self.world, self.editor_storage),
             EditorTab::Viewport => {
                 // The central viewport: transparent so the 3-D render shows through.
@@ -295,29 +303,126 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
 
     let mut dock_state = std::mem::replace(&mut editor_storage.dock_state, default_dock_state());
 
-    let mut viewer = EditorTabViewer {
-        world,
-        editor_storage,
-        viewport_rect: None,
+    let viewport_rect = {
+        let mut viewer = EditorTabViewer {
+            world,
+            editor_storage,
+            viewport_rect: None,
+        };
+
+        DockArea::new(&mut dock_state)
+            .style({
+                let mut style = Style::from_egui(context.style().as_ref());
+                style.main_surface_border_stroke = egui::Stroke::NONE;
+                style
+            })
+            .show(context, &mut viewer);
+
+        viewer.editor_storage.dock_state = dock_state;
+        viewer.viewport_rect // viewer is dropped here, releasing the borrows
     };
 
-    DockArea::new(&mut dock_state)
-        .style({
-            let mut style = Style::from_egui(context.style().as_ref());
-
-            style.main_surface_border_stroke = egui::Stroke::NONE;
-            style
-        })
-        .show(context, &mut viewer);
-    viewer.editor_storage.dock_state = dock_state;
-
-    let viewport_rect = viewer.viewport_rect;
+    // Now world and editor_storage are freely usable again
 
     if let Some(rect) = viewport_rect {
-        let pointer_in_rect = context
-            .pointer_latest_pos()
-            .map_or(false, |pos| rect.contains(pos));
-        viewer.world.is_world_hovered = pointer_in_rect;
+        let pointer_pos = context.pointer_latest_pos();
+        let is_over_viewport = pointer_pos.map_or(false, |p| rect.contains(p));
+
+        let is_dragging_glb = editor_storage
+            .dragged_tree_node
+            .as_deref()
+            .map_or(false, |p| p.ends_with(".glb"));
+
+        let is_dragging_scene = editor_storage
+            .dragged_tree_node
+            .as_deref()
+            .map_or(false, |p| p.ends_with(".scene"));
+
+        // Spawn preview node when glb enters viewport
+        if is_over_viewport && is_dragging_glb && editor_storage.viewport_drag_preview_id.is_none()
+        {
+            let path = editor_storage.dragged_tree_node.clone().unwrap();
+            let model_path = path[4..].to_string(); // strip "res/"
+
+            let mut node = Node::new();
+            node.name = "__viewport_drag_preview__".to_string();
+            let mut model_renderer = ModelRenderer::default();
+            model_renderer.loaded_model = model_path.clone();
+            node.add_component(model_renderer);
+            node.add_component(Transform::default());
+
+            world.add_node(node);
+
+            let id = world
+                .get_node_with_name("__viewport_drag_preview__")
+                .map(|n| n.id);
+            editor_storage.viewport_drag_preview_id = id;
+            editor_storage.viewport_drag_model = Some(model_path);
+        }
+
+        if is_over_viewport
+            && is_dragging_scene
+            && editor_storage.viewport_drag_preview_id.is_none()
+        {
+            let path = editor_storage.dragged_tree_node.clone().unwrap();
+            let scene_path = path.clone(); // strip "res/"
+
+            let mut node = Node::new();
+            node.name = "__viewport_drag_preview__".to_string();
+            let scene_preview = SceneInstance::new(scene_path);
+            node.add_component(scene_preview);
+            node.add_component(Transform::default());
+
+            world.add_node(node);
+            println!("Dragging scene");
+
+            let id = world
+                .get_node_with_name("__viewport_drag_preview__")
+                .map(|n| n.id);
+            editor_storage.viewport_drag_preview_id = id;
+            world.reload_scene_instances();
+        }
+
+        // Update preview position while dragging over viewport
+        if let (Some(preview_id), Some(pos)) =
+            (editor_storage.viewport_drag_preview_id, pointer_pos)
+        {
+            if is_over_viewport {
+                let world_pos = screen_to_world_plane(pos, rect, world, context);
+                let transform = world
+                    .get_node_mut(preview_id)
+                    .get_component_mut::<Transform>()
+                    .unwrap();
+                transform.position = world_pos;
+            }
+        }
+
+        // Commit or cancel on mouse release
+        if context.input(|i| i.pointer.any_released()) {
+            if let Some(preview_id) = editor_storage.viewport_drag_preview_id.take() {
+                if is_over_viewport {
+                    let model = editor_storage
+                        .viewport_drag_model
+                        .take()
+                        .unwrap_or_default();
+                    let name = std::path::Path::new(&model)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("Model")
+                        .to_string();
+                    world.get_node_mut(preview_id).name = name;
+                    editor_storage.dragged_tree_node = None;
+                    editor_storage.file_dragging = false;
+                    editor_storage.viewport_drag_preview_id = None;
+                } else {
+                    world.remove_node(preview_id);
+                    editor_storage.viewport_drag_model = None;
+                    editor_storage.viewport_drag_preview_id = None;
+                }
+            }
+        }
+
+        world.is_world_hovered = pointer_pos.map_or(false, |pos| rect.contains(pos));
     }
 
     if let Some(id) = editor_storage.node_to_remove {
@@ -381,6 +486,7 @@ pub fn render_hierarchy(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
         }
         if ui.button("Save Scene").clicked() {
             world.serialize_scene().unwrap();
+            world.reload_scene_instances();
         }
     });
     ui.horizontal(|ui| {
@@ -621,7 +727,7 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
 
 pub fn asset_render_editor(ui: &mut Ui, _world: &mut World, editor_storage: &mut EditorStorage) {
     ui.separator();
-    if let Some(path) = &editor_storage.selected_tree_node {
+    if let Some(path) = &editor_storage.selected_tree_node.clone() {
         ScrollArea::vertical()
             .id_salt("asset_editor_scroll")
             .auto_shrink([false, false])
@@ -629,7 +735,8 @@ pub fn asset_render_editor(ui: &mut Ui, _world: &mut World, editor_storage: &mut
                 if path.ends_with(".material") {
                     ui.label("MATERIAL");
 
-                    let asset_server = editor_storage.asset_server.write().unwrap();
+                    let asset_server = editor_storage.asset_server.clone();
+                    let asset_server = asset_server.write().unwrap();
                     let material_handle: Handle<MaterialAsset> =
                         asset_server.load(path[4..].to_string()).unwrap();
                     let mut material = asset_server.get_mut(material_handle).unwrap();
@@ -755,74 +862,24 @@ pub fn asset_render_editor(ui: &mut Ui, _world: &mut World, editor_storage: &mut
                                 .unwrap()
                                 .to_string()
                         };
-                        let response = ui.add(
-                            Button::new(albedo_path)
-                                .sense(Sense::drag())
-                                .sense(Sense::hover())
-                                .sense(Sense::click())
-                                .min_size(Vec2::new(100.0, 25.0)),
+
+                        let (is_file, path) = file_dragging_ui(
+                            ui,
+                            editor_storage,
+                            albedo_path,
+                            ".material".to_string(),
+                            "Material".to_string(),
                         );
 
-                        if response.contains_pointer() {
-                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
-                                if tree_node.ends_with(".png") {
-                                    egui::Tooltip::always_open(
-                                        ui.ctx().clone(),
-                                        ui.layer_id(),
-                                        egui::Id::new("file_drag_tooltip_2"),
-                                        response.rect,
-                                    )
-                                    .at_pointer()
-                                    .show(|ui| {
-                                        ui.label("set texture");
-                                    });
-                                } else {
-                                    egui::Tooltip::always_open(
-                                        ui.ctx().clone(),
-                                        ui.layer_id(),
-                                        egui::Id::new("drag_hint"),
-                                        response.rect,
-                                    )
-                                    .at_pointer()
-                                    .show(|ui| {
-                                        ui.label("Drag any .png file here");
-                                    });
-                                }
-                            } else {
-                                egui::Tooltip::always_open(
-                                    ui.ctx().clone(),
-                                    ui.layer_id(),
-                                    egui::Id::new("drag_hint"),
-                                    response.rect,
-                                )
-                                .at_pointer()
-                                .show(|ui| {
-                                    ui.label("Drag any .png file here");
-                                });
-                            }
-                        }
+                        if is_file {
+                            material.albedo_texture_name = path.clone();
+                            material.albedo_handle = None;
+                            material.textures_resolved = false;
+                            material.save(path.clone());
 
-                        let pointer_pos = ui.ctx().pointer_latest_pos();
-                        let is_over = pointer_pos.map_or(false, |pos| response.rect.contains(pos));
-                        let pointer_released = ui.input(|i| i.pointer.any_released());
+                            println!("A: {:?}", material.albedo_texture_name);
 
-                        if is_over && pointer_released {
-                            if let Some(tree_node) = &editor_storage.dragged_tree_node {
-                                if tree_node.ends_with(".png") {
-                                    let file_path = tree_node[4..].to_string();
-                                    // split off after "res/"
-                                    println!("path: {}", path);
-
-                                    material.albedo_texture_name = file_path.clone();
-                                    material.albedo_handle = None;
-                                    material.textures_resolved = false;
-                                    material.save(path.clone());
-
-                                    println!("A: {:?}", material.albedo_texture_name);
-
-                                    editor_storage.file_dragging = false;
-                                }
-                            }
+                            editor_storage.file_dragging = false;
                         }
                     });
                 }
@@ -830,7 +887,11 @@ pub fn asset_render_editor(ui: &mut Ui, _world: &mut World, editor_storage: &mut
     }
 }
 
-pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage) {
+pub fn render_file_tree_ui(
+    ui: &mut egui::Ui,
+    editor_storage: &mut EditorStorage,
+    world: &mut World,
+) {
     ui.style_mut().visuals.override_text_color = Some(Color32::from_gray(210));
     ScrollArea::vertical()
         .id_salt("files_scroll")
@@ -858,6 +919,7 @@ pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage
                     0,
                     editor_storage.file_tree_search.clone(),
                     editor_storage,
+                    world,
                 );
             } else {
                 let files = get_all_files(&tree.path);
@@ -870,6 +932,7 @@ pub fn render_file_tree_ui(ui: &mut egui::Ui, editor_storage: &mut EditorStorage
                             0,
                             editor_storage.file_tree_search.clone(),
                             editor_storage,
+                            world,
                         );
                     }
                 }
@@ -900,6 +963,7 @@ fn render_file_tree(
     depth: usize,
     search: String,
     editor_storage: &mut EditorStorage,
+    world: &mut World,
 ) {
     let indent = depth as f32 * 12.0;
     let search_lc = search.to_lowercase();
@@ -937,7 +1001,14 @@ fn render_file_tree(
                 .show(ui, |ui| {
                     ui.add_space(2.0);
                     for child in &node.children {
-                        render_file_tree(ui, child, depth + 1, search.clone(), editor_storage);
+                        render_file_tree(
+                            ui,
+                            child,
+                            depth + 1,
+                            search.clone(),
+                            editor_storage,
+                            world,
+                        );
                     }
                 });
         }
@@ -1061,7 +1132,7 @@ fn render_file_tree(
                 )
                 .at_pointer()
                 .show(|ui| {
-                    ui.label(formatted_name);
+                    ui.label(&formatted_name);
                 });
             }
         });
@@ -1090,7 +1161,7 @@ fn render_scene_manager(
                 });
                 ui.add_space(4.0);
 
-                let scene_path = editor_storage.scene_name.clone();
+                let scene_path = format!("res/{}.scene", editor_storage.scene_name.clone());
                 let can_add =
                     !editor_storage.scene_name.is_empty() && !Path::new(&scene_path).exists();
 
@@ -1655,4 +1726,53 @@ pub fn file_dragging_ui(
         }
     }
     (false, "".to_string())
+}
+fn screen_to_world_plane(
+    screen_pos: egui::Pos2,
+    viewport_rect: egui::Rect,
+    world: &World,
+    _context: &egui::Context,
+) -> Vector3<f32> {
+    use cgmath::InnerSpace;
+
+    let camera_node = match world.get_global_node_with_component::<Camera>() {
+        Some(n) => n,
+        None => return Vector3::new(0.0, 0.0, 0.0),
+    };
+
+    let cam = camera_node.get_component::<Camera>().unwrap();
+    let transform = camera_node.get_component::<Transform>().unwrap();
+
+    let viewport_width = viewport_rect.width();
+    let viewport_height = viewport_rect.height();
+    let aspect = viewport_width / viewport_height;
+
+    // Match ray_from_mouse exactly — mouse relative to viewport top-left
+    let mouse_x = screen_pos.x - viewport_rect.min.x;
+    let mouse_y = screen_pos.y - viewport_rect.min.y;
+
+    let (origin, direction) = ray_from_mouse(
+        mouse_x,
+        mouse_y,
+        viewport_width,
+        viewport_height,
+        get_perspective_projection(cam, aspect),
+        transform.global_position,
+        transform.global_rotation,
+    );
+
+    // Intersect with Y=0 world plane
+    let t = if direction.y.abs() > 1e-6 {
+        -origin.y / direction.y
+    } else {
+        let forward = transform
+            .global_rotation
+            .rotate_vector(Vector3::new(0.0, 0.0, -1.0));
+        let cam_forward_flat = Vector3::new(forward.x, 0.0, forward.z).normalize();
+        return origin + cam_forward_flat * 10.0;
+    };
+
+    let result = origin + direction * t;
+
+    result
 }

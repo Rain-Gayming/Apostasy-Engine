@@ -2,10 +2,6 @@ root_children:
 - name: Node
   id: 0
   components:
-  - type: ModelRenderer
-    data:
-      loaded_model: .engine/cube.glb
-      material_path: materials/material.material
   - type: Transform
     data:
       position:
@@ -52,8 +48,12 @@ root_children:
         x: 1.0
         y: 1.0
         z: 1.0
+  - type: ModelRenderer
+    data:
+      loaded_model: models/smooth_sphere.glb
+      material_path: ''
   children: []
   scene_instance_path: null
-name: Scene
-path: res/scene.scene
+name: testrrrr
+path: res/testrrrr.scene
 is_primary: false

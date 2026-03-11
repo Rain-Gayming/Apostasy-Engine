@@ -1,8 +1,12 @@
-use crate::engine::nodes::{
-    Node,
-    scene_serialization::{
-        SerializedScene, deserialize_node, parse_root_children_from_value, serialize_node,
-    },
+use crate::{
+    self as apostasy,
+    engine::nodes::{Component, Node},
+};
+use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
+use serde::{Deserialize, Serialize};
+
+use crate::engine::nodes::scene_serialization::{
+    SerializedScene, deserialize_node, parse_root_children_from_value, serialize_node,
 };
 
 pub struct Scene {
@@ -27,6 +31,33 @@ impl Scene {
             path,
             root_node: Box::new(root_node),
             is_primary: false,
+        }
+    }
+}
+
+#[derive(
+    Clone,
+    Serialize,
+    Deserialize,
+    Debug,
+    Component,
+    InspectValue,
+    Inspectable,
+    SerializableComponent,
+    Default,
+)]
+pub struct SceneInstance {
+    /// Path to the source scene file this node was instanced from
+    pub source_path: String,
+    /// Whether this instance is "unpacked" (edits are local, no longer linked)
+    pub unpacked: bool,
+}
+
+impl SceneInstance {
+    pub fn new(source_path: impl Into<String>) -> Self {
+        Self {
+            source_path: source_path.into(),
+            unpacked: false,
         }
     }
 }
@@ -134,4 +165,15 @@ pub fn serialize_scene(scene: Scene) -> Result<(), std::io::Error> {
         is_primary: scene.is_primary,
     };
     std::fs::write(path, serde_yaml::to_string(&serialized).unwrap())
+}
+
+pub fn instance_scene_as_node(name: &str, path: &str) -> Node {
+    let mut root = Node::new();
+    root.name = name.to_string();
+    root.add_component(SceneInstance::new(path));
+
+    if let Some(source_scene) = deserialize_scene(path.to_string()) {
+        root.children = source_scene.root_node.children;
+    }
+    root
 }

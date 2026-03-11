@@ -1,0 +1,114 @@
+root_children:
+- name: Node (1)
+  id: 0
+  components:
+  - type: SceneInstance
+    data:
+      source_path: res/scene.scene
+      unpacked: false
+  - type: Transform
+    data:
+      position:
+        x: 1.5299999713897705
+        y: 1.809999942779541
+        z: 0.23000000417232513
+      rotation:
+        v:
+          x: 0.0
+          y: -0.1322563886642456
+          z: 0.0
+        s: 0.9912155270576477
+      rotation_euler:
+        x: 0.0
+        y: -15.199999809265137
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 1.5299999713897705
+        y: 1.809999942779541
+        z: 0.23000000417232513
+      global_rotation:
+        v:
+          x: 0.0
+          y: -0.1322563886642456
+          z: 0.0
+        s: 0.9912155270576477
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+  children: []
+  scene_instance_path: res/scene.scene
+- name: Node
+  id: 2
+  components:
+  - type: ModelRenderer
+    data:
+      loaded_model: .engine/cube.glb
+      material_path: ''
+  - type: Transform
+    data:
+      position:
+        x: 0.15000000596046448
+        y: 0.0
+        z: 0.0
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 0.15000000596046448
+        y: 0.0
+        z: 0.0
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      global_scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+  children: []
+  scene_instance_path: null
+name: test
+path: res/test.scene
+is_primary: false

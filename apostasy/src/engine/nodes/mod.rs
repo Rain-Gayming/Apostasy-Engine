@@ -1,7 +1,8 @@
 use crate::{
     self as apostasy,
     engine::nodes::{
-        scene::SceneManager, scene_serialization::find_registration,
+        scene::{SceneInstance, SceneManager, deserialize_scene, instance_scene_as_node},
+        scene_serialization::find_registration,
         system::EditorFixedUpdateSystem,
     },
     log, log_warn,
@@ -551,6 +552,49 @@ impl World {
         self.nodes = 0;
     }
 
+    /// Instance a scene file into the current scene.
+    /// Drag a .scene asset onto the viewport or scene tree to call this.
+    pub fn instance_scene(&mut self, path: &str) -> &mut Self {
+        let node = build_instance_node(path);
+        self.add_node(node);
+        self
+    }
+
+    /// Instance a scene as a child of an existing node.
+    pub fn instance_scene_under(&mut self, parent_id: u64, path: &str) {
+        let node = build_instance_node(path);
+        self.scene.root_node.insert_under(parent_id, node);
+        self.check_node_ids();
+    }
+
+    /// Break the link to the source scene — the node becomes standalone.
+    pub fn unpack_scene_instance(&mut self, node_id: u64) {
+        let node = self.get_node_mut(node_id);
+        if let Some(instance) = node.get_component_mut::<SceneInstance>() {
+            instance.unpacked = true;
+        }
+    }
+
+    /// Reload all live (non-unpacked) scene instances from their source files.
+    /// Call this whenever a source scene is saved in the editor.
+    pub fn reload_scene_instances(&mut self) {
+        let stubs: Vec<(u64, String)> = self
+            .get_all_world_nodes()
+            .iter()
+            .filter_map(|n| {
+                n.get_component::<SceneInstance>()
+                    .filter(|i| !i.unpacked)
+                    .map(|i| (n.id, i.source_path.clone()))
+            })
+            .collect();
+
+        for (id, path) in stubs {
+            if let Some(source) = deserialize_scene(path) {
+                self.get_node_mut(id).children = source.root_node.children;
+            }
+        }
+        self.check_node_ids();
+    }
     /// Serializes the current scene to a file
     /// ```rust
     ///     world.serialize_scene();
@@ -574,17 +618,11 @@ impl World {
     }
 
     /// Deserializes a scene from a file
-    pub fn deserialize_scene(&mut self, _scene: String) -> Result<(), serde_yaml::Error> {
-        // let path = format!("{}/{}.yaml", ASSET_DIR, scene);
-        // let contents = std::fs::read_to_string(&path).expect("Failed to read scene file");
-        // let serialized: SerializedScene = serde_yaml::from_str(&contents)?;
-        // self.scene.root_node.children = serialized
-        //     .root_children
-        //     .into_iter()
-        //     .map(deserialize_node)
-        //     .collect();
-        //
-        // self.check_node_ids();
+    pub fn deserialize_scene(&mut self, scene: String) -> Result<(), serde_yaml::Error> {
+        if let Some(loaded) = deserialize_scene(scene) {
+            self.scene = loaded;
+            self.check_node_ids();
+        }
         Ok(())
     }
 
@@ -790,4 +828,23 @@ impl_components_mut!(A, B, C, D, E, F, G, H);
 #[start]
 pub fn start_system(world: &mut World) {
     world.input_manager.deserialize_input_manager().unwrap();
+}
+
+fn build_instance_node(path: &str) -> Node {
+    let node_name = std::path::Path::new(path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("SceneInstance")
+        .to_string();
+
+    let mut node = Node::new();
+    node.name = node_name;
+    node.add_component(SceneInstance::new(path));
+
+    // Eagerly load children so the instance is immediately usable in the editor
+    if let Some(source) = deserialize_scene(path.to_string()) {
+        node.children = source.root_node.children;
+    }
+
+    node
 }

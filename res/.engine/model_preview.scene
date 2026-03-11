@@ -4,8 +4,8 @@ root_children:
   components:
   - type: ModelRenderer
     data:
-      loaded_model: .engine/sphere.glb
-      material_path: materials/material.material
+      loaded_model: models/sphere.glb
+      material_path: ''
   - type: Transform
     data:
       position:
