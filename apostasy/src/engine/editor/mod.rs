@@ -493,6 +493,13 @@ pub fn render_hierarchy(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
         ui.checkbox(&mut editor_storage.show_globals, "Show Globals");
     });
 
+    if let Some(id) = editor_storage.selected_node {
+        if ui.input(|i| i.key_pressed(egui::Key::Delete)) {
+            world.remove_node(id);
+            editor_storage.selected_node = None;
+        }
+    }
+
     ScrollArea::vertical()
         .id_salt("hierarchy_scroll")
         .auto_shrink([false, false])
