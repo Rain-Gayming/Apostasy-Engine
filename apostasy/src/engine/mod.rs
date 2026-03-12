@@ -128,7 +128,8 @@ impl Engine {
         let primary_window = Arc::new(
             event_loop.create_window(
                 Window::default_attributes()
-                    .with_title("Apostasy")
+                    .with_decorations(false)
+                    .with_title("Apostasy Engine")
                     .with_visible(true),
             )?,
         );
