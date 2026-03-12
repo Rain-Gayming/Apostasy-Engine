@@ -36,7 +36,7 @@ pub struct Node {
     pub id: u64,
     pub editing_name: String,
     pub children: Vec<Node>,
-    pub parent: Option<String>,
+    pub parent: Option<u64>,
     pub components: Vec<Box<dyn Component>>,
 }
 
@@ -134,7 +134,7 @@ impl Node {
     ///     world.get_node_mut(0).add_child(Node::new());
     /// ```
     pub fn add_child(&mut self, mut child: Node) -> &mut Self {
-        child.parent = Some(self.name.clone());
+        child.parent = Some(self.id.clone());
         self.children.push(child);
         self
     }
@@ -185,6 +185,7 @@ impl Node {
         if let Some(pos) = self.children.iter().position(|c| c.id == id) {
             return Some(self.children.remove(pos));
         }
+
         for child in self.children.iter_mut() {
             if let Some(found) = child.remove_node(id) {
                 return Some(found);
@@ -196,7 +197,7 @@ impl Node {
     // Insert a node as a child of the node with the given name
     pub fn insert_under(&mut self, parent_id: u64, mut node: Node) -> bool {
         if self.id == parent_id {
-            node.parent = Some(self.name.clone());
+            node.parent = Some(self.id.clone());
             self.children.push(node);
             return true;
         }
@@ -289,9 +290,30 @@ impl World {
     ///     world.remove_node(0);
     /// ```
     pub fn remove_node(&mut self, id: u64) -> &mut Self {
+        self.check_parent_scene_instance(id);
         self.scene.root_node.remove_node(id);
         self.check_node_ids();
         self
+    }
+
+    pub fn check_parent_scene_instance(&mut self, node: u64) {
+        let node = self.get_node_mut(node);
+        if let Some(parent) = node.parent.clone() {
+            log!("Checking parent node {}", parent);
+            let parent = self.get_node(parent);
+            if let Some(instance) = parent.get_component::<SceneInstance>() {
+                log!("Removing parent node {}: is a scene instance", parent.name);
+                self.remove_node(parent.id);
+            } else {
+                log!(
+                    "Parent node {} is not a scene instance, checking parents",
+                    parent.name
+                );
+                self.check_parent_scene_instance(parent.id);
+            }
+        } else {
+            log!("No parent");
+        }
     }
 
     /// Adds a new node to the scene

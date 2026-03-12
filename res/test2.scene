@@ -1,11 +1,7 @@
 root_children:
-- name: Node
+- name: Node (1)
   id: 0
   components:
-  - type: ModelRenderer
-    data:
-      loaded_model: .engine/cube.glb
-      material_path: materials/material.material
   - type: Transform
     data:
       position:
@@ -52,8 +48,19 @@ root_children:
         x: 1.0
         y: 1.0
         z: 1.0
-  children: []
+  - type: ModelRenderer
+    data:
+      loaded_model: .engine/cube.glb
+      material_path: ''
+  children:
+  - name: Node
+    id: 1
+    components: []
+    children: []
+    parent: 1
+    scene_instance_path: null
+  parent: 0
   scene_instance_path: null
-name: Scene
-path: res/scene.scene
+name: test2
+path: res/test2.scene
 is_primary: false

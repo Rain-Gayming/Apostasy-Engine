@@ -24,6 +24,7 @@ pub struct SerializedNode {
     id: u64,
     components: Vec<SerializedComponent>,
     children: Vec<SerializedNode>,
+    parent: Option<u64>,
     pub scene_instance_path: Option<String>,
 }
 
@@ -97,11 +98,17 @@ pub fn serialize_node(node: &Node) -> SerializedNode {
                     })
                 })
                 .collect();
+
+            let mut parent = None;
+            if let Some(parent_id) = node.parent {
+                parent = Some(parent_id);
+            }
             return SerializedNode {
                 name: node.name.clone(),
                 id: node.id,
                 components: serialized_components,
                 children: vec![],
+                parent,
                 scene_instance_path: Some(instance.source_path.clone()),
             };
         }
@@ -120,10 +127,15 @@ pub fn serialize_node(node: &Node) -> SerializedNode {
         })
         .collect();
 
+    let mut parent = None;
+    if let Some(parent_id) = node.parent {
+        parent = Some(parent_id);
+    }
     SerializedNode {
         name: node.name.clone(),
         id: node.id,
         components,
+        parent,
         children: node.children.iter().map(serialize_node).collect(),
         scene_instance_path: None,
     }
@@ -261,11 +273,13 @@ fn parse_serialized_node(value: &Value) -> Option<SerializedNode> {
             .unwrap_or_default()
     };
 
+    let parent = get_u64("parent");
     Some(SerializedNode {
         name,
         id,
         components,
         children,
+        parent,
         scene_instance_path,
     })
 }
