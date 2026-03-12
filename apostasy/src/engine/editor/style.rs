@@ -58,12 +58,10 @@ pub fn style() -> Style {
             override_text_color: None,
             widgets: Widgets {
                 noninteractive: WidgetVisuals {
-                    // Slightly lighter background — matches egui default panels
                     bg_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
                     weak_bg_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
                     bg_stroke: Stroke::new(1.0, Color32::from_rgba_premultiplied(65, 65, 65, 255)),
-                    corner_radius: CornerRadius::same(2),
-                    // Brighter text — more readable, matches egui themer
+                    corner_radius: CornerRadius::same(0),
                     fg_stroke: Stroke::new(
                         1.0,
                         Color32::from_rgba_premultiplied(180, 180, 180, 255),
@@ -71,11 +69,10 @@ pub fn style() -> Style {
                     expansion: 0.0,
                 },
                 inactive: WidgetVisuals {
-                    // Darker buttons — matches egui themer's subtle button look
                     bg_fill: Color32::from_rgba_premultiplied(40, 40, 40, 255),
                     weak_bg_fill: Color32::from_rgba_premultiplied(40, 40, 40, 255),
                     bg_stroke: Stroke::NONE,
-                    corner_radius: CornerRadius::same(2),
+                    corner_radius: CornerRadius::same(0),
                     fg_stroke: Stroke::new(
                         1.0,
                         Color32::from_rgba_premultiplied(180, 180, 180, 255),
@@ -100,7 +97,7 @@ pub fn style() -> Style {
                     bg_fill: Color32::from_rgba_premultiplied(55, 55, 55, 255),
                     weak_bg_fill: Color32::from_rgba_premultiplied(55, 55, 55, 255),
                     bg_stroke: Stroke::new(1.0, Color32::WHITE),
-                    corner_radius: CornerRadius::same(2),
+                    corner_radius: CornerRadius::same(0),
                     fg_stroke: Stroke::new(2.0, Color32::WHITE),
                     expansion: 1.0,
                 },
@@ -108,7 +105,7 @@ pub fn style() -> Style {
                     bg_fill: Color32::from_rgba_premultiplied(27, 27, 27, 255),
                     weak_bg_fill: Color32::from_rgba_premultiplied(45, 45, 45, 255),
                     bg_stroke: Stroke::new(1.0, Color32::from_rgba_premultiplied(60, 60, 60, 255)),
-                    corner_radius: CornerRadius::same(2),
+                    corner_radius: CornerRadius::same(0),
                     fg_stroke: Stroke::new(
                         1.0,
                         Color32::from_rgba_premultiplied(210, 210, 210, 255),
@@ -126,18 +123,16 @@ pub fn style() -> Style {
             code_bg_color: Color32::from_rgba_premultiplied(64, 64, 64, 255),
             warn_fg_color: Color32::from_rgba_premultiplied(255, 143, 0, 255),
             error_fg_color: Color32::from_rgba_premultiplied(255, 0, 0, 255),
-            // Reduced corner radius — matches egui themer's subtle rounding
-            window_corner_radius: CornerRadius::same(6),
+            window_corner_radius: CornerRadius::same(0),
             window_shadow: Shadow {
                 color: Color32::from_rgba_premultiplied(0, 0, 0, 96),
                 blur: 15,
                 offset: [10, 20],
                 spread: 0,
             },
-            // Slightly lighter window/panel fill — matches egui themer
             window_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
             window_stroke: Stroke::new(1.0, Color32::from_rgba_premultiplied(65, 65, 65, 255)),
-            menu_corner_radius: CornerRadius::same(6),
+            menu_corner_radius: CornerRadius::same(0),
             panel_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
             popup_shadow: Shadow {
                 color: Color32::from_rgba_premultiplied(0, 0, 0, 96),
