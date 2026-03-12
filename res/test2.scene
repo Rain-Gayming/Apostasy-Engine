@@ -1,5 +1,5 @@
 root_children:
-- name: Node
+- name: Node (1)
   id: 0
   components:
   - type: Transform
@@ -50,35 +50,17 @@ root_children:
         z: 1.0
   - type: ModelRenderer
     data:
-      loading_model: cube
-      loaded_model: cube
-      material:
-        name: material
-        base_color:
-        - 1.0
-        - 1.0
-        - 1.0
-        - 1.0
-        metallic: 0.0
-        roughness: 0.0
-        emissive:
-        - 0.0
-        - 0.0
-        - 0.0
-        alpha_mode: OPAQUE
-        alpha_cutoff: 0.5
-        double_sided: false
-        albedo_texture_name: temp.png
-        albedo_texture_loaded_name: null
-        metallic_texture_name: null
-        roughness_texture_name: null
-        normal_texture_name: null
-        emmisive_texture_name: null
-  children: []
-name: test
+      loaded_model: .engine/cube.glb
+      material_path: ''
+  children:
+  - name: Node
+    id: 1
+    components: []
+    children: []
+    parent: 1
+    scene_instance_path: null
+  parent: 0
+  scene_instance_path: null
+name: test2
+path: res/test2.scene
 is_primary: false
-asset_path:
-  path: res/
-  name: Scene
-  extension: yaml
-  asset_type: Scene

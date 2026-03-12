@@ -1,4 +1,4 @@
-use crate::engine::nodes::World;
+use crate::engine::nodes::world::World;
 use crate::log;
 use crate::log_warn;
 use crate::{self as apostasy, engine::editor::EditorStorage, get_log_buffer};

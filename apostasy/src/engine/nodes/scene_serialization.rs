@@ -2,11 +2,16 @@ use serde::{Deserialize, Serialize};
 use serde_yaml;
 
 use super::Node;
-use crate::engine::{assets::AssetPath, nodes::component::Component};
+use crate::{
+    engine::{
+        assets::asset::{Asset, AssetLoadError, AssetLoader},
+        nodes::{component::Component, scene::SceneInstance},
+    },
+    log,
+};
 use serde_yaml::Value;
 
 #[derive(Serialize, Deserialize)]
-/// A serialized component, contains the type name and data
 pub struct SerializedComponent {
     #[serde(rename = "type")]
     type_name: String,
@@ -14,24 +19,54 @@ pub struct SerializedComponent {
 }
 
 #[derive(Serialize, Deserialize)]
-/// A serialized node, contains a list of components and children
 pub struct SerializedNode {
     name: String,
     id: u64,
     components: Vec<SerializedComponent>,
     children: Vec<SerializedNode>,
+    parent: Option<u64>,
+    pub scene_instance_path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
-/// A serialized scene, contains a list of root children
 pub struct SerializedScene {
     pub root_children: Vec<SerializedNode>,
     pub name: String,
+    pub path: String,
     pub is_primary: bool,
-    pub asset_path: AssetPath,
 }
 
-/// A component registrator, used to serialize and deserialize components
+impl Asset for SerializedScene {
+    fn asset_type_name() -> &'static str {
+        "Scene"
+    }
+}
+
+pub struct SceneLoader;
+
+impl AssetLoader for SceneLoader {
+    type Asset = SerializedScene;
+    fn extensions(&self) -> &[&str] {
+        &["scene"]
+    }
+
+    fn load_sync(&self, path: &std::path::Path) -> Result<SerializedScene, AssetLoadError> {
+        let src = std::fs::read_to_string(path).map_err(|e| AssetLoadError::Io {
+            path: path.display().to_string(),
+            source: e,
+        })?;
+
+        let mut scene: SerializedScene =
+            serde_yaml::from_str(&src).map_err(|e| AssetLoadError::Parse {
+                path: path.display().to_string(),
+                message: e.to_string(),
+            })?;
+
+        scene.path = path.display().to_string();
+        Ok(scene)
+    }
+}
+
 pub struct ComponentRegistrator {
     pub type_name: &'static str,
     pub serialize: fn(&dyn Component) -> serde_yaml::Value,
@@ -40,28 +75,45 @@ pub struct ComponentRegistrator {
 }
 
 inventory::collect!(ComponentRegistrator);
+
 pub fn find_registration(type_name: &str) -> Option<&'static ComponentRegistrator> {
     inventory::iter::<ComponentRegistrator>()
         .find(|r| r.type_name.to_lowercase() == type_name.to_lowercase())
 }
 
-/// Serializes a node, returns a serialized node
 pub fn serialize_node(node: &Node) -> SerializedNode {
-    let _: Vec<SerializedComponent> = node
-        .components
-        .iter()
-        .filter_map(|component| {
-            let type_name = component.type_name();
+    if let Some(instance) = node.get_component::<SceneInstance>() {
+        if !instance.unpacked {
+            let serialized_components: Vec<_> = node
+                .components
+                .iter()
+                .filter_map(|c| {
+                    let type_name = c.type_name();
+                    let reg = find_registration(type_name);
 
-            let registration = find_registration(type_name);
+                    let reg = reg?;
+                    Some(SerializedComponent {
+                        type_name: type_name.to_string(),
+                        data: (reg.serialize)(c.as_ref()),
+                    })
+                })
+                .collect();
 
-            let registration = registration?;
-            Some(SerializedComponent {
-                type_name: type_name.to_string(),
-                data: (registration.serialize)(component.as_ref()),
-            })
-        })
-        .collect();
+            let mut parent = None;
+            if let Some(parent_id) = node.parent {
+                parent = Some(parent_id);
+            }
+            return SerializedNode {
+                name: node.name.clone(),
+                id: node.id,
+                components: serialized_components,
+                children: vec![],
+                parent,
+                scene_instance_path: Some(instance.source_path.clone()),
+            };
+        }
+    }
+
     let components = node
         .components
         .iter()
@@ -75,15 +127,20 @@ pub fn serialize_node(node: &Node) -> SerializedNode {
         })
         .collect();
 
+    let mut parent = None;
+    if let Some(parent_id) = node.parent {
+        parent = Some(parent_id);
+    }
     SerializedNode {
         name: node.name.clone(),
         id: node.id,
         components,
+        parent,
         children: node.children.iter().map(serialize_node).collect(),
+        scene_instance_path: None,
     }
 }
 
-/// Deserializes a serialized node, returns a node
 pub fn deserialize_node(serialized: SerializedNode) -> Node {
     let components: Vec<Box<dyn Component>> = serialized
         .components
@@ -94,18 +151,59 @@ pub fn deserialize_node(serialized: SerializedNode) -> Node {
         })
         .collect();
 
+    let children = if let Some(ref path) = serialized.scene_instance_path {
+        load_instance_children(path)
+    } else {
+        serialized
+            .children
+            .into_iter()
+            .map(deserialize_node)
+            .collect()
+    };
+
     Node {
         name: serialized.name.clone(),
         id: serialized.id,
         editing_name: serialized.name,
-        children: serialized
-            .children
-            .into_iter()
-            .map(deserialize_node)
-            .collect(),
+        children,
         parent: None,
         components,
     }
+}
+
+fn load_instance_children(path: &str) -> Vec<Node> {
+    let contents = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(e) => {
+            log!(
+                "[scene_instance] Failed to read source scene '{}': {}",
+                path,
+                e
+            );
+            return vec![];
+        }
+    };
+
+    let value: serde_yaml::Value = match serde_yaml::from_str(&contents) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!(
+                "[scene_instance] Failed to parse source scene '{}': {}",
+                path, e
+            );
+            return vec![];
+        }
+    };
+
+    value
+        .get("root_children")
+        .map(|v| {
+            parse_root_children_from_value(v)
+                .into_iter()
+                .map(deserialize_node)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn parse_serialized_node(value: &Value) -> Option<SerializedNode> {
@@ -131,14 +229,15 @@ fn parse_serialized_node(value: &Value) -> Option<SerializedNode> {
     let name = get_str("name").unwrap_or_else(|| "node".to_string());
     let id = get_u64("id").unwrap_or(0);
 
-    // components
+    // scene_instance_path — if present this node is an instance stub
+    let scene_instance_path = get_str("scene_instance_path");
+
     let components = mapping
         .get(&Value::String("components".to_string()))
         .and_then(|v| match v {
             Sequence(seq) => Some(
                 seq.iter()
                     .filter_map(|entry| {
-                        // each component should be a mapping with "type" and "data"
                         if let Value::Mapping(cm) = entry {
                             let type_val = cm.get(&Value::String("type".to_string()));
                             let data_val = cm.get(&Value::String("data".to_string()));
@@ -158,28 +257,33 @@ fn parse_serialized_node(value: &Value) -> Option<SerializedNode> {
         })
         .unwrap_or_default();
 
-    // children
-    let children = mapping
-        .get(&Value::String("children".to_string()))
-        .and_then(|v| match v {
-            Sequence(seq) => Some(
-                seq.iter()
-                    .filter_map(|entry| parse_serialized_node(entry))
-                    .collect(),
-            ),
-            _ => None,
-        })
-        .unwrap_or_default();
+    let children = if scene_instance_path.is_some() {
+        vec![]
+    } else {
+        mapping
+            .get(&Value::String("children".to_string()))
+            .and_then(|v| match v {
+                Sequence(seq) => Some(
+                    seq.iter()
+                        .filter_map(|entry| parse_serialized_node(entry))
+                        .collect(),
+                ),
+                _ => None,
+            })
+            .unwrap_or_default()
+    };
 
+    let parent = get_u64("parent");
     Some(SerializedNode {
         name,
         id,
         components,
         children,
+        parent,
+        scene_instance_path,
     })
 }
 
-/// Parse a root sequence of SerializedNodes from a YAML value safely.
 pub fn parse_root_children_from_value(value: &Value) -> Vec<SerializedNode> {
     if let Value::Sequence(seq) = value {
         seq.iter()

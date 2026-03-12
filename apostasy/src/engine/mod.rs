@@ -1,9 +1,15 @@
 use crate::{
     self as apostasy,
     engine::{
-        nodes::components::{
-            camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
+        assets::server::AssetServer,
+        nodes::{
+            components::{
+                camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
+            },
+            scene_serialization::SceneLoader,
+            world::World,
         },
+        rendering::models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
         windowing::cursor_manager::CursorManager,
     },
 };
@@ -11,7 +17,10 @@ use anyhow::Result;
 use apostasy_macros::{editor_fixed_update, editor_ui};
 use cgmath::{Vector2, Vector3, Zero, num_traits::clamp};
 use egui::Context;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId},
@@ -27,13 +36,12 @@ use winit::{
 use crate::engine::{
     editor::EditorStorage,
     nodes::{
-        Node, World,
+        Node,
         components::camera::Camera,
         components::transform::Transform,
         components::velocity::{Velocity, apply_velocity},
     },
     rendering::{
-        models::model::{ModelLoader, load_models},
         queue_families::queue_family_picker::single_queue_family,
         renderer::Renderer,
         rendering_context::{RenderingContext, RenderingContextAttributes},
@@ -108,9 +116,9 @@ pub struct Engine {
     pub rendering_context: Arc<RenderingContext>,
     pub window_manager: WindowManager,
     pub timer: EngineTimer,
-    pub world: World,
+    pub world: Arc<RwLock<World>>,
     pub editor: EditorStorage,
-    pub model_loader: ModelLoader,
+    pub asset_server: Arc<RwLock<AssetServer>>,
     pending_windows: Vec<(WindowId, Arc<Window>)>,
     renderers_initialized: bool,
 }
@@ -153,16 +161,27 @@ impl Engine {
         events_node.add_component(CollisionEvents::new());
         world.add_global_node(events_node);
 
+        let mut dev_cube = Node::new();
+        dev_cube.name = "dev_cube".to_string();
+        dev_cube.add_component(Transform::default());
+        dev_cube.add_component(ModelRenderer::default());
+        world.add_node(dev_cube);
+
         let window_manager = WindowManager {
             windows,
             primary_window_id,
         };
 
-        let model_loader = ModelLoader::default();
-        let editor = EditorStorage::default();
+        let asset_server = Arc::new(RwLock::new(AssetServer::new("res/")));
+        {
+            let mut asset_server = asset_server.write().unwrap();
+            asset_server.register_loader(ShaderLoader);
+            asset_server.register_loader(MaterialLoader);
+            asset_server.register_loader(SceneLoader);
+        }
 
-        // Model loading requires GPU resources (buffers). Defer loading until
-        // after a renderer (and its command pool) has been created.
+        let world = Arc::new(RwLock::new(world));
+        let editor = EditorStorage::default(asset_server.clone(), world.clone());
 
         let pending_windows = vec![(primary_window_id, primary_window.clone())];
 
@@ -173,7 +192,7 @@ impl Engine {
             timer,
             world,
             editor,
-            model_loader,
+            asset_server,
             pending_windows,
             renderers_initialized: false,
         })
@@ -190,7 +209,10 @@ impl Engine {
             renderer.window_event(window, event.clone());
         }
 
-        self.world.input_manager.handle_input_event(event.clone());
+        {
+            let mut world = self.world.write().unwrap();
+            world.input_manager.handle_input_event(event.clone());
+        }
 
         match event.clone() {
             WindowEvent::Resized(_size) => {
@@ -207,34 +229,13 @@ impl Engine {
                 if !self.renderers_initialized && !self.pending_windows.is_empty() {
                     let pending = std::mem::take(&mut self.pending_windows);
                     for (id, window) in pending {
-                        match Renderer::new(self.rendering_context.clone(), window) {
+                        match Renderer::new(
+                            self.rendering_context.clone(),
+                            window,
+                            &mut self.asset_server,
+                        ) {
                             Ok(renderer) => {
                                 self.renderers.insert(id, renderer);
-                                // Ensure models are loaded now that a renderer (and its
-                                // Vulkan command pool) exists. Only load once.
-                                if self.model_loader.models.is_empty() {
-                                    // retrieve the just-inserted renderer to get its command pool
-                                    if let Some(r) = self.renderers.get(&id) {
-                                        // Use the renderer's transfer command pool for staging uploads
-                                        load_models(
-                                            &mut self.model_loader,
-                                            &self.rendering_context,
-                                            r.transfer_command_pool,
-                                        );
-                                        // Ensure all GPU work from model loading completed before
-                                        // proceeding to avoid destroying buffers while still in use.
-                                        unsafe {
-                                            if let Err(e) =
-                                                self.rendering_context.device.device_wait_idle()
-                                            {
-                                                eprintln!(
-                                                    "Warning: device_wait_idle failed after model load: {:?}",
-                                                    e
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
                             }
                             Err(e) => {
                                 eprintln!("Renderer init failed, deferring: {e}");
@@ -245,19 +246,25 @@ impl Engine {
                     self.renderers_initialized = true;
                 }
                 if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    for window in &self.window_manager.windows {
-                        renderer.prepare_egui(window.1, &mut self.world, &mut self.editor);
+                    {
+                        let mut world = self.world.write().unwrap();
+                        for window in &self.window_manager.windows {
+                            renderer.prepare_egui(window.1, &mut world, &mut self.editor);
 
-                        if self.editor.should_close {
-                            event_loop.exit();
+                            if self.editor.should_close {
+                                event_loop.exit();
+                            }
                         }
                     }
 
-                    let _ = renderer.render(
-                        &mut self.world,
-                        &mut self.model_loader,
-                        self.editor.is_editor_open,
-                    );
+                    {
+                        let mut world = self.world.write().unwrap();
+                        let _ = renderer.render(
+                            &mut world,
+                            &self.asset_server,
+                            self.editor.is_editor_open,
+                        );
+                    }
                 }
             }
             WindowEvent::KeyboardInput { .. } => {}
@@ -276,53 +283,54 @@ impl Engine {
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
-        self.world.input_manager.handle_device_event(event.clone());
-        if self
-            .world
-            .input_manager
-            .is_mousebind_active("editor_camera_look")
         {
-            if !self.world.is_world_hovered {
-                return;
+            let mut world = self.world.write().unwrap();
+            world.input_manager.handle_device_event(event.clone());
+            if world
+                .input_manager
+                .is_mousebind_active("editor_camera_look")
+            {
+                if !world.is_world_hovered {
+                    return;
+                }
+                let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
+                let cursor_manager = cursor_manager
+                    .unwrap()
+                    .get_component_mut::<CursorManager>()
+                    .unwrap();
+                cursor_manager.grab_cursor(&mut self.window_manager);
+            } else {
+                let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
+                let cursor_manager = cursor_manager
+                    .unwrap()
+                    .get_component_mut::<CursorManager>()
+                    .unwrap();
+                cursor_manager.ungrab_cursor(&mut self.window_manager);
             }
-            let cursor_manager = self
-                .world
-                .get_global_node_with_component_mut::<CursorManager>();
-            let cursor_manager = cursor_manager
-                .unwrap()
-                .get_component_mut::<CursorManager>()
-                .unwrap();
-            cursor_manager.grab_cursor(&mut self.window_manager);
-        } else {
-            let cursor_manager = self
-                .world
-                .get_global_node_with_component_mut::<CursorManager>();
-            let cursor_manager = cursor_manager
-                .unwrap()
-                .get_component_mut::<CursorManager>()
-                .unwrap();
-            cursor_manager.ungrab_cursor(&mut self.window_manager);
         }
     }
 
     pub fn request_redraw(&mut self) {
-        self.world.update();
+        {
+            let mut world = self.world.write().unwrap();
+            world.update();
 
-        if self.editor.is_editor_open {
-            self.world.editor_fixed_update(self.timer.tick().fixed_dt);
-        } else {
-            self.world.fixed_update(self.timer.tick().fixed_dt);
-        }
+            if self.editor.is_editor_open {
+                world.editor_fixed_update(self.timer.tick().fixed_dt);
+            } else {
+                world.fixed_update(self.timer.tick().fixed_dt);
+            }
 
-        for window in &self.window_manager.windows {
-            window.1.request_redraw();
-            self.world.window_size = Vector2::new(
-                window.1.inner_size().width as f32,
-                window.1.inner_size().height as f32,
-            );
+            for window in &self.window_manager.windows {
+                window.1.request_redraw();
+                world.window_size = Vector2::new(
+                    window.1.inner_size().width as f32,
+                    window.1.inner_size().height as f32,
+                );
+            }
+            world.input_manager.clear_actions();
+            world.late_update();
         }
-        self.world.input_manager.clear_actions();
-        self.world.late_update();
     }
 
     pub fn create_window(
@@ -333,7 +341,11 @@ impl Engine {
         let window = Arc::new(event_loop.create_window(attributes)?);
         let window_id = window.id();
 
-        let renderer = Renderer::new(self.rendering_context.clone(), window)?;
+        let renderer = Renderer::new(
+            self.rendering_context.clone(),
+            window,
+            &mut self.asset_server,
+        )?;
         self.renderers.insert(window_id, renderer);
         Ok(window_id)
     }

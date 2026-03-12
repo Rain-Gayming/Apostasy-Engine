@@ -1,5 +1,7 @@
 use std::any::Any;
 
+use crate::engine::editor::EditorStorage;
+
 pub trait Component: ComponentClone {
     fn name() -> &'static str
     where
@@ -7,7 +9,7 @@ pub trait Component: ComponentClone {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn type_name(&self) -> &'static str;
-    fn inspect(&mut self, ui: &mut egui::Ui) -> bool;
+    fn inspect(&mut self, ui: &mut egui::Ui, editor_storage: &mut EditorStorage) -> bool;
 }
 
 pub trait ComponentClone {

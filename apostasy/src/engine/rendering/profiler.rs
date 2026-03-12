@@ -6,7 +6,7 @@ use apostasy_macros::editor_ui;
 use ash::vk;
 use egui::{Color32, FontId, Sense, Vec2};
 
-use crate::engine::{editor::EditorStorage, nodes::World};
+use crate::engine::{editor::EditorStorage, nodes::world::World};
 
 #[derive(Clone, Debug)]
 pub struct ProfileScope {

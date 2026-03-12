@@ -1,4 +1,3 @@
-use crate::engine::rendering::models::model::Texture;
 use anyhow::{Result, anyhow};
 use ash::{
     khr::{surface, swapchain},
@@ -7,14 +6,20 @@ use ash::{
         PhysicalDeviceBufferDeviceAddressFeatures, PhysicalDeviceDynamicRenderingFeatures, Queue,
     },
 };
-use std::{collections::HashSet, sync::{Arc, Mutex}};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+};
 use winit::{
     raw_window_handle::{HasDisplayHandle, HasWindowHandle},
     window::Window,
 };
 
 use crate::engine::rendering::{
-    models::vertex::{Vertex, VertexDefinition, VoxelVertex},
+    models::{
+        texture::GpuTexture,
+        vertex::{Vertex, VertexDefinition, VoxelVertex},
+    },
     physical_device::PhysicalDevice,
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
     surface::Surface,
@@ -180,7 +185,8 @@ impl RenderingContext {
         command_pool: vk::CommandPool,
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
-    ) -> std::collections::HashMap<String, Texture> {
+        default_ubo: vk::Buffer,
+    ) -> std::collections::HashMap<String, GpuTexture> {
         let mut map = std::collections::HashMap::new();
         let path = std::path::Path::new(dir);
         if !path.exists() || !path.is_dir() {
@@ -196,8 +202,18 @@ impl RenderingContext {
                 if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
                     match ext.to_lowercase().as_str() {
                         "png" | "jpg" | "jpeg" | "bmp" | "tga" | "gif" | "webp" => {
-                            if let Some(fname) = p.file_name().and_then(|s| s.to_str()).map(|s| s.to_string()) {
-                                match self.load_texture(&fname, command_pool, descriptor_pool, descriptor_set_layout) {
+                            if let Some(fname) = p
+                                .file_name()
+                                .and_then(|s| s.to_str())
+                                .map(|s| s.to_string())
+                            {
+                                match self.load_texture(
+                                    &fname,
+                                    command_pool,
+                                    descriptor_pool,
+                                    descriptor_set_layout,
+                                    default_ubo,
+                                ) {
                                     Ok(tex) => {
                                         map.insert(fname.clone(), tex);
                                     }
@@ -256,15 +272,18 @@ impl RenderingContext {
                 return Ok(i);
             }
         }
-        
+
         // Fallback: find any memory type that matches the filter
         for i in 0..self.physical_device.memory_properties.memory_type_count {
             if (filter & (1 << i)) != 0 {
                 return Ok(i);
             }
         }
-        
-        Err(anyhow::anyhow!("Failed to find suitable memory type with filter: {}", filter))
+
+        Err(anyhow::anyhow!(
+            "Failed to find suitable memory type with filter: {}",
+            filter
+        ))
     }
 
     /// Creates a vertex buffer from a slice of vertices
@@ -283,9 +302,12 @@ impl RenderingContext {
         )?;
 
         unsafe {
-            let data_ptr = self
-                .device
-                .map_memory(staging_memory, 0, buffer_size, vk::MemoryMapFlags::empty())? as *mut T;
+            let data_ptr = self.device.map_memory(
+                staging_memory,
+                0,
+                buffer_size,
+                vk::MemoryMapFlags::empty(),
+            )? as *mut T;
             data_ptr.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
             self.device.unmap_memory(staging_memory);
         }
@@ -301,12 +323,10 @@ impl RenderingContext {
 
         let alloc_info = vk::MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
-            .memory_type_index(
-                self.find_memory_type(
-                    mem_requirements.memory_type_bits,
-                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                )?,
-            );
+            .memory_type_index(self.find_memory_type(
+                mem_requirements.memory_type_bits,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            )?);
 
         let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
         unsafe { self.device.bind_buffer_memory(buffer, buffer_memory, 0)? };
@@ -315,7 +335,8 @@ impl RenderingContext {
         let cmd = self.begin_single_time_commands(command_pool);
         unsafe {
             let copy_region = vk::BufferCopy::default().size(buffer_size);
-            self.device.cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
+            self.device
+                .cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
         }
         let queue = self.queues[self.queue_families.transfer as usize];
         self.end_single_time_commands(cmd, queue, command_pool);
@@ -365,9 +386,10 @@ impl RenderingContext {
 
         let alloc_info = vk::MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
-            .memory_type_index(
-                self.find_memory_type(mem_requirements.memory_type_bits, vk::MemoryPropertyFlags::DEVICE_LOCAL)?,
-            );
+            .memory_type_index(self.find_memory_type(
+                mem_requirements.memory_type_bits,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            )?);
 
         let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
         unsafe { self.device.bind_buffer_memory(buffer, buffer_memory, 0)? };
@@ -376,7 +398,8 @@ impl RenderingContext {
         let cmd = self.begin_single_time_commands(command_pool);
         unsafe {
             let copy_region = vk::BufferCopy::default().size(buffer_size);
-            self.device.cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
+            self.device
+                .cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
         }
         let queue = self.queues[self.queue_families.transfer as usize];
         self.end_single_time_commands(cmd, queue, command_pool);
@@ -742,8 +765,8 @@ impl RenderingContext {
 
     pub fn create_sampler(&self) -> vk::Sampler {
         let sampler_info = vk::SamplerCreateInfo::default()
-            .mag_filter(vk::Filter::LINEAR)
-            .min_filter(vk::Filter::LINEAR)
+            .mag_filter(vk::Filter::NEAREST)
+            .min_filter(vk::Filter::NEAREST)
             .address_mode_u(vk::SamplerAddressMode::REPEAT)
             .address_mode_v(vk::SamplerAddressMode::REPEAT)
             .address_mode_w(vk::SamplerAddressMode::REPEAT)
@@ -763,6 +786,7 @@ impl RenderingContext {
         descriptor_set_layout: vk::DescriptorSetLayout,
         image_view: vk::ImageView,
         sampler: vk::Sampler,
+        default_ubo: vk::Buffer,
     ) -> vk::DescriptorSet {
         unsafe {
             let set = self
@@ -774,24 +798,35 @@ impl RenderingContext {
                 )
                 .unwrap()[0];
 
+            let ubo_info = vk::DescriptorBufferInfo::default()
+                .buffer(default_ubo)
+                .offset(0)
+                .range(256);
+
             let image_info = vk::DescriptorImageInfo::default()
                 .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                 .image_view(image_view)
                 .sampler(sampler);
 
             self.device.update_descriptor_sets(
-                &[vk::WriteDescriptorSet::default()
-                    .dst_set(set)
-                    .dst_binding(1)
-                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                    .image_info(&[image_info])],
+                &[
+                    vk::WriteDescriptorSet::default()
+                        .dst_set(set)
+                        .dst_binding(0)
+                        .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
+                        .buffer_info(&[ubo_info]),
+                    vk::WriteDescriptorSet::default()
+                        .dst_set(set)
+                        .dst_binding(1)
+                        .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                        .image_info(&[image_info]),
+                ],
                 &[],
             );
 
             set
         }
     }
-
     /// Loads a texture from a file and passes it to a buffer
     pub fn load_texture(
         &self,
@@ -799,41 +834,31 @@ impl RenderingContext {
         command_pool: vk::CommandPool,
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
-    ) -> Result<Texture> {
-        let requested_full = format!("res/assets/textures/{}", path);
-        let mut actual_path = requested_full.clone();
-        let image = if std::path::Path::new(&requested_full).exists() {
-            image::open(&requested_full).map_err(|e| anyhow!("Failed to load image {}: {}", requested_full, e))?.to_rgba8()
+        default_ubo: vk::Buffer,
+    ) -> Result<GpuTexture> {
+        let mut path = path.to_string();
+        let image = if std::path::Path::new(&path.clone()).exists() {
+            image::open(&path.clone())
+                .map_err(|e| anyhow!("Failed to load image {}: {}", path.clone(), e))?
+                .to_rgba8()
         } else {
             // try last successfully loaded texture first
             if let Some(last) = &*self.last_working_texture.lock().unwrap() {
                 if std::path::Path::new(last).exists() {
-                    actual_path = last.clone();
-                    image::open(last).map_err(|e| anyhow!("Failed to load last working image {}: {}", last, e))?.to_rgba8()
+                    path = last.clone();
+                    image::open(last)
+                        .map_err(|e| anyhow!("Failed to load last working image {}: {}", last, e))?
+                        .to_rgba8()
                 } else {
-                    // fallback to temp.png
-                    let fallback = "res/assets/textures/temp.png";
-                    if std::path::Path::new(fallback).exists() {
-                        actual_path = fallback.to_string();
-                        image::open(fallback).map_err(|e| anyhow!("Failed to load fallback image {}: {}", fallback, e))?.to_rgba8()
-                    } else {
-                        return Err(anyhow!("Texture {} not found and no fallback available", requested_full));
-                    }
+                    panic!("Texture {} not found and no fallback available", path);
                 }
             } else {
-                // no last working texture recorded yet; fallback to temp.png
-                let fallback = "res/assets/textures/temp.png";
-                if std::path::Path::new(fallback).exists() {
-                    actual_path = fallback.to_string();
-                    image::open(fallback).map_err(|e| anyhow!("Failed to load fallback image {}: {}", fallback, e))?.to_rgba8()
-                } else {
-                    return Err(anyhow!("Texture {} not found and no fallback available", requested_full));
-                }
+                panic!("Texture {} not found and no fallback available", path);
             }
         };
 
         // record the successfully used texture path so it can be reused as a fallback later
-        *self.last_working_texture.lock().unwrap() = Some(actual_path.clone());
+        *self.last_working_texture.lock().unwrap() = Some(path.clone());
         let (width, height) = image.dimensions();
         let pixels: Vec<u8> = image.into_raw();
         let image_size = pixels.len() as vk::DeviceSize;
@@ -956,14 +981,16 @@ impl RenderingContext {
             descriptor_set_layout,
             image_view,
             sampler,
+            default_ubo,
         );
 
-        Ok(Texture {
+        Ok(GpuTexture {
             image: vk_image,
             image_view,
             memory: image_memory,
             sampler,
             descriptor_set,
+            name: path.to_string(),
         })
     }
 
@@ -1037,7 +1064,10 @@ impl RenderingContext {
 impl Drop for RenderingContext {
     fn drop(&mut self) {
         unsafe {
-            // self.device.destory_device(None);
+            if let Err(e) = self.device.device_wait_idle() {
+                eprintln!("device_wait_idle failed in RenderingContext drop: {:?}", e);
+            }
+            self.device.destroy_device(None);
             self.instance.destroy_instance(None);
         }
     }

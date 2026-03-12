@@ -3,6 +3,8 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use serde::{Deserialize, Serialize};
+
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Type errased handled, used for storing handles of mixed types
@@ -81,5 +83,23 @@ impl<T> fmt::Debug for Handle<T> {
 impl<T> fmt::Display for Handle<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.id)
+    }
+}
+
+impl<T> Serialize for Handle<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u64(self.id)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for Handle<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Handle<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Handle::with_id(u64::deserialize(deserializer)?))
     }
 }
