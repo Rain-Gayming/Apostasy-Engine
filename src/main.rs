@@ -2,7 +2,6 @@ pub mod custom_components;
 
 use apostasy::engine::{
     nodes::{
-        World,
         components::{
             camera::Camera,
             physics::Physics,
@@ -10,6 +9,7 @@ use apostasy::engine::{
             transform::Transform,
             velocity::{Velocity, apply_velocity},
         },
+        world::World,
     },
     start_app,
 };

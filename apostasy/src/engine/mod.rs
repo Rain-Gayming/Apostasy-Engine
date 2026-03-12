@@ -7,6 +7,7 @@ use crate::{
                 camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
             },
             scene_serialization::SceneLoader,
+            world::World,
         },
         rendering::models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
         windowing::cursor_manager::CursorManager,
@@ -35,7 +36,7 @@ use winit::{
 use crate::engine::{
     editor::EditorStorage,
     nodes::{
-        Node, World,
+        Node,
         components::camera::Camera,
         components::transform::Transform,
         components::velocity::{Velocity, apply_velocity},

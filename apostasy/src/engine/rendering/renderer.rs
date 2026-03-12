@@ -12,6 +12,7 @@ use winit::{event::WindowEvent, window::Window};
 
 use crate::engine::assets::handle::Handle;
 use crate::engine::assets::server::AssetServer;
+use crate::engine::nodes::world::World;
 use crate::engine::rendering::models::gltf_loader::GltfLoader;
 use crate::engine::rendering::models::material::MaterialAsset;
 use crate::engine::rendering::models::model::GpuModel;
@@ -21,7 +22,7 @@ use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPoo
 use crate::engine::{
     editor::{EditorStorage, style::style},
     nodes::{
-        Node, World,
+        Node,
         components::{
             camera::{Camera, get_perspective_projection},
             light::Light,
