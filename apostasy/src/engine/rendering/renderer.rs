@@ -77,14 +77,14 @@ impl EguiRenderer {
         let mut fonts = egui::FontDefinitions::default();
         let mut new_font_family = BTreeMap::new();
         new_font_family.insert(
-            FontFamily::Name("fantasy".into()),
-            vec!["fantasy".to_owned()],
+            FontFamily::Name("jetbrains".into()),
+            vec!["jetbrains".to_owned()],
         );
         fonts.families.append(&mut new_font_family);
         fonts.font_data.insert(
-            "fantasy".to_owned(),
+            "jetbrains".to_owned(),
             Arc::new(egui::FontData::from_static(include_bytes!(
-                "../../../res/fonts/FantasyFont.ttf"
+                "../../../../res/.engine/fonts/JetBrainsMonoNerdFont-Medium.ttf"
             ))),
         );
 

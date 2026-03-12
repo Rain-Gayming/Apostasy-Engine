@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use egui::epaint::Shadow;
 use egui::{
     Color32, Margin, Stroke, Style, Vec2, Visuals,
@@ -6,9 +8,20 @@ use egui::{
         Interaction, ScrollStyle, Selection, Spacing, TextCursorStyle, WidgetVisuals, Widgets,
     },
 };
+use egui::{FontFamily, FontId, TextStyle};
 
 pub fn style() -> Style {
+    let jetbrains = FontFamily::Name("jetbrains".into());
+
+    let mut text_styles = BTreeMap::new();
+    text_styles.insert(TextStyle::Small, FontId::new(10.0, jetbrains.clone()));
+    text_styles.insert(TextStyle::Body, FontId::new(13.0, jetbrains.clone()));
+    text_styles.insert(TextStyle::Button, FontId::new(13.0, jetbrains.clone()));
+    text_styles.insert(TextStyle::Heading, FontId::new(18.0, jetbrains.clone()));
+    text_styles.insert(TextStyle::Monospace, FontId::new(13.0, jetbrains.clone()));
+
     Style {
+        text_styles,
         spacing: Spacing {
             item_spacing: Vec2 { x: 8.0, y: 3.0 },
             window_margin: Margin::same(6),

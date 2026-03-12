@@ -185,15 +185,7 @@ fn render_file_tree(
         ui.horizontal(|ui| {
             ui.add_space(indent);
             let ext = node.path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            let icon = match ext {
-                "png" | "jpg" | "jpeg" | "webp" => "🖼",
-                "glsl" | "vert" | "frag" | "spv" | "wgsl" => "🔷",
-                "rs" => "🦀",
-                "toml" | "json" | "yaml" | "yml" => "📄",
-                "ttf" | "otf" => "🔤",
-                "wav" | "mp3" | "ogg" => "🔊",
-                _ => "📃",
-            };
+            let icon = icon_fro_extension(ext);
 
             let formatted_name = format!("{} {}", icon, node.name);
             let response =
@@ -381,4 +373,19 @@ pub fn file_dragging_ui(
         }
     }
     (false, "".to_string())
+}
+
+pub fn icon_fro_extension(ext: &str) -> &'static str {
+    match ext {
+        "png" | "jpg" | "jpeg" | "webp" => "󰄀",
+        "glsl" | "vert" | "frag" | "spv" | "wgsl" => "󰘷",
+        "glb" | "gltf" | "obj" | "fbx" => "",
+        "rs" => "",
+        "toml" | "json" | "yaml" | "yml" => "",
+        "ttf" | "otf" => "",
+        "wav" | "mp3" | "ogg" => "",
+        "scene" => "",
+        "material" => "",
+        _ => "",
+    }
 }
