@@ -41,6 +41,7 @@ impl FileNode {
             .unwrap_or_else(|| path.to_string_lossy().to_string());
 
         let mut children = Vec::new();
+
         let is_dir = path.is_dir();
 
         if is_dir {
