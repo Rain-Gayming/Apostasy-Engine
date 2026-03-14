@@ -365,19 +365,15 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
                             .and_then(|s| s.to_str())
                             .unwrap_or("Model")
                             .to_string();
-                    } else if let Some(_scene_instance) = world
+                    } else if let Some(scene_instance) = world
                         .get_node_mut(preview_id)
                         .get_component_mut::<SceneInstance>()
                     {
-                        let node = world.get_node_mut(preview_id);
-                        let scene = node.get_component_mut::<SceneInstance>();
-                        if let Some(scene) = scene {
-                            name = std::path::Path::new(&scene.source_path)
-                                .file_stem()
-                                .and_then(|s| s.to_str())
-                                .unwrap_or("SceneInstance")
-                                .to_string();
-                        }
+                        name = std::path::Path::new(&scene_instance.source_path)
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("SceneInstance")
+                            .to_string();
                     }
 
                     world.get_node_mut(preview_id).name = name;
