@@ -56,7 +56,9 @@ impl World {
     ///     world.add_node(Node::new());
     /// ```
     pub fn add_node(&mut self, mut node: Node) -> &mut Self {
-        self.assign_ids_recursive(&mut node);
+        if !node.exempt_from_id_check {
+            self.assign_ids_recursive(&mut node);
+        }
         self.scene.root_node.add_child(node);
         self.check_node_names();
         self
@@ -453,7 +455,9 @@ impl World {
     pub fn check_node_ids(&mut self) {
         let mut next_id = 0u64;
         for node in self.get_all_nodes_mut() {
-            node.id = next_id;
+            if !node.exempt_from_id_check {
+                node.id = next_id;
+            }
             next_id += 1;
         }
         self.nodes = next_id;
@@ -463,9 +467,11 @@ impl World {
     /// NOTE: this is called automatically when adding a node
     fn assign_ids_recursive(&mut self, node: &mut Node) {
         node.id = self.nodes;
-        self.nodes += 1;
         for child in node.children.iter_mut() {
-            self.assign_ids_recursive(child);
+            if !child.exempt_from_id_check {
+                self.assign_ids_recursive(child);
+            }
+            self.nodes += 1;
         }
     }
 

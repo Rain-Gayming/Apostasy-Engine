@@ -16,6 +16,10 @@ pub fn render_inspector(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
                     ui.label("Name: ");
                     ui.text_edit_singleline(&mut node.name);
                 });
+                ui.horizontal(|ui| {
+                    let id_text = format!("ID: {}", id);
+                    ui.label(id_text);
+                });
 
                 if let Some(parent) = &node.parent {
                     ui.label(format!("Parent Node: {}", parent));

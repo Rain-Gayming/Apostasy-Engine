@@ -168,6 +168,7 @@ pub fn deserialize_node(serialized: SerializedNode) -> Node {
         children,
         parent: None,
         components,
+        exempt_from_id_check: false,
     }
 }
 

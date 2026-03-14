@@ -299,6 +299,8 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             // create the preview node
             let mut node = Node::new();
             node.name = "__viewport_drag_preview__".to_string();
+            node.exempt_from_id_check = true;
+            node.id = u64::MAX;
             node.add_component(Transform::default());
 
             if is_dragging_glb {
@@ -321,10 +323,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             // add and store the preview node
             world.add_node(node);
 
-            let id = world
-                .get_node_with_name("__viewport_drag_preview__")
-                .map(|n| n.id);
-
+            let id = Some(u64::MAX);
             editor_storage.viewport_drag_preview_id = id;
         }
 
@@ -380,6 +379,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
                     }
 
                     world.get_node_mut(preview_id).name = name;
+                    world.get_node_mut(preview_id).exempt_from_id_check = false;
                     editor_storage.dragged_tree_node = None;
                     editor_storage.file_dragging = false;
                     editor_storage.viewport_drag_preview_id = None;

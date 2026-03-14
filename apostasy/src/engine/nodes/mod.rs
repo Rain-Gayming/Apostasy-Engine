@@ -33,6 +33,7 @@ pub struct Node {
     pub children: Vec<Node>,
     pub parent: Option<u64>,
     pub components: Vec<Box<dyn Component>>,
+    pub exempt_from_id_check: bool,
 }
 
 impl Default for Node {
@@ -50,6 +51,7 @@ impl Node {
             children: Vec::new(),
             parent: None,
             components: Vec::new(),
+            exempt_from_id_check: false,
         }
     }
 
