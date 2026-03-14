@@ -32,6 +32,8 @@ impl PartialEq for FileNode {
 }
 
 impl FileNode {
+    /// Creates a new file node from a path
+    /// collects all the children and sorts them with directories first
     pub fn from_path(path: &Path) -> Self {
         let name = path
             .file_name()
