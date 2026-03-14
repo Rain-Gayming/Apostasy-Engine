@@ -43,15 +43,18 @@ impl FileNode {
 
         if is_dir {
             if let Ok(entries) = std::fs::read_dir(path) {
-                let mut entries: Vec<_> = entries.flatten().collect();
-                entries.sort_by(|a, b| {
-                    let a_is_dir = a.path().is_dir();
-                    let b_is_dir = b.path().is_dir();
-                    b_is_dir
-                        .cmp(&a_is_dir)
-                        .then(a.file_name().cmp(&b.file_name()))
-                });
-                for entry in entries {
+                let mut entries: Vec<_> = entries
+                    .flatten()
+                    .map(|e| {
+                        let is_dir = e.file_type().map_or(false, |ft| ft.is_dir());
+                        let name = e.file_name();
+                        (is_dir, name, e)
+                    })
+                    .collect();
+
+                entries.sort_unstable_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+
+                for (_, _, entry) in entries {
                     children.push(FileNode::from_path(&entry.path()));
                 }
             }
