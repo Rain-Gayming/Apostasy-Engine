@@ -68,6 +68,7 @@ pub struct EditorStorage {
 
     pub was_dragging_last_frame: bool,
     // file tree
+    pub files: Vec<FileNode>,
     pub file_tree_search: String,
     pub file_tree: Option<FileNode>,
     pub dragged_tree_node: Option<String>,
@@ -143,6 +144,7 @@ impl EditorStorage {
         Self {
             component_text_edit: String::new(),
 
+            files: Vec::new(),
             file_tree_search: String::new(),
             file_tree: Some(FileNode::from_path(Path::new("res/"))),
             dragged_tree_node: None,

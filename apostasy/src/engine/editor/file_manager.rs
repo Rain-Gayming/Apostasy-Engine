@@ -25,6 +25,12 @@ pub struct FileNode {
     pub is_dir: bool,
 }
 
+impl PartialEq for FileNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+
 impl FileNode {
     pub fn from_path(path: &Path) -> Self {
         let name = path
@@ -81,19 +87,26 @@ pub fn render_file_tree_ui(ui: &mut Ui, editor_storage: &mut EditorStorage, worl
 
             let tree = editor_storage.file_tree.clone().unwrap();
 
+            // check if the files have changed
+            let files = get_all_files(&tree.path);
+            if files != editor_storage.files {
+                editor_storage.files = files;
+                editor_storage.file_tree = Some(FileNode::from_path(Path::new("res/")));
+            }
+
             if editor_storage.file_tree_search.is_empty() {
                 render_file_tree(
                     ui,
-                    &tree,
+                    &mut editor_storage.file_tree.clone().unwrap(),
                     0,
                     editor_storage.file_tree_search.clone(),
                     editor_storage,
                     world,
                 );
             } else {
-                let files = get_all_files(&tree.path);
+                let files = editor_storage.files.clone();
                 let search = editor_storage.file_tree_search.to_lowercase();
-                for file in files {
+                for file in files.clone() {
                     if file.name.to_lowercase().contains(&search) {
                         render_file_tree(
                             ui,
@@ -105,6 +118,7 @@ pub fn render_file_tree_ui(ui: &mut Ui, editor_storage: &mut EditorStorage, worl
                         );
                     }
                 }
+                editor_storage.files = files;
             }
 
             ui.allocate_space(ui.available_size());

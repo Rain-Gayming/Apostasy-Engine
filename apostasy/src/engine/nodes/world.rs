@@ -381,7 +381,12 @@ impl World {
     /// ```
     pub fn serialize_scene(&mut self) -> Result<(), std::io::Error> {
         self.check_node_ids();
-        let path = self.scene.path.clone();
+        let mut path = self.scene.path.clone();
+
+        if path == ".engine/default.scene" {
+            path = "res/new_scene.scene".to_string();
+        }
+
         let serialized = SerializedScene {
             root_children: self
                 .scene
