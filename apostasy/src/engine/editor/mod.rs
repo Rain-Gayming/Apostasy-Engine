@@ -290,7 +290,10 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             .map_or(false, |p| p.ends_with(".scene"));
 
         // Spawn preview node when glb enters viewport
-        if is_over_viewport && editor_storage.viewport_drag_preview_id.is_none() {
+        if is_over_viewport
+            && editor_storage.viewport_drag_preview_id.is_none()
+            && editor_storage.dragged_tree_node.is_some()
+        {
             let path = editor_storage.dragged_tree_node.clone().unwrap();
 
             // create the preview node
