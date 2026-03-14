@@ -1,4 +1,3 @@
 root_children: []
 name: test1
 path: res/test1.scene
-is_primary: false

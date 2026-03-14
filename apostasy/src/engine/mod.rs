@@ -129,6 +129,7 @@ impl Engine {
             event_loop.create_window(
                 Window::default_attributes()
                     .with_decorations(false)
+                    .with_transparent(true)
                     .with_title("Apostasy Engine")
                     .with_visible(true),
             )?,

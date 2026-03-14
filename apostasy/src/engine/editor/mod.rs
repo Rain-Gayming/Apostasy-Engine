@@ -272,10 +272,8 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             .show(context, &mut viewer);
 
         viewer.editor_storage.dock_state = dock_state;
-        viewer.viewport_rect // viewer is dropped here, releasing the borrows
+        viewer.viewport_rect
     };
-
-    // Now world and editor_storage are freely usable again
 
     if let Some(rect) = viewport_rect {
         let pointer_pos = context.pointer_latest_pos();
@@ -292,48 +290,39 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             .map_or(false, |p| p.ends_with(".scene"));
 
         // Spawn preview node when glb enters viewport
-        if is_over_viewport && is_dragging_glb && editor_storage.viewport_drag_preview_id.is_none()
-        {
+        if is_over_viewport && editor_storage.viewport_drag_preview_id.is_none() {
             let path = editor_storage.dragged_tree_node.clone().unwrap();
-            let model_path = path[4..].to_string(); // strip "res/"
 
+            // create the preview node
             let mut node = Node::new();
             node.name = "__viewport_drag_preview__".to_string();
-            let mut model_renderer = ModelRenderer::default();
-            model_renderer.loaded_model = model_path.clone();
-            node.add_component(model_renderer);
             node.add_component(Transform::default());
 
+            if is_dragging_glb {
+                let model_path = path[4..].to_string(); // strip "res/"
+
+                let mut model_renderer = ModelRenderer::default();
+                model_renderer.loaded_model = model_path.clone();
+                node.add_component(model_renderer);
+
+                editor_storage.viewport_drag_model = Some(model_path);
+            } else if is_dragging_scene {
+                let scene_path = path.clone(); // strip "res/"
+
+                let scene_preview = SceneInstance::new(scene_path);
+                node.add_component(scene_preview);
+
+                world.reload_scene_instances();
+            }
+
+            // add and store the preview node
             world.add_node(node);
 
             let id = world
                 .get_node_with_name("__viewport_drag_preview__")
                 .map(|n| n.id);
+
             editor_storage.viewport_drag_preview_id = id;
-            editor_storage.viewport_drag_model = Some(model_path);
-        }
-
-        if is_over_viewport
-            && is_dragging_scene
-            && editor_storage.viewport_drag_preview_id.is_none()
-        {
-            let path = editor_storage.dragged_tree_node.clone().unwrap();
-            let scene_path = path.clone(); // strip "res/"
-
-            let mut node = Node::new();
-            node.name = "__viewport_drag_preview__".to_string();
-            let scene_preview = SceneInstance::new(scene_path);
-            node.add_component(scene_preview);
-            node.add_component(Transform::default());
-
-            world.add_node(node);
-            println!("Dragging scene");
-
-            let id = world
-                .get_node_with_name("__viewport_drag_preview__")
-                .map(|n| n.id);
-            editor_storage.viewport_drag_preview_id = id;
-            world.reload_scene_instances();
         }
 
         // Update preview position while dragging over viewport
@@ -342,11 +331,15 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
         {
             if is_over_viewport {
                 let world_pos = screen_to_world_plane(pos, rect, world, context);
-                let transform = world
+                if let Some(transform) = world
                     .get_node_mut(preview_id)
                     .get_component_mut::<Transform>()
-                    .unwrap();
-                transform.position = world_pos;
+                {
+                    transform.position = world_pos;
+                } else {
+                    let node = world.get_node_mut(preview_id);
+                    node.add_component(Transform::default());
+                }
             }
         }
 
@@ -354,23 +347,45 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
         if context.input(|i| i.pointer.any_released()) {
             if let Some(preview_id) = editor_storage.viewport_drag_preview_id.take() {
                 if is_over_viewport {
-                    let model = editor_storage
-                        .viewport_drag_model
-                        .take()
-                        .unwrap_or_default();
-                    let name = std::path::Path::new(&model)
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("Model")
-                        .to_string();
+                    let mut name = "Name".to_string();
+                    if let Some(_model) = world
+                        .get_node_mut(preview_id)
+                        .get_component_mut::<ModelRenderer>()
+                    {
+                        let model = editor_storage
+                            .viewport_drag_model
+                            .take()
+                            .unwrap_or_default();
+                        name = std::path::Path::new(&model)
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("Model")
+                            .to_string();
+                    } else if let Some(_scene_instance) = world
+                        .get_node_mut(preview_id)
+                        .get_component_mut::<SceneInstance>()
+                    {
+                        let scene = editor_storage
+                            .viewport_drag_model
+                            .take()
+                            .unwrap_or_default();
+                        name = std::path::Path::new(&scene)
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("SceneInstance")
+                            .to_string();
+                    }
+
                     world.get_node_mut(preview_id).name = name;
                     editor_storage.dragged_tree_node = None;
                     editor_storage.file_dragging = false;
                     editor_storage.viewport_drag_preview_id = None;
+                    world.check_node_ids();
                 } else {
                     world.remove_node(preview_id);
                     editor_storage.viewport_drag_model = None;
                     editor_storage.viewport_drag_preview_id = None;
+                    println!("Removing node");
                 }
             }
         }
