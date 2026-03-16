@@ -1,6 +1,9 @@
+use std::io::Error;
+
 use crate::{
     self as apostasy,
     engine::nodes::{Component, Node},
+    log, log_warn,
 };
 use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
 use serde::{Deserialize, Serialize};
@@ -62,8 +65,12 @@ impl SceneInstance {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SceneManager {
+    #[serde(skip)]
     pub scenes: Vec<Scene>,
+
+    pub scene_paths: Vec<String>,
     pub primary_scene: Option<String>,
 }
 
@@ -77,6 +84,7 @@ impl SceneManager {
     pub fn new() -> Self {
         let scene_manager = Self {
             scenes: Vec::new(),
+            scene_paths: Vec::new(),
             primary_scene: None,
         };
         // scene_manager.load_scenes();
@@ -88,8 +96,8 @@ impl SceneManager {
     }
 
     pub fn remove_scene(&mut self, path: &str) {
-        // self.scenes.retain(|scene| scene.name != name);
-        std::fs::remove_file(path).unwrap();
+        self.scenes.retain(|s| s.path != path);
+        self.scene_paths.retain(|s| s != path);
     }
 
     pub fn set_scene_primary(&mut self, name: &str, is_primary: bool) {
@@ -111,6 +119,65 @@ impl SceneManager {
                 .clone(),
         );
     }
+
+    pub fn serialize_scene_manager(&mut self) -> Result<(), Error> {
+        std::fs::write(
+            "res/scene_manager.yaml",
+            serde_yaml::to_string(&self).unwrap(),
+        )
+    }
+}
+
+pub fn deserialize_scene_manager() -> Option<SceneManager> {
+    let contents = match std::fs::read_to_string("res/scene_manager.yaml") {
+        Ok(c) => c,
+        Err(err) => {
+            log_warn!(
+                "Failed to read scene manager file {}: {}",
+                "res/scene_manager.yaml",
+                err
+            );
+            return None;
+        }
+    };
+
+    let value: serde_yaml::Value = match serde_yaml::from_str(&contents) {
+        Ok(v) => v,
+        Err(err) => {
+            eprintln!(
+                "Failed to parse scene manager YAML {}: {}",
+                "res/scene_manager.yaml", err
+            );
+            return None;
+        }
+    };
+
+    let mut scene_manager = SceneManager::new();
+
+    // scene_paths
+    let raw_paths: serde_yaml::Value = value.get("scene_paths").unwrap().clone();
+    let paths = raw_paths.as_sequence().unwrap();
+
+    for path in paths {
+        let path = path.as_str().unwrap().to_string();
+
+        let scene = scene_manager.load_scene(&path);
+        if let Some(scene) = scene {
+            scene_manager.scenes.push(scene);
+        } else {
+            log_warn!("Failed to load scene: {}", path);
+        }
+
+        scene_manager.scene_paths.push(path);
+    }
+
+    // primary_scene
+    scene_manager.primary_scene = value
+        .get("primary_scene")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    Some(scene_manager)
 }
 
 pub fn deserialize_scene(path: String) -> Option<Scene> {
@@ -151,7 +218,7 @@ pub fn deserialize_scene(path: String) -> Option<Scene> {
     Some(scene)
 }
 
-pub fn serialize_scene(scene: Scene) -> Result<(), std::io::Error> {
+pub fn serialize_scene(scene: Scene) -> Result<(), Error> {
     let path = scene.path.clone();
     let serialized = SerializedScene {
         root_children: scene

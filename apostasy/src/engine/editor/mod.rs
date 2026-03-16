@@ -295,6 +295,8 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
         if is_over_viewport
             && editor_storage.viewport_drag_preview_id.is_none()
             && editor_storage.dragged_tree_node.is_some()
+            && !editor_storage.is_scene_manager_open
+            && !editor_storage.is_keybind_editor_open
         {
             let path = editor_storage.dragged_tree_node.clone().unwrap();
 

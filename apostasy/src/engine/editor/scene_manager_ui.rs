@@ -55,16 +55,23 @@ pub fn render_scene_manager(
                         ui.horizontal(|ui| {
                             ui.label("Add Scene");
 
+                            let scene_button_text =
+                                if let Some(path) = editor_storage.scene_to_add.clone() {
+                                    path.to_string()
+                                } else {
+                                    "Drag scene here".to_string()
+                                };
+
                             let (is_file, path) = file_dragging_ui(
                                 ui,
                                 editor_storage,
-                                "Add Scene".to_string(),
+                                scene_button_text,
                                 ".scene".to_string(),
                                 "Scene".to_string(),
                             );
 
                             if is_file {
-                                editor_storage.scene_to_add = Some(path);
+                                editor_storage.scene_to_add = Some(path.clone());
                                 editor_storage.file_dragging = false;
                             }
 
@@ -81,7 +88,9 @@ pub fn render_scene_manager(
                                     }
                                 }
 
+                                world.scene_manager.scene_paths.push(scene.path.clone());
                                 world.scene_manager.scenes.push(scene);
+                                println!("{:?}", world.scene_manager.scene_paths);
                                 editor_storage.scene_to_add = None;
                             }
                         });
@@ -90,7 +99,7 @@ pub fn render_scene_manager(
                             .scene_manager
                             .scenes
                             .iter()
-                            .map(|s| s.name.clone())
+                            .map(|s| s.path.clone())
                             .collect();
 
                         for name in scene_names {

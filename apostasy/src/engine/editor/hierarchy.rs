@@ -16,6 +16,7 @@ pub fn render_hierarchy(ui: &mut Ui, world: &mut World, editor_storage: &mut Edi
         if ui.button("Save Scene").clicked() {
             world.serialize_scene().unwrap();
             world.reload_scene_instances();
+            world.scene_manager.serialize_scene_manager().unwrap();
         }
     });
     ui.horizontal(|ui| {

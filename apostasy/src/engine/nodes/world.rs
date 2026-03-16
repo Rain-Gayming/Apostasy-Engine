@@ -5,7 +5,7 @@ use crate::engine::{
     nodes::{
         Node, NodeMut, build_instance_node,
         component::Component,
-        scene::{Scene, SceneInstance, SceneManager, deserialize_scene},
+        scene::{Scene, SceneInstance, SceneManager, deserialize_scene, deserialize_scene_manager},
         scene_serialization::{SerializedScene, find_registration, serialize_node},
         system::{
             EditorFixedUpdateSystem, FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem,
@@ -32,9 +32,13 @@ impl Default for World {
 
 impl World {
     pub fn new() -> Self {
+        let mut scene_manager = SceneManager::new();
+        if let Some(loaded) = deserialize_scene_manager() {
+            scene_manager = loaded;
+        }
         Self {
             scene: Scene::new(".engine/default.scene".to_string()),
-            scene_manager: SceneManager::new(),
+            scene_manager,
             nodes: 0,
             global_nodes: Vec::new(),
             input_manager: InputManager::default(),
