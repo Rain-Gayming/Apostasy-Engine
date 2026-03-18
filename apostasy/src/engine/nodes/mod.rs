@@ -63,8 +63,7 @@ impl Node {
     pub fn has_component<T: Component + 'static>(&self) -> bool {
         self.components
             .iter()
-            .find(|component| component.as_any().type_id() == TypeId::of::<T>())
-            .is_some()
+            .any(|component| component.as_any().downcast_ref::<T>().is_some())
     }
 
     /// Gets a component of type T from the node
@@ -121,8 +120,13 @@ impl Node {
     ///     world.get_node_mut(0).add_component(Transform::default());
     /// ```
     pub fn add_component<T: Component + 'static>(&mut self, component: T) -> &mut Self {
-        self.components.push(Box::new(component));
-        self
+        if self.get_component::<T>().is_some() {
+            log!("You can only have one of any component on an entity");
+            return self;
+        } else {
+            self.components.push(Box::new(component));
+            return self;
+        }
     }
 
     /// Adds a child to the node
@@ -227,7 +231,18 @@ impl Node {
                 )
             })?;
 
+        // Check for duplicate using type_name since we don't have T here
         let component = (registration.create)();
+        let new_type_name = component.type_name();
+
+        if self
+            .components
+            .iter()
+            .any(|c| c.type_name() == new_type_name)
+        {
+            log!("You can only have one of any component on an entity");
+            return Ok(());
+        }
 
         self.components.push(component);
         Ok(())
