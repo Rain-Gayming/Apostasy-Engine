@@ -15,7 +15,7 @@ impl Inspectable for LightType {
     fn inspect(
         &mut self,
         ui: &mut egui::Ui,
-        editor_stoage: &mut crate::engine::editor::EditorStorage,
+        editor_storage: &mut crate::engine::editor::EditorStorage,
     ) -> bool {
         egui::ComboBox::from_label("")
             .selected_text(format!("{:?}", self.clone()))

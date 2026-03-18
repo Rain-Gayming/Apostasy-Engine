@@ -6,7 +6,7 @@ use crate::engine::editor::EditorStorage;
 /// Implemented by structs that can be inspected
 /// Impliment via ```#[derive(Inspectable)]```
 pub trait Inspectable {
-    fn inspect(&mut self, ui: &mut Ui, editor_stoage: &mut EditorStorage) -> bool;
+    fn inspect(&mut self, ui: &mut Ui, editor_storage: &mut EditorStorage) -> bool;
     fn on_inspect(&mut self) {}
 }
 
