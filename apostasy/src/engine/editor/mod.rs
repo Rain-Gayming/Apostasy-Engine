@@ -19,6 +19,7 @@ use crate::{
 use std::{
     path::Path,
     sync::{Arc, RwLock},
+    fs::{read_to_string, write},
 };
 
 use crate::engine::editor::console_commands::render_console_ui;
@@ -110,11 +111,22 @@ pub struct EditorStorage {
     pub should_close: bool,
 
     pub dock_state: DockState<EditorTab>,
+    pub layout_serialized: Option<String>,
+    // sizes for floating windows
+    pub scene_manager_window_size: Option<[f32; 2]>,
+    pub input_manager_window_size: Option<[f32; 2]>,
     pub profiler: ProfilerState,
     pub asset_server: Arc<RwLock<AssetServer>>,
 
     pub viewport_drag_preview_id: Option<u64>,
     pub viewport_drag_model: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct EditorLayout {
+    dock_state: DockState<EditorTab>,
+    scene_manager_window_size: Option<[f32; 2]>,
+    input_manager_window_size: Option<[f32; 2]>,
 }
 
 pub enum DragTarget {
@@ -141,6 +153,22 @@ fn default_dock_state() -> DockState<EditorTab> {
 
 impl EditorStorage {
     pub fn default(asset_server: Arc<RwLock<AssetServer>>, _world: Arc<RwLock<World>>) -> Self {
+        // Attempt to load a previously saved editor layout (dock + window sizes).
+        let (dock_state, scene_win_size, input_win_size, layout_serialized) = match
+            read_to_string("res/editor_layout.yaml")
+        {
+            Ok(contents) => match serde_yaml::from_str::<EditorLayout>(&contents) {
+                Ok(layout) => (
+                    layout.dock_state,
+                    layout.scene_manager_window_size,
+                    layout.input_manager_window_size,
+                    Some(contents),
+                ),
+                Err(_) => (default_dock_state(), None, None, None),
+            },
+            Err(_) => (default_dock_state(), None, None, None),
+        };
+
         Self {
             component_text_edit: String::new(),
 
@@ -182,11 +210,25 @@ impl EditorStorage {
             should_close: false,
             scene_to_add: None,
 
-            dock_state: default_dock_state(),
+            dock_state,
+            layout_serialized,
+            scene_manager_window_size: scene_win_size,
+            input_manager_window_size: input_win_size,
             profiler: ProfilerState::default(),
             asset_server,
             viewport_drag_preview_id: None,
             viewport_drag_model: None,
+        }
+    }
+
+    pub fn save_layout(&self) {
+        let layout = EditorLayout {
+            dock_state: self.dock_state.clone(),
+            scene_manager_window_size: self.scene_manager_window_size,
+            input_manager_window_size: self.input_manager_window_size,
+        };
+        if let Ok(s) = serde_yaml::to_string(&layout) {
+            let _ = write("res/editor_layout.yaml", s);
         }
     }
 }
@@ -274,6 +316,20 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             .show(context, &mut viewer);
 
         viewer.editor_storage.dock_state = dock_state;
+        // Persist combined layout (dock state + floating window sizes) when it changes.
+        let layout = EditorLayout {
+            dock_state: viewer.editor_storage.dock_state.clone(),
+            scene_manager_window_size: viewer.editor_storage.scene_manager_window_size,
+            input_manager_window_size: viewer.editor_storage.input_manager_window_size,
+        };
+        let new_serialized = serde_yaml::to_string(&layout).ok();
+        if new_serialized.is_some() && new_serialized != viewer.editor_storage.layout_serialized {
+            if let Some(ref s) = new_serialized {
+                let _ = write("res/editor_layout.yaml", s);
+            }
+            viewer.editor_storage.layout_serialized = new_serialized.clone();
+        }
+
         viewer.viewport_rect
     };
 

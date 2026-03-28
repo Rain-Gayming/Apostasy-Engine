@@ -254,6 +254,8 @@ impl Engine {
                             renderer.prepare_egui(window.1, &mut world, &mut self.editor);
 
                             if self.editor.should_close {
+                                // persist layout before exiting
+                                self.editor.save_layout();
                                 event_loop.exit();
                             }
                         }
@@ -272,6 +274,8 @@ impl Engine {
             WindowEvent::KeyboardInput { .. } => {}
 
             WindowEvent::CloseRequested => {
+                // save editor layout if available
+                self.editor.save_layout();
                 event_loop.exit();
             }
 

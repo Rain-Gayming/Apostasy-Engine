@@ -16,9 +16,27 @@ pub fn render_input_manager(
         return;
     }
 
+    let default_size = if let Some(r) = editor_storage.input_manager_window_size {
+        if world.window_size.x > 0.0 && world.window_size.y > 0.0 {
+            [r[0] * world.window_size.x, r[1] * world.window_size.y]
+        } else {
+            [400.0, 500.0]
+        }
+    } else {
+        [400.0, 500.0]
+    };
+
     Window::new("Input Manager")
-        .default_size([400.0, 500.0])
+        .default_size(default_size)
         .show(context, |ui| {
+            // store the current window content size as a ratio of the main window
+            let size = ui.available_size();
+            if world.window_size.x > 0.0 && world.window_size.y > 0.0 {
+                editor_storage.input_manager_window_size = Some([
+                    size.x / world.window_size.x,
+                    size.y / world.window_size.y,
+                ]);
+            }
             ui.horizontal(|ui| {
                 if ui.button("Save Input Manager").clicked() {
                     world.input_manager.serialize_input_manager().unwrap();

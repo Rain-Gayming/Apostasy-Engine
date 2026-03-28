@@ -19,9 +19,28 @@ pub fn render_scene_manager(
         return;
     }
 
+    // compute default pixel size from stored ratio (if available)
+    let default_size = if let Some(r) = editor_storage.scene_manager_window_size {
+        if world.window_size.x > 0.0 && world.window_size.y > 0.0 {
+            [r[0] * world.window_size.x, r[1] * world.window_size.y]
+        } else {
+            [400.0, 500.0]
+        }
+    } else {
+        [400.0, 500.0]
+    };
+
     Window::new("Scene Manager")
-        .default_size([400.0, 500.0])
+        .default_size(default_size)
         .show(context, |ui| {
+            // store the current window content size as a ratio of the main window
+            let size = ui.available_size();
+            if world.window_size.x > 0.0 && world.window_size.y > 0.0 {
+                editor_storage.scene_manager_window_size = Some([
+                    size.x / world.window_size.x,
+                    size.y / world.window_size.y,
+                ]);
+            }
             if ui.button("Close").clicked() {
                 editor_storage.is_scene_manager_open = false;
             }
