@@ -10,6 +10,29 @@ use egui::{
 };
 use egui::{FontFamily, FontId, TextStyle};
 
+// Gruvbox Dark color palette
+// bg:    #282828  rgb(40,  40,  40)
+// bg0:   #282828  rgb(40,  40,  40)
+// bg1:   #3c3836  rgb(60,  56,  54)
+// bg2:   #504945  rgb(80,  73,  69)
+// bg3:   #665c54  rgb(102, 92,  84)
+// bg4:   #7c6f64  rgb(124, 111, 100)
+// fg4:   #a89984  rgb(168, 153, 132)
+// fg3:   #bdae93  rgb(189, 174, 147)
+// fg2:   #d5c4a1  rgb(213, 196, 161)
+// fg1:   #ebdbb2  rgb(235, 219, 178)
+// fg0:   #fbf1c7  rgb(251, 241, 199)
+// red:   #cc241d  rgb(204, 36,  29)
+// green: #98971a  rgb(152, 151, 26)
+// yellow:#d79921  rgb(215, 153, 33)
+// blue:  #458588  rgb(69,  133, 136)
+// aqua:  #689d6a  rgb(104, 157, 106)
+// orange:#d65d0e  rgb(214, 93,  14)
+// gray:  #928374  rgb(146, 131, 116)
+// bright_blue:   #83a598  rgb(131, 165, 152)
+// bright_yellow: #fabd2f  rgb(250, 189, 47)
+// bright_red:    #fb4934  rgb(251, 73,  52)
+
 pub fn style() -> Style {
     let jetbrains = FontFamily::Name("jetbrains".into());
 
@@ -57,72 +80,63 @@ pub fn style() -> Style {
             dark_mode: true,
             override_text_color: None,
             widgets: Widgets {
+                // bg0 — darkest background, borders use bg2
                 noninteractive: WidgetVisuals {
-                    bg_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
-                    weak_bg_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
-                    bg_stroke: Stroke::new(1.0, Color32::from_rgba_premultiplied(65, 65, 65, 255)),
+                    bg_fill: Color32::from_rgb(40, 40, 40),      // bg0 #282828
+                    weak_bg_fill: Color32::from_rgb(40, 40, 40), // bg0 #282828
+                    bg_stroke: Stroke::new(1.0, Color32::from_rgb(80, 73, 69)), // bg2 #504945
                     corner_radius: CornerRadius::same(0),
-                    fg_stroke: Stroke::new(
-                        1.0,
-                        Color32::from_rgba_premultiplied(180, 180, 180, 255),
-                    ),
+                    fg_stroke: Stroke::new(1.0, Color32::from_rgb(168, 153, 132)), // fg4 #a89984
                     expansion: 0.0,
                 },
+                // bg1 — slightly raised surface, no border at rest
                 inactive: WidgetVisuals {
-                    bg_fill: Color32::from_rgba_premultiplied(40, 40, 40, 255),
-                    weak_bg_fill: Color32::from_rgba_premultiplied(40, 40, 40, 255),
+                    bg_fill: Color32::from_rgb(60, 56, 54),      // bg1 #3c3836
+                    weak_bg_fill: Color32::from_rgb(60, 56, 54), // bg1 #3c3836
                     bg_stroke: Stroke::NONE,
                     corner_radius: CornerRadius::same(0),
-                    fg_stroke: Stroke::new(
-                        1.0,
-                        Color32::from_rgba_premultiplied(180, 180, 180, 255),
-                    ),
+                    fg_stroke: Stroke::new(1.0, Color32::from_rgb(189, 174, 147)), // fg3 #bdae93
                     expansion: 0.0,
                 },
+                // bg3 fill + fg0 text + bg4 border — clearly highlighted
                 hovered: WidgetVisuals {
-                    bg_fill: Color32::from_rgba_premultiplied(70, 70, 70, 255),
-                    weak_bg_fill: Color32::from_rgba_premultiplied(70, 70, 70, 255),
-                    bg_stroke: Stroke::new(
-                        1.0,
-                        Color32::from_rgba_premultiplied(150, 150, 150, 255),
-                    ),
+                    bg_fill: Color32::from_rgb(102, 92, 84),      // bg3 #665c54
+                    weak_bg_fill: Color32::from_rgb(102, 92, 84), // bg3 #665c54
+                    bg_stroke: Stroke::new(1.0, Color32::from_rgb(124, 111, 100)), // bg4 #7c6f64
                     corner_radius: CornerRadius::same(3),
-                    fg_stroke: Stroke::new(
-                        1.5,
-                        Color32::from_rgba_premultiplied(240, 240, 240, 255),
-                    ),
+                    fg_stroke: Stroke::new(1.5, Color32::from_rgb(251, 241, 199)), // fg0 #fbf1c7
                     expansion: 1.0,
                 },
+                // bg2 fill, bright yellow (gruvbox accent) border and text when pressed
                 active: WidgetVisuals {
-                    bg_fill: Color32::from_rgba_premultiplied(55, 55, 55, 255),
-                    weak_bg_fill: Color32::from_rgba_premultiplied(55, 55, 55, 255),
-                    bg_stroke: Stroke::new(1.0, Color32::WHITE),
+                    bg_fill: Color32::from_rgb(80, 73, 69),      // bg2 #504945
+                    weak_bg_fill: Color32::from_rgb(80, 73, 69), // bg2 #504945
+                    bg_stroke: Stroke::new(1.0, Color32::from_rgb(250, 189, 47)), // bright_yellow #fabd2f
                     corner_radius: CornerRadius::same(0),
-                    fg_stroke: Stroke::new(2.0, Color32::WHITE),
+                    fg_stroke: Stroke::new(2.0, Color32::from_rgb(250, 189, 47)), // bright_yellow #fabd2f
                     expansion: 1.0,
                 },
+                // open menus/combos — bg darkens slightly, subdued border
                 open: WidgetVisuals {
-                    bg_fill: Color32::from_rgba_premultiplied(27, 27, 27, 255),
-                    weak_bg_fill: Color32::from_rgba_premultiplied(45, 45, 45, 255),
-                    bg_stroke: Stroke::new(1.0, Color32::from_rgba_premultiplied(60, 60, 60, 255)),
+                    bg_fill: Color32::from_rgb(29, 32, 33), // hard dark #1d2021
+                    weak_bg_fill: Color32::from_rgb(60, 56, 54), // bg1 #3c3836
+                    bg_stroke: Stroke::new(1.0, Color32::from_rgb(80, 73, 69)), // bg2 #504945
                     corner_radius: CornerRadius::same(0),
-                    fg_stroke: Stroke::new(
-                        1.0,
-                        Color32::from_rgba_premultiplied(210, 210, 210, 255),
-                    ),
+                    fg_stroke: Stroke::new(1.0, Color32::from_rgb(213, 196, 161)), // fg2 #d5c4a1
                     expansion: 0.0,
                 },
             },
             selection: Selection {
-                bg_fill: Color32::from_rgba_premultiplied(0, 92, 128, 255),
-                stroke: Stroke::new(1.0, Color32::from_rgba_premultiplied(192, 222, 255, 255)),
+                // gruvbox blue tinted selection
+                bg_fill: Color32::from_rgb(69, 133, 136), // blue #458588
+                stroke: Stroke::new(1.0, Color32::from_rgb(131, 165, 152)), // bright_blue #83a598
             },
-            hyperlink_color: Color32::from_rgba_premultiplied(90, 170, 255, 255),
+            hyperlink_color: Color32::from_rgb(131, 165, 152), // bright_blue #83a598
             faint_bg_color: Color32::from_rgba_premultiplied(5, 5, 5, 0),
-            extreme_bg_color: Color32::from_rgba_premultiplied(10, 10, 10, 255),
-            code_bg_color: Color32::from_rgba_premultiplied(64, 64, 64, 255),
-            warn_fg_color: Color32::from_rgba_premultiplied(255, 143, 0, 255),
-            error_fg_color: Color32::from_rgba_premultiplied(255, 0, 0, 255),
+            extreme_bg_color: Color32::from_rgb(29, 32, 33), // hard dark #1d2021
+            code_bg_color: Color32::from_rgb(80, 73, 69),    // bg2 #504945
+            warn_fg_color: Color32::from_rgb(250, 189, 47),  // bright_yellow #fabd2f
+            error_fg_color: Color32::from_rgb(251, 73, 52),  // bright_red #fb4934
             window_corner_radius: CornerRadius::same(0),
             window_shadow: Shadow {
                 color: Color32::from_rgba_premultiplied(0, 0, 0, 96),
@@ -130,10 +144,10 @@ pub fn style() -> Style {
                 offset: [10, 20],
                 spread: 0,
             },
-            window_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
-            window_stroke: Stroke::new(1.0, Color32::from_rgba_premultiplied(65, 65, 65, 255)),
+            window_fill: Color32::from_rgb(40, 40, 40), // bg0 #282828
+            window_stroke: Stroke::new(1.0, Color32::from_rgb(80, 73, 69)), // bg2 #504945
             menu_corner_radius: CornerRadius::same(0),
-            panel_fill: Color32::from_rgba_premultiplied(32, 32, 32, 255),
+            panel_fill: Color32::from_rgb(40, 40, 40), // bg0 #282828
             popup_shadow: Shadow {
                 color: Color32::from_rgba_premultiplied(0, 0, 0, 96),
                 blur: 8,
@@ -142,7 +156,7 @@ pub fn style() -> Style {
             },
             resize_corner_size: 12.0,
             text_cursor: TextCursorStyle {
-                stroke: Stroke::new(2.0, Color32::from_rgba_premultiplied(192, 222, 255, 255)),
+                stroke: Stroke::new(2.0, Color32::from_rgb(250, 189, 47)), // bright_yellow #fabd2f
                 preview: false,
                 ..Default::default()
             },

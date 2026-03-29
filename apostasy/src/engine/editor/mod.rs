@@ -17,15 +17,15 @@ use crate::{
     utils::screen_to_world::screen_to_world_plane,
 };
 use std::{
+    fs::{read_to_string, write},
     path::Path,
     sync::{Arc, RwLock},
-    fs::{read_to_string, write},
 };
 
 use crate::engine::editor::console_commands::render_console_ui;
 use crate::engine::nodes::world::World;
 use apostasy_macros::editor_ui;
-use egui::{Color32, Context, TopBottomPanel, Ui};
+use egui::{Color32, Context, Popup, PopupCloseBehavior, TopBottomPanel, Ui};
 use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
 use serde::{Deserialize, Serialize};
 use winit::event::MouseButton;
@@ -154,20 +154,19 @@ fn default_dock_state() -> DockState<EditorTab> {
 impl EditorStorage {
     pub fn default(asset_server: Arc<RwLock<AssetServer>>, _world: Arc<RwLock<World>>) -> Self {
         // Attempt to load a previously saved editor layout (dock + window sizes).
-        let (dock_state, scene_win_size, input_win_size, layout_serialized) = match
-            read_to_string("res/editor_layout.yaml")
-        {
-            Ok(contents) => match serde_yaml::from_str::<EditorLayout>(&contents) {
-                Ok(layout) => (
-                    layout.dock_state,
-                    layout.scene_manager_window_size,
-                    layout.input_manager_window_size,
-                    Some(contents),
-                ),
+        let (dock_state, scene_win_size, input_win_size, layout_serialized) =
+            match read_to_string("res/editor_layout.yaml") {
+                Ok(contents) => match serde_yaml::from_str::<EditorLayout>(&contents) {
+                    Ok(layout) => (
+                        layout.dock_state,
+                        layout.scene_manager_window_size,
+                        layout.input_manager_window_size,
+                        Some(contents),
+                    ),
+                    Err(_) => (default_dock_state(), None, None, None),
+                },
                 Err(_) => (default_dock_state(), None, None, None),
-            },
-            Err(_) => (default_dock_state(), None, None, None),
-        };
+            };
 
         Self {
             component_text_edit: String::new(),
@@ -464,12 +463,19 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
         .show(context, |ui| {
             ui.add_space(1.0);
             ui.horizontal(|ui| {
-                if ui.button("InputManager").clicked() {
-                    editor_storage.is_keybind_editor_open = !editor_storage.is_keybind_editor_open;
-                }
-                if ui.button("SceneManager").clicked() {
-                    editor_storage.is_scene_manager_open = !editor_storage.is_scene_manager_open;
-                }
+                let response = ui.button("Engine");
+                Popup::menu(&response)
+                    .close_behavior(PopupCloseBehavior::IgnoreClicks)
+                    .show(|ui| {
+                        if ui.button("InputManager").clicked() {
+                            editor_storage.is_keybind_editor_open =
+                                !editor_storage.is_keybind_editor_open;
+                        }
+                        if ui.button("SceneManager").clicked() {
+                            editor_storage.is_scene_manager_open =
+                                !editor_storage.is_scene_manager_open;
+                        }
+                    });
 
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {

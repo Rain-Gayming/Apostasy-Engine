@@ -9,7 +9,7 @@ dock_state:
           y: 28.0
         max:
           x: 1266.0
-          y: 1380.0
+          y: 1376.0
       fraction: 0.78125
       fully_collapsed: false
       collapsed_leaf_count: 0
@@ -20,7 +20,7 @@ dock_state:
           y: 28.0
         max:
           x: 989.0
-          y: 1380.0
+          y: 1376.0
       fraction: 0.6940559
       fully_collapsed: false
       collapsed_leaf_count: 0
@@ -31,7 +31,7 @@ dock_state:
           y: 28.0
         max:
           x: 1266.0
-          y: 1380.0
+          y: 1376.0
       fraction: 0.6
       fully_collapsed: false
       collapsed_leaf_count: 0
@@ -42,7 +42,7 @@ dock_state:
           y: 28.0
         max:
           x: 989.0
-          y: 966.0
+          y: 963.0
       fraction: 0.28
       fully_collapsed: false
       collapsed_leaf_count: 0
@@ -50,17 +50,17 @@ dock_state:
       rect:
         min:
           x: 0.0
-          y: 967.0
+          y: 964.0
         max:
           x: 989.0
-          y: 1380.0
+          y: 1376.0
       viewport:
         min:
           x: 0.0
-          y: 991.0
+          y: 988.0
         max:
           x: 989.0
-          y: 1380.0
+          y: 1376.0
       tabs:
       - Files
       - Console
@@ -74,14 +74,14 @@ dock_state:
           y: 28.0
         max:
           x: 1266.0
-          y: 839.0
+          y: 836.0
       viewport:
         min:
           x: 990.0
           y: 52.0
         max:
           x: 1266.0
-          y: 839.0
+          y: 836.0
       tabs:
       - Inspector
       active: 0
@@ -91,17 +91,17 @@ dock_state:
       rect:
         min:
           x: 990.0
-          y: 840.0
+          y: 837.0
         max:
           x: 1266.0
-          y: 1380.0
+          y: 1376.0
       viewport:
         min:
           x: 990.0
-          y: 864.0
+          y: 861.0
         max:
           x: 1266.0
-          y: 1380.0
+          y: 1376.0
       tabs:
       - AssetEditor
       active: 0
@@ -114,14 +114,14 @@ dock_state:
           y: 28.0
         max:
           x: 276.0
-          y: 966.0
+          y: 963.0
       viewport:
         min:
           x: 0.0
           y: 52.0
         max:
           x: 276.0
-          y: 966.0
+          y: 963.0
       tabs:
       - Hierarchy
       active: 0
@@ -134,14 +134,14 @@ dock_state:
           y: 28.0
         max:
           x: 989.0
-          y: 966.0
+          y: 963.0
       viewport:
         min:
           x: 277.0
           y: 52.0
         max:
           x: 989.0
-          y: 966.0
+          y: 963.0
       tabs:
       - Viewport
       active: 0
@@ -169,7 +169,7 @@ dock_state:
     - Empty
     - Empty
     - Empty
-    focused_node: 7
+    focused_node: 4
     collapsed: false
     collapsed_leaf_count: 0
   focused_surface: 0
@@ -188,5 +188,9 @@ dock_state:
       minimize_button_menu_hint: Right click to minimize this window.
       minimize_button_modifier_hint: Press modifier keys (Shift by default) to minimize this window.
       minimize_button_modifier_menu_hint: Press modifier keys (Shift by default) or right click to minimize this window.
-scene_manager_window_size: null
-input_manager_window_size: null
+scene_manager_window_size:
+- 0.31595576
+- 0.3633721
+input_manager_window_size:
+- 0.31595576
+- 0.3633721
