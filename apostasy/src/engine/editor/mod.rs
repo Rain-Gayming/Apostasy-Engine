@@ -4,11 +4,10 @@ use crate::{
         assets::server::AssetServer,
         editor::{
             asset_editor::asset_editor,
+            engine_settings_ui::render_engine_settings_ui,
             file_manager::{FileNode, render_file_tree_ui},
             hierarchy::render_hierarchy,
-            input_manager_ui::render_input_manager,
             inspector::render_inspector,
-            scene_manager_ui::render_scene_manager,
         },
         nodes::{Node, components::transform::Transform, scene::SceneInstance},
         rendering::{models::model::ModelRenderer, profiler::ProfilerState},
@@ -32,6 +31,7 @@ use winit::event::MouseButton;
 
 pub mod asset_editor;
 pub mod console_commands;
+pub mod engine_settings_ui;
 pub mod file_manager;
 pub mod hierarchy;
 pub mod input_manager_ui;
@@ -84,7 +84,6 @@ pub struct EditorStorage {
     pub console_command: String,
 
     // keybind editor
-    pub is_keybind_editor_open: bool,
     pub keybind_name: String,
     pub keybind_key_code: String,
     pub keybind_action: KeyAction,
@@ -103,7 +102,6 @@ pub struct EditorStorage {
     pub node_to_remove: Option<u64>,
 
     // scene manager
-    pub is_scene_manager_open: bool,
     pub scene_name: String,
     pub last_scene_name: String,
     pub scene_to_add: Option<String>,
@@ -120,6 +118,9 @@ pub struct EditorStorage {
 
     pub viewport_drag_preview_id: Option<u64>,
     pub viewport_drag_model: Option<String>,
+
+    pub is_engine_settings_open: bool,
+    pub open_engine_settings_tab: EngineSettingsTab,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -132,6 +133,13 @@ struct EditorLayout {
 pub enum DragTarget {
     Parent(u64),
     Root,
+}
+
+pub enum EngineSettingsTab {
+    Inputs,
+    Scenes,
+
+    Renderer,
 }
 
 fn default_dock_state() -> DockState<EditorTab> {
@@ -187,7 +195,6 @@ impl EditorStorage {
             console_filter: String::new(),
             console_command: String::new(),
 
-            is_keybind_editor_open: false,
             keybind_name: String::new(),
             keybind_key_code: String::new(),
             keybind_action: KeyAction::Press,
@@ -203,7 +210,6 @@ impl EditorStorage {
             show_globals: false,
             node_to_remove: None,
 
-            is_scene_manager_open: false,
             scene_name: String::new(),
             last_scene_name: String::new(),
             should_close: false,
@@ -217,6 +223,9 @@ impl EditorStorage {
             asset_server,
             viewport_drag_preview_id: None,
             viewport_drag_model: None,
+
+            is_engine_settings_open: false,
+            open_engine_settings_tab: EngineSettingsTab::Inputs,
         }
     }
 
@@ -294,8 +303,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
     if !editor_storage.is_editor_open {
         return;
     }
-    render_scene_manager(context, world, editor_storage);
-    render_input_manager(context, world, editor_storage);
+    render_engine_settings_ui(context, world, editor_storage);
 
     let mut dock_state = std::mem::replace(&mut editor_storage.dock_state, default_dock_state());
 
@@ -350,8 +358,6 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
         if is_over_viewport
             && editor_storage.viewport_drag_preview_id.is_none()
             && editor_storage.dragged_tree_node.is_some()
-            && !editor_storage.is_scene_manager_open
-            && !editor_storage.is_keybind_editor_open
         {
             let path = editor_storage.dragged_tree_node.clone().unwrap();
 
@@ -467,13 +473,9 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                 Popup::menu(&response)
                     .close_behavior(PopupCloseBehavior::IgnoreClicks)
                     .show(|ui| {
-                        if ui.button("InputManager").clicked() {
-                            editor_storage.is_keybind_editor_open =
-                                !editor_storage.is_keybind_editor_open;
-                        }
-                        if ui.button("SceneManager").clicked() {
-                            editor_storage.is_scene_manager_open =
-                                !editor_storage.is_scene_manager_open;
+                        if ui.button("Engine Settings").clicked() {
+                            editor_storage.is_engine_settings_open =
+                                !editor_storage.is_engine_settings_open;
                         }
                     });
 

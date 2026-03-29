@@ -169,7 +169,7 @@ dock_state:
     - Empty
     - Empty
     - Empty
-    focused_node: 4
+    focused_node: 8
     collapsed: false
     collapsed_leaf_count: 0
   focused_surface: 0
@@ -189,8 +189,8 @@ dock_state:
       minimize_button_modifier_hint: Press modifier keys (Shift by default) to minimize this window.
       minimize_button_modifier_menu_hint: Press modifier keys (Shift by default) or right click to minimize this window.
 scene_manager_window_size:
-- 0.31595576
-- 0.3633721
+- 0.21783327
+- 0.30523255
 input_manager_window_size:
-- 0.31595576
-- 0.3633721
+- 0.21783327
+- 0.30523255
