@@ -130,6 +130,7 @@ impl Engine {
                 Window::default_attributes()
                     .with_decorations(false)
                     .with_transparent(true)
+                    .with_resizable(true)
                     .with_title("Apostasy Engine")
                     .with_visible(true),
             )?,
