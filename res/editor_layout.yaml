@@ -43,7 +43,7 @@ dock_state:
         max:
           x: 989.0
           y: 966.0
-      fraction: 0.2539913
+      fraction: 0.28
       fully_collapsed: false
       collapsed_leaf_count: 0
     - !Leaf
@@ -113,14 +113,14 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 251.0
+          x: 276.0
           y: 966.0
       viewport:
         min:
           x: 0.0
           y: 52.0
         max:
-          x: 251.0
+          x: 276.0
           y: 966.0
       tabs:
       - Hierarchy
@@ -130,14 +130,14 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 252.0
+          x: 277.0
           y: 28.0
         max:
           x: 989.0
           y: 966.0
       viewport:
         min:
-          x: 252.0
+          x: 277.0
           y: 52.0
         max:
           x: 989.0

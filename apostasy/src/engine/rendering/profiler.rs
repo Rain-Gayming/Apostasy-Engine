@@ -1,5 +1,6 @@
 use crate as apostasy;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 use std::time::Instant;
 
 use apostasy_macros::editor_ui;
@@ -10,7 +11,7 @@ use crate::engine::{editor::EditorStorage, nodes::world::World};
 
 #[derive(Clone, Debug)]
 pub struct ProfileScope {
-    pub name: String,
+    pub name: Arc<String>,
     pub duration_ms: f64,
     pub color: Color32,
     pub depth: usize,
@@ -74,8 +75,9 @@ const CPU_COLORS: &[Color32] = &[
 ];
 
 pub struct CpuProfiler {
-    stack: Vec<(String, Instant, usize)>,
+    stack: Vec<(Arc<String>, Instant, usize)>,
     pub completed: Vec<ProfileScope>,
+    name_cache: HashMap<String, Arc<String>>,
 }
 
 impl CpuProfiler {
@@ -83,12 +85,20 @@ impl CpuProfiler {
         Self {
             stack: Vec::new(),
             completed: Vec::new(),
+            name_cache: HashMap::new(),
         }
     }
 
     pub fn begin(&mut self, name: &str) {
         let depth = self.stack.len();
-        self.stack.push((name.to_string(), Instant::now(), depth));
+        // Intern name to avoid repeated allocations for common scope names
+        let key = name.to_string();
+        let arc = self
+            .name_cache
+            .entry(key.clone())
+            .or_insert_with(|| Arc::new(key))
+            .clone();
+        self.stack.push((arc, Instant::now(), depth));
     }
 
     pub fn end(&mut self) {
@@ -122,8 +132,9 @@ pub struct GpuTimestampPool {
     pub query_pool: vk::QueryPool,
     pub timestamp_period_ns: f64,
     next_slot: u32,
-    scope_stack: Vec<(String, u32)>,
-    pending: Vec<(String, u32, u32)>,
+    scope_stack: Vec<(Arc<String>, u32)>,
+    pending: Vec<(Arc<String>, u32, u32)>,
+    name_cache: HashMap<String, Arc<String>>,
     pub frame_active: bool,
 }
 
@@ -143,6 +154,7 @@ impl GpuTimestampPool {
             next_slot: 0,
             scope_stack: Vec::new(),
             pending: Vec::new(),
+            name_cache: HashMap::new(),
             frame_active: false,
         }
     }
@@ -175,7 +187,13 @@ impl GpuTimestampPool {
                 slot,
             );
         }
-        self.scope_stack.push((name.to_string(), slot));
+        let key = name.to_string();
+        let arc = self
+            .name_cache
+            .entry(key.clone())
+            .or_insert_with(|| Arc::new(key))
+            .clone();
+        self.scope_stack.push((arc, slot));
     }
 
     pub fn end_scope(&mut self, device: &ash::Device, cmd: vk::CommandBuffer) {
@@ -360,7 +378,7 @@ fn draw_breakdown(ui: &mut egui::Ui, state: &ProfilerState, frame: &FrameData) {
                             egui::Align2::LEFT_CENTER,
                             format!(
                                 "{} [{kind}]  {:.3} ms  ({:.1}%)",
-                                scope.name,
+                                scope.name.as_str(),
                                 scope.duration_ms,
                                 (scope.duration_ms / total_ms) * 100.0,
                             ),
@@ -379,7 +397,7 @@ fn draw_breakdown(ui: &mut egui::Ui, state: &ProfilerState, frame: &FrameData) {
                             .show(|ui| {
                                 ui.label(format!(
                                     "[{kind}] {}  {:.3} ms  ({:.1}%)",
-                                    scope.name,
+                                    scope.name.as_str(),
                                     scope.duration_ms,
                                     (scope.duration_ms / total_ms) * 100.0,
                                 ));
@@ -413,7 +431,7 @@ fn draw_breakdown(ui: &mut egui::Ui, state: &ProfilerState, frame: &FrameData) {
                                            scopes: &[ProfileScope],
                                            kind: &str| {
                             for scope in scopes {
-                                ui.colored_label(scope.color, &scope.name);
+                                ui.colored_label(scope.color, scope.name.as_str());
                                 ui.label(kind);
                                 ui.label(format!("{:.3}", scope.duration_ms));
                                 ui.label(format!("{:.1}%", (scope.duration_ms / total_ms) * 100.0));
@@ -542,19 +560,17 @@ fn draw_graph(ui: &mut egui::Ui, state: &mut ProfilerState) {
         Color32::from_rgba_unmultiplied(255, 240, 80, 160),
     );
 
-    // Polyline helper
-    let frames: Vec<&FrameData> = state.history.frames.iter().collect();
-    let draw_line =
-        |painter: &egui::Painter, get: &dyn Fn(&FrameData) -> f64, color: Color32, width: f32| {
-            let pts: Vec<egui::Pos2> = frames
-                .iter()
-                .enumerate()
-                .map(|(i, f)| egui::pos2(rect.left() + i as f32 * x_step, to_y(get(f))))
-                .collect();
-            for w in pts.windows(2) {
-                painter.line_segment([w[0], w[1]], egui::Stroke::new(width, color));
+    // Polyline helper — iterate directly without allocating an intermediate Vec
+    let draw_line = |painter: &egui::Painter, get: &dyn Fn(&FrameData) -> f64, color: Color32, width: f32| {
+        let mut prev: Option<egui::Pos2> = None;
+        for (i, f) in state.history.frames.iter().enumerate() {
+            let pt = egui::pos2(rect.left() + i as f32 * x_step, to_y(get(f)));
+            if let Some(p) = prev {
+                painter.line_segment([p, pt], egui::Stroke::new(width, color));
             }
-        };
+            prev = Some(pt);
+        }
+    };
 
     draw_line(
         &painter,

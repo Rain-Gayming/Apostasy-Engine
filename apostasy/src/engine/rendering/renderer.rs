@@ -7,262 +7,291 @@ use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
 use cgmath::{Matrix4, Point3};
 use egui::{Context, FontFamily};
-use egui_ash_renderer::{DynamicRendering, Options};
-use winit::{event::WindowEvent, window::Window};
-
-use crate::engine::assets::handle::Handle;
-use crate::engine::assets::server::AssetServer;
-use crate::engine::nodes::world::World;
-use crate::engine::rendering::models::gltf_loader::GltfLoader;
-use crate::engine::rendering::models::material::MaterialAsset;
-use crate::engine::rendering::models::model::GpuModel;
-use crate::engine::rendering::models::shader::ShaderSpirv;
-use crate::engine::rendering::models::texture::{GpuTexture, GpuTextureLoader};
-use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPool};
-use crate::engine::{
-    editor::{EditorStorage, style::style},
-    nodes::{
-        Node,
-        components::{
-            camera::{Camera, get_perspective_projection},
-            light::Light,
-            transform::Transform,
-        },
-        system::EditorUIFunction,
-    },
-    rendering::{
-        models::model::ModelRenderer,
-        rendering_context::{ImageLayoutState, RenderingContext},
-        swapchain::Swapchain,
-    },
-};
-
-pub struct Frame {
-    pub command_buffer: vk::CommandBuffer,
-    pub image_available_semaphore: vk::Semaphore,
-    pub render_finished_semaphore: vk::Semaphore,
-    pub in_flight_fence: vk::Fence,
-}
-
-pub struct EguiRenderer {
-    pub egui_state: egui_winit::State,
-    pub egui_renderer: egui_ash_renderer::Renderer,
-    pub egui_ctx: egui::Context,
-    pub sorted_ui_systems: Vec<&'static UIFunction>,
-    pub sorted_editor_ui_systems: Vec<&'static EditorUIFunction>,
-}
-
-impl EguiRenderer {
-    pub fn new(
-        context: &crate::engine::rendering::rendering_context::RenderingContext,
-        swapchain: &Swapchain,
-        window: &Window,
-    ) -> Self {
-        let mut egui_renderer = egui_ash_renderer::Renderer::with_default_allocator(
-            &context.instance,
-            context.physical_device.handle,
-            context.device.clone(),
-            DynamicRendering {
-                color_attachment_format: swapchain.format,
-                depth_attachment_format: Some(swapchain.depth_format),
-            },
-            Options {
-                srgb_framebuffer: true,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-        egui_renderer.add_user_texture(DescriptorSet::default());
-
-        let mut fonts = egui::FontDefinitions::default();
-        let mut new_font_family = BTreeMap::new();
-        new_font_family.insert(
-            FontFamily::Name("jetbrains".into()),
-            vec!["jetbrains".to_owned()],
-        );
-        fonts.families.append(&mut new_font_family);
-        fonts.font_data.insert(
-            "jetbrains".to_owned(),
-            Arc::new(egui::FontData::from_static(include_bytes!(
-                "../../../../res/.engine/fonts/JetBrainsMonoNerdFont-Medium.ttf"
-            ))),
-        );
-
-        let egui_ctx = egui::Context::default();
-        egui_ctx.set_fonts(fonts);
-        egui_ctx.set_style(style());
-
-        let egui_state = egui_winit::State::new(
-            egui_ctx.clone(),
-            egui::ViewportId::ROOT,
-            &window,
-            None,
-            None,
-            None,
-        );
-
-        let mut sorted_ui_systems: Vec<&'static UIFunction> =
-            inventory::iter::<UIFunction>.into_iter().collect();
-        sorted_ui_systems.sort_by_key(|s| s.priority);
-        sorted_ui_systems.reverse();
-
-        let mut sorted_editor_ui_systems: Vec<&'static EditorUIFunction> =
-            inventory::iter::<EditorUIFunction>.into_iter().collect();
-        sorted_editor_ui_systems.sort_by_key(|s| s.priority);
-        sorted_editor_ui_systems.reverse();
-
-        Self {
-            egui_state,
-            egui_renderer,
-            egui_ctx,
-            sorted_ui_systems,
-            sorted_editor_ui_systems,
-        }
-    }
-}
-
-pub struct UIFunction {
-    pub name: &'static str,
-    pub func: fn(&mut Context),
-    pub priority: u32,
-}
-inventory::collect!(UIFunction);
-
-pub struct Renderer {
-    pub frame_index: usize,
-    pub frames: Vec<Frame>,
-    pub command_pool: vk::CommandPool,
-    pub transfer_command_pool: vk::CommandPool,
-    pub voxel_pipeline: vk::Pipeline,
-    pub model_pipeline: vk::Pipeline,
-    pub pipeline_layout: vk::PipelineLayout,
-    pub swapchain: Swapchain,
-    pub context: Arc<RenderingContext>,
-    pub descriptor_pool: vk::DescriptorPool,
-    pub descriptor_set_layout: vk::DescriptorSetLayout,
-    pub egui_renderer: EguiRenderer,
-    pub default_descriptor_set: vk::DescriptorSet,
-    pub default_ubo: vk::Buffer,
-    pub default_ubo_memory: vk::DeviceMemory,
-
-    // Profiler
-    pub gpu_timestamps: GpuTimestampPool,
-    pub cpu_profiler: CpuProfiler,
-    pub pending_frame_data: Option<FrameData>,
-    global_frame_counter: u64,
-
-    // image states
-    pub undefined_image_state: ImageLayoutState,
-    pub render_image_state: ImageLayoutState,
-    pub depth_attachment_state: ImageLayoutState,
-    pub present_image_state: ImageLayoutState,
-}
-
-impl Renderer {
-    #[allow(unnecessary_transmutes)]
-    pub fn new(
+    fn record_geometry_pass(
+        command_buffer: vk::CommandBuffer,
         context: Arc<RenderingContext>,
-        window: Arc<Window>,
-        asset_server: &mut Arc<RwLock<AssetServer>>,
-    ) -> Result<Self> {
-        let mut swapchain = Swapchain::new(context.clone(), window.clone())?;
-        swapchain.resize()?;
+        model_pipeline: vk::Pipeline,
+        pipeline_layout: vk::PipelineLayout,
+        default_descriptor_set: vk::DescriptorSet,
+        swapchain_extent: vk::Extent2D,
+        world: &mut World,
+        asset_server: &Arc<RwLock<AssetServer>>,
+        is_editor: bool,
+    ) -> Result<()> {
+        // pick camera node (inline to avoid borrowing `self`)
+        let mut camera_node: Option<&Node> = None;
+        if !is_editor {
+            for node in world.get_all_world_nodes() {
+                if node.get_component::<Camera>().is_some() {
+                    camera_node = Some(node);
+                }
+            }
+        }
+        if camera_node.is_none() {
+            if is_editor {
+                if let Some(node) = world.get_global_node_with_component::<Camera>() {
+                    camera_node = Some(node);
+                }
+            }
+        }
 
-        let mut asset_server = asset_server.write().unwrap();
+        if let Some(camera_node) = camera_node {
+            let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
+            let transform = camera_node.get_component::<Transform>().unwrap();
+            let camera = camera_node.get_component::<Camera>().unwrap();
 
-        let mvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_vert.spv")?;
-        let mfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_frag.spv")?;
-        let vvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/voxel_vert.spv")?;
-        let vfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/voxel_frag.spv")?;
+            let model = Matrix4::from_scale(1.0);
+            let camera_eye = Point3::new(
+                transform.global_position.x,
+                transform.global_position.y,
+                transform.global_position.z,
+            );
+            let rotated_forward = transform.calculate_global_forward();
+            let rotated_up = transform.calculate_global_up();
+            let look_at = Point3::new(
+                camera_eye.x + rotated_forward.x,
+                camera_eye.y + rotated_forward.y,
+                camera_eye.z + rotated_forward.z,
+            );
+            let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
+            let projection = get_perspective_projection(camera, aspect);
+            let mvp = projection * view * model;
 
-        let model_vertex_shader = asset_server
-            .get(mvs_handle)
-            .unwrap()
-            .create_module(&context.device)?;
-        let model_fragment_shader = asset_server
-            .get(mfs_handle)
-            .unwrap()
-            .create_module(&context.device)?;
-        let voxel_vertex_shader = asset_server
-            .get(vvs_handle)
-            .unwrap()
-            .create_module(&context.device)?;
-        let voxel_fragment_shader = asset_server
-            .get(vfs_handle)
-            .unwrap()
-            .create_module(&context.device)?;
+            let mvp_bytes: [u8; 64];
+            let model_bytes: [u8; 64];
+            unsafe {
+                mvp_bytes = transmute(mvp);
+                model_bytes = transmute(model);
+            }
+            let mut push_constants = [0u8; 256];
+            push_constants[0..64].copy_from_slice(&mvp_bytes);
+            push_constants[64..128].copy_from_slice(&model_bytes);
 
-        unsafe {
-            let ubo_binding = vk::DescriptorSetLayoutBinding::default()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::VERTEX);
-            let sampler_binding = vk::DescriptorSetLayoutBinding::default()
-                .binding(1)
-                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT);
+            let device = &context.device;
+            unsafe {
+                device.cmd_bind_pipeline(
+                    command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    model_pipeline,
+                );
 
-            let descriptor_set_layout = context.device.create_descriptor_set_layout(
-                &vk::DescriptorSetLayoutCreateInfo::default()
-                    .bindings(&[ubo_binding, sampler_binding]),
-                None,
-            )?;
+                device.cmd_bind_descriptor_sets(
+                    command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    pipeline_layout,
+                    0,
+                    &[default_descriptor_set],
+                    &[],
+                );
+            }
 
-            let descriptor_pool = context.device.create_descriptor_pool(
-                &vk::DescriptorPoolCreateInfo::default()
-                    .max_sets(200)
-                    .pool_sizes(&[
-                        vk::DescriptorPoolSize {
-                            ty: vk::DescriptorType::UNIFORM_BUFFER,
-                            descriptor_count: 100,
-                        },
-                        vk::DescriptorPoolSize {
-                            ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                            descriptor_count: 100,
-                        },
-                    ]),
-                None,
-            )?;
+            // collect light locally
+            let mut light: Option<Light> = None;
+            let mut light_transform: Option<Transform> = None;
+            for node in world.get_all_nodes() {
+                light = node.get_component::<Light>().cloned();
+                if light.is_some() {
+                    light_transform = node.get_component::<Transform>().cloned();
+                    break;
+                }
+            }
 
-            let push_constant_range = vk::PushConstantRange::default()
-                .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
-                .offset(0)
-                .size(256);
+            for node in world.get_all_nodes_mut() {
+                let transform = node.get_component::<Transform>().cloned();
+                if let (Some(transform), Some(model_renderer)) =
+                    (transform, node.get_component_mut::<ModelRenderer>())
+                {
+                    let offset = [
+                        transform.global_position.x,
+                        transform.global_position.y,
+                        transform.global_position.z,
+                        0.0f32,
+                    ];
+                    let offset_bytes: [u8; 16];
+                    unsafe { offset_bytes = transmute(offset); }
+                    push_constants[128..144].copy_from_slice(&offset_bytes);
 
-            let pipeline_layout = context.device.create_pipeline_layout(
-                &vk::PipelineLayoutCreateInfo::default()
-                    .set_layouts(&[descriptor_set_layout])
-                    .push_constant_ranges(&[push_constant_range]),
-                None,
-            )?;
+                    let rotation = [
+                        transform.global_rotation.v.x,
+                        transform.global_rotation.v.y,
+                        transform.global_rotation.v.z,
+                        transform.global_rotation.s,
+                    ];
+                    let rotation_bytes: [u8; 16];
+                    unsafe { rotation_bytes = transmute(rotation); }
+                    push_constants[144..160].copy_from_slice(&rotation_bytes);
 
-            let model_pipeline = context.create_model_graphics_pipeline(
-                model_vertex_shader,
-                model_fragment_shader,
-                swapchain.format,
-                swapchain.depth_format,
-                pipeline_layout,
-                Default::default(),
-            )?;
+                    let scale = [
+                        transform.global_scale.x,
+                        transform.global_scale.y,
+                        transform.global_scale.z,
+                        0.0f32,
+                    ];
+                    let scale_bytes: [u8; 16];
+                    unsafe { scale_bytes = transmute(scale); }
+                    push_constants[160..176].copy_from_slice(&scale_bytes);
 
-            let voxel_pipeline = context.create_voxel_graphics_pipeline(
-                voxel_vertex_shader,
-                voxel_fragment_shader,
-                swapchain.format,
-                swapchain.depth_format,
-                pipeline_layout,
-                Default::default(),
-            )?;
+                    let model_name = model_renderer.loaded_model.clone();
 
-            context
-                .device
-                .destroy_shader_module(model_vertex_shader, None);
-            context
-                .device
-                .destroy_shader_module(model_fragment_shader, None);
-            context
+                    let model: Option<Handle<GpuModel>>;
+                    {
+                        let srv = asset_server.write().unwrap();
+                        if model_renderer.model_handle.is_some() {
+                            model = model_renderer.model_handle;
+                        } else {
+                            let model_handle: Handle<GpuModel> = srv.load(model_name)?;
+                            model_renderer.model_handle = Some(model_handle);
+                            model = Some(model_handle);
+                        }
+
+                        let model = model.unwrap();
+                        let model = srv.get(model).unwrap().clone();
+                        for mesh in model.meshes.clone() {
+                            let mut mat_handle: Option<Handle<MaterialAsset>> = None;
+
+                            if model_renderer.material_path.is_empty() {
+                                if let Some(&h) = model_renderer
+                                    .mesh_material_handles
+                                    .get(&mesh.material_name)
+                                {
+                                    mat_handle = Some(h);
+                                } else {
+                                    let h = srv.insert(MaterialAsset::default());
+                                    model_renderer
+                                        .mesh_material_handles
+                                        .insert(mesh.material_name.clone(), h);
+                                    mat_handle = Some(h);
+                                }
+                            } else {
+                                let material_handle = srv.load::<MaterialAsset>(
+                                    model_renderer.material_path.clone(),
+                                );
+                                if material_handle.is_ok() {
+                                    mat_handle = Some(material_handle.unwrap());
+                                    model_renderer.material_handle = Some(mat_handle.unwrap());
+                                } else {
+                                    if let Some(ref mat) = model_renderer.material {
+                                        match model_renderer.material_handle {
+                                            Some(h) => mat_handle = Some(h),
+                                            None => {
+                                                let h = srv.insert(mat.clone());
+                                                model_renderer.material_handle = Some(h);
+                                                mat_handle = Some(h);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            let mat_handle = mat_handle.unwrap();
+
+                            {
+                                let (
+                                    albedo_name,
+                                    metallic_name,
+                                    roughness_name,
+                                    normal_name,
+                                    emissive_name,
+                                ) = {
+                                    let mat = srv.get_cloned::<MaterialAsset>(mat_handle).unwrap();
+                                    (
+                                        mat.albedo_texture_name.clone(),
+                                        mat.metallic_texture_name.clone(),
+                                        mat.roughness_texture_name.clone(),
+                                        mat.normal_texture_name.clone(),
+                                        mat.emissive_texture_name.clone(),
+                                    )
+                                };
+
+                                let albedo_h = resolve_texture(&albedo_name, &srv);
+                                let metallic_h = resolve_texture(&metallic_name, &srv);
+                                let roughness_h = resolve_texture(&roughness_name, &srv);
+                                let normal_h = resolve_texture(&normal_name, &srv);
+                                let emissive_h = resolve_texture(&emissive_name, &srv);
+
+                                let mut mat = srv.get_mut(mat_handle).unwrap();
+
+                                mat.albedo_handle = if albedo_h.is_none() {
+                                    let albedo_h = resolve_texture(&".engine/temp.png".to_string(), &srv);
+                                    albedo_h
+                                } else {
+                                    albedo_h
+                                };
+                                mat.metallic_handle = metallic_h;
+                                mat.roughness_handle = roughness_h;
+                                mat.normal_handle = normal_h;
+                                mat.emissive_handle = emissive_h;
+
+                                mat.textures_resolved = true;
+                            }
+
+                            let mat = srv.get_cloned::<MaterialAsset>(mat_handle).unwrap();
+
+                            if let Some(albedo_h) = mat.albedo_handle {
+                                let albedo_texture = srv.get_cloned::<GpuTexture>(albedo_h).unwrap();
+                                let albedo_descriptor_set = albedo_texture.descriptor_set;
+
+                                unsafe {
+                                    device.cmd_bind_descriptor_sets(
+                                        command_buffer,
+                                        vk::PipelineBindPoint::GRAPHICS,
+                                        pipeline_layout,
+                                        0,
+                                        &[albedo_descriptor_set],
+                                        &[],
+                                    );
+                                }
+                            }
+
+                            let base_bytes: [u8; 16];
+                            let emissive_bytes: [u8; 12];
+                            unsafe {
+                                base_bytes = transmute(mat.base_color);
+                                emissive_bytes = transmute(mat.emissive);
+                            }
+                            let metallic_bytes: [u8; 4] = f32::to_ne_bytes(mat.metallic);
+                            let roughness_bytes: [u8; 4] = f32::to_ne_bytes(mat.roughness);
+
+                            push_constants[176..192].copy_from_slice(&base_bytes);
+                            push_constants[192..196].copy_from_slice(&metallic_bytes);
+                            push_constants[196..200].copy_from_slice(&roughness_bytes);
+                            push_constants[208..220].copy_from_slice(&emissive_bytes);
+                            push_constants[220..224].copy_from_slice(&[0u8; 4]);
+
+                            if let (Some(light), Some(lt)) = (&light, &light_transform) {
+                                let light_pos = [
+                                    lt.global_position.x,
+                                    lt.global_position.y,
+                                    lt.global_position.z,
+                                    light.strength,
+                                ];
+                                let light_pos_bytes: [u8; 16];
+                                unsafe { light_pos_bytes = transmute(light_pos); }
+                                push_constants[224..240].copy_from_slice(&light_pos_bytes);
+                            }
+
+                            unsafe {
+                                device.cmd_push_constants(
+                                    command_buffer,
+                                    pipeline_layout,
+                                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                                    0,
+                                    &push_constants,
+                                );
+
+                                device.cmd_bind_vertex_buffers(command_buffer, 0, &[mesh.vertex_buffer], &[0]);
+                                device.cmd_bind_index_buffer(command_buffer, mesh.index_buffer, 0, vk::IndexType::UINT32);
+                                device.cmd_draw_indexed(command_buffer, mesh.index_count, 1, 0, 0, 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        unsafe { context.device.cmd_end_rendering(command_buffer); }
+        Ok(())
+    }
                 .device
                 .destroy_shader_module(voxel_vertex_shader, None);
             context
@@ -419,6 +448,12 @@ impl Renderer {
         let frame_wall_start = Instant::now();
         self.cpu_profiler.begin("Frame Total");
 
+        let model_pipeline = self.model_pipeline;
+        let pipeline_layout = self.pipeline_layout;
+        let default_descriptor_set = self.default_descriptor_set;
+        let context = self.context.clone();
+        let swapchain_extent = self.swapchain.extent;
+
         let frame = &mut self.frames[self.frame_index];
         unsafe {
             // CPU: fence wait
@@ -538,297 +573,17 @@ impl Renderer {
             let pipeline_layout = self.pipeline_layout;
             let swapchain_extent = self.swapchain.extent;
 
-            let mut camera_node: Option<&Node> = None;
-            if !is_editor {
-                for node in world.get_all_world_nodes() {
-                    if node.get_component::<Camera>().is_some() {
-                        camera_node = Some(node);
-                    }
-                }
-            }
-            if camera_node.is_none()
-                && let Some(node) = world.get_global_node_with_component::<Camera>()
-                && is_editor
-            {
-                camera_node = Some(node);
-            }
-
-            if let Some(camera_node) = camera_node {
-                let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
-                let transform = camera_node.get_component::<Transform>().unwrap();
-                let camera = camera_node.get_component::<Camera>().unwrap();
-
-                let model = Matrix4::from_scale(1.0);
-                let camera_eye = Point3::new(
-                    transform.global_position.x,
-                    transform.global_position.y,
-                    transform.global_position.z,
-                );
-                let rotated_forward = transform.calculate_global_forward();
-                let rotated_up = transform.calculate_global_up();
-                let look_at = Point3::new(
-                    camera_eye.x + rotated_forward.x,
-                    camera_eye.y + rotated_forward.y,
-                    camera_eye.z + rotated_forward.z,
-                );
-                let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
-                let projection = get_perspective_projection(camera, aspect);
-                let mvp = projection * view * model;
-
-                let mvp_bytes: [u8; 64] = transmute(mvp);
-                let model_bytes: [u8; 64] = transmute(model);
-                let mut push_constants = [0u8; 256];
-                push_constants[0..64].copy_from_slice(&mvp_bytes);
-                push_constants[64..128].copy_from_slice(&model_bytes);
-
-                device.cmd_bind_pipeline(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    self.model_pipeline,
-                );
-
-                device.cmd_bind_descriptor_sets(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    pipeline_layout,
-                    0,
-                    &[self.default_descriptor_set],
-                    &[],
-                );
-
-                let mut light: Option<Light> = None;
-                let mut light_transform: Option<Transform> = None;
-                for node in world.get_all_nodes() {
-                    light = node.get_component::<Light>().cloned();
-                    if light.is_some() {
-                        light_transform = node.get_component::<Transform>().cloned();
-                        break;
-                    }
-                }
-
-                for node in world.get_all_nodes_mut() {
-                    let transform = node.get_component::<Transform>().cloned();
-                    if let (Some(transform), Some(model_renderer)) =
-                        (transform, node.get_component_mut::<ModelRenderer>())
-                    {
-                        let offset = [
-                            transform.global_position.x,
-                            transform.global_position.y,
-                            transform.global_position.z,
-                            0.0f32,
-                        ];
-                        let offset_bytes: [u8; 16] = transmute(offset);
-                        push_constants[128..144].copy_from_slice(&offset_bytes);
-
-                        let rotation = [
-                            transform.global_rotation.v.x,
-                            transform.global_rotation.v.y,
-                            transform.global_rotation.v.z,
-                            transform.global_rotation.s,
-                        ];
-                        let rotation_bytes: [u8; 16] = transmute(rotation);
-                        push_constants[144..160].copy_from_slice(&rotation_bytes);
-
-                        let scale = [
-                            transform.global_scale.x,
-                            transform.global_scale.y,
-                            transform.global_scale.z,
-                            0.0f32,
-                        ];
-                        let scale_bytes: [u8; 16] = transmute(scale);
-                        push_constants[160..176].copy_from_slice(&scale_bytes);
-
-                        let model_name = model_renderer.loaded_model.clone();
-
-                        let model: Option<Handle<GpuModel>>;
-                        // if let Some(model) = model_renderer.model_handle {
-                        //     model = Some(model);
-                        // } else {
-                        //     let model_handle: Handle<GpuModel> = asset_server.load(model_name)?;
-                        //     let model = asset_server.get(model_handle).unwrap().clone();
-                        //     model_renderer.model_handle = Some(model_handle);
-                        //     model = Some(model);
-                        // }
-
-                        {
-                            let asset_server = asset_server.write().unwrap();
-                            if model_renderer.model_handle.is_some() {
-                                model = model_renderer.model_handle;
-                            } else {
-                                let model_handle: Handle<GpuModel> =
-                                    asset_server.load(model_name)?;
-                                model_renderer.model_handle = Some(model_handle);
-                                model = Some(model_handle);
-                            }
-
-                            let model = model.unwrap();
-                            let model = asset_server.get(model).unwrap().clone();
-                            for mesh in model.meshes.clone() {
-                                let mut mat_handle: Option<Handle<MaterialAsset>> = None;
-
-                                // if theres no set material path, try load the meshes material
-                                if model_renderer.material_path.is_empty() {
-                                    {
-                                        if let Some(&h) = model_renderer
-                                            .mesh_material_handles
-                                            .get(&mesh.material_name)
-                                        {
-                                            mat_handle = Some(h);
-                                        } else {
-                                            let h = asset_server.insert(MaterialAsset::default());
-                                            model_renderer
-                                                .mesh_material_handles
-                                                .insert(mesh.material_name.clone(), h);
-                                            mat_handle = Some(h);
-                                        }
-                                    };
-                                } else {
-                                    let material_handle = asset_server.load::<MaterialAsset>(
-                                        model_renderer.material_path.clone(),
-                                    );
-                                    if material_handle.is_ok() {
-                                        mat_handle = Some(material_handle.unwrap());
-                                        model_renderer.material_handle = Some(mat_handle.unwrap());
-                                    } else {
-                                        println!("material not loaded from handle path");
-                                        if let Some(ref mat) = model_renderer.material {
-                                            match model_renderer.material_handle {
-                                                Some(h) => mat_handle = Some(h),
-                                                None => {
-                                                    let h = asset_server.insert(mat.clone());
-                                                    model_renderer.material_handle = Some(h);
-                                                    mat_handle = Some(h);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                let mat_handle = mat_handle.unwrap();
-
-                                {
-                                    let (
-                                        albedo_name,
-                                        metallic_name,
-                                        roughness_name,
-                                        normal_name,
-                                        emissive_name,
-                                    ) = {
-                                        let mat = asset_server
-                                            .get_cloned::<MaterialAsset>(mat_handle)
-                                            .unwrap();
-                                        (
-                                            mat.albedo_texture_name.clone(),
-                                            mat.metallic_texture_name.clone(),
-                                            mat.roughness_texture_name.clone(),
-                                            mat.normal_texture_name.clone(),
-                                            mat.emissive_texture_name.clone(),
-                                        )
-                                    };
-
-                                    let albedo_h = resolve_texture(&albedo_name, &asset_server);
-
-                                    let metallic_h = resolve_texture(&metallic_name, &asset_server);
-                                    let roughness_h =
-                                        resolve_texture(&roughness_name, &asset_server);
-                                    let normal_h = resolve_texture(&normal_name, &asset_server);
-                                    let emissive_h = resolve_texture(&emissive_name, &asset_server);
-
-                                    let mut mat = asset_server.get_mut(mat_handle).unwrap();
-
-                                    mat.albedo_handle = if albedo_h.is_none() {
-                                        let albedo_h = resolve_texture(
-                                            &".engine/temp.png".to_string(),
-                                            &asset_server,
-                                        );
-                                        albedo_h
-                                    } else {
-                                        albedo_h
-                                    };
-                                    mat.metallic_handle = metallic_h;
-                                    mat.roughness_handle = roughness_h;
-                                    mat.normal_handle = normal_h;
-                                    mat.emissive_handle = emissive_h;
-
-                                    mat.textures_resolved = true;
-                                }
-
-                                let mat = asset_server
-                                    .get_cloned::<MaterialAsset>(mat_handle)
-                                    .unwrap();
-
-                                if let Some(albedo_h) = mat.albedo_handle {
-                                    let albedo_texture =
-                                        asset_server.get_cloned::<GpuTexture>(albedo_h).unwrap();
-                                    let albedo_descriptor_set = albedo_texture.descriptor_set;
-
-                                    device.cmd_bind_descriptor_sets(
-                                        command_buffer,
-                                        vk::PipelineBindPoint::GRAPHICS,
-                                        pipeline_layout,
-                                        0,
-                                        &[albedo_descriptor_set],
-                                        &[],
-                                    );
-                                }
-
-                                let base_bytes: [u8; 16] = transmute(mat.base_color);
-                                let metallic_bytes: [u8; 4] = f32::to_ne_bytes(mat.metallic);
-                                let roughness_bytes: [u8; 4] = f32::to_ne_bytes(mat.roughness);
-                                let emissive_bytes: [u8; 12] = transmute(mat.emissive);
-
-                                push_constants[176..192].copy_from_slice(&base_bytes);
-                                push_constants[192..196].copy_from_slice(&metallic_bytes);
-                                push_constants[196..200].copy_from_slice(&roughness_bytes);
-                                push_constants[208..220].copy_from_slice(&emissive_bytes);
-                                push_constants[220..224].copy_from_slice(&[0u8; 4]);
-
-                                if let (Some(light), Some(lt)) = (&light, &light_transform) {
-                                    let light_pos = [
-                                        lt.global_position.x,
-                                        lt.global_position.y,
-                                        lt.global_position.z,
-                                        light.strength,
-                                    ];
-                                    let light_pos_bytes: [u8; 16] = transmute(light_pos);
-                                    push_constants[224..240].copy_from_slice(&light_pos_bytes);
-                                }
-
-                                device.cmd_push_constants(
-                                    command_buffer,
-                                    pipeline_layout,
-                                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                                    0,
-                                    &push_constants,
-                                );
-
-                                device.cmd_bind_vertex_buffers(
-                                    command_buffer,
-                                    0,
-                                    &[mesh.vertex_buffer],
-                                    &[0],
-                                );
-                                device.cmd_bind_index_buffer(
-                                    command_buffer,
-                                    mesh.index_buffer,
-                                    0,
-                                    vk::IndexType::UINT32,
-                                );
-                                device.cmd_draw_indexed(
-                                    command_buffer,
-                                    mesh.index_count,
-                                    1,
-                                    0,
-                                    0,
-                                    0,
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-
-            self.context.device.cmd_end_rendering(frame.command_buffer);
+            Self::record_geometry_pass(
+                command_buffer,
+                context.clone(),
+                model_pipeline,
+                pipeline_layout,
+                default_descriptor_set,
+                swapchain_extent,
+                world,
+                asset_server,
+                is_editor,
+            )?;
 
             // GPU: close Geometry Pass / CPU: close Record Scene
             self.gpu_timestamps
@@ -948,6 +703,297 @@ impl Renderer {
             });
             Ok(())
         }
+    }
+
+    // --- helpers to make render() easier to read ---
+    fn pick_camera_node<'a>(&self, world: &'a World, is_editor: bool) -> Option<&'a Node> {
+        let mut camera_node: Option<&Node> = None;
+        if !is_editor {
+            for node in world.get_all_world_nodes() {
+                if node.get_component::<Camera>().is_some() {
+                    camera_node = Some(node);
+                }
+            }
+        }
+        if camera_node.is_none() {
+            if is_editor {
+                if let Some(node) = world.get_global_node_with_component::<Camera>() {
+                    camera_node = Some(node);
+                }
+            }
+        }
+        camera_node
+    }
+
+    fn collect_light(&self, world: &World) -> (Option<Light>, Option<Transform>) {
+        let mut light: Option<Light> = None;
+        let mut light_transform: Option<Transform> = None;
+        for node in world.get_all_nodes() {
+            light = node.get_component::<Light>().cloned();
+            if light.is_some() {
+                light_transform = node.get_component::<Transform>().cloned();
+                break;
+            }
+        }
+        (light, light_transform)
+    }
+
+    fn record_geometry_pass(
+        &self,
+        command_buffer: vk::CommandBuffer,
+        device: &ash::Device,
+        pipeline_layout: vk::PipelineLayout,
+        swapchain_extent: vk::Extent2D,
+        world: &mut World,
+        asset_server: &Arc<RwLock<AssetServer>>,
+        is_editor: bool,
+    ) -> Result<()> {
+        if let Some(camera_node) = self.pick_camera_node(world, is_editor) {
+            let aspect = swapchain_extent.width as f32 / swapchain_extent.height as f32;
+            let transform = camera_node.get_component::<Transform>().unwrap();
+            let camera = camera_node.get_component::<Camera>().unwrap();
+
+            let model = Matrix4::from_scale(1.0);
+            let camera_eye = Point3::new(
+                transform.global_position.x,
+                transform.global_position.y,
+                transform.global_position.z,
+            );
+            let rotated_forward = transform.calculate_global_forward();
+            let rotated_up = transform.calculate_global_up();
+            let look_at = Point3::new(
+                camera_eye.x + rotated_forward.x,
+                camera_eye.y + rotated_forward.y,
+                camera_eye.z + rotated_forward.z,
+            );
+            let view = Matrix4::look_at_rh(camera_eye, look_at, rotated_up);
+            let projection = get_perspective_projection(camera, aspect);
+            let mvp = projection * view * model;
+
+            let mvp_bytes: [u8; 64];
+            let model_bytes: [u8; 64];
+            unsafe {
+                mvp_bytes = transmute(mvp);
+                model_bytes = transmute(model);
+            }
+            let mut push_constants = [0u8; 256];
+            push_constants[0..64].copy_from_slice(&mvp_bytes);
+            push_constants[64..128].copy_from_slice(&model_bytes);
+
+            unsafe {
+                device.cmd_bind_pipeline(
+                    command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.model_pipeline,
+                );
+
+                device.cmd_bind_descriptor_sets(
+                    command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    pipeline_layout,
+                    0,
+                    &[self.default_descriptor_set],
+                    &[],
+                );
+            }
+
+            let (light, light_transform) = self.collect_light(world);
+
+            for node in world.get_all_nodes_mut() {
+                let transform = node.get_component::<Transform>().cloned();
+                if let (Some(transform), Some(model_renderer)) =
+                    (transform, node.get_component_mut::<ModelRenderer>())
+                {
+                    let offset = [
+                        transform.global_position.x,
+                        transform.global_position.y,
+                        transform.global_position.z,
+                        0.0f32,
+                    ];
+                    let offset_bytes: [u8; 16];
+                    unsafe { offset_bytes = transmute(offset); }
+                    push_constants[128..144].copy_from_slice(&offset_bytes);
+
+                    let rotation = [
+                        transform.global_rotation.v.x,
+                        transform.global_rotation.v.y,
+                        transform.global_rotation.v.z,
+                        transform.global_rotation.s,
+                    ];
+                    let rotation_bytes: [u8; 16];
+                    unsafe { rotation_bytes = transmute(rotation); }
+                    push_constants[144..160].copy_from_slice(&rotation_bytes);
+
+                    let scale = [
+                        transform.global_scale.x,
+                        transform.global_scale.y,
+                        transform.global_scale.z,
+                        0.0f32,
+                    ];
+                    let scale_bytes: [u8; 16];
+                    unsafe { scale_bytes = transmute(scale); }
+                    push_constants[160..176].copy_from_slice(&scale_bytes);
+
+                    let model_name = model_renderer.loaded_model.clone();
+
+                    let model: Option<Handle<GpuModel>>;
+                    {
+                        let srv = asset_server.write().unwrap();
+                        if model_renderer.model_handle.is_some() {
+                            model = model_renderer.model_handle;
+                        } else {
+                            let model_handle: Handle<GpuModel> = srv.load(model_name)?;
+                            model_renderer.model_handle = Some(model_handle);
+                            model = Some(model_handle);
+                        }
+
+                        let model = model.unwrap();
+                        let model = srv.get(model).unwrap().clone();
+                        for mesh in model.meshes.clone() {
+                            let mut mat_handle: Option<Handle<MaterialAsset>> = None;
+
+                            if model_renderer.material_path.is_empty() {
+                                if let Some(&h) = model_renderer
+                                    .mesh_material_handles
+                                    .get(&mesh.material_name)
+                                {
+                                    mat_handle = Some(h);
+                                } else {
+                                    let h = srv.insert(MaterialAsset::default());
+                                    model_renderer
+                                        .mesh_material_handles
+                                        .insert(mesh.material_name.clone(), h);
+                                    mat_handle = Some(h);
+                                }
+                            } else {
+                                let material_handle = srv.load::<MaterialAsset>(
+                                    model_renderer.material_path.clone(),
+                                );
+                                if material_handle.is_ok() {
+                                    mat_handle = Some(material_handle.unwrap());
+                                    model_renderer.material_handle = Some(mat_handle.unwrap());
+                                } else {
+                                    if let Some(ref mat) = model_renderer.material {
+                                        match model_renderer.material_handle {
+                                            Some(h) => mat_handle = Some(h),
+                                            None => {
+                                                let h = srv.insert(mat.clone());
+                                                model_renderer.material_handle = Some(h);
+                                                mat_handle = Some(h);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            let mat_handle = mat_handle.unwrap();
+
+                            {
+                                let (
+                                    albedo_name,
+                                    metallic_name,
+                                    roughness_name,
+                                    normal_name,
+                                    emissive_name,
+                                ) = {
+                                    let mat = srv.get_cloned::<MaterialAsset>(mat_handle).unwrap();
+                                    (
+                                        mat.albedo_texture_name.clone(),
+                                        mat.metallic_texture_name.clone(),
+                                        mat.roughness_texture_name.clone(),
+                                        mat.normal_texture_name.clone(),
+                                        mat.emissive_texture_name.clone(),
+                                    )
+                                };
+
+                                let albedo_h = resolve_texture(&albedo_name, &srv);
+                                let metallic_h = resolve_texture(&metallic_name, &srv);
+                                let roughness_h = resolve_texture(&roughness_name, &srv);
+                                let normal_h = resolve_texture(&normal_name, &srv);
+                                let emissive_h = resolve_texture(&emissive_name, &srv);
+
+                                let mut mat = srv.get_mut(mat_handle).unwrap();
+
+                                mat.albedo_handle = if albedo_h.is_none() {
+                                    let albedo_h = resolve_texture(&".engine/temp.png".to_string(), &srv);
+                                    albedo_h
+                                } else {
+                                    albedo_h
+                                };
+                                mat.metallic_handle = metallic_h;
+                                mat.roughness_handle = roughness_h;
+                                mat.normal_handle = normal_h;
+                                mat.emissive_handle = emissive_h;
+
+                                mat.textures_resolved = true;
+                            }
+
+                            let mat = srv.get_cloned::<MaterialAsset>(mat_handle).unwrap();
+
+                            if let Some(albedo_h) = mat.albedo_handle {
+                                let albedo_texture = srv.get_cloned::<GpuTexture>(albedo_h).unwrap();
+                                let albedo_descriptor_set = albedo_texture.descriptor_set;
+
+                                unsafe {
+                                    device.cmd_bind_descriptor_sets(
+                                        command_buffer,
+                                        vk::PipelineBindPoint::GRAPHICS,
+                                        pipeline_layout,
+                                        0,
+                                        &[albedo_descriptor_set],
+                                        &[],
+                                    );
+                                }
+                            }
+
+                            let base_bytes: [u8; 16];
+                            let emissive_bytes: [u8; 12];
+                            unsafe {
+                                base_bytes = transmute(mat.base_color);
+                                emissive_bytes = transmute(mat.emissive);
+                            }
+                            let metallic_bytes: [u8; 4] = f32::to_ne_bytes(mat.metallic);
+                            let roughness_bytes: [u8; 4] = f32::to_ne_bytes(mat.roughness);
+
+                            push_constants[176..192].copy_from_slice(&base_bytes);
+                            push_constants[192..196].copy_from_slice(&metallic_bytes);
+                            push_constants[196..200].copy_from_slice(&roughness_bytes);
+                            push_constants[208..220].copy_from_slice(&emissive_bytes);
+                            push_constants[220..224].copy_from_slice(&[0u8; 4]);
+
+                            if let (Some(light), Some(lt)) = (&light, &light_transform) {
+                                let light_pos = [
+                                    lt.global_position.x,
+                                    lt.global_position.y,
+                                    lt.global_position.z,
+                                    light.strength,
+                                ];
+                                let light_pos_bytes: [u8; 16];
+                                unsafe { light_pos_bytes = transmute(light_pos); }
+                                push_constants[224..240].copy_from_slice(&light_pos_bytes);
+                            }
+
+                            unsafe {
+                                device.cmd_push_constants(
+                                    command_buffer,
+                                    pipeline_layout,
+                                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                                    0,
+                                    &push_constants,
+                                );
+
+                                device.cmd_bind_vertex_buffers(command_buffer, 0, &[mesh.vertex_buffer], &[0]);
+                                device.cmd_bind_index_buffer(command_buffer, mesh.index_buffer, 0, vk::IndexType::UINT32);
+                                device.cmd_draw_indexed(command_buffer, mesh.index_count, 1, 0, 0, 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        unsafe { self.context.device.cmd_end_rendering(command_buffer); }
+        Ok(())
     }
 
     pub fn prepare_egui(&mut self, window: &Window, world: &mut World, editor: &mut EditorStorage) {
