@@ -1,14 +1,101 @@
-use std::ops::RangeInclusive;
-
 use ash::vk;
 use egui::Ui;
 
-use crate::engine::editor::{self, EditorStorage};
+use crate::engine::editor::EditorStorage;
 
 pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage) {
     let before = editor_storage.pipeline_settings.clone();
-    ui.separator();
 
+    ui.horizontal(|ui| {
+        ui.add_space(4.0);
+    });
+
+    ui.separator();
+    ui.label("Depth Settings");
+    ui.add(egui::Checkbox::new(
+        &mut editor_storage
+            .pipeline_settings
+            .depth_settings
+            .depth_test_enabled,
+        "Depth Testing Enabled",
+    ));
+
+    egui::ComboBox::from_label("Compare Operation:")
+        .selected_text(format!(
+            "{:?}",
+            editor_storage
+                .pipeline_settings
+                .depth_settings
+                .depth_compare_op
+        ))
+        .show_ui(ui, |ui| {
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::NEVER,
+                "Never",
+            );
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::LESS,
+                "Less",
+            );
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::EQUAL,
+                "EQUAL",
+            );
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::LESS_OR_EQUAL,
+                "Less or Equal",
+            );
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::GREATER,
+                "Greater",
+            );
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::NOT_EQUAL,
+                "Not Equal",
+            );
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::GREATER_OR_EQUAL,
+                "Greater or Equal",
+            );
+            ui.selectable_value(
+                &mut editor_storage
+                    .pipeline_settings
+                    .depth_settings
+                    .depth_compare_op,
+                vk::CompareOp::ALWAYS,
+                "Always",
+            );
+        });
+
+    ui.separator();
     ui.label("Rasterization Settings");
 
     egui::ComboBox::from_label("Polygon Mode:")
