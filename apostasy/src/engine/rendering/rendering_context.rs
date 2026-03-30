@@ -18,9 +18,10 @@ use winit::{
 use crate::engine::rendering::{
     models::{
         texture::GpuTexture,
-        vertex::{Vertex, VertexDefinition, VoxelVertex},
+        vertex::{Vertex, VertexDefinition},
     },
     physical_device::PhysicalDevice,
+    pipeline_settings::PipelineSettings,
     queue_families::{QueueFamilies, QueueFamily, QueueFamilyPicker},
     surface::Surface,
 };
@@ -186,6 +187,7 @@ impl RenderingContext {
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
         default_ubo: vk::Buffer,
+        settings: PipelineSettings,
     ) -> std::collections::HashMap<String, GpuTexture> {
         let mut map = std::collections::HashMap::new();
         let path = std::path::Path::new(dir);
@@ -213,6 +215,7 @@ impl RenderingContext {
                                     descriptor_pool,
                                     descriptor_set_layout,
                                     default_ubo,
+                                    settings,
                                 ) {
                                     Ok(tex) => {
                                         map.insert(fname.clone(), tex);
@@ -423,10 +426,10 @@ impl RenderingContext {
         }
     }
 
-    /// Creates a graphics pipeline for non voxel rendering
+    /// Creates a graphics pipeline
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::let_and_return)]
-    pub fn create_model_graphics_pipeline(
+    pub fn create_graphics_pipeline(
         &self,
         vertex_shader: vk::ShaderModule,
         fragment_shader: vk::ShaderModule,
@@ -434,6 +437,7 @@ impl RenderingContext {
         depth_format: vk::Format,
         pipeline_layout: vk::PipelineLayout,
         pipeline_cache: vk::PipelineCache,
+        pipeline_settings: PipelineSettings,
     ) -> Result<vk::Pipeline> {
         let entry_point = std::ffi::CString::new("main").unwrap();
         let bindings = vec![Vertex::get_binding_description()];
@@ -471,10 +475,12 @@ impl RenderingContext {
                         )
                         .rasterization_state(
                             &vk::PipelineRasterizationStateCreateInfo::default()
-                                .polygon_mode(vk::PolygonMode::FILL)
-                                .cull_mode(vk::CullModeFlags::BACK)
-                                .front_face(vk::FrontFace::COUNTER_CLOCKWISE)
-                                .line_width(1.0),
+                                .polygon_mode(
+                                    pipeline_settings.rasterizeation_settings.polygon_mode,
+                                )
+                                .cull_mode(pipeline_settings.rasterizeation_settings.cull_mode)
+                                .front_face(pipeline_settings.rasterizeation_settings.front_face)
+                                .line_width(pipeline_settings.rasterizeation_settings.line_width),
                         )
                         .multisample_state(
                             &vk::PipelineMultisampleStateCreateInfo::default()
@@ -489,9 +495,15 @@ impl RenderingContext {
                         )
                         .depth_stencil_state(
                             &vk::PipelineDepthStencilStateCreateInfo::default()
-                                .depth_test_enable(true)
-                                .depth_write_enable(true)
-                                .depth_compare_op(vk::CompareOp::LESS),
+                                .depth_test_enable(
+                                    pipeline_settings.depth_settings.depth_test_enabled,
+                                )
+                                .depth_write_enable(
+                                    pipeline_settings.depth_settings.depth_test_enabled,
+                                )
+                                .depth_compare_op(
+                                    pipeline_settings.depth_settings.depth_compare_op,
+                                ),
                         )
                         .dynamic_state(
                             &vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&[
@@ -513,97 +525,7 @@ impl RenderingContext {
         }
     }
 
-    /// Creates a graphics pipeline for voxel rendering
-    #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::let_and_return)]
-    pub fn create_voxel_graphics_pipeline(
-        &self,
-        vertex_shader: vk::ShaderModule,
-        fragment_shader: vk::ShaderModule,
-        format: vk::Format,
-        depth_format: vk::Format,
-        pipeline_layout: vk::PipelineLayout,
-        pipeline_cache: vk::PipelineCache,
-    ) -> Result<vk::Pipeline> {
-        let entry_point = std::ffi::CString::new("main").unwrap();
-        let bindings = vec![VoxelVertex::get_binding_description()];
-        let attributes = VoxelVertex::get_attribute_descriptions();
-
-        unsafe {
-            let pipelines = self
-                .device
-                .create_graphics_pipelines(
-                    pipeline_cache,
-                    &[vk::GraphicsPipelineCreateInfo::default()
-                        .stages(&[
-                            vk::PipelineShaderStageCreateInfo::default()
-                                .stage(vk::ShaderStageFlags::VERTEX)
-                                .module(vertex_shader)
-                                .name(&entry_point),
-                            vk::PipelineShaderStageCreateInfo::default()
-                                .stage(vk::ShaderStageFlags::FRAGMENT)
-                                .module(fragment_shader)
-                                .name(&entry_point),
-                        ])
-                        .vertex_input_state(
-                            &vk::PipelineVertexInputStateCreateInfo::default()
-                                .vertex_binding_descriptions(&bindings)
-                                .vertex_attribute_descriptions(&attributes),
-                        )
-                        .input_assembly_state(
-                            &vk::PipelineInputAssemblyStateCreateInfo::default()
-                                .topology(vk::PrimitiveTopology::TRIANGLE_LIST),
-                        )
-                        .viewport_state(
-                            &vk::PipelineViewportStateCreateInfo::default()
-                                .scissor_count(1)
-                                .viewport_count(1),
-                        )
-                        .rasterization_state(
-                            &vk::PipelineRasterizationStateCreateInfo::default()
-                                .polygon_mode(vk::PolygonMode::FILL)
-                                .cull_mode(vk::CullModeFlags::BACK)
-                                .front_face(vk::FrontFace::CLOCKWISE)
-                                .line_width(1.0),
-                        )
-                        .multisample_state(
-                            &vk::PipelineMultisampleStateCreateInfo::default()
-                                .rasterization_samples(vk::SampleCountFlags::TYPE_1),
-                        )
-                        .color_blend_state(
-                            &vk::PipelineColorBlendStateCreateInfo::default().attachments(&[
-                                vk::PipelineColorBlendAttachmentState::default()
-                                    .color_write_mask(vk::ColorComponentFlags::RGBA)
-                                    .blend_enable(false),
-                            ]),
-                        )
-                        .depth_stencil_state(
-                            &vk::PipelineDepthStencilStateCreateInfo::default()
-                                .depth_test_enable(true)
-                                .depth_write_enable(true)
-                                .depth_compare_op(vk::CompareOp::LESS),
-                        )
-                        .dynamic_state(
-                            &vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&[
-                                vk::DynamicState::VIEWPORT,
-                                vk::DynamicState::SCISSOR,
-                            ]),
-                        )
-                        .layout(pipeline_layout)
-                        .push_next(
-                            &mut vk::PipelineRenderingCreateInfo::default()
-                                .color_attachment_formats(&[format])
-                                .depth_attachment_format(depth_format),
-                        )],
-                    None,
-                )
-                .map_err(|e| anyhow!("Pipeline creation failed: {:?}", e))?;
-
-            Ok(pipelines[0])
-        }
-    }
-
-    /// Transitions from one layout to another
+    /// transitions from one layout to another
     pub fn transition_image_layout(
         &self,
         command_buffer: vk::CommandBuffer,
@@ -763,18 +685,19 @@ impl RenderingContext {
         }
     }
 
-    pub fn create_sampler(&self) -> vk::Sampler {
+    pub fn create_sampler(&self, settings: PipelineSettings) -> vk::Sampler {
         let sampler_info = vk::SamplerCreateInfo::default()
-            .mag_filter(vk::Filter::NEAREST)
-            .min_filter(vk::Filter::NEAREST)
-            .address_mode_u(vk::SamplerAddressMode::REPEAT)
-            .address_mode_v(vk::SamplerAddressMode::REPEAT)
-            .address_mode_w(vk::SamplerAddressMode::REPEAT)
-            .anisotropy_enable(false)
+            .mag_filter(settings.image_settings.filter_mode)
+            .min_filter(settings.image_settings.filter_mode)
+            .address_mode_u(settings.image_settings.address_mode)
+            .address_mode_v(settings.image_settings.address_mode)
+            .address_mode_w(settings.image_settings.address_mode)
+            .anisotropy_enable(settings.image_settings.anisotropy_enabled)
+            .max_anisotropy(settings.image_settings.anisotropy_amount as f32)
             .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
             .unnormalized_coordinates(false)
             .compare_enable(false)
-            .mipmap_mode(vk::SamplerMipmapMode::LINEAR);
+            .mipmap_mode(settings.image_settings.mip_map_mode);
 
         unsafe { self.device.create_sampler(&sampler_info, None).unwrap() }
     }
@@ -835,6 +758,7 @@ impl RenderingContext {
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
         default_ubo: vk::Buffer,
+        settings: PipelineSettings,
     ) -> Result<GpuTexture> {
         let mut path = path.to_string();
         let image = if std::path::Path::new(&path.clone()).exists() {
@@ -975,7 +899,7 @@ impl RenderingContext {
             vk::Format::R8G8B8A8_SRGB,
             vk::ImageAspectFlags::COLOR,
         )?;
-        let sampler = self.create_sampler();
+        let sampler = self.create_sampler(settings);
         let descriptor_set = self.create_texture_descriptor_set(
             descriptor_pool,
             descriptor_set_layout,

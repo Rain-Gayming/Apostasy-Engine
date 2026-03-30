@@ -18,6 +18,7 @@ use crate::engine::rendering::models::material::MaterialAsset;
 use crate::engine::rendering::models::model::GpuModel;
 use crate::engine::rendering::models::shader::ShaderSpirv;
 use crate::engine::rendering::models::texture::{GpuTexture, GpuTextureLoader};
+use crate::engine::rendering::pipeline_settings::PipelineSettings;
 use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPool};
 use crate::engine::{
     editor::{EditorStorage, style::style},
@@ -128,34 +129,60 @@ pub struct UIFunction {
 }
 inventory::collect!(UIFunction);
 
-pub struct Renderer {
+/// A container for frames and their data
+pub struct Frames {
     pub frame_index: usize,
     pub frames: Vec<Frame>,
-    pub command_pool: vk::CommandPool,
-    pub transfer_command_pool: vk::CommandPool,
-    pub voxel_pipeline: vk::Pipeline,
-    pub model_pipeline: vk::Pipeline,
-    pub pipeline_layout: vk::PipelineLayout,
-    pub swapchain: Swapchain,
-    pub context: Arc<RenderingContext>,
+}
+
+/// A container for a pipeline and it's data
+pub struct Pipeline {
+    pub pipeline: vk::Pipeline,
+    pub layout: vk::PipelineLayout,
+}
+
+/// A container for a descriptor and it's data
+pub struct Descriptor {
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
-    pub egui_renderer: EguiRenderer,
-    pub default_descriptor_set: vk::DescriptorSet,
-    pub default_ubo: vk::Buffer,
-    pub default_ubo_memory: vk::DeviceMemory,
+    pub descriptor_set: vk::DescriptorSet,
+}
 
-    // Profiler
+/// A container for a UBO
+pub struct Ubo {
+    pub buffer: vk::Buffer,
+    pub memory: vk::DeviceMemory,
+}
+
+/// A container for the profilers render data
+pub struct ProfilerInfo {
     pub gpu_timestamps: GpuTimestampPool,
     pub cpu_profiler: CpuProfiler,
     pub pending_frame_data: Option<FrameData>,
-    global_frame_counter: u64,
+    pub global_frame_counter: u64,
+}
 
-    // image states
+/// A container for the states a texture/image can be in
+pub struct ImageStates {
     pub undefined_image_state: ImageLayoutState,
     pub render_image_state: ImageLayoutState,
     pub depth_attachment_state: ImageLayoutState,
     pub present_image_state: ImageLayoutState,
+}
+
+pub struct Renderer {
+    pub command_pool: vk::CommandPool,
+    pub transfer_command_pool: vk::CommandPool,
+    pub swapchain: Swapchain,
+    pub context: Arc<RenderingContext>,
+    pub egui_renderer: EguiRenderer,
+
+    pub frames: Frames,
+    pub pipeline: Pipeline,
+    pub descriptor: Descriptor,
+    pub ubo: Ubo,
+    pub profiler_info: ProfilerInfo,
+    pub image_states: ImageStates,
 }
 
 impl Renderer {
@@ -164,6 +191,7 @@ impl Renderer {
         context: Arc<RenderingContext>,
         window: Arc<Window>,
         asset_server: &mut Arc<RwLock<AssetServer>>,
+        pipeline_settings: PipelineSettings,
     ) -> Result<Self> {
         let mut swapchain = Swapchain::new(context.clone(), window.clone())?;
         swapchain.resize()?;
@@ -172,8 +200,6 @@ impl Renderer {
 
         let mvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_vert.spv")?;
         let mfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_frag.spv")?;
-        let vvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/voxel_vert.spv")?;
-        let vfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/voxel_frag.spv")?;
 
         let model_vertex_shader = asset_server
             .get(mvs_handle)
@@ -181,14 +207,6 @@ impl Renderer {
             .create_module(&context.device)?;
         let model_fragment_shader = asset_server
             .get(mfs_handle)
-            .unwrap()
-            .create_module(&context.device)?;
-        let voxel_vertex_shader = asset_server
-            .get(vvs_handle)
-            .unwrap()
-            .create_module(&context.device)?;
-        let voxel_fragment_shader = asset_server
-            .get(vfs_handle)
             .unwrap()
             .create_module(&context.device)?;
 
@@ -238,22 +256,14 @@ impl Renderer {
                 None,
             )?;
 
-            let model_pipeline = context.create_model_graphics_pipeline(
+            let model_pipeline = context.create_graphics_pipeline(
                 model_vertex_shader,
                 model_fragment_shader,
                 swapchain.format,
                 swapchain.depth_format,
                 pipeline_layout,
                 Default::default(),
-            )?;
-
-            let voxel_pipeline = context.create_voxel_graphics_pipeline(
-                voxel_vertex_shader,
-                voxel_fragment_shader,
-                swapchain.format,
-                swapchain.depth_format,
-                pipeline_layout,
-                Default::default(),
+                pipeline_settings,
             )?;
 
             context
@@ -262,12 +272,6 @@ impl Renderer {
             context
                 .device
                 .destroy_shader_module(model_fragment_shader, None);
-            context
-                .device
-                .destroy_shader_module(voxel_vertex_shader, None);
-            context
-                .device
-                .destroy_shader_module(voxel_fragment_shader, None);
 
             let command_pool = context.device.create_command_pool(
                 &vk::CommandPoolCreateInfo::default()
@@ -372,40 +376,61 @@ impl Renderer {
                 queue_family_index: vk::QUEUE_FAMILY_IGNORED,
             };
 
+            let image_states: ImageStates = ImageStates {
+                undefined_image_state,
+                render_image_state,
+                depth_attachment_state,
+                present_image_state,
+            };
+
             asset_server.register_loader(GltfLoader::new(context.clone(), command_pool));
-            // ---- CHANGED: pass default_ubo into loader ----
+
             asset_server.register_loader(GpuTextureLoader::new(
                 context.clone(),
                 command_pool,
                 descriptor_pool,
                 descriptor_set_layout,
                 default_ubo,
+                pipeline_settings,
             ));
 
-            Ok(Self {
-                frame_index: 0,
-                frames,
-                command_pool,
-                model_pipeline,
-                voxel_pipeline,
-                pipeline_layout,
-                swapchain,
-                context,
-                descriptor_pool,
-                descriptor_set_layout,
-                egui_renderer,
-                transfer_command_pool,
-                default_descriptor_set,
-                default_ubo,
-                default_ubo_memory: default_ubo_mem,
+            let profiler_info = ProfilerInfo {
                 gpu_timestamps,
                 cpu_profiler: CpuProfiler::new(),
                 global_frame_counter: 0,
                 pending_frame_data: None,
-                undefined_image_state,
-                render_image_state,
-                depth_attachment_state,
-                present_image_state,
+            };
+
+            let ubo = Ubo {
+                buffer: default_ubo,
+                memory: default_ubo_mem,
+            };
+            let descriptor = Descriptor {
+                descriptor_pool,
+                descriptor_set_layout,
+                descriptor_set: default_descriptor_set,
+            };
+
+            let pipeline = Pipeline {
+                pipeline: model_pipeline,
+                layout: pipeline_layout,
+            };
+            let frames = Frames {
+                frame_index: 0,
+                frames,
+            };
+            Ok(Self {
+                frames,
+                command_pool,
+                swapchain,
+                context,
+                egui_renderer,
+                transfer_command_pool,
+                descriptor,
+                pipeline,
+                ubo,
+                profiler_info,
+                image_states,
             })
         }
     }
@@ -417,16 +442,16 @@ impl Renderer {
     ) -> Result<()> {
         //CPU: whole-frame wall clock
         let frame_wall_start = Instant::now();
-        self.cpu_profiler.begin("Frame Total");
+        self.profiler_info.cpu_profiler.begin("Frame Total");
 
-        let frame = &mut self.frames[self.frame_index];
+        let frame = &mut self.frames.frames[self.frames.frame_index];
         unsafe {
             // CPU: fence wait
-            self.cpu_profiler.begin("Fence Wait");
+            self.profiler_info.cpu_profiler.begin("Fence Wait");
             self.context
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
-            self.cpu_profiler.end(); // Fence Wait
+            self.profiler_info.cpu_profiler.end(); // Fence Wait
 
             self.context.device.reset_fences(&[frame.in_flight_fence])?;
             self.context
@@ -439,7 +464,7 @@ impl Renderer {
             }
 
             //  CPU: egui tessellation
-            self.cpu_profiler.begin("egui Tessellate");
+            self.profiler_info.cpu_profiler.begin("egui Tessellate");
 
             // egui render pass
             let full_output = self.egui_renderer.egui_ctx.end_pass();
@@ -461,17 +486,17 @@ impl Renderer {
                 )?;
             }
 
-            self.cpu_profiler.end(); // egui Tessellate
+            self.profiler_info.cpu_profiler.end(); // egui Tessellate
 
             // egui image acquire
-            let frame = &mut self.frames[self.frame_index];
+            let frame = &mut self.frames.frames[self.frames.frame_index];
 
             // CPU: image acquire
-            self.cpu_profiler.begin("Acquire Image");
+            self.profiler_info.cpu_profiler.begin("Acquire Image");
             let image_index = self
                 .swapchain
                 .acquire_next_image(frame.image_available_semaphore)?;
-            self.cpu_profiler.end(); // Acquire Image
+            self.profiler_info.cpu_profiler.end(); // Acquire Image
 
             // start rendering
             self.context.device.begin_command_buffer(
@@ -480,7 +505,8 @@ impl Renderer {
             )?;
 
             // GPU: reset query pool, start frame
-            self.gpu_timestamps
+            self.profiler_info
+                .gpu_timestamps
                 .begin_frame(&self.context.device, frame.command_buffer);
 
             // image layout states
@@ -488,21 +514,21 @@ impl Renderer {
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                self.undefined_image_state,
-                self.render_image_state,
+                self.image_states.undefined_image_state,
+                self.image_states.render_image_state,
                 vk::ImageAspectFlags::COLOR,
             );
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.depth_image,
-                self.undefined_image_state,
-                self.depth_attachment_state,
+                self.image_states.undefined_image_state,
+                self.image_states.depth_attachment_state,
                 vk::ImageAspectFlags::DEPTH,
             );
 
             // CPU: scene record / GPU: Geometry Pass
-            self.cpu_profiler.begin("Record Scene");
-            self.gpu_timestamps.begin_scope(
+            self.profiler_info.cpu_profiler.begin("Record Scene");
+            self.profiler_info.gpu_timestamps.begin_scope(
                 &self.context.device,
                 frame.command_buffer,
                 "Geometry Pass",
@@ -535,7 +561,7 @@ impl Renderer {
 
             let command_buffer = frame.command_buffer;
             let device = &self.context.device;
-            let pipeline_layout = self.pipeline_layout;
+            let pipeline_layout = self.pipeline.layout;
             let swapchain_extent = self.swapchain.extent;
 
             let mut camera_node: Option<&Node> = None;
@@ -584,7 +610,7 @@ impl Renderer {
                 device.cmd_bind_pipeline(
                     command_buffer,
                     vk::PipelineBindPoint::GRAPHICS,
-                    self.model_pipeline,
+                    self.pipeline.pipeline,
                 );
 
                 device.cmd_bind_descriptor_sets(
@@ -592,7 +618,7 @@ impl Renderer {
                     vk::PipelineBindPoint::GRAPHICS,
                     pipeline_layout,
                     0,
-                    &[self.default_descriptor_set],
+                    &[self.descriptor.descriptor_set],
                     &[],
                 );
 
@@ -641,14 +667,6 @@ impl Renderer {
                         let model_name = model_renderer.loaded_model.clone();
 
                         let model: Option<Handle<GpuModel>>;
-                        // if let Some(model) = model_renderer.model_handle {
-                        //     model = Some(model);
-                        // } else {
-                        //     let model_handle: Handle<GpuModel> = asset_server.load(model_name)?;
-                        //     let model = asset_server.get(model_handle).unwrap().clone();
-                        //     model_renderer.model_handle = Some(model_handle);
-                        //     model = Some(model);
-                        // }
 
                         {
                             let asset_server = asset_server.write().unwrap();
@@ -831,13 +849,14 @@ impl Renderer {
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             // GPU: close Geometry Pass / CPU: close Record Scene
-            self.gpu_timestamps
+            self.profiler_info
+                .gpu_timestamps
                 .end_scope(&self.context.device, frame.command_buffer);
-            self.cpu_profiler.end(); // Record Scene
+            self.profiler_info.cpu_profiler.end(); // Record Scene
 
             // CPU: egui draw  /  GPU: egui Pass
-            self.cpu_profiler.begin("egui Draw");
-            self.gpu_timestamps.begin_scope(
+            self.profiler_info.cpu_profiler.begin("egui Draw");
+            self.profiler_info.gpu_timestamps.begin_scope(
                 &self.context.device,
                 frame.command_buffer,
                 "egui Pass",
@@ -883,21 +902,22 @@ impl Renderer {
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             // GPU: close egui Pass / CPU: close egui Draw
-            self.gpu_timestamps
+            self.profiler_info
+                .gpu_timestamps
                 .end_scope(&self.context.device, frame.command_buffer);
-            self.cpu_profiler.end(); // egui Draw
+            self.profiler_info.cpu_profiler.end(); // egui Draw
 
             // Present transition
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
-                self.render_image_state,
-                self.present_image_state,
+                self.image_states.render_image_state,
+                self.image_states.present_image_state,
                 vk::ImageAspectFlags::COLOR,
             );
 
             // ── CPU: submit & present ─────────────────────────────────────────
-            self.cpu_profiler.begin("Submit & Present");
+            self.profiler_info.cpu_profiler.begin("Submit & Present");
             self.context
                 .device
                 .end_command_buffer(frame.command_buffer)?;
@@ -916,17 +936,20 @@ impl Renderer {
                 .present_image(image_index, frame.render_finished_semaphore)?;
 
             // Close top-level CPU scopes
-            self.cpu_profiler.end();
-            self.cpu_profiler.end();
+            self.profiler_info.cpu_profiler.end();
+            self.profiler_info.cpu_profiler.end();
 
             // Resolve GPU timestamps
             self.context
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
-            let gpu_scopes = self.gpu_timestamps.resolve(&self.context.device);
+            let gpu_scopes = self
+                .profiler_info
+                .gpu_timestamps
+                .resolve(&self.context.device);
 
             //  Build and store FrameData
-            let cpu_scopes = self.cpu_profiler.drain();
+            let cpu_scopes = self.profiler_info.cpu_profiler.drain();
             let frame_time_ms = frame_wall_start.elapsed().as_secs_f64() * 1000.0;
             let cpu_total_ms: f64 = cpu_scopes
                 .iter()
@@ -934,12 +957,12 @@ impl Renderer {
                 .map(|s| s.duration_ms)
                 .sum();
             let gpu_total_ms: f64 = gpu_scopes.iter().map(|s| s.duration_ms).sum();
-            self.global_frame_counter += 1;
-            self.frame_index = (self.frame_index + 1) % self.frames.len();
+            self.profiler_info.global_frame_counter += 1;
+            self.frames.frame_index = (self.frames.frame_index + 1) % self.frames.frames.len();
 
             // record frame data
-            self.pending_frame_data = Some(FrameData {
-                frame_index: self.global_frame_counter,
+            self.profiler_info.pending_frame_data = Some(FrameData {
+                frame_index: self.profiler_info.global_frame_counter,
                 frame_time_ms,
                 cpu_scopes,
                 gpu_scopes,
@@ -950,11 +973,73 @@ impl Renderer {
         }
     }
 
+    pub fn rebuild_pipeline(
+        &mut self,
+        asset_server: &mut Arc<RwLock<AssetServer>>,
+        pipeline_settings: PipelineSettings,
+    ) -> Result<()> {
+        unsafe { self.context.device.device_wait_idle()? };
+
+        let mut asset_server = asset_server.write().unwrap();
+
+        let mvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_vert.spv")?;
+        let mfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_frag.spv")?;
+
+        let model_vertex_shader = asset_server
+            .get(mvs_handle)
+            .unwrap()
+            .create_module(&self.context.device)?;
+        let model_fragment_shader = asset_server
+            .get(mfs_handle)
+            .unwrap()
+            .create_module(&self.context.device)?;
+
+        asset_server.register_loader(GpuTextureLoader::new(
+            self.context.clone(),
+            self.command_pool,
+            self.descriptor.descriptor_pool,
+            self.descriptor.descriptor_set_layout,
+            self.ubo.buffer,
+            pipeline_settings,
+        ));
+
+        let results = asset_server.reload_all::<GpuTexture>();
+        for (path, result) in results {
+            if let Err(e) = result {
+                eprintln!("Failed to reload {}: {e}", path.display());
+            }
+        }
+
+        unsafe {
+            let new_pipeline = self.context.create_graphics_pipeline(
+                model_vertex_shader,
+                model_fragment_shader,
+                self.swapchain.format,
+                self.swapchain.depth_format,
+                self.pipeline.layout,
+                Default::default(),
+                pipeline_settings,
+            )?;
+
+            self.context
+                .device
+                .destroy_shader_module(model_vertex_shader, None);
+            self.context
+                .device
+                .destroy_shader_module(model_fragment_shader, None);
+
+            let old_pipeline = std::mem::replace(&mut self.pipeline.pipeline, new_pipeline);
+            self.context.device.destroy_pipeline(old_pipeline, None);
+        }
+
+        Ok(())
+    }
+
     pub fn prepare_egui(&mut self, window: &Window, world: &mut World, editor: &mut EditorStorage) {
         let raw_input = self.egui_renderer.egui_state.take_egui_input(window);
         self.egui_renderer.egui_ctx.begin_pass(raw_input);
 
-        if let Some(frame_data) = self.pending_frame_data.take() {
+        if let Some(frame_data) = self.profiler_info.pending_frame_data.take() {
             if !editor.profiler.paused {
                 editor.profiler.history.push(frame_data);
             }
@@ -991,9 +1076,11 @@ impl Drop for Renderer {
             }
 
             // Destroy GPU timestamp query pool
-            self.gpu_timestamps.destroy(&self.context.device);
+            self.profiler_info
+                .gpu_timestamps
+                .destroy(&self.context.device);
 
-            self.frames.drain(..).for_each(|frame| {
+            self.frames.frames.drain(..).for_each(|frame| {
                 self.context
                     .device
                     .destroy_semaphore(frame.image_available_semaphore, None);
@@ -1013,13 +1100,10 @@ impl Drop for Renderer {
                 .destroy_command_pool(self.command_pool, None);
             self.context
                 .device
-                .destroy_pipeline(self.model_pipeline, None);
+                .destroy_pipeline(self.pipeline.pipeline, None);
             self.context
                 .device
-                .destroy_pipeline(self.voxel_pipeline, None);
-            self.context
-                .device
-                .destroy_pipeline_layout(self.pipeline_layout, None);
+                .destroy_pipeline_layout(self.pipeline.layout, None);
         }
     }
 }

@@ -9,12 +9,17 @@ use crate::{
             scene_serialization::SceneLoader,
             world::World,
         },
-        rendering::models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
+        rendering::{
+            models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
+            pipeline_settings::PipelineSettings,
+        },
         windowing::cursor_manager::CursorManager,
     },
+    log,
 };
 use anyhow::Result;
 use apostasy_macros::{editor_fixed_update, editor_ui};
+use ash::vk::Pipeline;
 use cgmath::{Vector2, Vector3, Zero, num_traits::clamp};
 use egui::Context;
 use std::{
@@ -119,6 +124,7 @@ pub struct Engine {
     pub world: Arc<RwLock<World>>,
     pub editor: EditorStorage,
     pub asset_server: Arc<RwLock<AssetServer>>,
+    pub pipeline_settings: PipelineSettings,
     pending_windows: Vec<(WindowId, Arc<Window>)>,
     renderers_initialized: bool,
 }
@@ -184,7 +190,8 @@ impl Engine {
         }
 
         let world = Arc::new(RwLock::new(world));
-        let editor = EditorStorage::default(asset_server.clone(), world.clone());
+        let editor =
+            EditorStorage::default(asset_server.clone(), world.clone(), Default::default());
 
         let pending_windows = vec![(primary_window_id, primary_window.clone())];
 
@@ -196,6 +203,7 @@ impl Engine {
             world,
             editor,
             asset_server,
+            pipeline_settings: PipelineSettings::default(),
             pending_windows,
             renderers_initialized: false,
         })
@@ -236,6 +244,7 @@ impl Engine {
                             self.rendering_context.clone(),
                             window,
                             &mut self.asset_server,
+                            self.pipeline_settings,
                         ) {
                             Ok(renderer) => {
                                 self.renderers.insert(id, renderer);
@@ -328,6 +337,21 @@ impl Engine {
                 world.fixed_update(self.timer.tick().fixed_dt);
             }
 
+            if self.editor.should_update_renderer {
+                self.pipeline_settings = self.editor.pipeline_settings.clone();
+
+                for renderer in self.renderers.values_mut() {
+                    if let Err(e) =
+                        renderer.rebuild_pipeline(&mut self.asset_server, self.pipeline_settings)
+                    {
+                        eprintln!("Failed to rebuild pipeline for renderer: {e}");
+                    }
+                    log!("Updating pipeline");
+                }
+
+                self.editor.should_update_renderer = false;
+            }
+
             for window in &self.window_manager.windows {
                 window.1.request_redraw();
                 world.window_size = Vector2::new(
@@ -352,6 +376,7 @@ impl Engine {
             self.rendering_context.clone(),
             window,
             &mut self.asset_server,
+            self.pipeline_settings,
         )?;
         self.renderers.insert(window_id, renderer);
         Ok(window_id)

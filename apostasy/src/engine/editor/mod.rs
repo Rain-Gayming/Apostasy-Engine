@@ -10,7 +10,10 @@ use crate::{
             inspector::render_inspector,
         },
         nodes::{Node, components::transform::Transform, scene::SceneInstance},
-        rendering::{models::model::ModelRenderer, profiler::ProfilerState},
+        rendering::{
+            models::model::ModelRenderer, pipeline_settings::PipelineSettings,
+            profiler::ProfilerState,
+        },
         windowing::input_manager::KeyAction,
     },
     utils::screen_to_world::screen_to_world_plane,
@@ -37,6 +40,7 @@ pub mod hierarchy;
 pub mod input_manager_ui;
 pub mod inspectable;
 pub mod inspector;
+pub mod renderer_settings;
 pub mod scene_manager_ui;
 pub mod style;
 
@@ -121,6 +125,9 @@ pub struct EditorStorage {
 
     pub is_engine_settings_open: bool,
     pub open_engine_settings_tab: EngineSettingsTab,
+
+    pub should_update_renderer: bool,
+    pub pipeline_settings: PipelineSettings,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -160,7 +167,11 @@ fn default_dock_state() -> DockState<EditorTab> {
 }
 
 impl EditorStorage {
-    pub fn default(asset_server: Arc<RwLock<AssetServer>>, _world: Arc<RwLock<World>>) -> Self {
+    pub fn default(
+        asset_server: Arc<RwLock<AssetServer>>,
+        _world: Arc<RwLock<World>>,
+        pipeline_settings: PipelineSettings,
+    ) -> Self {
         // Attempt to load a previously saved editor layout (dock + window sizes).
         let (dock_state, scene_win_size, input_win_size, layout_serialized) =
             match read_to_string("res/editor_layout.yaml") {
@@ -226,6 +237,9 @@ impl EditorStorage {
 
             is_engine_settings_open: false,
             open_engine_settings_tab: EngineSettingsTab::Inputs,
+
+            should_update_renderer: false,
+            pipeline_settings,
         }
     }
 
@@ -410,7 +424,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
             }
         }
 
-        // Commit or cancel on mouse release
+        // Commit or cancel preview drag on mouse release
         if context.input(|i| i.pointer.any_released()) {
             if let Some(preview_id) = editor_storage.viewport_drag_preview_id.take() {
                 if is_over_viewport {
@@ -471,7 +485,7 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
             ui.horizontal(|ui| {
                 let response = ui.button("Engine");
                 Popup::menu(&response)
-                    .close_behavior(PopupCloseBehavior::IgnoreClicks)
+                    .close_behavior(PopupCloseBehavior::CloseOnClick)
                     .show(|ui| {
                         if ui.button("Engine Settings").clicked() {
                             editor_storage.is_engine_settings_open =

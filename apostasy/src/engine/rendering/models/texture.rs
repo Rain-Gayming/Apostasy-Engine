@@ -5,7 +5,7 @@ use ash::vk;
 
 use crate::engine::{
     assets::asset::{Asset, AssetLoadError, AssetLoader},
-    rendering::rendering_context::RenderingContext,
+    rendering::{pipeline_settings::PipelineSettings, rendering_context::RenderingContext},
 };
 
 #[derive(Clone, Debug)]
@@ -30,6 +30,7 @@ pub struct GpuTextureLoader {
     pub descriptor_pool: vk::DescriptorPool,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
     pub default_ubo: vk::Buffer,
+    pub settings: PipelineSettings,
 }
 
 impl GpuTextureLoader {
@@ -39,6 +40,7 @@ impl GpuTextureLoader {
         descriptor_pool: vk::DescriptorPool,
         descriptor_set_layout: vk::DescriptorSetLayout,
         default_ubo: vk::Buffer,
+        settings: PipelineSettings,
     ) -> Self {
         Self {
             context,
@@ -46,6 +48,7 @@ impl GpuTextureLoader {
             descriptor_pool,
             descriptor_set_layout,
             default_ubo,
+            settings,
         }
     }
 }
@@ -78,6 +81,7 @@ impl AssetLoader for GpuTextureLoader {
                 self.descriptor_pool,
                 self.descriptor_set_layout,
                 self.default_ubo,
+                self.settings,
             )
             .map_err(|e: Error| AssetLoadError::other(e.to_string()))?;
 

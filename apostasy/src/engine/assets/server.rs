@@ -198,6 +198,177 @@ impl AssetServer {
         }
     }
 
+    pub fn reload_all<T: Asset>(&self) -> Vec<(PathBuf, Result<(), AssetLoadError>)> {
+        // Collect all (id, path) pairs first to release the read lock before loading.
+        let entries: Vec<(u64, PathBuf)> = {
+            let inner = self.inner.read().unwrap();
+            inner
+                .typed_storage::<T>()
+                .map(|s| {
+                    s.id_to_path
+                        .iter()
+                        .map(|(&id, path)| (id, path.clone()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+
+        let mut results = Vec::with_capacity(entries.len());
+
+        for (id, full_path) in entries {
+            // Find the right loader by extension.
+            let loader_arc = {
+                let inner = self.inner.read().unwrap();
+                let ext = full_path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.to_lowercase());
+
+                let arc = ext
+                    .as_deref()
+                    .and_then(|e| inner.ext_to_loader.get(e))
+                    .map(|&idx| Arc::clone(&inner.loaders[idx]));
+
+                arc
+            };
+
+            let Some(loader_arc) = loader_arc else {
+                results.push((
+                    full_path,
+                    Err(AssetLoadError::other("no loader for extension")),
+                ));
+                continue;
+            };
+
+            // Run the loader outside of any lock.
+            let outcome = loader_arc.load_erased(&full_path);
+
+            let result = {
+                let mut inner = self.inner.write().unwrap();
+                match outcome {
+                    LoadOutcome::Success { asset, commit, .. } => {
+                        // commit() inserts under a *new* id — we want the original id.
+                        // Downcast manually and replace in-place.
+                        //
+                        // We re-use the `commit` closure only to get the asset out of
+                        // the box in a type-safe way; we then fix up the id mapping.
+                        let new_id = {
+                            // Temporarily commit under the new id, then swap.
+                            let new_id = {
+                                // peek at what id commit() would use
+                                inner
+                                    .storage
+                                    .entry(TypeId::of::<T>())
+                                    .or_insert_with(|| Box::new(TypedStorage::<T>::new()));
+                                let storage = inner
+                                    .storage
+                                    .get_mut(&TypeId::of::<T>())
+                                    .unwrap()
+                                    .as_any_mut()
+                                    .downcast_mut::<TypedStorage<T>>()
+                                    .unwrap();
+
+                                // Downcast the box directly so we never touch a foreign id.
+                                if let Ok(typed) = asset.downcast::<T>() {
+                                    storage.assets.insert(id, *typed);
+                                    storage.states.insert(id, AssetLoadState::Loaded);
+                                    Some(id)
+                                } else {
+                                    None
+                                }
+                            };
+                            new_id
+                        };
+
+                        if new_id.is_some() {
+                            Ok(())
+                        } else {
+                            Err(AssetLoadError::other("asset type mismatch during reload"))
+                        }
+                    }
+                    LoadOutcome::Failure { message, .. } => {
+                        let mut inner_storage = inner
+                            .storage
+                            .get_mut(&TypeId::of::<T>())
+                            .and_then(|s| s.as_any_mut().downcast_mut::<TypedStorage<T>>());
+                        if let Some(storage) = inner_storage {
+                            storage
+                                .states
+                                .insert(id, AssetLoadState::Failed(message.clone()));
+                        }
+                        Err(AssetLoadError::other(message))
+                    }
+                }
+            };
+
+            results.push((full_path, result));
+        }
+
+        results
+    }
+
+    pub fn reload<T: Asset>(&self, handle: Handle<T>) -> Result<(), AssetLoadError> {
+        let full_path = self
+            .path_of(handle)
+            .ok_or_else(|| AssetLoadError::other("handle has no associated path"))?;
+
+        let loader_arc = {
+            let inner = self.inner.read().unwrap();
+            let ext = full_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e.to_lowercase())
+                .ok_or_else(|| AssetLoadError::other("path has no extension"))?;
+
+            let idx = *inner
+                .ext_to_loader
+                .get(&ext)
+                .ok_or_else(|| AssetLoadError::NoLoader { extension: ext })?;
+
+            Arc::clone(&inner.loaders[idx])
+        };
+
+        let outcome = loader_arc.load_erased(&full_path);
+
+        let mut inner = self.inner.write().unwrap();
+        match outcome {
+            LoadOutcome::Success { asset, .. } => {
+                inner
+                    .storage
+                    .entry(TypeId::of::<T>())
+                    .or_insert_with(|| Box::new(TypedStorage::<T>::new()));
+
+                let storage = inner
+                    .storage
+                    .get_mut(&TypeId::of::<T>())
+                    .unwrap()
+                    .as_any_mut()
+                    .downcast_mut::<TypedStorage<T>>()
+                    .unwrap();
+
+                let typed = asset
+                    .downcast::<T>()
+                    .map_err(|_| AssetLoadError::other("asset type mismatch during reload"))?;
+
+                storage.assets.insert(handle.id, *typed);
+                storage.states.insert(handle.id, AssetLoadState::Loaded);
+                Ok(())
+            }
+            LoadOutcome::Failure { message, .. } => {
+                if let Some(storage) = inner
+                    .storage
+                    .get_mut(&TypeId::of::<T>())
+                    .and_then(|s| s.as_any_mut().downcast_mut::<TypedStorage<T>>())
+                {
+                    storage
+                        .states
+                        .insert(handle.id, AssetLoadState::Failed(message.clone()));
+                }
+                Err(AssetLoadError::other(message))
+            }
+        }
+    }
+
     pub fn load<T: Asset>(&self, path: impl AsRef<Path>) -> Result<Handle<T>, AssetLoadError> {
         let (full_path, loader_arc) = {
             let inner = self.inner.read().unwrap();
