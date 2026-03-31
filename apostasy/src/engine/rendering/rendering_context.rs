@@ -625,7 +625,7 @@ impl RenderingContext {
         }
     }
 
-    fn begin_single_time_commands(&self, command_pool: vk::CommandPool) -> vk::CommandBuffer {
+    pub fn begin_single_time_commands(&self, command_pool: vk::CommandPool) -> vk::CommandBuffer {
         let alloc_info = vk::CommandBufferAllocateInfo::default()
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_pool(command_pool)
@@ -643,7 +643,7 @@ impl RenderingContext {
         cmd_buf
     }
 
-    fn end_single_time_commands(
+    pub fn end_single_time_commands(
         &self,
         cmd_buf: vk::CommandBuffer,
         queue: vk::Queue,

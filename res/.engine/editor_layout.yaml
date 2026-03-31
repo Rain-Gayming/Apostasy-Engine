@@ -8,9 +8,9 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 1360.0
-          y: 716.0
-      fraction: 0.7418879
+          x: 2560.0
+          y: 1440.0
+      fraction: 0.78125
       fully_collapsed: false
       collapsed_leaf_count: 0
     - !Vertical
@@ -19,19 +19,19 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 1008.0
-          y: 716.0
-      fraction: 0.6
+          x: 2000.0
+          y: 1440.0
+      fraction: 0.6940559
       fully_collapsed: false
       collapsed_leaf_count: 0
     - !Vertical
       rect:
         min:
-          x: 1009.0
+          x: 2001.0
           y: 28.0
         max:
-          x: 1360.0
-          y: 716.0
+          x: 2560.0
+          y: 1440.0
       fraction: 0.6
       fully_collapsed: false
       collapsed_leaf_count: 0
@@ -41,26 +41,26 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 1008.0
-          y: 440.0
-      fraction: 0.34791252
+          x: 2000.0
+          y: 1008.0
+      fraction: 0.28
       fully_collapsed: false
       collapsed_leaf_count: 0
     - !Leaf
       rect:
         min:
           x: 0.0
-          y: 441.0
+          y: 1009.0
         max:
-          x: 1008.0
-          y: 716.0
+          x: 2000.0
+          y: 1440.0
       viewport:
         min:
           x: 0.0
-          y: 465.0
+          y: 1033.0
         max:
-          x: 1008.0
-          y: 716.0
+          x: 2000.0
+          y: 1440.0
       tabs:
       - Files
       - Console
@@ -70,18 +70,18 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 1009.0
+          x: 2001.0
           y: 28.0
         max:
-          x: 1360.0
-          y: 440.0
+          x: 2560.0
+          y: 875.0
       viewport:
         min:
-          x: 1009.0
+          x: 2001.0
           y: 52.0
         max:
-          x: 1360.0
-          y: 440.0
+          x: 2560.0
+          y: 875.0
       tabs:
       - Inspector
       active: 0
@@ -90,18 +90,18 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 1009.0
-          y: 441.0
+          x: 2001.0
+          y: 876.0
         max:
-          x: 1360.0
-          y: 716.0
+          x: 2560.0
+          y: 1440.0
       viewport:
         min:
-          x: 1009.0
-          y: 465.0
+          x: 2001.0
+          y: 900.0
         max:
-          x: 1360.0
-          y: 716.0
+          x: 2560.0
+          y: 1440.0
       tabs:
       - AssetEditor
       active: 0
@@ -113,15 +113,15 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 350.0
-          y: 440.0
+          x: 560.0
+          y: 1008.0
       viewport:
         min:
           x: 0.0
           y: 52.0
         max:
-          x: 350.0
-          y: 440.0
+          x: 560.0
+          y: 1008.0
       tabs:
       - Hierarchy
       active: 0
@@ -130,18 +130,18 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 351.0
+          x: 561.0
           y: 28.0
         max:
-          x: 1008.0
-          y: 440.0
+          x: 2000.0
+          y: 1008.0
       viewport:
         min:
-          x: 351.0
+          x: 561.0
           y: 52.0
         max:
-          x: 1008.0
-          y: 440.0
+          x: 2000.0
+          y: 1008.0
       tabs:
       - Viewport
       active: 0
@@ -169,7 +169,7 @@ dock_state:
     - Empty
     - Empty
     - Empty
-    focused_node: 8
+    focused_node: 5
     collapsed: false
     collapsed_leaf_count: 0
   focused_surface: 0

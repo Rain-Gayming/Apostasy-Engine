@@ -18,6 +18,7 @@ pub fn render_engine_settings_ui(
     }
 
     Window::new("Engine Settings")
+        .default_size((350.0, 200.0))
         .resizable(true)
         .show(context, |ui| {
             egui::SidePanel::left("Side Bar")

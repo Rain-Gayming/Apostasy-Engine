@@ -2,8 +2,8 @@ depth_settings:
   depth_test_enabled: true
   depth_compare_op: LESS
 rasterization_settings:
-  polygon_mode: LINE
-  cull_mode: NONE
+  polygon_mode: FILL
+  cull_mode: BACK
   front_face: COUNTER_CLOCKWISE
   line_width: 5.5
 image_settings:

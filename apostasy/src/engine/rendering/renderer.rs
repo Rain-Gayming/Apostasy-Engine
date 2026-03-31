@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::Result;
 use ash::vk::{self, DescriptorSet};
-use cgmath::{Matrix4, Point3};
+use cgmath::{Matrix4, Point3, SquareMatrix};
 use egui::{Context, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options};
 use winit::{event::WindowEvent, window::Window};
@@ -18,6 +18,7 @@ use crate::engine::rendering::models::material::MaterialAsset;
 use crate::engine::rendering::models::model::GpuModel;
 use crate::engine::rendering::models::shader::ShaderSpirv;
 use crate::engine::rendering::models::texture::{GpuTexture, GpuTextureLoader};
+use crate::engine::rendering::models::vertex::Vertex;
 use crate::engine::rendering::pipeline_settings::PipelineSettings;
 use crate::engine::rendering::profiler::{CpuProfiler, FrameData, GpuTimestampPool};
 use crate::engine::{
@@ -27,6 +28,7 @@ use crate::engine::{
         components::{
             camera::{Camera, get_perspective_projection},
             light::Light,
+            skybox::Skybox,
             transform::Transform,
         },
         system::EditorUIFunction,
@@ -179,8 +181,13 @@ pub struct Renderer {
 
     pub frames: Frames,
     pub pipeline: Pipeline,
+    pub skybox_pipeline: vk::Pipeline,
     pub descriptor: Descriptor,
     pub ubo: Ubo,
+    pub skybox_vertex_buffer: vk::Buffer,
+    pub skybox_vertex_buffer_memory: vk::DeviceMemory,
+    pub skybox_index_buffer: vk::Buffer,
+    pub skybox_index_buffer_memory: vk::DeviceMemory,
     pub profiler_info: ProfilerInfo,
     pub image_states: ImageStates,
 }
@@ -266,6 +273,41 @@ impl Renderer {
                 pipeline_settings,
             )?;
 
+            let skybox_vs_handle: Handle<ShaderSpirv> =
+                asset_server.load("shaders/skybox_vert.spv")?;
+            let skybox_fs_handle: Handle<ShaderSpirv> =
+                asset_server.load("shaders/skybox_frag.spv")?;
+
+            let skybox_vertex_shader = asset_server
+                .get(skybox_vs_handle)
+                .unwrap()
+                .create_module(&context.device)?;
+            let skybox_fragment_shader = asset_server
+                .get(skybox_fs_handle)
+                .unwrap()
+                .create_module(&context.device)?;
+
+            let mut skybox_pipeline_settings = pipeline_settings;
+            skybox_pipeline_settings.depth_settings.depth_test_enabled = false;
+            skybox_pipeline_settings.rasterization_settings.cull_mode = vk::CullModeFlags::NONE;
+
+            let skybox_pipeline = context.create_graphics_pipeline(
+                skybox_vertex_shader,
+                skybox_fragment_shader,
+                swapchain.format,
+                swapchain.depth_format,
+                pipeline_layout,
+                Default::default(),
+                skybox_pipeline_settings,
+            )?;
+
+            context
+                .device
+                .destroy_shader_module(skybox_vertex_shader, None);
+            context
+                .device
+                .destroy_shader_module(skybox_fragment_shader, None);
+
             context
                 .device
                 .destroy_shader_module(model_vertex_shader, None);
@@ -286,6 +328,95 @@ impl Renderer {
                     .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER),
                 None,
             )?;
+
+            let upload_buffer = |data: &[u8],
+                                 usage: vk::BufferUsageFlags|
+             -> Result<(vk::Buffer, vk::DeviceMemory)> {
+                let size = data.len() as vk::DeviceSize;
+                let (staging_buffer, staging_memory) = context.create_buffer(
+                    size,
+                    vk::BufferUsageFlags::TRANSFER_SRC,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                )?;
+
+                unsafe {
+                    let data_ptr = context.device.map_memory(
+                        staging_memory,
+                        0,
+                        size,
+                        vk::MemoryMapFlags::empty(),
+                    )? as *mut u8;
+                    std::ptr::copy_nonoverlapping(data.as_ptr(), data_ptr, data.len());
+                    context.device.unmap_memory(staging_memory);
+                }
+
+                let (buffer, buffer_memory) = context.create_buffer(
+                    size,
+                    usage | vk::BufferUsageFlags::TRANSFER_DST,
+                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                )?;
+
+                let queue = context.queues[context.queue_families.transfer as usize];
+                let cmd = context.begin_single_time_commands(transfer_command_pool);
+                unsafe {
+                    context.device.cmd_copy_buffer(
+                        cmd,
+                        staging_buffer,
+                        buffer,
+                        &[vk::BufferCopy::default().size(size)],
+                    );
+                }
+                context.end_single_time_commands(cmd, queue, transfer_command_pool);
+
+                unsafe {
+                    context.device.destroy_buffer(staging_buffer, None);
+                    context.device.free_memory(staging_memory, None);
+                }
+
+                Ok((buffer, buffer_memory))
+            };
+
+            let skybox_vertices = [
+                Vertex {
+                    position: [-1.0, -1.0, 0.0],
+                    normal: [0.0, 0.0, 0.0],
+                    tex_coord: [0.0, 0.0],
+                },
+                Vertex {
+                    position: [1.0, -1.0, 0.0],
+                    normal: [0.0, 0.0, 0.0],
+                    tex_coord: [1.0, 0.0],
+                },
+                Vertex {
+                    position: [1.0, 1.0, 0.0],
+                    normal: [0.0, 0.0, 0.0],
+                    tex_coord: [1.0, 1.0],
+                },
+                Vertex {
+                    position: [-1.0, 1.0, 0.0],
+                    normal: [0.0, 0.0, 0.0],
+                    tex_coord: [0.0, 1.0],
+                },
+            ];
+            let skybox_indices: [u32; 6] = [0, 1, 2, 2, 3, 0];
+
+            let skybox_vertex_data = unsafe {
+                std::slice::from_raw_parts(
+                    skybox_vertices.as_ptr() as *const u8,
+                    skybox_vertices.len() * std::mem::size_of::<Vertex>(),
+                )
+            };
+            let skybox_index_data = unsafe {
+                std::slice::from_raw_parts(
+                    skybox_indices.as_ptr() as *const u8,
+                    skybox_indices.len() * std::mem::size_of::<u32>(),
+                )
+            };
+
+            let (skybox_vertex_buffer, skybox_vertex_buffer_memory) =
+                upload_buffer(skybox_vertex_data, vk::BufferUsageFlags::VERTEX_BUFFER)?;
+            let (skybox_index_buffer, skybox_index_buffer_memory) =
+                upload_buffer(skybox_index_data, vk::BufferUsageFlags::INDEX_BUFFER)?;
 
             let inflight_frames_count = swapchain.images.len() as u32;
             let command_buffers = context.device.allocate_command_buffers(
@@ -428,7 +559,12 @@ impl Renderer {
                 transfer_command_pool,
                 descriptor,
                 pipeline,
+                skybox_pipeline,
                 ubo,
+                skybox_vertex_buffer,
+                skybox_vertex_buffer_memory,
+                skybox_index_buffer,
+                skybox_index_buffer_memory,
                 profiler_info,
                 image_states,
             })
@@ -577,6 +713,89 @@ impl Renderer {
                 && is_editor
             {
                 camera_node = Some(node);
+            }
+
+            if let Some(mut skybox_node) = world.get_node_with_component_mut::<Skybox>() {
+                let skybox = skybox_node.get_component_mut::<Skybox>().unwrap();
+                if skybox.texture_handle.is_none() {
+                    let asset_server = asset_server.write().unwrap();
+                    if let Ok(texture_handle) =
+                        asset_server.load::<GpuTexture>(skybox.texture_path.clone())
+                    {
+                        skybox.texture_handle = Some(texture_handle);
+                    } else {
+                        println!("Skybox texture failed to load: {}", skybox.texture_path);
+                    }
+                }
+
+                if let Some(texture_handle) = skybox.texture_handle {
+                    let asset_server = asset_server.write().unwrap();
+                    if let Some(texture) = asset_server.get_cloned::<GpuTexture>(texture_handle) {
+                        device.cmd_bind_pipeline(
+                            command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            self.skybox_pipeline,
+                        );
+
+                        let mut push_constants = [0u8; 256];
+                        {
+                            let (inv_projection, camera_rotation) = if let Some(camera_node) =
+                                camera_node
+                            {
+                                let aspect =
+                                    swapchain_extent.width as f32 / swapchain_extent.height as f32;
+                                let transform = camera_node.get_component::<Transform>().unwrap();
+                                let camera = camera_node.get_component::<Camera>().unwrap();
+                                let projection = get_perspective_projection(camera, aspect);
+                                let inv_projection =
+                                    projection.invert().unwrap_or(Matrix4::from_scale(1.0));
+                                let camera_rotation = Matrix4::from(transform.global_rotation);
+                                (inv_projection, camera_rotation)
+                            } else {
+                                (Matrix4::from_scale(1.0), Matrix4::from_scale(1.0))
+                            };
+
+                            let inv_proj_bytes: [u8; 64] = transmute(inv_projection);
+                            let camera_rotation_bytes: [u8; 64] = transmute(camera_rotation);
+                            push_constants[0..64].copy_from_slice(&inv_proj_bytes);
+                            push_constants[64..128].copy_from_slice(&camera_rotation_bytes);
+
+                            if let Some(transform) = skybox_node.get_component::<Transform>() {
+                                let rotation = Matrix4::from(transform.rotation);
+                                let rotation_bytes: [u8; 64] = transmute(rotation);
+                                push_constants[128..192].copy_from_slice(&rotation_bytes);
+                            }
+                        }
+                        device.cmd_push_constants(
+                            command_buffer,
+                            pipeline_layout,
+                            vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                            0,
+                            &push_constants,
+                        );
+                        device.cmd_bind_descriptor_sets(
+                            command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            pipeline_layout,
+                            0,
+                            &[texture.descriptor_set],
+                            &[],
+                        );
+                        device.cmd_bind_vertex_buffers(
+                            command_buffer,
+                            0,
+                            &[self.skybox_vertex_buffer],
+                            &[0],
+                        );
+                        device.cmd_bind_index_buffer(
+                            command_buffer,
+                            self.skybox_index_buffer,
+                            0,
+                            vk::IndexType::UINT32,
+                        );
+                        device.cmd_draw_indexed(command_buffer, 6, 1, 0, 0, 0);
+                    }
+                }
             }
 
             if let Some(camera_node) = camera_node {
@@ -984,6 +1203,8 @@ impl Renderer {
 
         let mvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_vert.spv")?;
         let mfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_frag.spv")?;
+        let skybox_vs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/skybox_vert.spv")?;
+        let skybox_fs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/skybox_frag.spv")?;
 
         let model_vertex_shader = asset_server
             .get(mvs_handle)
@@ -991,6 +1212,14 @@ impl Renderer {
             .create_module(&self.context.device)?;
         let model_fragment_shader = asset_server
             .get(mfs_handle)
+            .unwrap()
+            .create_module(&self.context.device)?;
+        let skybox_vertex_shader = asset_server
+            .get(skybox_vs_handle)
+            .unwrap()
+            .create_module(&self.context.device)?;
+        let skybox_fragment_shader = asset_server
+            .get(skybox_fs_handle)
             .unwrap()
             .create_module(&self.context.device)?;
 
@@ -1010,6 +1239,10 @@ impl Renderer {
             }
         }
 
+        let mut skybox_pipeline_settings = pipeline_settings;
+        skybox_pipeline_settings.depth_settings.depth_test_enabled = false;
+        skybox_pipeline_settings.rasterization_settings.cull_mode = vk::CullModeFlags::NONE;
+
         unsafe {
             let new_pipeline = self.context.create_graphics_pipeline(
                 model_vertex_shader,
@@ -1020,6 +1253,15 @@ impl Renderer {
                 Default::default(),
                 pipeline_settings,
             )?;
+            let new_skybox_pipeline = self.context.create_graphics_pipeline(
+                skybox_vertex_shader,
+                skybox_fragment_shader,
+                self.swapchain.format,
+                self.swapchain.depth_format,
+                self.pipeline.layout,
+                Default::default(),
+                skybox_pipeline_settings,
+            )?;
 
             self.context
                 .device
@@ -1027,9 +1269,20 @@ impl Renderer {
             self.context
                 .device
                 .destroy_shader_module(model_fragment_shader, None);
+            self.context
+                .device
+                .destroy_shader_module(skybox_vertex_shader, None);
+            self.context
+                .device
+                .destroy_shader_module(skybox_fragment_shader, None);
 
             let old_pipeline = std::mem::replace(&mut self.pipeline.pipeline, new_pipeline);
             self.context.device.destroy_pipeline(old_pipeline, None);
+            let old_skybox_pipeline =
+                std::mem::replace(&mut self.skybox_pipeline, new_skybox_pipeline);
+            self.context
+                .device
+                .destroy_pipeline(old_skybox_pipeline, None);
         }
 
         Ok(())
@@ -1101,6 +1354,21 @@ impl Drop for Renderer {
             self.context
                 .device
                 .destroy_pipeline(self.pipeline.pipeline, None);
+            self.context
+                .device
+                .destroy_pipeline(self.skybox_pipeline, None);
+            self.context
+                .device
+                .destroy_buffer(self.skybox_vertex_buffer, None);
+            self.context
+                .device
+                .free_memory(self.skybox_vertex_buffer_memory, None);
+            self.context
+                .device
+                .destroy_buffer(self.skybox_index_buffer, None);
+            self.context
+                .device
+                .free_memory(self.skybox_index_buffer_memory, None);
             self.context
                 .device
                 .destroy_pipeline_layout(self.pipeline.layout, None);
