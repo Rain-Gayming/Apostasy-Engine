@@ -174,7 +174,7 @@ impl EditorStorage {
     ) -> Self {
         // Attempt to load a previously saved editor layout (dock + window sizes).
         let (dock_state, scene_win_size, input_win_size, layout_serialized) =
-            match read_to_string("res/editor_layout.yaml") {
+            match read_to_string("res/.engine/editor_layout.yaml") {
                 Ok(contents) => match serde_yaml::from_str::<EditorLayout>(&contents) {
                     Ok(layout) => (
                         layout.dock_state,
@@ -185,6 +185,15 @@ impl EditorStorage {
                     Err(_) => (default_dock_state(), None, None, None),
                 },
                 Err(_) => (default_dock_state(), None, None, None),
+            };
+
+        let pipeline_settings: PipelineSettings =
+            match read_to_string("res/.engine/pipeline_settings.yaml") {
+                Ok(contents) => match serde_yaml::from_str::<PipelineSettings>(&contents) {
+                    Ok(pipeline_settings) => pipeline_settings,
+                    Err(_) => PipelineSettings::default(),
+                },
+                Err(_) => PipelineSettings::default(),
             };
 
         Self {
@@ -235,10 +244,10 @@ impl EditorStorage {
             viewport_drag_preview_id: None,
             viewport_drag_model: None,
 
-            is_engine_settings_open: false,
+            is_engine_settings_open: true,
             open_engine_settings_tab: EngineSettingsTab::Inputs,
 
-            should_update_renderer: false,
+            should_update_renderer: true,
             pipeline_settings,
         }
     }
@@ -250,7 +259,7 @@ impl EditorStorage {
             input_manager_window_size: self.input_manager_window_size,
         };
         if let Ok(s) = serde_yaml::to_string(&layout) {
-            let _ = write("res/editor_layout.yaml", s);
+            let _ = write("res/.engine/editor_layout.yaml", s);
         }
     }
 }
@@ -346,7 +355,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
         let new_serialized = serde_yaml::to_string(&layout).ok();
         if new_serialized.is_some() && new_serialized != viewer.editor_storage.layout_serialized {
             if let Some(ref s) = new_serialized {
-                let _ = write("res/editor_layout.yaml", s);
+                let _ = write("res/.engine/editor_layout.yaml", s);
             }
             viewer.editor_storage.layout_serialized = new_serialized.clone();
         }

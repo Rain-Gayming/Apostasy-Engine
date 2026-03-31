@@ -475,12 +475,10 @@ impl RenderingContext {
                         )
                         .rasterization_state(
                             &vk::PipelineRasterizationStateCreateInfo::default()
-                                .polygon_mode(
-                                    pipeline_settings.rasterizeation_settings.polygon_mode,
-                                )
-                                .cull_mode(pipeline_settings.rasterizeation_settings.cull_mode)
-                                .front_face(pipeline_settings.rasterizeation_settings.front_face)
-                                .line_width(pipeline_settings.rasterizeation_settings.line_width),
+                                .polygon_mode(pipeline_settings.rasterization_settings.polygon_mode)
+                                .cull_mode(pipeline_settings.rasterization_settings.cull_mode)
+                                .front_face(pipeline_settings.rasterization_settings.front_face)
+                                .line_width(pipeline_settings.rasterization_settings.line_width),
                         )
                         .multisample_state(
                             &vk::PipelineMultisampleStateCreateInfo::default()

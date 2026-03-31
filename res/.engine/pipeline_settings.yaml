@@ -1,0 +1,14 @@
+depth_settings:
+  depth_test_enabled: true
+  depth_compare_op: LESS
+rasterization_settings:
+  polygon_mode: LINE
+  cull_mode: NONE
+  front_face: COUNTER_CLOCKWISE
+  line_width: 5.5
+image_settings:
+  filter_mode: NEAREST
+  address_mode: REPEAT
+  anisotropy_enabled: false
+  anisotropy_amount: 16
+  mip_map_mode: LINEAR

@@ -1,3 +1,5 @@
+use std::fs::write;
+
 use ash::vk;
 use egui::Ui;
 
@@ -103,14 +105,14 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             "{:?}",
             editor_storage
                 .pipeline_settings
-                .rasterizeation_settings
+                .rasterization_settings
                 .polygon_mode
         ))
         .show_ui(ui, |ui| {
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .polygon_mode,
                 vk::PolygonMode::FILL,
                 "Fill",
@@ -118,7 +120,7 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .polygon_mode,
                 vk::PolygonMode::POINT,
                 "Point",
@@ -126,7 +128,7 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .polygon_mode,
                 vk::PolygonMode::LINE,
                 "Lines",
@@ -138,14 +140,14 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             "{:?}",
             editor_storage
                 .pipeline_settings
-                .rasterizeation_settings
+                .rasterization_settings
                 .cull_mode
         ))
         .show_ui(ui, |ui| {
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .cull_mode,
                 vk::CullModeFlags::NONE,
                 "None",
@@ -153,7 +155,7 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .cull_mode,
                 vk::CullModeFlags::FRONT,
                 "Front",
@@ -161,7 +163,7 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .cull_mode,
                 vk::CullModeFlags::BACK,
                 "Back",
@@ -169,7 +171,7 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .cull_mode,
                 vk::CullModeFlags::FRONT_AND_BACK,
                 "Front and Back",
@@ -181,14 +183,14 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             "{:?}",
             editor_storage
                 .pipeline_settings
-                .rasterizeation_settings
+                .rasterization_settings
                 .front_face
         ))
         .show_ui(ui, |ui| {
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .front_face,
                 vk::FrontFace::COUNTER_CLOCKWISE,
                 "Counter Clockwise",
@@ -196,7 +198,7 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             ui.selectable_value(
                 &mut editor_storage
                     .pipeline_settings
-                    .rasterizeation_settings
+                    .rasterization_settings
                     .front_face,
                 vk::FrontFace::CLOCKWISE,
                 "Clockwise",
@@ -207,9 +209,9 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
         egui::Slider::new(
             &mut editor_storage
                 .pipeline_settings
-                .rasterizeation_settings
+                .rasterization_settings
                 .line_width,
-            1.0 as f32..=5.0 as f32,
+            1.0 as f32..=15.0 as f32,
         )
         .show_value(true)
         .text("Line Width"),
@@ -341,8 +343,10 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
     }
 
     if editor_storage.pipeline_settings != before {
-        {
-            editor_storage.should_update_renderer = true;
+        editor_storage.should_update_renderer = true;
+
+        if let Ok(s) = serde_yaml::to_string(&editor_storage.pipeline_settings) {
+            let _ = write("res/.engine/pipeline_settings.yaml", s);
         }
     }
 }

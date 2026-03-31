@@ -16,7 +16,7 @@ apostasy-macros = {path = "apostasy-macros"}
 [dependencies]
 anyhow ="1.0.100"
 anymap = "0.12.1"
-ash = "0.38.0"
+ash = {version = "0.38.0"}
 ash-window = "0.13.0"
 aligned-vec = "0.6.4"
 apostasy-macros.workspace = true
