@@ -5,6 +5,7 @@ use crate::{
         nodes::{
             components::{
                 camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
+                skybox::Skybox,
             },
             scene_serialization::SceneLoader,
             world::World,
@@ -19,7 +20,6 @@ use crate::{
 };
 use anyhow::Result;
 use apostasy_macros::{editor_fixed_update, editor_ui};
-use ash::vk::Pipeline;
 use cgmath::{Vector2, Vector3, Zero, num_traits::clamp};
 use egui::Context;
 use std::{
@@ -152,29 +152,8 @@ impl Engine {
         let timer = EngineTimer::new();
 
         let mut world = World::new();
-
-        let mut camera = Node::new();
-        camera.name = "editor_camera".to_string();
-        camera.add_component(Camera::default());
-        camera.add_component(Transform::default());
-        camera.add_component(Velocity::default());
-        world.add_global_node(camera);
-
-        let mut cursor_manager = Node::new();
-        cursor_manager.name = "cursor_manager".to_string();
-        cursor_manager.add_component(CursorManager::default());
-        world.add_global_node(cursor_manager);
-
-        let mut events_node = Node::new();
-        events_node.name = "CollisionEvents".to_string();
-        events_node.add_component(CollisionEvents::new());
-        world.add_global_node(events_node);
-
-        let mut dev_cube = Node::new();
-        dev_cube.name = "dev_cube".to_string();
-        dev_cube.add_component(Transform::default());
-        dev_cube.add_component(ModelRenderer::default());
-        world.add_node(dev_cube);
+        world.setup_default_global_nodes();
+        world.setup_default_scene();
 
         let window_manager = WindowManager {
             windows,

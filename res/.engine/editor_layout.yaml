@@ -10,29 +10,7 @@ dock_state:
         max:
           x: 2560.0
           y: 1440.0
-      fraction: 0.78125
-      fully_collapsed: false
-      collapsed_leaf_count: 0
-    - !Vertical
-      rect:
-        min:
-          x: 0.0
-          y: 28.0
-        max:
-          x: 2000.0
-          y: 1440.0
-      fraction: 0.6940559
-      fully_collapsed: false
-      collapsed_leaf_count: 0
-    - !Vertical
-      rect:
-        min:
-          x: 2001.0
-          y: 28.0
-        max:
-          x: 2560.0
-          y: 1440.0
-      fraction: 0.6
+      fraction: 0.32375157
       fully_collapsed: false
       collapsed_leaf_count: 0
     - !Horizontal
@@ -41,28 +19,80 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 2000.0
-          y: 1008.0
-      fraction: 0.28
+          x: 828.0
+          y: 1440.0
+      fraction: 0.46069866
+      fully_collapsed: false
+      collapsed_leaf_count: 0
+    - !Vertical
+      rect:
+        min:
+          x: 829.0
+          y: 28.0
+        max:
+          x: 2560.0
+          y: 1440.0
+      fraction: 0.7054895
+      fully_collapsed: false
+      collapsed_leaf_count: 0
+    - !Vertical
+      rect:
+        min:
+          x: 0.0
+          y: 28.0
+        max:
+          x: 381.0
+          y: 1440.0
+      fraction: 0.69139457
+      fully_collapsed: false
+      collapsed_leaf_count: 0
+    - !Vertical
+      rect:
+        min:
+          x: 382.0
+          y: 28.0
+        max:
+          x: 828.0
+          y: 1440.0
+      fraction: 0.4606825
       fully_collapsed: false
       collapsed_leaf_count: 0
     - !Leaf
       rect:
         min:
-          x: 0.0
-          y: 1009.0
+          x: 829.0
+          y: 28.0
         max:
-          x: 2000.0
+          x: 2560.0
+          y: 1024.0
+      viewport:
+        min:
+          x: 829.0
+          y: 52.0
+        max:
+          x: 2560.0
+          y: 1024.0
+      tabs:
+      - Viewport
+      active: 0
+      scroll: 0.0
+      collapsed: false
+    - !Leaf
+      rect:
+        min:
+          x: 829.0
+          y: 1025.0
+        max:
+          x: 2560.0
           y: 1440.0
       viewport:
         min:
-          x: 0.0
-          y: 1033.0
+          x: 829.0
+          y: 1049.0
         max:
-          x: 2000.0
+          x: 2560.0
           y: 1440.0
       tabs:
-      - Files
       - Console
       active: 0
       scroll: 0.0
@@ -70,37 +100,37 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 2001.0
+          x: 0.0
           y: 28.0
         max:
-          x: 2560.0
-          y: 875.0
+          x: 381.0
+          y: 1004.0
       viewport:
         min:
-          x: 2001.0
+          x: 0.0
           y: 52.0
         max:
-          x: 2560.0
-          y: 875.0
+          x: 381.0
+          y: 1004.0
       tabs:
-      - Inspector
+      - Files
       active: 0
       scroll: 0.0
       collapsed: false
     - !Leaf
       rect:
         min:
-          x: 2001.0
-          y: 876.0
+          x: 0.0
+          y: 1005.0
         max:
-          x: 2560.0
+          x: 381.0
           y: 1440.0
       viewport:
         min:
-          x: 2001.0
-          y: 900.0
+          x: 0.0
+          y: 1029.0
         max:
-          x: 2560.0
+          x: 381.0
           y: 1440.0
       tabs:
       - AssetEditor
@@ -110,18 +140,18 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 0.0
+          x: 382.0
           y: 28.0
         max:
-          x: 560.0
-          y: 1008.0
+          x: 828.0
+          y: 678.0
       viewport:
         min:
-          x: 0.0
+          x: 382.0
           y: 52.0
         max:
-          x: 560.0
-          y: 1008.0
+          x: 828.0
+          y: 678.0
       tabs:
       - Hierarchy
       active: 0
@@ -130,25 +160,23 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 561.0
-          y: 28.0
+          x: 382.0
+          y: 679.0
         max:
-          x: 2000.0
-          y: 1008.0
+          x: 828.0
+          y: 1440.0
       viewport:
         min:
-          x: 561.0
-          y: 52.0
+          x: 382.0
+          y: 703.0
         max:
-          x: 2000.0
-          y: 1008.0
+          x: 828.0
+          y: 1440.0
       tabs:
-      - Viewport
+      - Inspector
       active: 0
       scroll: 0.0
       collapsed: false
-    - Empty
-    - Empty
     - Empty
     - Empty
     - Empty

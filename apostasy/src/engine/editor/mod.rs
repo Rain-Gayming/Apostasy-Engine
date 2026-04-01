@@ -244,7 +244,7 @@ impl EditorStorage {
             viewport_drag_preview_id: None,
             viewport_drag_model: None,
 
-            is_engine_settings_open: true,
+            is_engine_settings_open: false,
             open_engine_settings_tab: EngineSettingsTab::Inputs,
 
             should_update_renderer: true,

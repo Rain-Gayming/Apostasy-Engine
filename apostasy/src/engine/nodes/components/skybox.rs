@@ -19,7 +19,7 @@ pub struct Skybox {
 impl Default for Skybox {
     fn default() -> Self {
         Self {
-            texture_path: ".engine/missing-texture.png".to_string(),
+            texture_path: ".engine/default_skybox_texture.png".to_string(),
             texture_handle: None,
             cube_model_handle: None,
         }

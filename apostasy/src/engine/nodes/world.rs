@@ -1,17 +1,27 @@
 use anyhow::Result;
 use cgmath::Vector2;
 
-use crate::engine::{
-    nodes::{
-        Node, NodeMut, build_instance_node,
-        component::Component,
-        scene::{Scene, SceneInstance, SceneManager, deserialize_scene, deserialize_scene_manager},
-        scene_serialization::{SerializedScene, find_registration, serialize_node},
-        system::{
-            EditorFixedUpdateSystem, FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem,
+use crate::{
+    engine::{
+        nodes::{
+            Node, NodeMut, build_instance_node,
+            component::Component,
+            components::{
+                camera::Camera, collider::CollisionEvents, skybox::Skybox, transform::Transform,
+                velocity::Velocity,
+            },
+            scene::{
+                Scene, SceneInstance, SceneManager, deserialize_scene, deserialize_scene_manager,
+            },
+            scene_serialization::{SerializedScene, find_registration, serialize_node},
+            system::{
+                EditorFixedUpdateSystem, FixedUpdateSystem, LateUpdateSystem, StartSystem,
+                UpdateSystem,
+            },
         },
+        windowing::{cursor_manager::CursorManager, input_manager::InputManager},
     },
-    windowing::input_manager::InputManager,
+    log, log_warn,
 };
 
 pub struct World {
@@ -52,6 +62,15 @@ impl World {
     ///     world.add_global_node(Node::new());
     /// ```
     pub fn add_global_node(&mut self, node: Node) {
+        for found_node in self.global_nodes.iter() {
+            if found_node.name.to_lowercase() == node.name.to_lowercase() {
+                log_warn!(
+                    "Attemping to add a global node with the same name as another is not allowed"
+                );
+                return;
+            }
+        }
+
         self.global_nodes.push(node);
         self.check_node_ids();
     }
@@ -532,5 +551,45 @@ impl World {
         for system in systems.iter_mut() {
             (system.func)(self);
         }
+    }
+
+    /// Removes all WORLD nodes from the scene
+    pub fn clear_nodes(&mut self) {
+        let ids: Vec<_> = self.get_all_world_nodes().iter().map(|n| n.id).collect();
+        ids.into_iter().for_each(|id| {
+            self.remove_node(id);
+        });
+    }
+
+    /// Setups the default world environment
+    /// deletes the current environmnet
+    pub fn setup_default_scene(&mut self) {
+        self.clear_nodes();
+
+        let mut skybox = Node::new();
+        skybox.name = "Skybox".to_string();
+        skybox.add_component(Skybox::default());
+        skybox.add_component(Transform::default());
+        self.add_node(skybox);
+    }
+
+    /// Sets up the default global nodes
+    pub fn setup_default_global_nodes(&mut self) {
+        let mut camera = Node::new();
+        camera.name = "EditorCamera".to_string();
+        camera.add_component(Camera::default());
+        camera.add_component(Transform::default());
+        camera.add_component(Velocity::default());
+        self.add_global_node(camera);
+
+        let mut cursor_manager = Node::new();
+        cursor_manager.name = "CursorManager".to_string();
+        cursor_manager.add_component(CursorManager::default());
+        self.add_global_node(cursor_manager);
+
+        let mut events_node = Node::new();
+        events_node.name = "CollisionEvents".to_string();
+        events_node.add_component(CollisionEvents::new());
+        self.add_global_node(events_node);
     }
 }

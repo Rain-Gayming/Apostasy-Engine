@@ -29,6 +29,7 @@ impl Scene {
     pub fn new(path: String) -> Self {
         let mut root_node = Node::new();
         root_node.name = "root".to_string();
+
         Self {
             name: "Scene".to_string(),
             path,
