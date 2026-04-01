@@ -1,4 +1,4 @@
-use egui::ScrollArea;
+use egui::{CentralPanel, ScrollArea};
 use winit::{event::MouseButton, keyboard::PhysicalKey};
 
 use crate::engine::{
@@ -12,194 +12,196 @@ pub fn render_input_manager(
     world: &mut World,
     editor_storage: &mut EditorStorage,
 ) {
-    ui.horizontal(|ui| {
-        if ui.button("Save Input Manager").clicked() {
-            world.input_manager.serialize_input_manager().unwrap();
-        }
-        if ui.button("Load Input Manager").clicked() {
-            world.input_manager.deserialize_input_manager().unwrap();
-        }
-    });
-    ui.separator();
-
-    ui.collapsing("Add KeyBind", |ui| {
+    CentralPanel::default().show_inside(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut editor_storage.keybind_name);
+            if ui.button("Save Input Manager").clicked() {
+                world.input_manager.serialize_input_manager().unwrap();
+            }
+            if ui.button("Load Input Manager").clicked() {
+                world.input_manager.deserialize_input_manager().unwrap();
+            }
         });
-        ui.horizontal(|ui| {
-            ui.label("Key Code:");
-            egui::ComboBox::from_id_salt("keybind_key_code")
-                .selected_text(&editor_storage.keybind_key_code)
-                .show_ui(ui, |ui| {
-                    for key in ALL_KEY_CODES {
-                        ui.selectable_value(
-                            &mut editor_storage.keybind_key_code,
-                            key.to_string(),
-                            *key,
-                        );
+        ui.separator();
+
+        ui.collapsing("Add KeyBind", |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Name:");
+                ui.text_edit_singleline(&mut editor_storage.keybind_name);
+            });
+            ui.horizontal(|ui| {
+                ui.label("Key Code:");
+                egui::ComboBox::from_id_salt("keybind_key_code")
+                    .selected_text(&editor_storage.keybind_key_code)
+                    .show_ui(ui, |ui| {
+                        for key in ALL_KEY_CODES {
+                            ui.selectable_value(
+                                &mut editor_storage.keybind_key_code,
+                                key.to_string(),
+                                *key,
+                            );
+                        }
+                    });
+            });
+            ui.horizontal(|ui| {
+                ui.label("Action:");
+                ui.selectable_value(
+                    &mut editor_storage.keybind_action,
+                    KeyAction::Press,
+                    "Press",
+                );
+                ui.selectable_value(
+                    &mut editor_storage.keybind_action,
+                    KeyAction::Release,
+                    "Release",
+                );
+                ui.selectable_value(&mut editor_storage.keybind_action, KeyAction::Hold, "Hold");
+            });
+            ui.add_space(4.0);
+
+            let can_add = !editor_storage.keybind_name.is_empty()
+                && !editor_storage.keybind_key_code.is_empty();
+
+            ui.horizontal(|ui| {
+                ui.add_enabled_ui(can_add, |ui| {
+                    if ui.button("Add KeyBind").clicked() {
+                        if let Some(key_code) = parse_key_code(&editor_storage.keybind_key_code) {
+                            let bind = KeyBind::new(
+                                PhysicalKey::Code(key_code),
+                                editor_storage.keybind_action.clone(),
+                                editor_storage.keybind_name.clone(),
+                            );
+                            world
+                                .input_manager
+                                .keybinds
+                                .insert(editor_storage.keybind_name.clone(), bind);
+                            editor_storage.keybind_name.clear();
+                            editor_storage.keybind_key_code.clear();
+                            editor_storage.keybind_action = KeyAction::Press;
+                            editor_storage.keybind_error = None;
+                        } else {
+                            editor_storage.keybind_error = Some(format!(
+                                "Invalid key code: {}",
+                                editor_storage.keybind_key_code
+                            ));
+                        }
                     }
                 });
-        });
-        ui.horizontal(|ui| {
-            ui.label("Action:");
-            ui.selectable_value(
-                &mut editor_storage.keybind_action,
-                KeyAction::Press,
-                "Press",
-            );
-            ui.selectable_value(
-                &mut editor_storage.keybind_action,
-                KeyAction::Release,
-                "Release",
-            );
-            ui.selectable_value(&mut editor_storage.keybind_action, KeyAction::Hold, "Hold");
-        });
-        ui.add_space(4.0);
-
-        let can_add =
-            !editor_storage.keybind_name.is_empty() && !editor_storage.keybind_key_code.is_empty();
-
-        ui.horizontal(|ui| {
-            ui.add_enabled_ui(can_add, |ui| {
-                if ui.button("Add KeyBind").clicked() {
-                    if let Some(key_code) = parse_key_code(&editor_storage.keybind_key_code) {
-                        let bind = KeyBind::new(
-                            PhysicalKey::Code(key_code),
-                            editor_storage.keybind_action.clone(),
-                            editor_storage.keybind_name.clone(),
-                        );
-                        world
-                            .input_manager
-                            .keybinds
-                            .insert(editor_storage.keybind_name.clone(), bind);
-                        editor_storage.keybind_name.clear();
-                        editor_storage.keybind_key_code.clear();
-                        editor_storage.keybind_action = KeyAction::Press;
-                        editor_storage.keybind_error = None;
-                    } else {
-                        editor_storage.keybind_error = Some(format!(
-                            "Invalid key code: {}",
-                            editor_storage.keybind_key_code
-                        ));
-                    }
+                if let Some(err) = &editor_storage.keybind_error {
+                    ui.colored_label(egui::Color32::RED, err);
                 }
             });
-            if let Some(err) = &editor_storage.keybind_error {
-                ui.colored_label(egui::Color32::RED, err);
-            }
         });
-    });
 
-    ui.separator();
+        ui.separator();
 
-    ui.collapsing("Add MouseBind", |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut editor_storage.mousebind_name);
-        });
-        ui.horizontal(|ui| {
-            ui.label("Button:");
-            ui.selectable_value(
-                &mut editor_storage.mousebind_button,
-                MouseButton::Left,
-                "Left",
-            );
-            ui.selectable_value(
-                &mut editor_storage.mousebind_button,
-                MouseButton::Right,
-                "Right",
-            );
-            ui.selectable_value(
-                &mut editor_storage.mousebind_button,
-                MouseButton::Middle,
-                "Middle",
-            );
-        });
-        ui.horizontal(|ui| {
-            ui.label("Action:");
-            ui.selectable_value(
-                &mut editor_storage.mousebind_action,
-                KeyAction::Press,
-                "Press",
-            );
-            ui.selectable_value(
-                &mut editor_storage.mousebind_action,
-                KeyAction::Release,
-                "Release",
-            );
-            ui.selectable_value(
-                &mut editor_storage.mousebind_action,
-                KeyAction::Hold,
-                "Hold",
-            );
-        });
-        ui.add_space(4.0);
-
-        ui.add_enabled_ui(!editor_storage.mousebind_name.is_empty(), |ui| {
-            if ui.button("Add MouseBind").clicked() {
-                let bind = MouseBind::new(
-                    editor_storage.mousebind_button,
-                    editor_storage.mousebind_action.clone(),
-                    editor_storage.mousebind_name.clone(),
+        ui.collapsing("Add MouseBind", |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Name:");
+                ui.text_edit_singleline(&mut editor_storage.mousebind_name);
+            });
+            ui.horizontal(|ui| {
+                ui.label("Button:");
+                ui.selectable_value(
+                    &mut editor_storage.mousebind_button,
+                    MouseButton::Left,
+                    "Left",
                 );
-                world
-                    .input_manager
-                    .mouse_keybinds
-                    .insert(editor_storage.mousebind_name.clone(), bind);
-                editor_storage.mousebind_name.clear();
-                editor_storage.mousebind_action = KeyAction::Press;
-            }
+                ui.selectable_value(
+                    &mut editor_storage.mousebind_button,
+                    MouseButton::Right,
+                    "Right",
+                );
+                ui.selectable_value(
+                    &mut editor_storage.mousebind_button,
+                    MouseButton::Middle,
+                    "Middle",
+                );
+            });
+            ui.horizontal(|ui| {
+                ui.label("Action:");
+                ui.selectable_value(
+                    &mut editor_storage.mousebind_action,
+                    KeyAction::Press,
+                    "Press",
+                );
+                ui.selectable_value(
+                    &mut editor_storage.mousebind_action,
+                    KeyAction::Release,
+                    "Release",
+                );
+                ui.selectable_value(
+                    &mut editor_storage.mousebind_action,
+                    KeyAction::Hold,
+                    "Hold",
+                );
+            });
+            ui.add_space(4.0);
+
+            ui.add_enabled_ui(!editor_storage.mousebind_name.is_empty(), |ui| {
+                if ui.button("Add MouseBind").clicked() {
+                    let bind = MouseBind::new(
+                        editor_storage.mousebind_button,
+                        editor_storage.mousebind_action.clone(),
+                        editor_storage.mousebind_name.clone(),
+                    );
+                    world
+                        .input_manager
+                        .mouse_keybinds
+                        .insert(editor_storage.mousebind_name.clone(), bind);
+                    editor_storage.mousebind_name.clear();
+                    editor_storage.mousebind_action = KeyAction::Press;
+                }
+            });
         });
+
+        ui.separator();
+
+        ui.collapsing(
+            format!("KeyBinds ({})", world.input_manager.keybinds.len()),
+            |ui| {
+                let mut to_remove: Option<String> = None;
+                ScrollArea::vertical()
+                    .id_salt("keybinds_scroll")
+                    .max_height(150.0)
+                    .show(ui, |ui| {
+                        for (name, bind) in &world.input_manager.keybinds {
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{}: {:?} — {:?}", name, bind.key, bind.action));
+                                if ui.small_button("❌").clicked() {
+                                    to_remove = Some(name.clone());
+                                }
+                            });
+                        }
+                    });
+                if let Some(name) = to_remove {
+                    world.input_manager.keybinds.remove(&name);
+                }
+            },
+        );
+
+        ui.collapsing(
+            format!("MouseBinds ({})", world.input_manager.mouse_keybinds.len()),
+            |ui| {
+                let mut to_remove: Option<String> = None;
+                ScrollArea::vertical()
+                    .id_salt("mousebinds_scroll")
+                    .max_height(150.0)
+                    .show(ui, |ui| {
+                        for (name, bind) in &world.input_manager.mouse_keybinds {
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{}: {:?} — {:?}", name, bind.key, bind.action));
+                                if ui.small_button("❌").clicked() {
+                                    to_remove = Some(name.clone());
+                                }
+                            });
+                        }
+                    });
+                if let Some(name) = to_remove {
+                    world.input_manager.mouse_keybinds.remove(&name);
+                }
+            },
+        );
     });
-
-    ui.separator();
-
-    ui.collapsing(
-        format!("KeyBinds ({})", world.input_manager.keybinds.len()),
-        |ui| {
-            let mut to_remove: Option<String> = None;
-            ScrollArea::vertical()
-                .id_salt("keybinds_scroll")
-                .max_height(150.0)
-                .show(ui, |ui| {
-                    for (name, bind) in &world.input_manager.keybinds {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("{}: {:?} — {:?}", name, bind.key, bind.action));
-                            if ui.small_button("❌").clicked() {
-                                to_remove = Some(name.clone());
-                            }
-                        });
-                    }
-                });
-            if let Some(name) = to_remove {
-                world.input_manager.keybinds.remove(&name);
-            }
-        },
-    );
-
-    ui.collapsing(
-        format!("MouseBinds ({})", world.input_manager.mouse_keybinds.len()),
-        |ui| {
-            let mut to_remove: Option<String> = None;
-            ScrollArea::vertical()
-                .id_salt("mousebinds_scroll")
-                .max_height(150.0)
-                .show(ui, |ui| {
-                    for (name, bind) in &world.input_manager.mouse_keybinds {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("{}: {:?} — {:?}", name, bind.key, bind.action));
-                            if ui.small_button("❌").clicked() {
-                                to_remove = Some(name.clone());
-                            }
-                        });
-                    }
-                });
-            if let Some(name) = to_remove {
-                world.input_manager.mouse_keybinds.remove(&name);
-            }
-        },
-    );
 }
 
 pub fn parse_key_code(s: &str) -> Option<winit::keyboard::KeyCode> {
