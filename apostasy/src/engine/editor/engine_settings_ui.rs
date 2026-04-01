@@ -1,4 +1,4 @@
-use egui::{Button, Context, Window};
+use egui::{Button, CentralPanel, Context, Window};
 
 use crate::engine::{
     editor::{
@@ -55,17 +55,19 @@ pub fn render_engine_settings_ui(
                     }
                 });
 
-            match editor_storage.open_engine_settings_tab {
-                EngineSettingsTab::Inputs => {
-                    render_input_manager(ui, world, editor_storage);
+            CentralPanel::default().show_inside(ui, |ui| {
+                match editor_storage.open_engine_settings_tab {
+                    EngineSettingsTab::Inputs => {
+                        render_input_manager(ui, world, editor_storage);
+                    }
+                    EngineSettingsTab::Scenes => {
+                        render_scene_manager(ui, world, editor_storage);
+                    }
+                    EngineSettingsTab::Renderer => {
+                        render_renderer_settings(ui, editor_storage);
+                    }
                 }
-                EngineSettingsTab::Scenes => {
-                    render_scene_manager(ui, world, editor_storage);
-                }
-                EngineSettingsTab::Renderer => {
-                    render_renderer_settings(ui, editor_storage);
-                }
-            }
+            });
 
             ui.separator();
         });
