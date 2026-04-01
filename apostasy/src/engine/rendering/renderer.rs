@@ -12,6 +12,7 @@ use winit::{event::WindowEvent, window::Window};
 
 use crate::engine::assets::handle::Handle;
 use crate::engine::assets::server::AssetServer;
+use crate::engine::nodes::components::terrain::{Terrain, TerrainChunkGpu, TerrainVertex};
 use crate::engine::nodes::world::World;
 use crate::engine::rendering::models::gltf_loader::GltfLoader;
 use crate::engine::rendering::models::material::MaterialAsset;
@@ -339,16 +340,14 @@ impl Renderer {
                     vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
                 )?;
 
-                unsafe {
-                    let data_ptr = context.device.map_memory(
-                        staging_memory,
-                        0,
-                        size,
-                        vk::MemoryMapFlags::empty(),
-                    )? as *mut u8;
-                    std::ptr::copy_nonoverlapping(data.as_ptr(), data_ptr, data.len());
-                    context.device.unmap_memory(staging_memory);
-                }
+                let data_ptr = context.device.map_memory(
+                    staging_memory,
+                    0,
+                    size,
+                    vk::MemoryMapFlags::empty(),
+                )? as *mut u8;
+                std::ptr::copy_nonoverlapping(data.as_ptr(), data_ptr, data.len());
+                context.device.unmap_memory(staging_memory);
 
                 let (buffer, buffer_memory) = context.create_buffer(
                     size,
@@ -358,21 +357,16 @@ impl Renderer {
 
                 let queue = context.queues[context.queue_families.transfer as usize];
                 let cmd = context.begin_single_time_commands(transfer_command_pool);
-                unsafe {
-                    context.device.cmd_copy_buffer(
-                        cmd,
-                        staging_buffer,
-                        buffer,
-                        &[vk::BufferCopy::default().size(size)],
-                    );
-                }
+                context.device.cmd_copy_buffer(
+                    cmd,
+                    staging_buffer,
+                    buffer,
+                    &[vk::BufferCopy::default().size(size)],
+                );
                 context.end_single_time_commands(cmd, queue, transfer_command_pool);
 
-                unsafe {
-                    context.device.destroy_buffer(staging_buffer, None);
-                    context.device.free_memory(staging_memory, None);
-                }
-
+                context.device.destroy_buffer(staging_buffer, None);
+                context.device.free_memory(staging_memory, None);
                 Ok((buffer, buffer_memory))
             };
 
@@ -456,25 +450,16 @@ impl Renderer {
                 vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
             )?;
 
-            let default_descriptor_set = context.device.allocate_descriptor_sets(
-                &vk::DescriptorSetAllocateInfo::default()
-                    .descriptor_pool(descriptor_pool)
-                    .set_layouts(&[descriptor_set_layout]),
-            )?[0];
+            let white_texture = context.load_texture(
+                "res/.engine/white.png",
+                transfer_command_pool,
+                descriptor_pool,
+                descriptor_set_layout,
+                default_ubo,
+                pipeline_settings,
+            )?;
 
-            let ubo_info = vk::DescriptorBufferInfo::default()
-                .buffer(default_ubo)
-                .offset(0)
-                .range(256);
-
-            context.device.update_descriptor_sets(
-                &[vk::WriteDescriptorSet::default()
-                    .dst_set(default_descriptor_set)
-                    .dst_binding(0)
-                    .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                    .buffer_info(&[ubo_info])],
-                &[],
-            );
+            let default_descriptor_set = white_texture.descriptor_set;
 
             let mut gpu_timestamps = GpuTimestampPool::new(&context.device, context.queues[0]);
             let phys_props = context
@@ -570,6 +555,7 @@ impl Renderer {
             })
         }
     }
+
     pub fn render(
         &mut self,
         world: &mut World,
@@ -646,7 +632,6 @@ impl Renderer {
                 .begin_frame(&self.context.device, frame.command_buffer);
 
             // image layout states
-
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
@@ -700,6 +685,7 @@ impl Renderer {
             let pipeline_layout = self.pipeline.layout;
             let swapchain_extent = self.swapchain.extent;
 
+            // find the camera node
             let mut camera_node: Option<&Node> = None;
             if !is_editor {
                 for node in world.get_all_world_nodes() {
@@ -841,6 +827,7 @@ impl Renderer {
                     &[],
                 );
 
+                // find the first light in the scene
                 let mut light: Option<Light> = None;
                 let mut light_transform: Option<Transform> = None;
                 for node in world.get_all_nodes() {
@@ -849,6 +836,18 @@ impl Renderer {
                         light_transform = node.get_component::<Transform>().cloned();
                         break;
                     }
+                }
+
+                // write light into push constants once, shared by models and terrain
+                if let (Some(l), Some(lt)) = (&light, &light_transform) {
+                    let light_pos = [
+                        lt.global_position.x,
+                        lt.global_position.y,
+                        lt.global_position.z,
+                        l.strength,
+                    ];
+                    let light_pos_bytes: [u8; 16] = transmute(light_pos);
+                    push_constants[224..240].copy_from_slice(&light_pos_bytes);
                 }
 
                 for node in world.get_all_nodes_mut() {
@@ -964,7 +963,6 @@ impl Renderer {
                                     };
 
                                     let albedo_h = resolve_texture(&albedo_name, &asset_server);
-
                                     let metallic_h = resolve_texture(&metallic_name, &asset_server);
                                     let roughness_h =
                                         resolve_texture(&roughness_name, &asset_server);
@@ -1063,6 +1061,201 @@ impl Renderer {
                         }
                     }
                 }
+
+                // terrain: upload dirty chunks then draw
+                let terrain_node_ids: Vec<u64> = world
+                    .get_all_world_nodes()
+                    .iter()
+                    .filter(|n| n.has_component::<Terrain>())
+                    .map(|n| n.id)
+                    .collect();
+
+                for terrain_node_id in terrain_node_ids {
+                    let node = world.get_node_mut(terrain_node_id);
+                    let node_transform = node.get_component::<Transform>().cloned();
+                    let terrain = node.get_component_mut::<Terrain>().unwrap();
+
+                    // keep gpu_chunks in sync with chunks
+                    if terrain.gpu_chunks.len() < terrain.chunks.len() {
+                        terrain
+                            .gpu_chunks
+                            .resize_with(terrain.chunks.len(), TerrainChunkGpu::default);
+                    }
+
+                    for (i, chunk) in terrain.chunks.iter_mut().enumerate() {
+                        if !chunk.gpu_dirty {
+                            continue;
+                        }
+                        let Some(mesh) = &chunk.mesh_handle else {
+                            continue;
+                        };
+                        if mesh.vertices.is_empty() {
+                            continue;
+                        }
+
+                        let gpu = &mut terrain.gpu_chunks[i];
+
+                        // destroy old buffers before re-uploading
+                        if gpu.vertex_buffer != vk::Buffer::null() {
+                            self.context.device.destroy_buffer(gpu.vertex_buffer, None);
+                            self.context
+                                .device
+                                .free_memory(gpu.vertex_buffer_memory, None);
+                            self.context.device.destroy_buffer(gpu.index_buffer, None);
+                            self.context
+                                .device
+                                .free_memory(gpu.index_buffer_memory, None);
+                            *gpu = TerrainChunkGpu::default();
+                        }
+                        let verts_bytes = std::slice::from_raw_parts(
+                            mesh.vertices.as_ptr() as *const u8,
+                            mesh.vertices.len() * std::mem::size_of::<TerrainVertex>(),
+                        );
+                        let idx_bytes = std::slice::from_raw_parts(
+                            mesh.indices.as_ptr() as *const u8,
+                            mesh.indices.len() * std::mem::size_of::<u32>(),
+                        );
+
+                        let upload =
+                            |data: &[u8],
+                             usage: vk::BufferUsageFlags|
+                             -> Result<(vk::Buffer, vk::DeviceMemory)> {
+                                let size = data.len() as vk::DeviceSize;
+                                let (staging, staging_mem) = self.context.create_buffer(
+                                    size,
+                                    vk::BufferUsageFlags::TRANSFER_SRC,
+                                    vk::MemoryPropertyFlags::HOST_VISIBLE
+                                        | vk::MemoryPropertyFlags::HOST_COHERENT,
+                                )?;
+                                let ptr = self.context.device.map_memory(
+                                    staging_mem,
+                                    0,
+                                    size,
+                                    vk::MemoryMapFlags::empty(),
+                                )? as *mut u8;
+                                std::ptr::copy_nonoverlapping(data.as_ptr(), ptr, data.len());
+                                self.context.device.unmap_memory(staging_mem);
+
+                                let (buffer, buffer_mem) = self.context.create_buffer(
+                                    size,
+                                    usage | vk::BufferUsageFlags::TRANSFER_DST,
+                                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                                )?;
+                                let queue = self.context.queues
+                                    [self.context.queue_families.transfer as usize];
+                                let cmd = self
+                                    .context
+                                    .begin_single_time_commands(self.transfer_command_pool);
+                                self.context.device.cmd_copy_buffer(
+                                    cmd,
+                                    staging,
+                                    buffer,
+                                    &[vk::BufferCopy::default().size(size)],
+                                );
+                                self.context.end_single_time_commands(
+                                    cmd,
+                                    queue,
+                                    self.transfer_command_pool,
+                                );
+                                self.context.device.destroy_buffer(staging, None);
+                                self.context.device.free_memory(staging_mem, None);
+                                Ok((buffer, buffer_mem))
+                            };
+
+                        if let Ok((vb, vbm)) =
+                            upload(verts_bytes, vk::BufferUsageFlags::VERTEX_BUFFER)
+                        {
+                            gpu.vertex_buffer = vb;
+                            gpu.vertex_buffer_memory = vbm;
+                        }
+                        if let Ok((ib, ibm)) = upload(idx_bytes, vk::BufferUsageFlags::INDEX_BUFFER)
+                        {
+                            gpu.index_buffer = ib;
+                            gpu.index_buffer_memory = ibm;
+                        }
+                        gpu.index_count = mesh.indices.len() as u32;
+                        chunk.gpu_dirty = false;
+                    }
+
+                    // pack transform into push constants
+                    let offset = node_transform
+                        .as_ref()
+                        .map(|t| {
+                            [
+                                t.global_position.x,
+                                t.global_position.y,
+                                t.global_position.z,
+                                0.0f32,
+                            ]
+                        })
+                        .unwrap_or([0.0; 4]);
+                    let rotation = node_transform
+                        .as_ref()
+                        .map(|t| {
+                            [
+                                t.global_rotation.v.x,
+                                t.global_rotation.v.y,
+                                t.global_rotation.v.z,
+                                t.global_rotation.s,
+                            ]
+                        })
+                        .unwrap_or([0.0, 0.0, 0.0, 1.0]);
+                    let scale = node_transform
+                        .as_ref()
+                        .map(|t| [t.global_scale.x, t.global_scale.y, t.global_scale.z, 0.0f32])
+                        .unwrap_or([1.0, 1.0, 1.0, 0.0]);
+
+                    let offset_bytes: [u8; 16] = transmute(offset);
+                    let rotation_bytes: [u8; 16] = transmute(rotation);
+                    let scale_bytes: [u8; 16] = transmute(scale);
+                    push_constants[128..144].copy_from_slice(&offset_bytes);
+                    push_constants[144..160].copy_from_slice(&rotation_bytes);
+                    push_constants[160..176].copy_from_slice(&scale_bytes);
+
+                    // flat base colour until terrain texturing is added
+                    let base_color: [f32; 4] = [0.6, 0.55, 0.45, 1.0];
+                    let base_bytes: [u8; 16] = transmute(base_color);
+                    let metallic_bytes: [u8; 4] = f32::to_ne_bytes(0.0f32);
+                    let roughness_bytes: [u8; 4] = f32::to_ne_bytes(0.9f32);
+                    push_constants[176..192].copy_from_slice(&base_bytes);
+                    push_constants[192..196].copy_from_slice(&metallic_bytes);
+                    push_constants[196..200].copy_from_slice(&roughness_bytes);
+
+                    device.cmd_push_constants(
+                        command_buffer,
+                        pipeline_layout,
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        &push_constants,
+                    );
+                    device.cmd_bind_descriptor_sets(
+                        command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        pipeline_layout,
+                        0,
+                        &[self.descriptor.descriptor_set],
+                        &[],
+                    );
+
+                    for gpu in terrain.gpu_chunks.iter() {
+                        if gpu.vertex_buffer == vk::Buffer::null() || gpu.index_count == 0 {
+                            continue;
+                        }
+                        device.cmd_bind_vertex_buffers(
+                            command_buffer,
+                            0,
+                            &[gpu.vertex_buffer],
+                            &[0],
+                        );
+                        device.cmd_bind_index_buffer(
+                            command_buffer,
+                            gpu.index_buffer,
+                            0,
+                            vk::IndexType::UINT32,
+                        );
+                        device.cmd_draw_indexed(command_buffer, gpu.index_count, 1, 0, 0, 0);
+                    }
+                }
             }
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
@@ -1135,7 +1328,7 @@ impl Renderer {
                 vk::ImageAspectFlags::COLOR,
             );
 
-            // ── CPU: submit & present ─────────────────────────────────────────
+            //  CPU: submit & present
             self.profiler_info.cpu_profiler.begin("Submit & Present");
             self.context
                 .device
@@ -1191,7 +1384,6 @@ impl Renderer {
             Ok(())
         }
     }
-
     pub fn rebuild_pipeline(
         &mut self,
         asset_server: &mut Arc<RwLock<AssetServer>>,

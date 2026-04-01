@@ -5,5 +5,6 @@ pub mod physics;
 pub mod player;
 pub mod raycast;
 pub mod skybox;
+pub mod terrain;
 pub mod transform;
 pub mod velocity;

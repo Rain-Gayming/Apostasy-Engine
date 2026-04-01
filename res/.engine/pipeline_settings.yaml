@@ -5,7 +5,7 @@ rasterization_settings:
   polygon_mode: FILL
   cull_mode: BACK
   front_face: COUNTER_CLOCKWISE
-  line_width: 5.5
+  line_width: 1.0
 image_settings:
   filter_mode: NEAREST
   address_mode: REPEAT

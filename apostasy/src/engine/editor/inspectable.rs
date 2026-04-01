@@ -1,4 +1,4 @@
-use cgmath::{Quaternion, Vector3};
+use cgmath::{Quaternion, Vector2, Vector3};
 use egui::{DragValue, Ui};
 
 use crate::engine::editor::EditorStorage;
@@ -56,6 +56,17 @@ impl InspectValue for u32 {
         ui.add(egui::DragValue::new(self));
     }
 }
+impl InspectValue for u8 {
+    fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
+        ui.add(egui::DragValue::new(self));
+    }
+}
+
+impl InspectValue for u64 {
+    fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
+        ui.add(egui::DragValue::new(self));
+    }
+}
 
 impl InspectValue for String {
     fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
@@ -66,6 +77,54 @@ impl InspectValue for String {
 impl InspectValue for bool {
     fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
         ui.checkbox(self, "");
+    }
+}
+impl InspectValue for [f32; 3] {
+    fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
+        let mut x = if self[0].is_finite() {
+            self[0] as f64
+        } else {
+            0.0
+        };
+        let mut y = if self[1].is_finite() {
+            self[1] as f64
+        } else {
+            0.0
+        };
+        let mut z = if self[2].is_finite() {
+            self[2] as f64
+        } else {
+            0.0
+        };
+
+        ui.add(DragValue::new(&mut x).speed(0.01));
+        ui.add(DragValue::new(&mut y).speed(0.01));
+        ui.add(DragValue::new(&mut z).speed(0.01));
+
+        self[0] = x as f32;
+        self[1] = y as f32;
+        self[2] = z as f32;
+    }
+}
+
+impl InspectValue for [f32; 2] {
+    fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
+        let mut x = if self[0].is_finite() {
+            self[0] as f64
+        } else {
+            0.0
+        };
+        let mut y = if self[1].is_finite() {
+            self[1] as f64
+        } else {
+            0.0
+        };
+
+        ui.add(DragValue::new(&mut x).speed(0.01));
+        ui.add(DragValue::new(&mut y).speed(0.01));
+
+        self[0] = x as f32;
+        self[1] = y as f32;
     }
 }
 
@@ -221,6 +280,20 @@ impl InspectValue for Vector3<i64> {
         ui.add(DragValue::new(&mut self.x).speed(1));
         ui.add(DragValue::new(&mut self.y).speed(1));
         ui.add(DragValue::new(&mut self.z).speed(1));
+    }
+}
+
+impl InspectValue for Vector2<i32> {
+    fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
+        ui.add(DragValue::new(&mut self.x).speed(1));
+        ui.add(DragValue::new(&mut self.y).speed(1));
+    }
+}
+
+impl InspectValue for Vector2<i64> {
+    fn inspect_value(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) {
+        ui.add(DragValue::new(&mut self.x).speed(1));
+        ui.add(DragValue::new(&mut self.y).speed(1));
     }
 }
 

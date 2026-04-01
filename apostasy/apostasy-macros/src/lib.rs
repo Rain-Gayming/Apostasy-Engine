@@ -339,7 +339,7 @@ pub fn console_command(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     TokenStream::from(expanded)
 }
-#[proc_macro_derive(Inspectable)]
+#[proc_macro_derive(Inspectable, attributes(inspect))]
 pub fn inspectable_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
@@ -358,6 +358,7 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
 
     let field_inspections: Vec<_> = fields
         .iter()
+        .filter(|f| !has_inspect_skip(f)) // ← filter skipped fields
         .map(|f| {
             let field_name = f.ident.as_ref().unwrap();
             let field_label = field_name.to_string();
@@ -365,7 +366,9 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
             quote! {
                 ui.horizontal(|ui| {
                     ui.label(#field_label);
-                    apostasy::engine::editor::inspectable::InspectValue::inspect_value(&mut self.#field_name, ui, editor_storage);
+                    apostasy::engine::editor::inspectable::InspectValue::inspect_value(
+                        &mut self.#field_name, ui, editor_storage
+                    );
                 });
             }
         })
@@ -397,6 +400,19 @@ pub fn inspectable_derive(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Returns true if the field has `#[inspect(skip)]`
+fn has_inspect_skip(field: &syn::Field) -> bool {
+    field.attrs.iter().any(|attr| {
+        if !attr.path().is_ident("inspect") {
+            return false;
+        }
+        // parse the contents as `skip`
+        attr.parse_args::<syn::Ident>()
+            .map(|ident| ident == "skip")
+            .unwrap_or(false)
+    })
 }
 #[proc_macro_derive(InspectValue)]
 pub fn inspect_value_derive(input: TokenStream) -> TokenStream {
