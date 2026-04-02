@@ -1,6 +1,6 @@
 # Apostasy Engine
 
-Apostasy is an experimental Rust game engine prototype. It focuses on scene-driven runtime behavior, Vulkan rendering, and simple editor-style tooling.
+Apostasy is an experimental Rust game engine prototype built specifically for the game *Apostasy*, a Morrowind-inspired RPG with 1990s era design goals. The engine is designed to support the kind of open-world RPG systems and scene-driven gameplay needed by that game, while also providing basic editor-style tooling.
 
 ## What the engine does
 
