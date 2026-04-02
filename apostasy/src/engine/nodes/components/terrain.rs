@@ -628,7 +628,7 @@ impl Terrain {
 }
 
 impl InspectableTrait for Terrain {
-    fn inspect(&mut self, ui: &mut Ui, editor_storage: &mut EditorStorage) -> bool {
+    fn inspect(&mut self, ui: &mut Ui, _editor_storage: &mut EditorStorage) -> bool {
         let mut remove = false;
 
         ui.horizontal(|ui| {
@@ -647,7 +647,7 @@ impl InspectableTrait for Terrain {
                     ui.label("Subdivisions:");
                     let mut subdivisions = self.subdivisions as u32;
                     if ui
-                        .add(egui::DragValue::new(&mut subdivisions).clamp_range(1..=64))
+                        .add(egui::DragValue::new(&mut subdivisions).range(1..=64))
                         .changed()
                     {
                         self.subdivisions = subdivisions as u8;
@@ -669,7 +669,7 @@ impl InspectableTrait for Terrain {
                     ui.label("LOD levels:");
                     let mut lod_levels = self.lod_levels as u32;
                     if ui
-                        .add(egui::DragValue::new(&mut lod_levels).clamp_range(1..=8))
+                        .add(egui::DragValue::new(&mut lod_levels).range(1..=8))
                         .changed()
                     {
                         self.lod_levels = lod_levels as u8;

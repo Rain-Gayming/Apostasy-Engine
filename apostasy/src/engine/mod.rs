@@ -5,15 +5,13 @@ use crate::{
         nodes::{
             components::{
                 camera::get_perspective_projection,
-                collider::CollisionEvents,
                 raycast::{pick, ray_from_mouse},
-                skybox::Skybox,
             },
             scene_serialization::SceneLoader,
             world::World,
         },
         rendering::{
-            models::{material::MaterialLoader, model::ModelRenderer, shader::ShaderLoader},
+            models::{material::MaterialLoader, shader::ShaderLoader},
             pipeline_settings::PipelineSettings,
         },
         windowing::cursor_manager::CursorManager,
@@ -44,7 +42,6 @@ use winit::{
 use crate::engine::{
     editor::{EditorStorage, terrain_editor::{TerrainEditMode, TerrainEditTool}},
     nodes::{
-        Node,
         components::camera::Camera,
         components::terrain::Terrain,
         components::transform::Transform,

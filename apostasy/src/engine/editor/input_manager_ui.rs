@@ -1,4 +1,4 @@
-use egui::{CentralPanel, ScrollArea};
+use egui::ScrollArea;
 use winit::{event::MouseButton, keyboard::PhysicalKey};
 
 use crate::engine::{

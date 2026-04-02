@@ -246,7 +246,7 @@ impl AssetServer {
             let result = {
                 let mut inner = self.inner.write().unwrap();
                 match outcome {
-                    LoadOutcome::Success { asset, commit, .. } => {
+                    LoadOutcome::Success { asset, commit: _, .. } => {
                         // commit() inserts under a *new* id — we want the original id.
                         // Downcast manually and replace in-place.
                         //
@@ -287,7 +287,7 @@ impl AssetServer {
                         }
                     }
                     LoadOutcome::Failure { message, .. } => {
-                        let mut inner_storage = inner
+                        let inner_storage = inner
                             .storage
                             .get_mut(&TypeId::of::<T>())
                             .and_then(|s| s.as_any_mut().downcast_mut::<TypedStorage<T>>());

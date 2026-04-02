@@ -394,18 +394,14 @@ impl Renderer {
             ];
             let skybox_indices: [u32; 6] = [0, 1, 2, 2, 3, 0];
 
-            let skybox_vertex_data = unsafe {
-                std::slice::from_raw_parts(
-                    skybox_vertices.as_ptr() as *const u8,
-                    skybox_vertices.len() * std::mem::size_of::<Vertex>(),
-                )
-            };
-            let skybox_index_data = unsafe {
-                std::slice::from_raw_parts(
-                    skybox_indices.as_ptr() as *const u8,
-                    skybox_indices.len() * std::mem::size_of::<u32>(),
-                )
-            };
+            let skybox_vertex_data = std::slice::from_raw_parts(
+                skybox_vertices.as_ptr() as *const u8,
+                skybox_vertices.len() * std::mem::size_of::<Vertex>(),
+            );
+            let skybox_index_data = std::slice::from_raw_parts(
+                skybox_indices.as_ptr() as *const u8,
+                skybox_indices.len() * std::mem::size_of::<u32>(),
+            );
 
             let (skybox_vertex_buffer, skybox_vertex_buffer_memory) =
                 upload_buffer(skybox_vertex_data, vk::BufferUsageFlags::VERTEX_BUFFER)?;

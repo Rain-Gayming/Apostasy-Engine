@@ -1,4 +1,4 @@
-use egui::{Button, CentralPanel, Context, Window};
+use egui::{CentralPanel, Context, Window};
 
 use crate::engine::{
     editor::{

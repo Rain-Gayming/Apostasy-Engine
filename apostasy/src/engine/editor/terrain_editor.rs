@@ -44,7 +44,7 @@ impl Default for TerrainEditorSettings {
 
 pub fn render_terrain_edtor(
     context: &mut Context,
-    world: &mut World,
+    _world: &mut World,
     editor_storage: &mut EditorStorage,
 ) {
     if !editor_storage.is_terrain_editor_open {

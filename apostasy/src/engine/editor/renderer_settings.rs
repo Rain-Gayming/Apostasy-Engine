@@ -1,7 +1,7 @@
 use std::fs::write;
 
 use ash::vk;
-use egui::{CentralPanel, Ui};
+use egui::Ui;
 
 use crate::engine::editor::EditorStorage;
 

@@ -8,7 +8,7 @@ use crate::{
             file_manager::{FileNode, render_file_tree_ui},
             hierarchy::render_hierarchy,
             inspector::render_inspector,
-            terrain_editor::{TerrainEditMode, TerrainEditorSettings, render_terrain_edtor},
+            terrain_editor::{TerrainEditorSettings, render_terrain_edtor},
         },
         nodes::{Node, components::transform::Transform, scene::SceneInstance},
         rendering::{
@@ -237,9 +237,9 @@ impl EditorStorage {
             match read_to_string("res/.engine/pipeline_settings.yaml") {
                 Ok(contents) => match serde_yaml::from_str::<PipelineSettings>(&contents) {
                     Ok(pipeline_settings) => pipeline_settings,
-                    Err(_) => PipelineSettings::default(),
+                    Err(_) => pipeline_settings,
                 },
-                Err(_) => PipelineSettings::default(),
+                Err(_) => pipeline_settings,
             };
 
         Self {
