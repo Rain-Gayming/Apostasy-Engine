@@ -1,8 +1,7 @@
 use ash::vk;
 use cgmath::{InnerSpace, Vector2};
-use noise::{NoiseFn, Perlin};
 
-use crate::engine::editor::inspectable::Inspectable;
+use crate::engine::editor::inspectable::Inspectable as InspectableTrait;
 use crate::engine::nodes::components::camera::Camera;
 use crate::engine::nodes::components::transform::Transform;
 use crate::engine::nodes::world::World;
@@ -13,7 +12,6 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Component, Clone, Inspectable, InspectValue, SerializableComponent, Serialize, Deserialize,
 )]
-
 pub struct Terrain {
     /// How many sub divisions per chunk
     pub subdivisions: u8,
@@ -21,20 +19,14 @@ pub struct Terrain {
     pub world_scale: f32,
     pub lod_levels: u8,
 
-    #[serde(skip)]
     #[inspect(skip)]
+    #[serde(default)]
     pub chunks: Vec<TerrainChunk>,
-    #[serde(skip)]
+    #[serde(skip, default)]
     pub is_dirty: bool,
 
-    /// Terrain Heightmap Settings
-    ///
-    pub noise_seed: u32,
-    pub noise_frequency: f32,
-    pub height_scale: f32,
-
-    #[serde(skip)]
     #[inspect(skip)]
+    #[serde(skip, default)]
     pub gpu_chunks: Vec<TerrainChunkGpu>,
 }
 
@@ -47,11 +39,34 @@ impl Default for Terrain {
             chunks: Vec::new(),
             is_dirty: false,
 
-            noise_seed: 0,
-            noise_frequency: 1.0,
-            height_scale: 1.0,
-
             gpu_chunks: Vec::new(),
+        }
+    }
+}
+
+impl Terrain {
+    pub fn apply_brush(&mut self, chunk_index: usize, x: u32, z: u32, radius: u32, delta: f32) {
+        if let Some(chunk) = self.chunks.get_mut(chunk_index) {
+            let subdivisions = self.subdivisions.max(1) as i32;
+            let center_x = x as i32;
+            let center_z = z as i32;
+            let radius = radius as i32;
+
+            for dz in -radius..=radius {
+                for dx in -radius..=radius {
+                    let nx = center_x + dx;
+                    let nz = center_z + dz;
+                    if nx < 0 || nz < 0 || nx >= subdivisions || nz >= subdivisions {
+                        continue;
+                    }
+                    let idx = (nz as usize) * (subdivisions as usize) + nx as usize;
+                    if let Some(value) = chunk.heightmap.get_mut(idx) {
+                        *value += delta;
+                    }
+                }
+            }
+            chunk.mesh_handle = None;
+            chunk.gpu_dirty = true;
         }
     }
 }
@@ -60,10 +75,18 @@ impl Default for Terrain {
 pub struct TerrainChunk {
     pub origin: Vector2<i32>,
     pub lod: u8,
+    #[serde(skip, default)]
     #[inspect(skip)]
     pub mesh_handle: Option<TerrainMesh>,
+    #[serde(default)]
     pub heightmap: Vec<f32>,
+    #[serde(skip, default = "default_true")]
+    #[inspect(skip)]
     pub gpu_dirty: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[update]
@@ -86,6 +109,10 @@ pub fn terrain_update_system(world: &mut World) {
         if let Some(_) = node.get_component::<Transform>() {
             let (terrain, transform) = node.get_components_mut::<(&mut Terrain, &mut Transform)>();
 
+            if terrain.chunks.is_empty() {
+                terrain.is_dirty = true;
+            }
+
             if terrain.is_dirty {
                 regenerate_chunks(terrain);
                 log!("Regenerating terrain");
@@ -96,8 +123,14 @@ pub fn terrain_update_system(world: &mut World) {
 
             let subdivisions = terrain.subdivisions;
             let world_scale = terrain.world_scale;
+            let required_heightmap_len = (subdivisions.max(1) as usize).pow(2);
 
             for chunk in terrain.chunks.iter_mut() {
+                if chunk.heightmap.len() != required_heightmap_len {
+                    chunk.heightmap.resize(required_heightmap_len, 0.0);
+                    chunk.mesh_handle = None;
+                    chunk.gpu_dirty = true;
+                }
                 if chunk.mesh_handle.is_none() {
                     chunk.mesh_handle = Some(build_terrain_mesh(subdivisions, world_scale, chunk));
                 }
@@ -109,45 +142,19 @@ pub fn terrain_update_system(world: &mut World) {
 fn regenerate_chunks(terrain: &mut Terrain) {
     terrain.chunks.clear();
     let count = 4i32;
+    let subdivisions = terrain.subdivisions.max(1) as usize;
+    let heightmap = vec![0.0; subdivisions * subdivisions];
     for cz in 0..count {
         for cx in 0..count {
-            let heightmap = generate_heightmap(
-                Vector2::new(cx, cz),
-                terrain.subdivisions,
-                terrain.noise_seed,
-                terrain.noise_frequency,
-                terrain.height_scale,
-            );
             terrain.chunks.push(TerrainChunk {
                 origin: Vector2::new(cx, cz),
                 lod: 0,
                 mesh_handle: None,
-                heightmap,
+                heightmap: heightmap.clone(),
                 gpu_dirty: true,
             });
         }
     }
-}
-
-fn generate_heightmap(
-    chunk: Vector2<i32>,
-    size: u8,
-    seed: u32,
-    frequency: f32,
-    height_scale: f32,
-) -> Vec<f32> {
-    let perlin = Perlin::new(seed as u32);
-
-    let mut heights = Vec::with_capacity((size as u64 * size as u64) as usize);
-    for z in 0..size {
-        for x in 0..size {
-            let wx = (chunk.x * size as i32 + x as i32) as f64 * frequency as f64;
-            let wz = (chunk.y * size as i32 + z as i32) as f64 * frequency as f64;
-            let h = perlin.get([wx, wz]) as f32 * height_scale;
-            heights.push(h);
-        }
-    }
-    heights
 }
 
 fn update_lod(terrain: &mut Terrain, transform: &Transform, camera_pos: cgmath::Vector3<f32>) {

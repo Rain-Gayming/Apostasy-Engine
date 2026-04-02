@@ -475,8 +475,6 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
                 if let Some(node_hit) = node_hit {
                     editor.selected_node = Some(node_hit.id);
                 }
-            } else {
-                editor.selected_node = None;
             }
         }
     }

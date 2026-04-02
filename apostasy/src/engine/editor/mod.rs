@@ -8,6 +8,7 @@ use crate::{
             file_manager::{FileNode, render_file_tree_ui},
             hierarchy::render_hierarchy,
             inspector::render_inspector,
+            terrain_editor::{TerrainEditMode, TerrainEditorSettings, render_terrain_edtor},
         },
         nodes::{Node, components::transform::Transform, scene::SceneInstance},
         rendering::{
@@ -43,6 +44,7 @@ pub mod inspector;
 pub mod renderer_settings;
 pub mod scene_manager_ui;
 pub mod style;
+pub mod terrain_editor;
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum EditorTab {
@@ -125,6 +127,9 @@ pub struct EditorStorage {
 
     pub is_engine_settings_open: bool,
     pub open_engine_settings_tab: EngineSettingsTab,
+
+    pub is_terrain_editor_open: bool,
+    pub terrain_editor_settings: TerrainEditorSettings,
 
     pub should_update_renderer: bool,
     pub pipeline_settings: PipelineSettings,
@@ -247,6 +252,9 @@ impl EditorStorage {
             is_engine_settings_open: false,
             open_engine_settings_tab: EngineSettingsTab::Inputs,
 
+            is_terrain_editor_open: false,
+            terrain_editor_settings: TerrainEditorSettings::default(),
+
             should_update_renderer: true,
             pipeline_settings,
         }
@@ -326,7 +334,9 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
     if !editor_storage.is_editor_open {
         return;
     }
+
     render_engine_settings_ui(context, world, editor_storage);
+    render_terrain_edtor(context, world, editor_storage);
 
     let mut dock_state = std::mem::replace(&mut editor_storage.dock_state, default_dock_state());
 
@@ -499,6 +509,15 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                         if ui.button("Engine Settings").clicked() {
                             editor_storage.is_engine_settings_open =
                                 !editor_storage.is_engine_settings_open;
+                        }
+                    });
+                let response = ui.button("Tools");
+                Popup::menu(&response)
+                    .close_behavior(PopupCloseBehavior::CloseOnClick)
+                    .show(|ui| {
+                        if ui.button("Terrain Editor").clicked() {
+                            editor_storage.is_terrain_editor_open =
+                                !editor_storage.is_terrain_editor_open;
                         }
                     });
 
