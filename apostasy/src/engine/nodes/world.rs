@@ -7,8 +7,7 @@ use crate::{
             Node, NodeMut, build_instance_node,
             component::Component,
             components::{
-                camera::Camera, collider::CollisionEvents, light::Light, skybox::Skybox,
-                transform::Transform, velocity::Velocity,
+                camera::Camera, collider::CollisionEvents, transform::Transform, velocity::Velocity,
             },
             scene::{
                 Scene, SceneInstance, SceneManager, deserialize_scene, deserialize_scene_manager,

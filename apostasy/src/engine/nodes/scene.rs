@@ -134,14 +134,11 @@ impl SceneManager {
     }
 
     pub fn get_primary_scene(&mut self) {
-        self.primary_scene = Some(
-            self.scenes
-                .iter()
-                .find(|s| s.is_primary)
-                .unwrap()
-                .name
-                .clone(),
-        );
+        if let Some(primary_scene) = self.scenes.iter().find(|s| s.is_primary) {
+            self.primary_scene = Some(primary_scene.name.clone());
+        } else {
+            log_warn!("No existing priamry scene, add one via the Editor Settings");
+        }
     }
 
     pub fn serialize_scene_manager(&mut self) -> Result<(), Error> {

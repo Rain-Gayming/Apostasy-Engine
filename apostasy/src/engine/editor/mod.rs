@@ -190,9 +190,11 @@ fn default_dock_state() -> DockState<EditorTab> {
 }
 
 fn is_tab_open(dock_state: &DockState<EditorTab>, tab: EditorTab) -> bool {
-    dock_state
-        .iter_surfaces()
-        .any(|surface| surface.iter_all_tabs().any(|(_, existing)| *existing == tab))
+    dock_state.iter_surfaces().any(|surface| {
+        surface
+            .iter_all_tabs()
+            .any(|(_, existing)| *existing == tab)
+    })
 }
 
 fn add_tab_if_missing(dock_state: &mut DockState<EditorTab>, tab: EditorTab) {
@@ -579,24 +581,30 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
 
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {
-                        println!("Playing");
                         // ignore the result, errors are logged inside if needed
                         let _ = world.serialize_scene();
                         world.scene_manager.get_primary_scene();
-                        let scene = world
-                            .scene_manager
-                            .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-                        world.scene = scene.unwrap();
-                        world.check_node_ids();
+
+                        if world.scene_manager.primary_scene.is_some() {
+                            let scene = world
+                                .scene_manager
+                                .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                            world.scene = scene.unwrap();
+                            world.check_node_ids();
+                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                        }
                     } else {
                         world.scene_manager.get_primary_scene();
-                        let scene = world
-                            .scene_manager
-                            .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-                        world.scene = scene.unwrap();
-                        world.check_node_ids();
+
+                        if world.scene_manager.primary_scene.is_some() {
+                            let scene = world
+                                .scene_manager
+                                .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                            world.scene = scene.unwrap();
+                            world.check_node_ids();
+                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                        }
                     }
-                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -639,3 +647,4 @@ fn render_editor_panel_manager(context: &mut Context, editor_storage: &mut Edito
             }
         });
 }
+

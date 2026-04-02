@@ -239,28 +239,11 @@ impl Engine {
                     }
                     self.renderers_initialized = true;
                 }
-                if let Some(renderer) = self.renderers.get_mut(&window_id) {
-                    {
-                        let mut world = self.world.write().unwrap();
-                        for window in &self.window_manager.windows {
-                            renderer.prepare_egui(window.1, &mut world, &mut self.editor);
-
-                            if self.editor.should_close {
-                                // persist layout before exiting
-                                self.editor.save_layout();
-                                event_loop.exit();
-                            }
-                        }
-                    }
-
-                    {
-                        let mut world = self.world.write().unwrap();
-                        let _ = renderer.render(
-                            &mut world,
-                            &self.asset_server,
-                            self.editor.is_editor_open,
-                        );
-                    }
+                self.render_frame(window_id);
+                if self.editor.should_close {
+                    // persist layout before exiting
+                    self.editor.save_layout();
+                    event_loop.exit();
                 }
             }
             WindowEvent::KeyboardInput { .. } => {}
@@ -308,41 +291,89 @@ impl Engine {
         }
     }
 
-    pub fn request_redraw(&mut self) {
-        {
-            let mut world = self.world.write().unwrap();
-            world.update();
+    pub fn update(&mut self) {
+        let mut world = self.world.write().unwrap();
+        world.update();
 
-            if self.editor.is_editor_open {
-                world.editor_fixed_update(self.timer.tick().fixed_dt);
-            } else {
-                world.fixed_update(self.timer.tick().fixed_dt);
-            }
+        let delta_time = self.timer.tick().fixed_dt;
+        if self.editor.is_editor_open {
+            world.editor_fixed_update(delta_time);
+        } else {
+            world.fixed_update(delta_time);
+        }
 
-            if self.editor.should_update_renderer {
-                self.pipeline_settings = self.editor.pipeline_settings.clone();
+        if self.editor.should_update_renderer {
+            self.pipeline_settings = self.editor.pipeline_settings.clone();
 
-                for renderer in self.renderers.values_mut() {
-                    if let Err(e) =
-                        renderer.rebuild_pipeline(&mut self.asset_server, self.pipeline_settings)
-                    {
-                        eprintln!("Failed to rebuild pipeline for renderer: {e}");
-                    }
-                    log!("Updating pipeline");
+            for renderer in self.renderers.values_mut() {
+                if let Err(e) = renderer.rebuild_pipeline(&mut self.asset_server, self.pipeline_settings) {
+                    eprintln!("Failed to rebuild pipeline for renderer: {e}");
                 }
-
-                self.editor.should_update_renderer = false;
+                log!("Updating pipeline");
             }
 
-            for window in &self.window_manager.windows {
-                window.1.request_redraw();
-                world.window_size = Vector2::new(
-                    window.1.inner_size().width as f32,
-                    window.1.inner_size().height as f32,
+            self.editor.should_update_renderer = false;
+        }
+
+        for window in &self.window_manager.windows {
+            window.1.request_redraw();
+            world.window_size = Vector2::new(
+                window.1.inner_size().width as f32,
+                window.1.inner_size().height as f32,
+            );
+        }
+
+        world.input_manager.clear_actions();
+        world.late_update();
+    }
+
+    pub fn request_redraw(&mut self) {
+        self.update();
+    }
+
+    pub fn render_frame(&mut self, window_id: WindowId) {
+        if !self.renderers_initialized && !self.pending_windows.is_empty() {
+            let pending = std::mem::take(&mut self.pending_windows);
+            for (id, window) in pending {
+                match Renderer::new(
+                    self.rendering_context.clone(),
+                    window,
+                    &mut self.asset_server,
+                    self.pipeline_settings,
+                ) {
+                    Ok(renderer) => {
+                        self.renderers.insert(id, renderer);
+                    }
+                    Err(e) => {
+                        eprintln!("Renderer init failed, deferring: {e}");
+                        return; // try again next frame
+                    }
+                }
+            }
+            self.renderers_initialized = true;
+        }
+
+        if let Some(renderer) = self.renderers.get_mut(&window_id) {
+            {
+                let mut world = self.world.write().unwrap();
+                for window in &self.window_manager.windows {
+                    renderer.prepare_egui(window.1, &mut world, &mut self.editor);
+
+                    if self.editor.should_close {
+                        self.editor.save_layout();
+                        // Note: caller should handle event_loop exit
+                    }
+                }
+            }
+
+            {
+                let mut world = self.world.write().unwrap();
+                let _ = renderer.render(
+                    &mut world,
+                    &self.asset_server,
+                    self.editor.is_editor_open,
                 );
             }
-            world.input_manager.clear_actions();
-            world.late_update();
         }
     }
 
