@@ -2,7 +2,10 @@ use std::io::Error;
 
 use crate::{
     self as apostasy,
-    engine::nodes::{Component, Node},
+    engine::nodes::{
+        Component, Node,
+        components::{light::Light, skybox::Skybox, transform::Transform},
+    },
     log, log_warn,
 };
 use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent};
@@ -30,6 +33,8 @@ impl Scene {
         let mut root_node = Node::new();
         root_node.name = "root".to_string();
 
+        add_default_nodes(&mut root_node);
+
         Self {
             name: "Scene".to_string(),
             path,
@@ -37,6 +42,24 @@ impl Scene {
             is_primary: false,
         }
     }
+}
+
+/// Setups the default world environment
+/// deletes the current environmnet
+pub fn add_default_nodes(node: &mut Node) {
+    let mut skybox = Node::new();
+    skybox.name = "Skybox".to_string();
+    skybox.add_component(Skybox::default());
+    skybox.add_component(Transform::default());
+    node.add_child(skybox);
+
+    let mut light = Node::new();
+    light.name = "Directional Light".to_string();
+    light.add_component(Light::default());
+    let mut transform = Transform::default();
+    transform.position.y = 10.0;
+    light.add_component(transform);
+    node.add_child(light);
 }
 
 #[derive(

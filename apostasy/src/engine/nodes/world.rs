@@ -561,28 +561,6 @@ impl World {
         });
     }
 
-    /// Setups the default world environment
-    /// deletes the current environmnet
-    pub fn setup_default_scene(&mut self) {
-        self.clear_nodes();
-
-        let mut skybox = Node::new();
-        skybox.name = "Skybox".to_string();
-        skybox.add_component(Skybox::default());
-        skybox.add_component(Transform::default());
-        self.add_node(skybox);
-
-        let mut light = Node::new();
-        light.name = "Directional Light".to_string();
-        light.add_component(Light::default());
-        let mut transform = Transform::default();
-        transform.position.y = 10.0;
-        light.add_component(transform);
-        self.add_node(light);
-
-        self.check_node_ids();
-    }
-
     /// Sets up the default global nodes
     pub fn setup_default_global_nodes(&mut self) {
         let mut camera = Node::new();

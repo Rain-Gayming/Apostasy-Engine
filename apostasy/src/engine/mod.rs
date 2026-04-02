@@ -40,7 +40,10 @@ use winit::{
 };
 
 use crate::engine::{
-    editor::{EditorStorage, terrain_editor::{TerrainEditMode, TerrainEditTool}},
+    editor::{
+        EditorStorage,
+        terrain_editor::{TerrainEditMode, TerrainEditTool},
+    },
     nodes::{
         components::camera::Camera,
         components::terrain::Terrain,
@@ -154,7 +157,6 @@ impl Engine {
 
         let mut world = World::new();
         world.setup_default_global_nodes();
-        world.setup_default_scene();
 
         let window_manager = WindowManager {
             windows,
@@ -452,20 +454,19 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
     let aspect = world.window_size.x / world.window_size.y;
     let window_size = world.window_size;
 
-    let (projection, camera_position, camera_rotation) = if let Some(editor_camera) =
-        world.get_global_node_with_component::<Camera>()
-    {
-        let camera_transform = editor_camera.get_component::<Transform>().unwrap();
-        let camera = editor_camera.get_component::<Camera>().unwrap();
+    let (projection, camera_position, camera_rotation) =
+        if let Some(editor_camera) = world.get_global_node_with_component::<Camera>() {
+            let camera_transform = editor_camera.get_component::<Transform>().unwrap();
+            let camera = editor_camera.get_component::<Camera>().unwrap();
 
-        (
-            get_perspective_projection(camera, aspect),
-            camera_transform.position,
-            camera_transform.rotation,
-        )
-    } else {
-        return;
-    };
+            (
+                get_perspective_projection(camera, aspect),
+                camera_transform.position,
+                camera_transform.rotation,
+            )
+        } else {
+            return;
+        };
 
     if is_left_mouse_held {
         if editor.is_terrain_editor_open {
@@ -491,13 +492,15 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
                             )
                         {
                             let node = world.get_node_mut(terrain_node_id);
-                            let (terrain, _) = node
-                                .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                            let (terrain, _) =
+                                node.get_components_mut::<(&mut Terrain, &mut Transform)>();
                             let delta = match editor.terrain_editor_settings.edit_mode {
-                                TerrainEditMode::Raise =>
-                                    editor.terrain_editor_settings.edit_strength * elapsed,
-                                TerrainEditMode::Lower =>
-                                    -editor.terrain_editor_settings.edit_strength * elapsed,
+                                TerrainEditMode::Raise => {
+                                    editor.terrain_editor_settings.edit_strength * elapsed
+                                }
+                                TerrainEditMode::Lower => {
+                                    -editor.terrain_editor_settings.edit_strength * elapsed
+                                }
                             };
 
                             editor.terrain_editor_settings.last_paint = now;
@@ -527,12 +530,12 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
                             )
                         {
                             let node = world.get_node_mut(terrain_node_id);
-                            let (terrain, _) = node
-                                .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                            let (terrain, _) =
+                                node.get_components_mut::<(&mut Terrain, &mut Transform)>();
 
-                            let strength = (editor.terrain_editor_settings.edit_strength * elapsed
-                                * 0.05)
-                                .clamp(0.0, 1.0);
+                            let strength =
+                                (editor.terrain_editor_settings.edit_strength * elapsed * 0.05)
+                                    .clamp(0.0, 1.0);
 
                             editor.terrain_editor_settings.last_paint = now;
                             terrain.selected_chunk = chunk_index as u32;
@@ -560,8 +563,8 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
                             world,
                         ) {
                             let node = world.get_node_mut(terrain_node_id);
-                            let (terrain, transform) = node
-                                .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                            let (terrain, transform) =
+                                node.get_components_mut::<(&mut Terrain, &mut Transform)>();
                             let (origin, vertex_x, vertex_z) =
                                 terrain.world_point_to_chunk_origin(transform, hit_world);
                             let chunk_index = terrain.add_chunk(origin);
@@ -593,8 +596,8 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
                     world,
                 ) {
                     let node = world.get_node_mut(terrain_node_id);
-                    let (terrain, transform) = node
-                        .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                    let (terrain, transform) =
+                        node.get_components_mut::<(&mut Terrain, &mut Transform)>();
                     let (origin, _, _) = terrain.world_point_to_chunk_origin(transform, hit_world);
                     if let Some(chunk_index) = terrain.chunk_index_for_origin(origin) {
                         terrain.delete_chunk(chunk_index);
@@ -613,8 +616,8 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
                     world,
                 ) {
                     let node = world.get_node_mut(terrain_node_id);
-                    let (terrain, transform) = node
-                        .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                    let (terrain, transform) =
+                        node.get_components_mut::<(&mut Terrain, &mut Transform)>();
                     let (origin, vertex_x, vertex_z) =
                         terrain.world_point_to_chunk_origin(transform, hit_world);
                     let chunk_index = terrain.add_chunk(origin);
