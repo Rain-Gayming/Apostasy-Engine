@@ -578,7 +578,7 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
 
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {
-                        // ignore the result, errors are logged inside if needed
+                        // ignore the result errors are logged inside if needed
                         let _ = world.serialize_scene();
                         world.scene_manager.get_primary_scene();
 
