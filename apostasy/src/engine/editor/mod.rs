@@ -555,6 +555,16 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                             editor_storage.is_engine_settings_open =
                                 !editor_storage.is_engine_settings_open;
                         }
+
+                        ui.menu_button("View", |ui| {
+                            if ui.button("Editor Panels").clicked() {
+                                editor_storage.is_panel_manager_open =
+                                    !editor_storage.is_panel_manager_open;
+                            }
+                            if ui.button("Reset Layout").clicked() {
+                                reset_editor_layout(editor_storage);
+                            }
+                        });
                     });
                 let response = ui.button("Tools");
                 Popup::menu(&response)
@@ -563,19 +573,6 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                         if ui.button("Terrain Editor").clicked() {
                             editor_storage.is_terrain_editor_open =
                                 !editor_storage.is_terrain_editor_open;
-                        }
-                    });
-
-                let response = ui.button("View");
-                Popup::menu(&response)
-                    .close_behavior(PopupCloseBehavior::CloseOnClick)
-                    .show(|ui| {
-                        if ui.button("Editor Panels").clicked() {
-                            editor_storage.is_panel_manager_open =
-                                !editor_storage.is_panel_manager_open;
-                        }
-                        if ui.button("Reset Layout").clicked() {
-                            reset_editor_layout(editor_storage);
                         }
                     });
 
