@@ -7,8 +7,8 @@ use crate::{
             Node, NodeMut, build_instance_node,
             component::Component,
             components::{
-                camera::Camera, collider::CollisionEvents, skybox::Skybox, transform::Transform,
-                velocity::Velocity,
+                camera::Camera, collider::CollisionEvents, light::Light, skybox::Skybox,
+                transform::Transform, velocity::Velocity,
             },
             scene::{
                 Scene, SceneInstance, SceneManager, deserialize_scene, deserialize_scene_manager,
@@ -571,6 +571,16 @@ impl World {
         skybox.add_component(Skybox::default());
         skybox.add_component(Transform::default());
         self.add_node(skybox);
+
+        let mut light = Node::new();
+        light.name = "Directional Light".to_string();
+        light.add_component(Light::default());
+        let mut transform = Transform::default();
+        transform.position.y = 10.0;
+        light.add_component(transform);
+        self.add_node(light);
+
+        self.check_node_ids();
     }
 
     /// Sets up the default global nodes

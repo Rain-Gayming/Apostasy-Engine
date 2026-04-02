@@ -4,7 +4,9 @@ use crate::{
         assets::server::AssetServer,
         nodes::{
             components::{
-                camera::get_perspective_projection, collider::CollisionEvents, raycast::pick,
+                camera::get_perspective_projection,
+                collider::CollisionEvents,
+                raycast::{pick, ray_from_mouse},
                 skybox::Skybox,
             },
             scene_serialization::SceneLoader,
@@ -20,15 +22,16 @@ use crate::{
 };
 use anyhow::Result;
 use apostasy_macros::{editor_fixed_update, editor_ui};
-use cgmath::{Vector2, Vector3, Zero, num_traits::clamp};
+use cgmath::{Matrix4, Quaternion, Vector2, Vector3, Zero, num_traits::clamp};
 use egui::Context;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
+    time::Instant,
 };
 use winit::{
     application::ApplicationHandler,
-    event::{DeviceEvent, DeviceId},
+    event::{DeviceEvent, DeviceId, MouseButton},
     event_loop::{ControlFlow, EventLoop},
 };
 
@@ -39,10 +42,11 @@ use winit::{
 };
 
 use crate::engine::{
-    editor::EditorStorage,
+    editor::{EditorStorage, terrain_editor::{TerrainEditMode, TerrainEditTool}},
     nodes::{
         Node,
         components::camera::Camera,
+        components::terrain::Terrain,
         components::transform::Transform,
         components::velocity::{Velocity, apply_velocity},
     },
@@ -444,38 +448,333 @@ pub fn raycast_visualiser(_context: &mut Context, world: &mut World, editor: &mu
         return;
     }
 
-    let is_left_mouse_active = world.input_manager.is_mousebind_active("left_mouse");
+    let is_left_mouse_pressed = world.input_manager.is_mousebind_active("left_mouse");
+    let is_left_mouse_held = world.input_manager.mouse_held.contains(&MouseButton::Left);
     let mouse_position = world.input_manager.mouse_position;
 
     let aspect = world.window_size.x / world.window_size.y;
     let window_size = world.window_size;
 
-    let editor_camera = world.get_global_node_with_component_mut::<Camera>();
+    let (projection, camera_position, camera_rotation) = if let Some(editor_camera) =
+        world.get_global_node_with_component::<Camera>()
+    {
+        let camera_transform = editor_camera.get_component::<Transform>().unwrap();
+        let camera = editor_camera.get_component::<Camera>().unwrap();
 
-    if let Some(editor_camera) = editor_camera {
-        let (camera_transform, camera) =
-            editor_camera.get_components_mut::<(&mut Transform, &mut Camera)>();
+        (
+            get_perspective_projection(camera, aspect),
+            camera_transform.position,
+            camera_transform.rotation,
+        )
+    } else {
+        return;
+    };
 
-        if is_left_mouse_active {
-            let projection = get_perspective_projection(camera, aspect);
+    if is_left_mouse_held {
+        if editor.is_terrain_editor_open {
+            let now = Instant::now();
+            let elapsed = now
+                .duration_since(editor.terrain_editor_settings.last_paint)
+                .as_secs_f32()
+                .min(0.05);
 
-            if let Some(hit) = pick(
-                mouse_position.x as f32,
-                mouse_position.y as f32,
-                window_size.x,
-                window_size.y,
-                projection,
-                camera_transform.position,
-                camera_transform.rotation,
-                &world.get_all_nodes(),
-                "camera",
-            ) {
-                println!("Hit: {} at distance {:.2}", hit.node_name, hit.distance);
-                let node_hit = world.get_node_with_name(hit.node_name.as_str());
-                if let Some(node_hit) = node_hit {
-                    editor.selected_node = Some(node_hit.id);
+            if elapsed > 0.0 {
+                match editor.terrain_editor_settings.edit_tool {
+                    TerrainEditTool::Edit => {
+                        if let Some((terrain_node_id, chunk_index, vertex_x, vertex_z)) =
+                            raycast_terrain_edit_target(
+                                mouse_position.x as f32,
+                                mouse_position.y as f32,
+                                window_size.x,
+                                window_size.y,
+                                projection,
+                                camera_position,
+                                camera_rotation,
+                                world,
+                            )
+                        {
+                            let node = world.get_node_mut(terrain_node_id);
+                            let (terrain, _) = node
+                                .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                            let delta = match editor.terrain_editor_settings.edit_mode {
+                                TerrainEditMode::Raise =>
+                                    editor.terrain_editor_settings.edit_strength * elapsed,
+                                TerrainEditMode::Lower =>
+                                    -editor.terrain_editor_settings.edit_strength * elapsed,
+                            };
+
+                            editor.terrain_editor_settings.last_paint = now;
+                            terrain.selected_chunk = chunk_index as u32;
+                            terrain.selected_vertex_x = vertex_x;
+                            terrain.selected_vertex_z = vertex_z;
+                            terrain.apply_brush(
+                                chunk_index,
+                                vertex_x,
+                                vertex_z,
+                                editor.terrain_editor_settings.brush_radius,
+                                delta,
+                            );
+                        }
+                    }
+                    TerrainEditTool::Smooth => {
+                        if let Some((terrain_node_id, chunk_index, vertex_x, vertex_z)) =
+                            raycast_terrain_edit_target(
+                                mouse_position.x as f32,
+                                mouse_position.y as f32,
+                                window_size.x,
+                                window_size.y,
+                                projection,
+                                camera_position,
+                                camera_rotation,
+                                world,
+                            )
+                        {
+                            let node = world.get_node_mut(terrain_node_id);
+                            let (terrain, _) = node
+                                .get_components_mut::<(&mut Terrain, &mut Transform)>();
+
+                            let strength = (editor.terrain_editor_settings.edit_strength * elapsed
+                                * 0.05)
+                                .clamp(0.0, 1.0);
+
+                            editor.terrain_editor_settings.last_paint = now;
+                            terrain.selected_chunk = chunk_index as u32;
+                            terrain.selected_vertex_x = vertex_x;
+                            terrain.selected_vertex_z = vertex_z;
+                            terrain.smooth_brush(
+                                chunk_index,
+                                vertex_x,
+                                vertex_z,
+                                editor.terrain_editor_settings.brush_radius,
+                                strength,
+                            );
+                        }
+                    }
+                    TerrainEditTool::PaintNew => {
+                        // Create a new chunk at the clicked plane position, but do not paint it.
+                        if let Some((terrain_node_id, hit_world)) = raycast_terrain_plane_target(
+                            mouse_position.x as f32,
+                            mouse_position.y as f32,
+                            window_size.x,
+                            window_size.y,
+                            projection,
+                            camera_position,
+                            camera_rotation,
+                            world,
+                        ) {
+                            let node = world.get_node_mut(terrain_node_id);
+                            let (terrain, transform) = node
+                                .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                            let (origin, vertex_x, vertex_z) =
+                                terrain.world_point_to_chunk_origin(transform, hit_world);
+                            let chunk_index = terrain.add_chunk(origin);
+
+                            editor.terrain_editor_settings.last_paint = now;
+                            terrain.selected_chunk = chunk_index as u32;
+                            terrain.selected_vertex_x = vertex_x;
+                            terrain.selected_vertex_z = vertex_z;
+                        }
+                    }
+                    TerrainEditTool::Delete => {}
                 }
             }
         }
     }
+
+    if is_left_mouse_pressed && editor.is_terrain_editor_open {
+        match editor.terrain_editor_settings.edit_tool {
+            TerrainEditTool::Delete => {
+                // Delete the chunk tile under the click position.
+                if let Some((terrain_node_id, hit_world)) = raycast_terrain_plane_target(
+                    mouse_position.x as f32,
+                    mouse_position.y as f32,
+                    window_size.x,
+                    window_size.y,
+                    projection,
+                    camera_position,
+                    camera_rotation,
+                    world,
+                ) {
+                    let node = world.get_node_mut(terrain_node_id);
+                    let (terrain, transform) = node
+                        .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                    let (origin, _, _) = terrain.world_point_to_chunk_origin(transform, hit_world);
+                    if let Some(chunk_index) = terrain.chunk_index_for_origin(origin) {
+                        terrain.delete_chunk(chunk_index);
+                    }
+                }
+            }
+            TerrainEditTool::PaintNew => {
+                if let Some((terrain_node_id, hit_world)) = raycast_terrain_plane_target(
+                    mouse_position.x as f32,
+                    mouse_position.y as f32,
+                    window_size.x,
+                    window_size.y,
+                    projection,
+                    camera_position,
+                    camera_rotation,
+                    world,
+                ) {
+                    let node = world.get_node_mut(terrain_node_id);
+                    let (terrain, transform) = node
+                        .get_components_mut::<(&mut Terrain, &mut Transform)>();
+                    let (origin, vertex_x, vertex_z) =
+                        terrain.world_point_to_chunk_origin(transform, hit_world);
+                    let chunk_index = terrain.add_chunk(origin);
+
+                    editor.terrain_editor_settings.last_paint = Instant::now();
+                    terrain.selected_chunk = chunk_index as u32;
+                    terrain.selected_vertex_x = vertex_x;
+                    terrain.selected_vertex_z = vertex_z;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if is_left_mouse_pressed {
+        if let Some(hit) = pick(
+            mouse_position.x as f32,
+            mouse_position.y as f32,
+            window_size.x,
+            window_size.y,
+            projection,
+            camera_position,
+            camera_rotation,
+            &world.get_all_nodes(),
+            "camera",
+        ) {
+            println!("Hit: {} at distance {:.2}", hit.node_name, hit.distance);
+            let node_hit = world.get_node_with_name(hit.node_name.as_str());
+            if let Some(node_hit) = node_hit {
+                editor.selected_node = Some(node_hit.id);
+            }
+        }
+    }
+}
+
+fn ray_plane_intersection(
+    origin: Vector3<f32>,
+    direction: Vector3<f32>,
+    plane_y: f32,
+) -> Option<(Vector3<f32>, f32)> {
+    if direction.y.abs() < 1e-6 {
+        return None;
+    }
+
+    let t = (plane_y - origin.y) / direction.y;
+    if t < 0.0 {
+        return None;
+    }
+
+    Some((origin + direction * t, t))
+}
+
+fn raycast_terrain_edit_target(
+    mouse_x: f32,
+    mouse_y: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+    projection: Matrix4<f32>,
+    camera_position: Vector3<f32>,
+    camera_rotation: Quaternion<f32>,
+    world: &World,
+) -> Option<(u64, usize, u32, u32)> {
+    let (origin, direction) = ray_from_mouse(
+        mouse_x,
+        mouse_y,
+        viewport_width,
+        viewport_height,
+        projection,
+        camera_position,
+        camera_rotation,
+    );
+
+    let mut best_hit: Option<(f32, u64, usize, u32, u32)> = None;
+
+    for node in world.get_all_nodes() {
+        if !node.has_component::<Terrain>() {
+            continue;
+        }
+
+        let transform = match node.get_component::<Transform>() {
+            Some(transform) => transform,
+            None => continue,
+        };
+
+        let terrain = match node.get_component::<Terrain>() {
+            Some(terrain) => terrain,
+            None => continue,
+        };
+
+        if let Some((hit_world, distance)) =
+            ray_plane_intersection(origin, direction, transform.global_position.y)
+        {
+            if let Some((chunk_index, vertex_x, vertex_z)) =
+                terrain.world_point_to_vertex(transform, hit_world)
+            {
+                let add_hit = match &best_hit {
+                    Some((best_distance, _, _, _, _)) => distance < *best_distance,
+                    None => true,
+                };
+
+                if add_hit {
+                    best_hit = Some((distance, node.id, chunk_index, vertex_x, vertex_z));
+                }
+            }
+        }
+    }
+
+    best_hit.map(|(_, node_id, chunk_index, vertex_x, vertex_z)| {
+        (node_id, chunk_index, vertex_x, vertex_z)
+    })
+}
+
+fn raycast_terrain_plane_target(
+    mouse_x: f32,
+    mouse_y: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+    projection: Matrix4<f32>,
+    camera_position: Vector3<f32>,
+    camera_rotation: Quaternion<f32>,
+    world: &World,
+) -> Option<(u64, Vector3<f32>)> {
+    let (origin, direction) = ray_from_mouse(
+        mouse_x,
+        mouse_y,
+        viewport_width,
+        viewport_height,
+        projection,
+        camera_position,
+        camera_rotation,
+    );
+
+    let mut best_hit: Option<(f32, u64, Vector3<f32>)> = None;
+
+    for node in world.get_all_nodes() {
+        if !node.has_component::<Terrain>() {
+            continue;
+        }
+
+        let transform = match node.get_component::<Transform>() {
+            Some(transform) => transform,
+            None => continue,
+        };
+
+        if let Some((hit_world, distance)) =
+            ray_plane_intersection(origin, direction, transform.global_position.y)
+        {
+            let add_hit = match &best_hit {
+                Some((best_distance, _, _)) => distance < *best_distance,
+                None => true,
+            };
+
+            if add_hit {
+                best_hit = Some((distance, node.id, hit_world));
+            }
+        }
+    }
+
+    best_hit.map(|(_, node_id, hit_world)| (node_id, hit_world))
 }

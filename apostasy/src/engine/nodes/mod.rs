@@ -44,13 +44,16 @@ impl Default for Node {
 
 impl Node {
     pub fn new() -> Self {
+        let mut components: Vec<Box<dyn Component>> = Vec::new();
+        components.push(Box::new(Transform::default()));
+
         Self {
             name: "Node".to_string(),
             id: 0,
             editing_name: "Node".to_string(),
             children: Vec::new(),
             parent: None,
-            components: Vec::new(),
+            components,
             exempt_from_id_check: false,
         }
     }

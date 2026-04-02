@@ -1075,11 +1075,29 @@ impl Renderer {
                     let node_transform = node.get_component::<Transform>().cloned();
                     let terrain = node.get_component_mut::<Terrain>().unwrap();
 
-                    // keep gpu_chunks in sync with chunks
-                    if terrain.gpu_chunks.len() < terrain.chunks.len() {
+                    // keep gpu_chunks in sync with the terrain chunk list
+                    // - grow the GPU array when new chunks are created
+                    // - destroy and drop GPU buffers when chunks are deleted
+                    let chunk_count = terrain.chunks.len();
+                    if terrain.gpu_chunks.len() < chunk_count {
                         terrain
                             .gpu_chunks
-                            .resize_with(terrain.chunks.len(), TerrainChunkGpu::default);
+                            .resize_with(chunk_count, TerrainChunkGpu::default);
+                    } else if terrain.gpu_chunks.len() > chunk_count {
+                        for gpu in terrain.gpu_chunks.drain(chunk_count..) {
+                            if gpu.vertex_buffer != vk::Buffer::null() {
+                                self.context.device.destroy_buffer(gpu.vertex_buffer, None);
+                                self.context
+                                    .device
+                                    .free_memory(gpu.vertex_buffer_memory, None);
+                            }
+                            if gpu.index_buffer != vk::Buffer::null() {
+                                self.context.device.destroy_buffer(gpu.index_buffer, None);
+                                self.context
+                                    .device
+                                    .free_memory(gpu.index_buffer_memory, None);
+                            }
+                        }
                     }
 
                     for (i, chunk) in terrain.chunks.iter_mut().enumerate() {

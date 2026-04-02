@@ -28,7 +28,7 @@ use std::{
 use crate::engine::editor::console_commands::render_console_ui;
 use crate::engine::nodes::world::World;
 use apostasy_macros::editor_ui;
-use egui::{Color32, Context, Popup, PopupCloseBehavior, TopBottomPanel, Ui};
+use egui::{Color32, Context, Popup, PopupCloseBehavior, TopBottomPanel, Ui, Window};
 use egui_dock::{DockArea, DockState, NodeIndex, Style, TabViewer};
 use serde::{Deserialize, Serialize};
 use winit::event::MouseButton;
@@ -46,7 +46,7 @@ pub mod scene_manager_ui;
 pub mod style;
 pub mod terrain_editor;
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum EditorTab {
     Hierarchy,
     Inspector,
@@ -66,6 +66,22 @@ impl std::fmt::Display for EditorTab {
             EditorTab::Viewport => write!(f, "Viewport"),
             EditorTab::AssetEditor => write!(f, "Asset Editor"),
         }
+    }
+}
+
+impl EditorTab {
+    pub const fn panel_tabs() -> [Self; 5] {
+        [
+            Self::Hierarchy,
+            Self::Inspector,
+            Self::Files,
+            Self::Console,
+            Self::AssetEditor,
+        ]
+    }
+
+    pub fn is_visible_tab(&self) -> bool {
+        *self != Self::Viewport
     }
 }
 
@@ -133,6 +149,8 @@ pub struct EditorStorage {
 
     pub should_update_renderer: bool,
     pub pipeline_settings: PipelineSettings,
+
+    pub is_panel_manager_open: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -169,6 +187,29 @@ fn default_dock_state() -> DockState<EditorTab> {
     surface.split_below(_inspector, 0.6, vec![EditorTab::AssetEditor]);
 
     state
+}
+
+fn is_tab_open(dock_state: &DockState<EditorTab>, tab: EditorTab) -> bool {
+    dock_state
+        .iter_surfaces()
+        .any(|surface| surface.iter_all_tabs().any(|(_, existing)| *existing == tab))
+}
+
+fn add_tab_if_missing(dock_state: &mut DockState<EditorTab>, tab: EditorTab) {
+    if !is_tab_open(dock_state, tab) {
+        dock_state.push_to_first_leaf(tab);
+    }
+}
+
+fn remove_tab(dock_state: &mut DockState<EditorTab>, tab: EditorTab) {
+    for surface in dock_state.iter_surfaces_mut() {
+        surface.retain_tabs(|existing| *existing != tab);
+    }
+}
+
+fn reset_editor_layout(editor_storage: &mut EditorStorage) {
+    editor_storage.dock_state = default_dock_state();
+    editor_storage.layout_serialized = None;
 }
 
 impl EditorStorage {
@@ -257,6 +298,7 @@ impl EditorStorage {
 
             should_update_renderer: true,
             pipeline_settings,
+            is_panel_manager_open: false,
         }
     }
 
@@ -337,6 +379,7 @@ pub fn render_editor(context: &mut Context, world: &mut World, editor_storage: &
 
     render_engine_settings_ui(context, world, editor_storage);
     render_terrain_edtor(context, world, editor_storage);
+    render_editor_panel_manager(context, editor_storage);
 
     let mut dock_state = std::mem::replace(&mut editor_storage.dock_state, default_dock_state());
 
@@ -521,6 +564,19 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                         }
                     });
 
+                let response = ui.button("View");
+                Popup::menu(&response)
+                    .close_behavior(PopupCloseBehavior::CloseOnClick)
+                    .show(|ui| {
+                        if ui.button("Editor Panels").clicked() {
+                            editor_storage.is_panel_manager_open =
+                                !editor_storage.is_panel_manager_open;
+                        }
+                        if ui.button("Reset Layout").clicked() {
+                            reset_editor_layout(editor_storage);
+                        }
+                    });
+
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {
                         println!("Playing");
@@ -550,5 +606,36 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                 });
             });
             ui.add_space(1.0);
+        });
+}
+fn render_editor_panel_manager(context: &mut Context, editor_storage: &mut EditorStorage) {
+    if !editor_storage.is_panel_manager_open {
+        return;
+    }
+
+    Window::new("Editor Panels")
+        .default_size((280.0, 240.0))
+        .resizable(true)
+        .show(context, |ui| {
+            ui.label("Toggle editor panels and restore missing tabs.");
+            ui.separator();
+
+            for tab in EditorTab::panel_tabs() {
+                let mut is_open = is_tab_open(&editor_storage.dock_state, tab);
+                ui.horizontal(|ui| {
+                    if ui.checkbox(&mut is_open, tab.to_string()).changed() {
+                        if is_open {
+                            add_tab_if_missing(&mut editor_storage.dock_state, tab);
+                        } else {
+                            remove_tab(&mut editor_storage.dock_state, tab);
+                        }
+                    }
+                });
+            }
+
+            ui.separator();
+            if ui.button("Restore Default Layout").clicked() {
+                reset_editor_layout(editor_storage);
+            }
         });
 }
