@@ -1,40 +1,108 @@
 # Apostasy Engine
 
----
+Apostasy is an experimental Rust game engine prototype. It focuses on scene-driven runtime behavior, Vulkan rendering, and simple editor-style tooling.
 
-## What is Apostasy?
+## What the engine does
 
-Apostasy is a (relatively) simple in data driven game engine that is written in Rust. It will be open source for now and forever.
+- launches a window and render loop
+- maintains a shared `World` containing scene nodes
+- updates input state and propagates transforms
+- loads assets such as shaders, scenes, and materials
+- renders content through a Vulkan backend
+- provides editor scaffolding for inspecting and editing runtime state
 
----
+The runtime is driven by an engine crate and a small root application that starts the engine.
 
-## Warnings and usage:
+## How it works
 
-Apostasy is incredibly early into development, at current it is not even in an early alpha stage, it has very rudimentary features. 
-At current these include:
-- A simple ECS,
-- Windowing,
-- VERY simple rendering
+The engine initializes a window and Vulkan context, then creates:
+- a `World` with default scene nodes and input handling
+- an `AssetServer` for loading resources from `res/`
+- a renderer for drawing frames
+- editor state for runtime inspection
 
-The ideals for an V0.1a release would be:
-- A better ECS,
-- UI,
-- Lighting,
-- Asset loading
+Input events are dispatched into the world, and update hooks can operate directly on the shared `World`.
 
----
+### World and scene graph
 
-## Versions:
+The world is a tree of `Node` objects. Each node has:
+- an identifier and name
+- a default transform component
+- optional child nodes
+- a collection of typed components
 
-Currently I would consider the engine in a V0.0.1a due to how early into the project it is.
-For writing versions it follows this format Vx.y.zw
-- x: major version
-- y: minor version 
-- z: sub version
-- w: alpha (a), beta (b), test (t) 
+Components are stored as dynamic trait objects, which lets the engine attach behavior such as cameras, physics, velocity, and terrain to nodes.
 
----
+Transforms are propagated through the node hierarchy so child nodes inherit position, rotation, and scale from their parents.
 
-## AI:
+### Update flow
 
-**Machine learning algorithims (generally AI, ChatGPT, Cluade, Gemini, ect.) cannot be used in this project, be it in writing production coding, writing issues or pull requests, asset creation (images, audio, ect.) or any other form.**
+The engine exposes fixed-update hooks for game logic. The root app uses a macro to register a function that receives:
+- a mutable reference to the `World`
+- the time delta for the current update
+
+This is where gameplay code can query input, move objects, and modify component state.
+
+### Rendering flow
+
+Rendering is handled by an internal renderer that manages:
+- Vulkan swapchain and surface setup
+- shader loading
+- material and model rendering
+- window resize and redraw requests
+
+The engine supports multiple windows and updates render targets when window state changes.
+
+## Usage
+
+Run the engine from the repository root with:
+
+```bash
+cargo run
+```
+
+This starts the application and opens the engine window.
+
+For a release build:
+
+```bash
+cargo build --release
+```
+
+## Custom logic
+
+Game code can be attached through the engine's update hooks rather than through a separate game loop. A sample root app demonstrates:
+- starting the engine
+- reading input from the world
+- locating nodes by component type
+- moving a player node using velocity and transform components
+
+The engine's macros simplify registering those update callbacks.
+
+## Asset loading
+
+Assets are loaded through an engine asset server at runtime. The current setup registers loaders for:
+- shaders
+- materials
+- scenes
+
+Scene files and shader assets are used to populate the runtime world and rendering state.
+
+## Current limitations
+
+Apostasy is not a finished engine. Existing limitations include:
+- limited system scheduling and ECS behavior
+- basic lighting and rendering support
+- incomplete asset import/export
+- prototype editor UI
+- early-stage API and architecture
+
+## Requirements
+
+- Rust toolchain (stable, edition 2024)
+- Vulkan-capable system and drivers
+- `cargo` available on PATH
+
+## Notes
+
+This project is primarily a learning and experimentation engine. It is useful as a reference for how a Rust engine can wire together windowing, Vulkan rendering, a scene graph, and runtime update hooks.
