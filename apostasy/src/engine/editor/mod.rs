@@ -578,7 +578,7 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
 
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {
-                        // ignore the result errors are logged inside if needed
+                        // ignore the result, errors are logged inside if needed
                         let _ = world.serialize_scene();
                         world.scene_manager.get_primary_scene();
 
@@ -586,6 +586,11 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                             let scene = world
                                 .scene_manager
                                 .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                            world.scene = scene.unwrap();
+                            world.check_node_ids();
+                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                        } else {
+                            let scene = world.scene_manager.load_scene(&world.scene.name.clone());
                             world.scene = scene.unwrap();
                             world.check_node_ids();
                             editor_storage.is_editor_open = !editor_storage.is_editor_open;
@@ -597,6 +602,11 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                             let scene = world
                                 .scene_manager
                                 .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
+                            world.scene = scene.unwrap();
+                            world.check_node_ids();
+                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
+                        } else {
+                            let scene = world.scene_manager.load_scene(&world.scene.name.clone());
                             world.scene = scene.unwrap();
                             world.check_node_ids();
                             editor_storage.is_editor_open = !editor_storage.is_editor_open;
