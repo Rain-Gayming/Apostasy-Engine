@@ -337,6 +337,21 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
             });
     }
 
+    ui.separator();
+    ui.label("Debug Settings");
+
+    ui.add(
+        egui::Slider::new(
+            &mut editor_storage
+                .pipeline_settings
+                .debug_settings
+                .debug_line_width,
+            1.0 as f32..=15.0 as f32,
+        )
+        .show_value(true)
+        .text("Debug Line Width"),
+    );
+
     if editor_storage.pipeline_settings != before {
         editor_storage.should_update_renderer = true;
 

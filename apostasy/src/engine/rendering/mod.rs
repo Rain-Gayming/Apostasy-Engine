@@ -1,3 +1,4 @@
+pub mod debug_renderer;
 pub mod models;
 pub mod physical_device;
 pub mod pipeline_settings;

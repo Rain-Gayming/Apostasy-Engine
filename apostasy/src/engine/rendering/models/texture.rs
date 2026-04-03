@@ -67,8 +67,6 @@ impl AssetLoader for GpuTextureLoader {
             .unwrap_or("texture")
             .to_string();
 
-        println!("path: {}", path.display());
-
         let path_str = path
             .to_str()
             .ok_or_else(|| AssetLoadError::other("Non-UTF-8 path"))?;

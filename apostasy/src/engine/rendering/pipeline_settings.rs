@@ -109,6 +109,7 @@ pub struct PipelineSettings {
     pub depth_settings: DepthSettings,
     pub rasterization_settings: RasterizationSettings,
     pub image_settings: ImageSettings,
+    pub debug_settings: DebugSettings,
 }
 
 impl Default for PipelineSettings {
@@ -117,6 +118,7 @@ impl Default for PipelineSettings {
             depth_settings: DepthSettings::default(),
             rasterization_settings: RasterizationSettings::default(),
             image_settings: ImageSettings::default(),
+            debug_settings: DebugSettings::default(),
         }
     }
 }
@@ -182,6 +184,19 @@ impl Default for ImageSettings {
             anisotropy_enabled: false,
             anisotropy_amount: 16,
             mip_map_mode: vk::SamplerMipmapMode::LINEAR,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct DebugSettings {
+    pub debug_line_width: f32,
+}
+
+impl Default for DebugSettings {
+    fn default() -> Self {
+        Self {
+            debug_line_width: 1.0,
         }
     }
 }

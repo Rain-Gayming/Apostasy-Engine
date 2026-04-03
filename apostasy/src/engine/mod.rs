@@ -306,10 +306,11 @@ impl Engine {
             self.pipeline_settings = self.editor.pipeline_settings.clone();
 
             for renderer in self.renderers.values_mut() {
-                if let Err(e) = renderer.rebuild_pipeline(&mut self.asset_server, self.pipeline_settings) {
+                if let Err(e) =
+                    renderer.rebuild_pipeline(&mut self.asset_server, self.pipeline_settings)
+                {
                     eprintln!("Failed to rebuild pipeline for renderer: {e}");
                 }
-                log!("Updating pipeline");
             }
 
             self.editor.should_update_renderer = false;
@@ -368,11 +369,7 @@ impl Engine {
 
             {
                 let mut world = self.world.write().unwrap();
-                let _ = renderer.render(
-                    &mut world,
-                    &self.asset_server,
-                    self.editor.is_editor_open,
-                );
+                let _ = renderer.render(&mut world, &self.asset_server, self.editor.is_editor_open);
             }
         }
     }

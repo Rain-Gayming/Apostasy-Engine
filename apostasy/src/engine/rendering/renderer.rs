@@ -12,8 +12,10 @@ use winit::{event::WindowEvent, window::Window};
 
 use crate::engine::assets::handle::Handle;
 use crate::engine::assets::server::AssetServer;
+use crate::engine::nodes::components::collider::{Collider, CollisionEvents};
 use crate::engine::nodes::components::terrain::{Terrain, TerrainChunkGpu, TerrainVertex};
 use crate::engine::nodes::world::World;
+use crate::engine::rendering::debug_renderer::{DebugLineVertex, DebugRenderer};
 use crate::engine::rendering::models::gltf_loader::GltfLoader;
 use crate::engine::rendering::models::material::MaterialAsset;
 use crate::engine::rendering::models::model::GpuModel;
@@ -191,6 +193,9 @@ pub struct Renderer {
     pub skybox_index_buffer_memory: vk::DeviceMemory,
     pub profiler_info: ProfilerInfo,
     pub image_states: ImageStates,
+
+    pub debug_renderer: DebugRenderer,
+    pub debug_pipeline_layout: vk::PipelineLayout,
 }
 
 impl Renderer {
@@ -301,6 +306,70 @@ impl Renderer {
                 Default::default(),
                 skybox_pipeline_settings,
             )?;
+
+            let debug_vs_handle: Handle<ShaderSpirv> =
+                asset_server.load("shaders/debug_line_vert.spv")?;
+            let debug_fs_handle: Handle<ShaderSpirv> =
+                asset_server.load("shaders/debug_line_frag.spv")?;
+
+            let debug_vertex_shader = asset_server
+                .get(debug_vs_handle)
+                .unwrap()
+                .create_module(&context.device)?;
+            let debug_fragment_shader = asset_server
+                .get(debug_fs_handle)
+                .unwrap()
+                .create_module(&context.device)?;
+
+            let debug_vertex_binding = vk::VertexInputBindingDescription::default()
+                .binding(0)
+                .stride(std::mem::size_of::<DebugLineVertex>() as u32)
+                .input_rate(vk::VertexInputRate::VERTEX);
+
+            let debug_vertex_attrs = [
+                vk::VertexInputAttributeDescription::default()
+                    .binding(0)
+                    .location(0)
+                    .format(vk::Format::R32G32B32_SFLOAT)
+                    .offset(0),
+                vk::VertexInputAttributeDescription::default()
+                    .binding(0)
+                    .location(1)
+                    .format(vk::Format::R32G32B32A32_SFLOAT)
+                    .offset(std::mem::size_of::<[f32; 3]>() as u32),
+            ];
+
+            let debug_push_constant_range = vk::PushConstantRange::default()
+                .stage_flags(vk::ShaderStageFlags::VERTEX)
+                .offset(0)
+                .size(64);
+
+            let debug_pipeline_layout = context.device.create_pipeline_layout(
+                &vk::PipelineLayoutCreateInfo::default()
+                    .push_constant_ranges(&[debug_push_constant_range]),
+                None,
+            )?;
+
+            let debug_pipeline = context.create_debug_pipeline(
+                debug_vertex_shader,
+                debug_fragment_shader,
+                swapchain.format,
+                swapchain.depth_format,
+                debug_pipeline_layout,
+                &debug_vertex_binding,
+                &debug_vertex_attrs,
+                pipeline_settings.clone(),
+            )?;
+
+            let debug_renderer = DebugRenderer {
+                lines: Vec::new(),
+                vertex_buffer: vk::Buffer::null(),
+                vertex_buffer_memory: vk::DeviceMemory::null(),
+                vertex_capacity: 0,
+                pipeline: debug_pipeline,
+                enabled: true,
+                pipeline_layout: debug_pipeline_layout,
+            };
 
             context
                 .device
@@ -548,6 +617,9 @@ impl Renderer {
                 skybox_index_buffer_memory,
                 profiler_info,
                 image_states,
+
+                debug_renderer,
+                debug_pipeline_layout,
             })
         }
     }
@@ -1071,9 +1143,6 @@ impl Renderer {
                     let node_transform = node.get_component::<Transform>().cloned();
                     let terrain = node.get_component_mut::<Terrain>().unwrap();
 
-                    // keep gpu_chunks in sync with the terrain chunk list
-                    // - grow the GPU array when new chunks are created
-                    // - destroy and drop GPU buffers when chunks are deleted
                     let chunk_count = terrain.chunks.len();
                     if terrain.gpu_chunks.len() < chunk_count {
                         terrain
@@ -1270,6 +1339,109 @@ impl Renderer {
                         device.cmd_draw_indexed(command_buffer, gpu.index_count, 1, 0, 0, 0);
                     }
                 }
+                if self.debug_renderer.enabled {
+                    self.debug_renderer.clear();
+
+                    let collision_events = world
+                        .global_nodes
+                        .iter()
+                        .find_map(|n| n.get_component::<CollisionEvents>())
+                        .cloned()
+                        .unwrap_or_default();
+
+                    for node in world.get_all_nodes() {
+                        if let (Some(transform), Some(collider)) = (
+                            node.get_component::<Transform>(),
+                            node.get_component::<Collider>(),
+                        ) {
+                            self.debug_renderer.draw_collider(
+                                collider,
+                                transform.global_position,
+                                transform.global_rotation,
+                                transform.global_scale,
+                                &collision_events,
+                                &node.name,
+                            );
+                        }
+                    }
+
+                    // Upload and draw — unchanged from your current code
+                    if !self.debug_renderer.lines.is_empty() {
+                        let vertices: Vec<DebugLineVertex> = self
+                            .debug_renderer
+                            .lines
+                            .iter()
+                            .flat_map(|l| {
+                                [
+                                    DebugLineVertex {
+                                        position: [l.start.x, l.start.y, l.start.z],
+                                        color: l.color,
+                                    },
+                                    DebugLineVertex {
+                                        position: [l.end.x, l.end.y, l.end.z],
+                                        color: l.color,
+                                    },
+                                ]
+                            })
+                            .collect();
+
+                        let byte_size = (vertices.len() * std::mem::size_of::<DebugLineVertex>())
+                            as vk::DeviceSize;
+
+                        if vertices.len() > self.debug_renderer.vertex_capacity {
+                            if self.debug_renderer.vertex_buffer != vk::Buffer::null() {
+                                self.context
+                                    .device
+                                    .destroy_buffer(self.debug_renderer.vertex_buffer, None);
+                                self.context
+                                    .device
+                                    .free_memory(self.debug_renderer.vertex_buffer_memory, None);
+                            }
+                            let (buf, mem) = self.context.create_buffer(
+                                byte_size,
+                                vk::BufferUsageFlags::VERTEX_BUFFER,
+                                vk::MemoryPropertyFlags::HOST_VISIBLE
+                                    | vk::MemoryPropertyFlags::HOST_COHERENT,
+                            )?;
+                            self.debug_renderer.vertex_buffer = buf;
+                            self.debug_renderer.vertex_buffer_memory = mem;
+                            self.debug_renderer.vertex_capacity = vertices.len();
+                        }
+
+                        let ptr = self.context.device.map_memory(
+                            self.debug_renderer.vertex_buffer_memory,
+                            0,
+                            byte_size,
+                            vk::MemoryMapFlags::empty(),
+                        )? as *mut DebugLineVertex;
+                        std::ptr::copy_nonoverlapping(vertices.as_ptr(), ptr, vertices.len());
+                        self.context
+                            .device
+                            .unmap_memory(self.debug_renderer.vertex_buffer_memory);
+
+                        device.cmd_bind_pipeline(
+                            command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            self.debug_renderer.pipeline,
+                        );
+                        device.cmd_bind_vertex_buffers(
+                            command_buffer,
+                            0,
+                            &[self.debug_renderer.vertex_buffer],
+                            &[0],
+                        );
+
+                        let mvp_bytes: [u8; 64] = transmute(mvp);
+                        device.cmd_push_constants(
+                            command_buffer,
+                            self.debug_renderer.pipeline_layout,
+                            vk::ShaderStageFlags::VERTEX,
+                            0,
+                            &mvp_bytes,
+                        );
+                        device.cmd_draw(command_buffer, vertices.len() as u32, 1, 0, 0);
+                    }
+                }
             }
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
@@ -1398,19 +1570,23 @@ impl Renderer {
             Ok(())
         }
     }
+
     pub fn rebuild_pipeline(
         &mut self,
         asset_server: &mut Arc<RwLock<AssetServer>>,
         pipeline_settings: PipelineSettings,
     ) -> Result<()> {
         unsafe { self.context.device.device_wait_idle()? };
-
         let mut asset_server = asset_server.write().unwrap();
 
         let mvs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_vert.spv")?;
         let mfs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/model_frag.spv")?;
         let skybox_vs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/skybox_vert.spv")?;
         let skybox_fs_handle: Handle<ShaderSpirv> = asset_server.load("shaders/skybox_frag.spv")?;
+        let debug_vs_handle: Handle<ShaderSpirv> =
+            asset_server.load("shaders/debug_line_vert.spv")?;
+        let debug_fs_handle: Handle<ShaderSpirv> =
+            asset_server.load("shaders/debug_line_frag.spv")?;
 
         let model_vertex_shader = asset_server
             .get(mvs_handle)
@@ -1426,6 +1602,14 @@ impl Renderer {
             .create_module(&self.context.device)?;
         let skybox_fragment_shader = asset_server
             .get(skybox_fs_handle)
+            .unwrap()
+            .create_module(&self.context.device)?;
+        let debug_vertex_shader = asset_server
+            .get(debug_vs_handle)
+            .unwrap()
+            .create_module(&self.context.device)?;
+        let debug_fragment_shader = asset_server
+            .get(debug_fs_handle)
             .unwrap()
             .create_module(&self.context.device)?;
 
@@ -1449,6 +1633,24 @@ impl Renderer {
         skybox_pipeline_settings.depth_settings.depth_test_enabled = false;
         skybox_pipeline_settings.rasterization_settings.cull_mode = vk::CullModeFlags::NONE;
 
+        let debug_vertex_binding = vk::VertexInputBindingDescription::default()
+            .binding(0)
+            .stride(std::mem::size_of::<DebugLineVertex>() as u32)
+            .input_rate(vk::VertexInputRate::VERTEX);
+
+        let debug_vertex_attrs = [
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32G32B32_SFLOAT)
+                .offset(0),
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(1)
+                .format(vk::Format::R32G32B32A32_SFLOAT)
+                .offset(std::mem::size_of::<[f32; 3]>() as u32),
+        ];
+
         unsafe {
             let new_pipeline = self.context.create_graphics_pipeline(
                 model_vertex_shader,
@@ -1468,6 +1670,16 @@ impl Renderer {
                 Default::default(),
                 skybox_pipeline_settings,
             )?;
+            let new_debug_pipeline = self.context.create_debug_pipeline(
+                debug_vertex_shader,
+                debug_fragment_shader,
+                self.swapchain.format,
+                self.swapchain.depth_format,
+                self.debug_renderer.pipeline_layout,
+                &debug_vertex_binding,
+                &debug_vertex_attrs,
+                pipeline_settings,
+            )?;
 
             self.context
                 .device
@@ -1481,14 +1693,27 @@ impl Renderer {
             self.context
                 .device
                 .destroy_shader_module(skybox_fragment_shader, None);
+            self.context
+                .device
+                .destroy_shader_module(debug_vertex_shader, None);
+            self.context
+                .device
+                .destroy_shader_module(debug_fragment_shader, None);
 
             let old_pipeline = std::mem::replace(&mut self.pipeline.pipeline, new_pipeline);
             self.context.device.destroy_pipeline(old_pipeline, None);
+
             let old_skybox_pipeline =
                 std::mem::replace(&mut self.skybox_pipeline, new_skybox_pipeline);
             self.context
                 .device
                 .destroy_pipeline(old_skybox_pipeline, None);
+
+            let old_debug_pipeline =
+                std::mem::replace(&mut self.debug_renderer.pipeline, new_debug_pipeline);
+            self.context
+                .device
+                .destroy_pipeline(old_debug_pipeline, None);
         }
 
         Ok(())

@@ -22,7 +22,7 @@ pub enum ColliderShape {
 impl ColliderShape {
     pub fn half_extents(&self) -> Vector3<f32> {
         match self {
-            ColliderShape::Cuboid { size } => *size * 0.5,
+            ColliderShape::Cuboid { size } => *size,
             ColliderShape::Sphere { radius } => Vector3::new(*radius, *radius, *radius),
             ColliderShape::Capsule { radius, height } => {
                 Vector3::new(*radius, height * 0.5 + radius, *radius)

@@ -220,10 +220,6 @@ root_children:
         x: 5.0
         y: 1.0
         z: 5.0
-  - type: ModelRenderer
-    data:
-      loaded_model: .engine/cube.glb
-      material_path: ''
   - type: Collider
     data:
       shape: !Cuboid
@@ -237,6 +233,10 @@ root_children:
         z: 0.0
       is_static: true
       is_area: false
+  - type: ModelRenderer
+    data:
+      loaded_model: .engine/cube.glb
+      material_path: ''
   children: []
   parent: null
   scene_instance_path: null
@@ -289,10 +289,6 @@ root_children:
         x: 1.0
         y: 5.0
         z: 5.0
-  - type: ModelRenderer
-    data:
-      loaded_model: .engine/cube.glb
-      material_path: ''
   - type: Collider
     data:
       shape: !Cuboid
@@ -306,6 +302,10 @@ root_children:
         z: 0.0
       is_static: true
       is_area: false
+  - type: ModelRenderer
+    data:
+      loaded_model: .engine/cube.glb
+      material_path: ''
   children: []
   parent: null
   scene_instance_path: null
@@ -358,10 +358,6 @@ root_children:
         x: 1.0
         y: 5.0
         z: 2.049999952316284
-  - type: ModelRenderer
-    data:
-      loaded_model: .engine/cube.glb
-      material_path: ''
   - type: Collider
     data:
       shape: !Cuboid
@@ -373,8 +369,12 @@ root_children:
         x: 0.0
         y: 0.0
         z: 0.0
-      is_static: false
+      is_static: true
       is_area: false
+  - type: ModelRenderer
+    data:
+      loaded_model: .engine/cube.glb
+      material_path: ''
   children: []
   parent: null
   scene_instance_path: null
@@ -430,17 +430,13 @@ root_children:
   - type: Collider
     data:
       shape: !Sphere
-        radius: 1.2000000476837158
+        radius: 1.0
       offset:
         x: 0.0
         y: 0.0
         z: 0.0
       is_static: false
       is_area: false
-  - type: ModelRenderer
-    data:
-      loaded_model: models/smooth_sphere.glb
-      material_path: ''
   - type: Physics
     data:
       mass: 1.0
@@ -457,6 +453,10 @@ root_children:
         x: 0.0
         y: 0.0
         z: 0.0
+  - type: ModelRenderer
+    data:
+      loaded_model: models/smooth_sphere.glb
+      material_path: ''
   children: []
   parent: null
   scene_instance_path: null

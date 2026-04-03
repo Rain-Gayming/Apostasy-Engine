@@ -51,8 +51,6 @@ impl AssetLoader for ShaderLoader {
             source: e,
         })?;
 
-        println!("Loading shader: {}", path.display());
-
         if bytes.len() < 4 || &bytes[0..4] != b"\x03\x02\x23\x07" {
             return Err(AssetLoadError::Parse {
                 path: path.display().to_string(),
