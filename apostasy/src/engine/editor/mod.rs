@@ -578,40 +578,20 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
 
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {
-                        // ignore the result, errors are logged inside if needed
                         let _ = world.serialize_scene();
-                        world.scene_manager.get_primary_scene();
-
-                        if world.scene_manager.primary_scene.is_some() {
-                            let scene = world
-                                .scene_manager
-                                .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-                            world.scene = scene.unwrap();
-                            world.check_node_ids();
-                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                        } else {
-                            let scene = world.scene_manager.load_scene(&world.scene.name.clone());
-                            world.scene = scene.unwrap();
-                            world.check_node_ids();
-                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                        }
-                    } else {
-                        world.scene_manager.get_primary_scene();
-
-                        if world.scene_manager.primary_scene.is_some() {
-                            let scene = world
-                                .scene_manager
-                                .load_scene(&world.scene_manager.primary_scene.clone().unwrap());
-                            world.scene = scene.unwrap();
-                            world.check_node_ids();
-                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                        } else {
-                            let scene = world.scene_manager.load_scene(&world.scene.name.clone());
-                            world.scene = scene.unwrap();
-                            world.check_node_ids();
-                            editor_storage.is_editor_open = !editor_storage.is_editor_open;
-                        }
                     }
+
+                    world.scene_manager.get_primary_scene();
+
+                    let scene_name = world
+                        .scene_manager
+                        .primary_scene
+                        .clone()
+                        .unwrap_or_else(|| world.scene.path.clone());
+
+                    world.scene = world.scene_manager.load_scene(&scene_name).unwrap();
+                    world.check_node_ids();
+                    editor_storage.is_editor_open = !editor_storage.is_editor_open;
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -654,4 +634,3 @@ fn render_editor_panel_manager(context: &mut Context, editor_storage: &mut Edito
             }
         });
 }
-

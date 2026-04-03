@@ -9,12 +9,14 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct Velocity {
     pub direction: Vector3<f32>,
+    pub angular_direction: Vector3<f32>,
 }
 
 impl Default for Velocity {
     fn default() -> Self {
         Self {
             direction: Vector3::new(0.0, 0.0, 0.0),
+            angular_direction: Vector3::new(0.0, 0.0, 0.0),
         }
     }
 }

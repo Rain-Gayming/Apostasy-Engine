@@ -226,10 +226,11 @@ root_children:
       material_path: ''
   - type: Collider
     data:
-      collider_size:
-        x: 1.0
-        y: 1.0
-        z: 1.0
+      shape: !Cuboid
+        size:
+          x: 1.0
+          y: 1.0
+          z: 1.0
       offset:
         x: 0.0
         y: 0.0
@@ -294,10 +295,11 @@ root_children:
       material_path: ''
   - type: Collider
     data:
-      collider_size:
-        x: 1.0
-        y: 1.0
-        z: 1.0
+      shape: !Cuboid
+        size:
+          x: 1.0
+          y: 1.0
+          z: 1.0
       offset:
         x: 0.0
         y: 0.0
@@ -307,29 +309,29 @@ root_children:
   children: []
   parent: null
   scene_instance_path: null
-- name: wall
+- name: ramp
   id: 5
   components:
   - type: Transform
     data:
       position:
-        x: 6.0
-        y: 4.0
-        z: -8.609999656677246
+        x: 5.210000038146973
+        y: 4.21999979019165
+        z: -8.369999885559082
       rotation:
         v:
           x: 0.0
           y: 0.0
-          z: 0.0
-        s: 1.0
+          z: -0.5135412216186523
+        s: 0.8580649495124817
       rotation_euler:
         x: 0.0
         y: 0.0
-        z: 0.0
+        z: -61.79999923706055
       scale:
         x: 1.0
         y: 5.0
-        z: 5.0
+        z: 2.049999952316284
       up:
         x: 0.0
         y: 1.0
@@ -343,9 +345,78 @@ root_children:
         y: 0.0
         z: 0.0
       global_position:
-        x: 6.0
-        y: 4.0
-        z: -8.609999656677246
+        x: 5.210000038146973
+        y: 4.21999979019165
+        z: -8.369999885559082
+      global_rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: -0.5135412216186523
+        s: 0.8580649495124817
+      global_scale:
+        x: 1.0
+        y: 5.0
+        z: 2.049999952316284
+  - type: ModelRenderer
+    data:
+      loaded_model: .engine/cube.glb
+      material_path: ''
+  - type: Collider
+    data:
+      shape: !Cuboid
+        size:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+      offset:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      is_static: false
+      is_area: false
+  children: []
+  parent: null
+  scene_instance_path: null
+- name: Node
+  id: 6
+  components:
+  - type: Transform
+    data:
+      position:
+        x: 4.699999809265137
+        y: 21.350000381469727
+        z: -9.670000076293945
+      rotation:
+        v:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
+      rotation_euler:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      scale:
+        x: 1.0
+        y: 1.0
+        z: 1.0
+      up:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      forward:
+        x: 0.0
+        y: 0.0
+        z: -1.0
+      right:
+        x: 1.0
+        y: 0.0
+        z: 0.0
+      global_position:
+        x: 4.699999809265137
+        y: 21.350000381469727
+        z: -9.670000076293945
       global_rotation:
         v:
           x: 0.0
@@ -354,27 +425,41 @@ root_children:
         s: 1.0
       global_scale:
         x: 1.0
-        y: 5.0
-        z: 5.0
-  - type: ModelRenderer
-    data:
-      loaded_model: .engine/cube.glb
-      material_path: ''
-  - type: Collider
-    data:
-      collider_size:
-        x: 1.0
         y: 1.0
         z: 1.0
+  - type: Collider
+    data:
+      shape: !Sphere
+        radius: 1.2000000476837158
       offset:
         x: 0.0
         y: 0.0
         z: 0.0
-      is_static: true
+      is_static: false
       is_area: false
+  - type: ModelRenderer
+    data:
+      loaded_model: models/smooth_sphere.glb
+      material_path: ''
+  - type: Physics
+    data:
+      mass: 1.0
+      friction: 0.0
+      gravity: -0.5
+      is_gravity_enabled: true
+  - type: Velocity
+    data:
+      direction:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      angular_direction:
+        x: 0.0
+        y: 0.0
+        z: 0.0
   children: []
   parent: null
   scene_instance_path: null
 name: physics_test
 path: res/physics_test.scene
-is_primary: true 
+is_primary: true

@@ -124,20 +124,19 @@ impl SceneManager {
         self.scene_paths.retain(|s| s != path);
     }
 
-    pub fn set_scene_primary(&mut self, name: &str, is_primary: bool) {
+    pub fn set_scene_primary(&mut self, path: &str, is_primary: bool) {
         for scene in self.scenes.iter_mut() {
             scene.is_primary = false;
         }
 
-        let scene = self.scenes.iter_mut().find(|s| s.name == name).unwrap();
+        let scene = self.scenes.iter_mut().find(|s| s.path == path).unwrap();
         scene.is_primary = is_primary;
     }
-
     pub fn get_primary_scene(&mut self) {
         if let Some(primary_scene) = self.scenes.iter().find(|s| s.is_primary) {
-            self.primary_scene = Some(primary_scene.name.clone());
+            self.primary_scene = Some(primary_scene.path.clone());
         } else {
-            log_warn!("No existing priamry scene, add one via the Editor Settings");
+            log_warn!("No existing primary scene, add one via the Editor Settings");
         }
     }
 

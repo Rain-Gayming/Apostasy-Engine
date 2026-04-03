@@ -11,11 +11,120 @@ use serde::{Deserialize, Serialize};
 
 use crate as apostasy;
 
+#[derive(Clone, Debug, PartialEq, InspectValue, Serialize, Deserialize)]
+pub enum ColliderShape {
+    Cuboid { size: Vector3<f32> },
+    Sphere { radius: f32 },
+    Capsule { radius: f32, height: f32 },
+    Cylinder { radius: f32, height: f32 },
+}
+
+impl ColliderShape {
+    pub fn half_extents(&self) -> Vector3<f32> {
+        match self {
+            ColliderShape::Cuboid { size } => *size * 0.5,
+            ColliderShape::Sphere { radius } => Vector3::new(*radius, *radius, *radius),
+            ColliderShape::Capsule { radius, height } => {
+                Vector3::new(*radius, height * 0.5 + radius, *radius)
+            }
+            ColliderShape::Cylinder { radius, height } => {
+                Vector3::new(*radius, height * 0.5, *radius)
+            }
+        }
+    }
+}
+
+impl Inspectable for ColliderShape {
+    fn inspect(
+        &mut self,
+        ui: &mut egui::Ui,
+        _editor_storage: &mut crate::engine::editor::EditorStorage,
+    ) -> bool {
+        egui::ComboBox::from_label("")
+            .selected_text(match self {
+                ColliderShape::Cuboid { .. } => "Cuboid",
+                ColliderShape::Sphere { .. } => "Sphere",
+                ColliderShape::Capsule { .. } => "Capsule",
+                ColliderShape::Cylinder { .. } => "Cylinder",
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    self,
+                    ColliderShape::Cuboid {
+                        size: Vector3::new(1.0, 1.0, 1.0),
+                    },
+                    "Cuboid",
+                );
+                ui.selectable_value(self, ColliderShape::Sphere { radius: 1.0 }, "Sphere");
+                ui.selectable_value(
+                    self,
+                    ColliderShape::Capsule {
+                        radius: 1.0,
+                        height: 1.0,
+                    },
+                    "Capsule",
+                );
+                ui.selectable_value(
+                    self,
+                    ColliderShape::Cylinder {
+                        radius: 1.0,
+                        height: 1.0,
+                    },
+                    "Cylinder",
+                );
+            });
+
+        ui.separator();
+
+        match self {
+            ColliderShape::Cuboid { size } => {
+                ui.label("Size");
+                ui.horizontal(|ui| {
+                    ui.label("X");
+                    ui.add(egui::DragValue::new(&mut size.x).speed(0.01));
+                    ui.label("Y");
+                    ui.add(egui::DragValue::new(&mut size.y).speed(0.01));
+                    ui.label("Z");
+                    ui.add(egui::DragValue::new(&mut size.z).speed(0.01));
+                });
+            }
+            ColliderShape::Sphere { radius } => {
+                ui.horizontal(|ui| {
+                    ui.label("Radius");
+                    ui.add(egui::DragValue::new(radius).speed(0.01));
+                });
+            }
+            ColliderShape::Capsule { radius, height } => {
+                ui.horizontal(|ui| {
+                    ui.label("Radius");
+                    ui.add(egui::DragValue::new(radius).speed(0.01));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Height");
+                    ui.add(egui::DragValue::new(height).speed(0.01));
+                });
+            }
+            ColliderShape::Cylinder { radius, height } => {
+                ui.horizontal(|ui| {
+                    ui.label("Radius");
+                    ui.add(egui::DragValue::new(radius).speed(0.01));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Height");
+                    ui.add(egui::DragValue::new(height).speed(0.01));
+                });
+            }
+        }
+
+        false
+    }
+}
+
 #[derive(
     Component, Clone, Inspectable, InspectValue, SerializableComponent, Serialize, Deserialize,
 )]
 pub struct Collider {
-    pub collider_size: Vector3<f32>,
+    pub shape: ColliderShape,
     pub offset: Vector3<f32>,
     pub is_static: bool,
     pub is_area: bool,
@@ -24,7 +133,9 @@ pub struct Collider {
 impl Default for Collider {
     fn default() -> Self {
         Self {
-            collider_size: Vector3::new(1.0, 1.0, 1.0),
+            shape: ColliderShape::Cuboid {
+                size: Vector3::new(1.0, 1.0, 1.0),
+            },
             offset: Vector3::new(0.0, 0.0, 0.0),
             is_static: false,
             is_area: false,
@@ -34,9 +145,9 @@ impl Default for Collider {
 
 impl Collider {
     /// Creates a dynamic collider
-    pub fn new(collider_size: Vector3<f32>, offset: Vector3<f32>) -> Self {
+    pub fn new(shape: ColliderShape, offset: Vector3<f32>) -> Self {
         Self {
-            collider_size,
+            shape,
             offset,
             is_static: false,
             is_area: false,
@@ -44,9 +155,9 @@ impl Collider {
     }
 
     /// Creates a static collider
-    pub fn new_static(collider_size: Vector3<f32>, offset: Vector3<f32>) -> Self {
+    pub fn new_static(shape: ColliderShape, offset: Vector3<f32>) -> Self {
         Self {
-            collider_size,
+            shape,
             offset,
             is_static: true,
             is_area: false,
@@ -69,7 +180,7 @@ impl Collider {
 
     /// Returns the half-extents (collider_size is already treated as half-extents).
     pub fn half_extents(&self) -> Vector3<f32> {
-        self.collider_size
+        self.shape.half_extents()
     }
 
     pub fn translation_vector_against(
@@ -195,11 +306,22 @@ fn build_snapshot(world: &World) -> Vec<Snapshot> {
             let mut collider = node.get_component::<Collider>()?.clone();
 
             // Bake scale into collider_size so collision matches world-space mesh size
-            collider.collider_size = Vector3::new(
-                collider.collider_size.x * scale.x,
-                collider.collider_size.y * scale.y,
-                collider.collider_size.z * scale.z,
-            );
+            collider.shape = match collider.shape {
+                ColliderShape::Cuboid { size } => ColliderShape::Cuboid {
+                    size: Vector3::new(size.x * scale.x, size.y * scale.y, size.z * scale.z),
+                },
+                ColliderShape::Sphere { radius } => ColliderShape::Sphere {
+                    radius: radius * scale.x.max(scale.y).max(scale.z),
+                },
+                ColliderShape::Capsule { radius, height } => ColliderShape::Capsule {
+                    radius: radius * scale.x.max(scale.z),
+                    height: height * scale.y,
+                },
+                ColliderShape::Cylinder { radius, height } => ColliderShape::Cylinder {
+                    radius: radius * scale.x.max(scale.z),
+                    height: height * scale.y,
+                },
+            };
 
             Some(Snapshot {
                 name: node.name.clone(),
@@ -295,7 +417,8 @@ pub fn collision_detection_system(world: &mut World) {
 /// Resolves a collision by pushing the node and cancelling inward velocity
 fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vector3<f32>) {
     if let Some(node) = world.get_node_with_name_mut(name) {
-        let (transform, velocity) = node.get_components_mut::<(&mut Transform, &mut Velocity)>();
+        let (transform, velocity, collider) =
+            node.get_components_mut::<(&mut Transform, &mut Velocity, &mut Collider)>();
 
         // Apply positional correction immediately
         transform.position += offset;
@@ -304,6 +427,10 @@ fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vec
         let v_dot_n = velocity.direction.dot(normal);
         if v_dot_n < 0.0 {
             velocity.direction -= normal * v_dot_n;
+        }
+
+        if let ColliderShape::Sphere { radius } = collider.shape {
+            velocity.angular_direction += normal.cross(velocity.direction) * (1.0 / radius);
         }
     }
 }

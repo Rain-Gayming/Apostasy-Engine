@@ -52,7 +52,7 @@ root_children:
     data:
       texture_path: .engine/default_skybox_texture.png
   children: []
-  parent: 0
+  parent: null
   scene_instance_path: null
 - name: Directional Light
   id: 1
@@ -108,7 +108,7 @@ root_children:
       strength: 1.0
       light_type: Directional
   children: []
-  parent: 0
+  parent: null
   scene_instance_path: null
 name: Scene
 path: Scene

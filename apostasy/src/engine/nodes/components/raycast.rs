@@ -97,9 +97,9 @@ impl Raycast {
                 let collider = node.get_component::<Collider>()?;
 
                 let half_extents = Vector3::new(
-                    collider.collider_size.x * transform.scale.x,
-                    collider.collider_size.y * transform.scale.y,
-                    collider.collider_size.z * transform.scale.z,
+                    collider.shape.half_extents().x * transform.scale.x,
+                    collider.shape.half_extents().y * transform.scale.y,
+                    collider.shape.half_extents().z * transform.scale.z,
                 );
 
                 let center =

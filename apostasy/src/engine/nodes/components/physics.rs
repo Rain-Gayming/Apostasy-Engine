@@ -1,11 +1,12 @@
 use crate::engine::editor::inspectable::Inspectable;
 use crate::engine::nodes::World;
+use crate::engine::nodes::components::collider::{Collider, ColliderShape};
 use crate::engine::nodes::components::transform::Transform;
 use crate::engine::nodes::components::velocity::apply_velocity;
 use crate::{self as apostasy, engine::nodes::components::velocity::Velocity};
 use apostasy_macros::InspectValue;
 use apostasy_macros::{Component, Inspectable, SerializableComponent, fixed_update};
-use cgmath::Vector3;
+use cgmath::{InnerSpace, Quaternion, Rotation3, Vector3};
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -28,7 +29,6 @@ impl Default for Physics {
         }
     }
 }
-
 #[fixed_update]
 pub fn apply_gravity(world: &mut World, delta_time: f32) {
     for node in world.get_all_nodes_mut() {
@@ -39,6 +39,29 @@ pub fn apply_gravity(world: &mut World, delta_time: f32) {
                     node.get_components_mut::<(&mut Transform, &mut Velocity)>();
                 velocity.add_velocity(Vector3::new(0.0, gravity * delta_time, 0.0));
                 apply_velocity(velocity, transform);
+            }
+        }
+    }
+}
+
+#[fixed_update]
+pub fn apply_angular_velocity(world: &mut World, delta_time: f32) {
+    for node in world.get_all_nodes_mut() {
+        if let Some(collider) = node.get_component::<Collider>() {
+            if let ColliderShape::Sphere { .. } = collider.shape {
+                let (transform, velocity) =
+                    node.get_components_mut::<(&mut Transform, &mut Velocity)>();
+
+                let angle = velocity.angular_direction.magnitude();
+                if angle > 0.0 {
+                    let axis = velocity.angular_direction / angle;
+                    let delta_rotation =
+                        Quaternion::from_axis_angle(axis.into(), cgmath::Rad(angle * delta_time));
+                    transform.rotation = (delta_rotation * transform.rotation).normalize();
+                }
+
+                // Angular damping
+                velocity.angular_direction *= 1.0 - (2.0 * delta_time);
             }
         }
     }
