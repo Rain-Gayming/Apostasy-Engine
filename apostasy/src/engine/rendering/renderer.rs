@@ -12,9 +12,9 @@ use winit::{event::WindowEvent, window::Window};
 
 use crate::engine::assets::handle::Handle;
 use crate::engine::assets::server::AssetServer;
-use crate::engine::nodes::components::collider::{Collider, CollisionEvents};
 use crate::engine::nodes::components::terrain::{Terrain, TerrainChunkGpu, TerrainVertex};
 use crate::engine::nodes::world::World;
+use crate::engine::physics::collider::{Collider, CollisionEvents};
 use crate::engine::rendering::debug_renderer::{DebugLineVertex, DebugRenderer};
 use crate::engine::rendering::models::gltf_loader::GltfLoader;
 use crate::engine::rendering::models::material::MaterialAsset;

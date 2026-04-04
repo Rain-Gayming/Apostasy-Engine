@@ -3,13 +3,11 @@ use crate::{
     engine::{
         assets::server::AssetServer,
         nodes::{
-            components::{
-                camera::get_perspective_projection,
-                raycast::{pick, ray_from_mouse},
-            },
-            scene_serialization::SceneLoader,
+            components::camera::get_perspective_projection, scene_serialization::SceneLoader,
             world::World,
         },
+        physics::raycast::{pick, ray_from_mouse},
+        physics::velocity::{Velocity, apply_velocity},
         rendering::{
             models::{material::MaterialLoader, shader::ShaderLoader},
             pipeline_settings::PipelineSettings,
@@ -45,10 +43,7 @@ use crate::engine::{
         terrain_editor::{TerrainEditMode, TerrainEditTool},
     },
     nodes::{
-        components::camera::Camera,
-        components::terrain::Terrain,
-        components::transform::Transform,
-        components::velocity::{Velocity, apply_velocity},
+        components::camera::Camera, components::terrain::Terrain, components::transform::Transform,
     },
     rendering::{
         queue_families::queue_family_picker::single_queue_family,
@@ -62,6 +57,7 @@ use crate::engine::{
 pub mod assets;
 pub mod editor;
 pub mod nodes;
+pub mod physics;
 pub mod rendering;
 pub mod timer;
 pub mod windowing;
@@ -311,6 +307,7 @@ impl Engine {
                 {
                     eprintln!("Failed to rebuild pipeline for renderer: {e}");
                 }
+                log!("Updating pipeline");
             }
 
             self.editor.should_update_renderer = false;

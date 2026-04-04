@@ -1,7 +1,7 @@
 use ash::vk;
 use cgmath::{Quaternion, Vector3};
 
-use crate::engine::nodes::components::collider::{Collider, ColliderShape, CollisionEvents};
+use crate::engine::physics::collider::{Collider, ColliderShape, CollisionEvents};
 
 #[repr(C)]
 #[derive(Clone, Copy)]

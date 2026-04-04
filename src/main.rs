@@ -2,14 +2,12 @@ pub mod custom_components;
 
 use apostasy::engine::{
     nodes::{
-        components::{
-            camera::Camera,
-            physics::Physics,
-            player::Player,
-            transform::Transform,
-            velocity::{Velocity, apply_velocity},
-        },
+        components::{camera::Camera, player::Player, transform::Transform},
         world::World,
+    },
+    physics::{
+        physics_body::PhysicsBody,
+        velocity::{Velocity, apply_velocity},
     },
     start_app,
 };
@@ -35,7 +33,7 @@ pub fn player_movement(world: &mut World, delta_time: f32) {
 
     if let Some(player) = player {
         let (player_transform, velocity, _physics) =
-            player.get_components_mut::<(&mut Transform, &mut Velocity, &mut Physics)>();
+            player.get_components_mut::<(&mut Transform, &mut Velocity, &mut PhysicsBody)>();
         player_transform.rotation_euler.y -= mouse_delta.0 as f32;
 
         if let Some(mut camera) = camera {

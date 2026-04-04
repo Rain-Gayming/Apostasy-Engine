@@ -1,9 +1,7 @@
 use crate::engine::{
     editor::inspectable::Inspectable,
-    nodes::{
-        World,
-        components::{transform::Transform, velocity::Velocity},
-    },
+    nodes::{components::transform::Transform, world::World},
+    physics::velocity::Velocity,
 };
 use apostasy_macros::{Component, InspectValue, Inspectable, SerializableComponent, update};
 use cgmath::{InnerSpace, Quaternion, Vector3};
@@ -413,24 +411,30 @@ pub fn collision_detection_system(world: &mut World) {
         }
     }
 }
-
-/// Resolves a collision by pushing the node and cancelling inward velocity
+// collider.rs — resolve_node
 fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vector3<f32>) {
     if let Some(node) = world.get_node_with_name_mut(name) {
+        // Skip micro-collisions at seams to avoid ghost forces
+        if offset.magnitude2() < 1e-6 {
+            return;
+        }
+
         let (transform, velocity, collider) =
             node.get_components_mut::<(&mut Transform, &mut Velocity, &mut Collider)>();
 
-        // Apply positional correction immediately
         transform.position += offset;
 
-        // Cancel the velocity component pointing into the surface
+        // Cancel inward velocity only — no bounce factor (remove the * 1.25)
         let v_dot_n = velocity.direction.dot(normal);
         if v_dot_n < 0.0 {
             velocity.direction -= normal * v_dot_n;
         }
 
         if let ColliderShape::Sphere { radius } = collider.shape {
-            velocity.angular_direction += normal.cross(velocity.direction) * (1.0 / radius);
+            let v_tangential = velocity.direction - normal * velocity.direction.dot(normal);
+
+            velocity.angular_direction = v_tangential.cross(normal) * (1.0 / radius);
+            velocity.sync_linear_from_angular(radius, normal);
         }
     }
 }

@@ -1,10 +1,8 @@
 use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, SquareMatrix, Vector3, Vector4};
 use serde::{Deserialize, Serialize};
 
-use crate::engine::nodes::{
-    Node,
-    components::{collider::Collider, transform::Transform},
-};
+use crate::engine::nodes::{Node, components::transform::Transform};
+use crate::engine::physics::collider::Collider;
 use crate::{self as apostasy};
 use apostasy_macros::{Component, Inspectable, SerializableComponent};
 

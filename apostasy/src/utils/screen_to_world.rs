@@ -3,11 +3,11 @@ use cgmath::{Rotation, Vector3};
 use crate::engine::nodes::{
     components::{
         camera::{Camera, get_perspective_projection},
-        raycast::ray_from_mouse,
         transform::Transform,
     },
     world::World,
 };
+use crate::engine::physics::raycast::ray_from_mouse;
 
 pub fn screen_to_world_plane(
     screen_pos: egui::Pos2,
