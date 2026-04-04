@@ -1,6 +1,6 @@
 use crate::engine::nodes::World;
 use crate::{self as apostasy};
-use apostasy_macros::{Component, Inspectable, SerializableComponent, update};
+use apostasy_macros::{Component, Inspectable, SerializableComponent, editor_fixed_update, update};
 use cgmath::{Deg, Euler, One, Quaternion, Rotation, Vector3};
 use serde::{Deserialize, Serialize};
 
@@ -98,6 +98,17 @@ impl Default for ParentGlobal {
 
 #[update]
 fn propagate_transforms_root(world: &mut World) {
+    let root = ParentGlobal::default();
+    for node in world.scene.root_node.children.iter_mut() {
+        node.propagate_transform(Some(&root));
+    }
+    for node in world.global_nodes.iter_mut() {
+        node.propagate_transform(Some(&root));
+    }
+}
+
+#[editor_fixed_update]
+fn propagate_transforms_root_editor(world: &mut World, _delta: f32) {
     let root = ParentGlobal::default();
     for node in world.scene.root_node.children.iter_mut() {
         node.propagate_transform(Some(&root));

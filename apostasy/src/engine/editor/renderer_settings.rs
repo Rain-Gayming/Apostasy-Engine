@@ -352,6 +352,14 @@ pub fn render_renderer_settings(ui: &mut Ui, editor_storage: &mut EditorStorage)
         .text("Debug Line Width"),
     );
 
+    ui.add(egui::Checkbox::new(
+        &mut editor_storage
+            .pipeline_settings
+            .debug_settings
+            .collision_debug_enabled,
+        "Collision Debug Outlines Enabled",
+    ));
+
     if editor_storage.pipeline_settings != before {
         editor_storage.should_update_renderer = true;
 

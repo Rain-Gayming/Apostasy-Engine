@@ -234,7 +234,6 @@ impl InputManager {
         }
     }
 
-    // #[late_update]
     pub fn clear_actions(&mut self) {
         self.keys_pressed.clear();
         self.keys_released.clear();

@@ -579,6 +579,7 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
                 if ui.button("Play").clicked() {
                     if editor_storage.is_editor_open {
                         let _ = world.serialize_scene();
+                        world.start();
                     }
 
                     world.scene_manager.get_primary_scene();

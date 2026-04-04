@@ -6,7 +6,10 @@ use crate::{
         nodes::{
             Node, NodeMut, build_instance_node,
             component::Component,
-            components::{camera::Camera, transform::Transform},
+            components::{
+                camera::{Camera, EditorCamera},
+                transform::Transform,
+            },
             scene::{
                 Scene, SceneInstance, SceneManager, deserialize_scene, deserialize_scene_manager,
             },
@@ -566,6 +569,7 @@ impl World {
         camera.add_component(Camera::default());
         camera.add_component(Transform::default());
         camera.add_component(Velocity::default());
+        camera.add_component(EditorCamera::default());
         self.add_global_node(camera);
 
         let mut cursor_manager = Node::new();
@@ -577,5 +581,7 @@ impl World {
         events_node.name = "CollisionEvents".to_string();
         events_node.add_component(CollisionEvents::new());
         self.add_global_node(events_node);
+
+        self.check_node_ids();
     }
 }

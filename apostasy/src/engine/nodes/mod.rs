@@ -335,11 +335,6 @@ impl_components_mut!(A, B, C, D, E, F);
 impl_components_mut!(A, B, C, D, E, F, G);
 impl_components_mut!(A, B, C, D, E, F, G, H);
 
-#[start]
-pub fn start_system(world: &mut World) {
-    world.input_manager.deserialize_input_manager().unwrap();
-}
-
 fn build_instance_node(path: &str) -> Node {
     let node_name = std::path::Path::new(path)
         .file_stem()

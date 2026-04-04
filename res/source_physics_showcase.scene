@@ -121,13 +121,13 @@ root_children:
         z: 10.0
       rotation:
         v:
-          x: -0.11568339914083481
-          y: -0.7034686803817749
-          z: 0.6912966966629028
-        s: -0.11772029101848602
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
       rotation_euler:
-        x: 89.0
-        y: 521.0
+        x: 0.0
+        y: 0.0
         z: 0.0
       scale:
         x: 1.0
@@ -151,10 +151,10 @@ root_children:
         z: 10.0
       global_rotation:
         v:
-          x: -0.11568339914083481
-          y: -0.7034686803817749
-          z: 0.6912966966629028
-        s: -0.11772029101848602
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        s: 1.0
       global_scale:
         x: 1.0
         y: 1.0
@@ -168,11 +168,6 @@ root_children:
         z: 0.0
       jump_pressed: false
       previous_jump_pressed: false
-  - type: Camera
-    data:
-      fov_y: 90.0
-      near: 0.0010000000474974513
-      far: 10000.0
   - type: Velocity
     data:
       direction:
@@ -205,8 +200,8 @@ root_children:
   - type: Collider
     data:
       shape: !Capsule
-        radius: 0.5
-        height: 1.7999999523162842
+        radius: 0.75
+        height: 2.75
       offset:
         x: 0.0
         y: 0.0
@@ -215,13 +210,70 @@ root_children:
       is_area: false
   - type: ModelRenderer
     data:
-      loaded_model: .engine/cube.glb
+      loaded_model: models/capsule.glb
       material_path: ''
-  children: []
+  children:
+  - name: Camera
+    id: 3
+    components:
+    - type: Transform
+      data:
+        position:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        rotation_euler:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        scale:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+        up:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        forward:
+          x: 0.0
+          y: 0.0
+          z: -1.0
+        right:
+          x: 1.0
+          y: 0.0
+          z: 0.0
+        global_position:
+          x: 0.0
+          y: 5.0
+          z: 10.0
+        global_rotation:
+          v:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          s: 1.0
+        global_scale:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+    - type: Camera
+      data:
+        fov_y: 90.0
+        near: 0.0010000000474974513
+        far: 10000.0
+    children: []
+    parent: null
+    scene_instance_path: null
   parent: null
   scene_instance_path: null
 - name: Ground
-  id: 3
+  id: 4
   components:
   - type: Transform
     data:
@@ -290,7 +342,7 @@ root_children:
   parent: null
   scene_instance_path: null
 - name: Ramp
-  id: 4
+  id: 5
   components:
   - type: Transform
     data:
@@ -359,7 +411,7 @@ root_children:
   parent: null
   scene_instance_path: null
 - name: Physics Cube 1
-  id: 5
+  id: 6
   components:
   - type: Transform
     data:
@@ -450,7 +502,7 @@ root_children:
   parent: null
   scene_instance_path: null
 - name: Physics Sphere 1
-  id: 6
+  id: 7
   components:
   - type: Transform
     data:
@@ -538,7 +590,7 @@ root_children:
   parent: null
   scene_instance_path: null
 - name: Grenade
-  id: 7
+  id: 8
   components:
   - type: Transform
     data:
@@ -608,25 +660,10 @@ root_children:
       is_gravity_enabled: true
       linear_damping: 0.05000000074505806
       angular_damping: 0.10000000149011612
-  - type: Projectile
-    data:
-      initial_velocity:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      angular_velocity:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      restitution: 0.5
-      angular_damping: 0.9900000095367432
-      is_fired: false
-      lifetime: 0.0
-      max_lifetime: 10.0
   - type: Collider
     data:
       shape: !Sphere
-        radius: 0.5
+        radius: 1.100000023841858
       offset:
         x: 0.0
         y: 0.0
@@ -641,7 +678,7 @@ root_children:
   parent: null
   scene_instance_path: null
 - name: Platform 1
-  id: 8
+  id: 9
   components:
   - type: Transform
     data:
@@ -710,7 +747,7 @@ root_children:
   parent: null
   scene_instance_path: null
 - name: Physics Cube 2
-  id: 9
+  id: 10
   components:
   - type: Transform
     data:
@@ -801,7 +838,7 @@ root_children:
   parent: null
   scene_instance_path: null
 - name: Bunny Hop Platform
-  id: 10
+  id: 11
   components:
   - type: Transform
     data:

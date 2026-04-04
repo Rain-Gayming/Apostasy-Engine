@@ -1716,6 +1716,8 @@ impl Renderer {
                 .destroy_pipeline(old_debug_pipeline, None);
         }
 
+        self.debug_renderer.enabled = pipeline_settings.debug_settings.collision_debug_enabled;
+
         Ok(())
     }
 

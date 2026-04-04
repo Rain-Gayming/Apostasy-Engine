@@ -35,3 +35,17 @@ pub fn get_perspective_projection(camera: &Camera, aspect: f32) -> Matrix4<f32> 
 
     proj
 }
+
+#[derive(
+    Component,
+    Clone,
+    Inspectable,
+    Default,
+    InspectValue,
+    SerializableComponent,
+    Serialize,
+    Deserialize,
+)]
+pub struct EditorCamera {
+    pub stat: f32,
+}

@@ -11,8 +11,9 @@ use apostasy::engine::{
         velocity::{self, Velocity},
     },
     start_app,
+    windowing::cursor_manager::{CursorLockMode, CursorManager},
 };
-use apostasy_macros::{fixed_update, update};
+use apostasy_macros::{fixed_update, start, update};
 use cgmath::{InnerSpace, Vector3, num_traits::clamp};
 
 use crate::custom_components::movement_stats::MovementStats;
@@ -20,6 +21,17 @@ use crate::custom_components::movement_stats::MovementStats;
 fn main() {
     start_app().unwrap();
     println!("Hello, world!");
+}
+
+#[start]
+pub fn start(world: &mut World) {
+    let cursor_manager = world.get_node_with_component_mut::<CursorManager>();
+    if let Some(mut cursor_manager) = cursor_manager {
+        cursor_manager
+            .get_component_mut::<CursorManager>()
+            .unwrap()
+            .cursor_lock_mode = CursorLockMode::GrabbedHidden;
+    }
 }
 
 #[update]
@@ -69,6 +81,7 @@ pub fn player_input(world: &mut World) {
         player_component.previous_jump_pressed = jump_key_pressed;
 
         if jump_pressed_this_frame {
+            println!("Jump");
             let mut jump_factor = source_physics::JUMP_SPEED;
 
             if let Some(movement_stats) = player.get_component::<MovementStats>() {
@@ -80,6 +93,8 @@ pub fn player_input(world: &mut World) {
                 if velocity.is_grounded || velocity.time_since_ground < source_physics::COYOTE_TIME
                 {
                     velocity.jump(jump_factor, source_physics::BUNNY_HOP_FACTOR);
+                } else {
+                    println!("Not grounded");
                 }
             }
         }

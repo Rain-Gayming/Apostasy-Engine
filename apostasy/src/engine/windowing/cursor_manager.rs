@@ -5,36 +5,66 @@ use winit::window::CursorGrabMode;
 
 use crate::engine::editor::inspectable::Inspectable;
 
-#[derive(Component, Clone, Default, Inspectable, InspectValue)]
-pub struct CursorManager {
-    pub is_hidden: bool,
-    pub is_grabbed: bool,
+#[derive(Clone, Copy, InspectValue, PartialEq, Eq, Default)]
+pub enum CursorLockMode {
+    #[default]
+    UngrabbedVisible,
+    UngrabbedHidden,
+    GrabbedHidden,
+    GrabbedVisible,
 }
 
-impl CursorManager {
-    pub fn grab_cursor(&mut self, window_manager: &mut WindowManager) {
-        self.is_grabbed = true;
-        self.is_hidden = true;
+impl Inspectable for CursorLockMode {
+    fn inspect(
+        &mut self,
+        ui: &mut egui::Ui,
+        editor_storage: &mut crate::engine::editor::EditorStorage,
+    ) -> bool {
+        false
+    }
+}
 
+#[derive(Component, Clone, Default, Inspectable, InspectValue)]
+pub struct CursorManager {
+    pub cursor_lock_mode: CursorLockMode,
+}
+
+#[allow(unused_must_use)]
+impl CursorManager {
+    pub fn update_cursor(&mut self, window_manager: &mut WindowManager) {
+        match self.cursor_lock_mode {
+            CursorLockMode::UngrabbedVisible => {
+                window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(true);
+                window_manager.windows[&window_manager.primary_window_id]
+                    .set_cursor_grab(CursorGrabMode::None);
+            }
+            CursorLockMode::UngrabbedHidden => {
+                window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(false);
+                window_manager.windows[&window_manager.primary_window_id]
+                    .set_cursor_grab(CursorGrabMode::None);
+            }
+
+            CursorLockMode::GrabbedHidden => {
+                window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(false);
+                window_manager.windows[&window_manager.primary_window_id]
+                    .set_cursor_grab(CursorGrabMode::Confined);
+            }
+
+            CursorLockMode::GrabbedVisible => {
+                window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(true);
+                window_manager.windows[&window_manager.primary_window_id]
+                    .set_cursor_grab(CursorGrabMode::Locked);
+            }
+        }
+    }
+
+    pub fn grab_cursor(&mut self, window_manager: &mut WindowManager) {
         window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(false);
         let _ = window_manager.windows[&window_manager.primary_window_id]
             .set_cursor_grab(CursorGrabMode::Locked)
             .or_else(|_| {
                 window_manager.windows[&window_manager.primary_window_id]
-                    .set_cursor_grab(CursorGrabMode::Confined)
+                    .set_cursor_grab(CursorGrabMode::Locked)
             });
-    }
-
-    pub fn ungrab_cursor(&mut self, window_manager: &mut WindowManager) {
-        self.is_grabbed = false;
-        self.is_hidden = false;
-
-        window_manager.windows[&window_manager.primary_window_id].set_cursor_visible(true);
-        let _ = window_manager.windows[&window_manager.primary_window_id]
-            .set_cursor_grab(CursorGrabMode::None);
-    }
-
-    pub fn toggle_hide_cursor(&mut self) {
-        self.is_hidden = !self.is_hidden;
     }
 }

@@ -6,13 +6,15 @@ use crate::{
             components::camera::get_perspective_projection, scene_serialization::SceneLoader,
             world::World,
         },
-        physics::raycast::{pick, ray_from_mouse},
-        physics::velocity::Velocity,
+        physics::{
+            raycast::{pick, ray_from_mouse},
+            velocity::{Velocity, apply_velocity},
+        },
         rendering::{
             models::{material::MaterialLoader, shader::ShaderLoader},
             pipeline_settings::PipelineSettings,
         },
-        windowing::cursor_manager::CursorManager,
+        windowing::cursor_manager::{CursorLockMode, CursorManager},
     },
     log,
 };
@@ -263,6 +265,11 @@ impl Engine {
         {
             let mut world = self.world.write().unwrap();
             world.input_manager.handle_device_event(event.clone());
+
+            if !self.editor.is_editor_open {
+                return;
+            }
+
             if world
                 .input_manager
                 .is_mousebind_active("editor_camera_look")
@@ -275,22 +282,25 @@ impl Engine {
                     .unwrap()
                     .get_component_mut::<CursorManager>()
                     .unwrap();
-                cursor_manager.grab_cursor(&mut self.window_manager);
+
+                cursor_manager.cursor_lock_mode = CursorLockMode::GrabbedHidden;
             } else {
                 let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
                 let cursor_manager = cursor_manager
                     .unwrap()
                     .get_component_mut::<CursorManager>()
                     .unwrap();
-                cursor_manager.ungrab_cursor(&mut self.window_manager);
+                cursor_manager.cursor_lock_mode = CursorLockMode::UngrabbedVisible;
             }
         }
     }
 
     pub fn update(&mut self) {
         let mut world = self.world.write().unwrap();
-        world.update();
 
+        if !self.editor.is_editor_open {
+            world.update();
+        }
         // Get delta time info including how many fixed updates to run
         let delta_info = self.timer.tick();
 
@@ -327,6 +337,15 @@ impl Engine {
         }
 
         world.input_manager.clear_actions();
+
+        let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
+        let cursor_manager = cursor_manager
+            .unwrap()
+            .get_component_mut::<CursorManager>()
+            .unwrap();
+
+        cursor_manager.update_cursor(&mut self.window_manager);
+
         world.late_update();
     }
 
@@ -397,12 +416,13 @@ impl Engine {
 
 #[editor_fixed_update]
 pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
-    if !world
+    if world
         .get_global_node_with_component::<CursorManager>()
         .unwrap()
         .get_component::<CursorManager>()
         .unwrap()
-        .is_grabbed
+        .cursor_lock_mode
+        != CursorLockMode::GrabbedHidden
         || !world.is_world_hovered
     {
         return;
@@ -429,10 +449,9 @@ pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
 
         let direction = camera_transform.global_rotation * input_dir;
 
-        velocity.add_velocity(direction * delta_time);
+        velocity.add_velocity(direction * 250.0 * delta_time);
 
-        // Velocity will be applied by the general physics system
-        // apply_velocity(velocity, camera_transform, delta_time);
+        apply_velocity(velocity, camera_transform, delta_time);
         velocity.direction = Vector3::zero();
     }
 }
@@ -467,8 +486,7 @@ pub fn editor_camera_mouse_handle(world: &mut World, delta_time: f32) {
 
         velocity.add_velocity(direction * delta_time);
 
-        // Velocity will be applied by the general physics system
-        // apply_velocity(velocity, camera_transform, delta_time);
+        apply_velocity(velocity, camera_transform, delta_time);
         velocity.direction = Vector3::zero();
     }
 }

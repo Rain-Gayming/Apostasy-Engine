@@ -190,12 +190,14 @@ impl Default for ImageSettings {
 
 #[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct DebugSettings {
+    pub collision_debug_enabled: bool,
     pub debug_line_width: f32,
 }
 
 impl Default for DebugSettings {
     fn default() -> Self {
         Self {
+            collision_debug_enabled: false,
             debug_line_width: 1.0,
         }
     }

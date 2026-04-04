@@ -5,7 +5,7 @@ rasterization_settings:
   polygon_mode: FILL
   cull_mode: BACK
   front_face: COUNTER_CLOCKWISE
-  line_width: 12.0
+  line_width: 1.0
 image_settings:
   filter_mode: NEAREST
   address_mode: REPEAT
@@ -13,4 +13,5 @@ image_settings:
   anisotropy_amount: 16
   mip_map_mode: LINEAR
 debug_settings:
-  debug_line_width: 4.3
+  collision_debug_enabled: true
+  debug_line_width: 5.0
