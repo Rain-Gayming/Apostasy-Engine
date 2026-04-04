@@ -368,40 +368,36 @@ root_children:
         z: 0.0
       is_static: false
       is_area: false
-  - type: Physics
-    data:
-      mass: 1.0
-      friction: 6.0
-      drag: 0.05000000074505806
-      bounce: 0.0
-      gravity: -9.8100004196167
-      is_gravity_enabled: true
   - type: Velocity
     data:
       direction:
         x: 0.0
         y: 0.0
         z: 0.0
-      angular_velocity:
+      angular_direction:
         x: 0.0
         y: 0.0
         z: 0.0
       friction: 1.0
-      acceleration:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      angular_acceleration:
-        x: 0.0
-        y: 0.0
-        z: 0.0
+      time_since_ground: 0.0
+      is_grounded: false
   - type: ModelRenderer
     data:
       loaded_model: models/smooth_sphere.glb
       material_path: ''
+  - type: PhysicsBody
+    data:
+      mass: 1.0
+      friction: 6.0
+      drag: 0.05000000074505806
+      bounce: 0.5
+      gravity: -800.0
+      is_gravity_enabled: true
+      linear_damping: 0.05000000074505806
+      angular_damping: 0.10000000149011612
   children: []
   parent: null
   scene_instance_path: null
 name: physics_test
 path: res/physics_test.scene
-is_primary: true
+is_primary: false 

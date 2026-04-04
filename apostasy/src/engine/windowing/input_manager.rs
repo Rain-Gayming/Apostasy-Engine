@@ -109,6 +109,14 @@ impl Default for InputManager {
                 "down".to_string(),
             ),
         );
+        default_keybinds.insert(
+            "jump".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::Space),
+                KeyAction::Press,
+                "jump".to_string(),
+            ),
+        );
 
         default_mousebinds.insert(
             "editor_camera_look".to_string(),
@@ -228,8 +236,8 @@ impl InputManager {
 
     // #[late_update]
     pub fn clear_actions(&mut self) {
-        // self.keys_pressed.clear();
-        // self.keys_released.clear();
+        self.keys_pressed.clear();
+        self.keys_released.clear();
         self.mouse_pressed.clear();
         self.mouse_released.clear();
         self.mouse_delta = (0.0, 0.0);

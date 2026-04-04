@@ -12,7 +12,7 @@ impl EngineTimer {
         Self {
             last_frame_time: Instant::now(),
             accumulator: Duration::ZERO,
-            fixed_time_step: Duration::from_secs_f64(1.0 / 60.0),
+            fixed_time_step: Duration::from_secs_f64(1.0 / 66.0),
         }
     }
 
@@ -26,9 +26,14 @@ impl EngineTimer {
 
         // Calculate how many fixed updates to run
         let mut updates = 0;
-        while self.accumulator >= self.fixed_time_step {
+        const MAX_FIXED_UPDATES: u32 = 5;
+        while self.accumulator >= self.fixed_time_step && updates < MAX_FIXED_UPDATES {
             self.accumulator -= self.fixed_time_step;
             updates += 1;
+        }
+
+        if updates >= MAX_FIXED_UPDATES {
+            self.accumulator = Duration::ZERO;
         }
 
         DeltaTimeInfo {

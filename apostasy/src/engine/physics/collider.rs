@@ -207,7 +207,6 @@ impl Collider {
         ];
 
         for axis in &face_axes {
-            // Skip near-zero axes (shouldn't happen for face normals, but be safe)
             if axis.magnitude2() < 1e-10 {
                 continue;
             }
@@ -411,10 +410,8 @@ pub fn collision_detection_system(world: &mut World) {
         }
     }
 }
-// collider.rs — resolve_node
 fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vector3<f32>) {
     if let Some(node) = world.get_node_with_name_mut(name) {
-        // Skip micro-collisions at seams to avoid ghost forces
         if offset.magnitude2() < 1e-6 {
             return;
         }
@@ -424,7 +421,7 @@ fn resolve_node(world: &mut World, name: &str, offset: Vector3<f32>, normal: Vec
 
         transform.position += offset;
 
-        // Cancel inward velocity only — no bounce factor (remove the * 1.25)
+        // Normal collision response
         let v_dot_n = velocity.direction.dot(normal);
         if v_dot_n < 0.0 {
             velocity.direction -= normal * v_dot_n;

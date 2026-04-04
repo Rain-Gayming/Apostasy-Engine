@@ -7,7 +7,7 @@ use crate::{
             world::World,
         },
         physics::raycast::{pick, ray_from_mouse},
-        physics::velocity::{Velocity, apply_velocity},
+        physics::velocity::Velocity,
         rendering::{
             models::{material::MaterialLoader, shader::ShaderLoader},
             pipeline_settings::PipelineSettings,
@@ -291,11 +291,16 @@ impl Engine {
         let mut world = self.world.write().unwrap();
         world.update();
 
-        let delta_time = self.timer.tick().fixed_dt;
-        if self.editor.is_editor_open {
-            world.editor_fixed_update(delta_time);
-        } else {
-            world.fixed_update(delta_time);
+        // Get delta time info including how many fixed updates to run
+        let delta_info = self.timer.tick();
+
+        // Run the appropriate number of fixed updates
+        for _ in 0..delta_info.fixed_updates {
+            if self.editor.is_editor_open {
+                world.editor_fixed_update(delta_info.fixed_dt);
+            } else {
+                world.fixed_update(delta_info.fixed_dt);
+            }
         }
 
         if self.editor.should_update_renderer {
@@ -426,7 +431,8 @@ pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
 
         velocity.add_velocity(direction * delta_time);
 
-        apply_velocity(velocity, camera_transform);
+        // Velocity will be applied by the general physics system
+        // apply_velocity(velocity, camera_transform, delta_time);
         velocity.direction = Vector3::zero();
     }
 }
@@ -461,7 +467,8 @@ pub fn editor_camera_mouse_handle(world: &mut World, delta_time: f32) {
 
         velocity.add_velocity(direction * delta_time);
 
-        apply_velocity(velocity, camera_transform);
+        // Velocity will be applied by the general physics system
+        // apply_velocity(velocity, camera_transform, delta_time);
         velocity.direction = Vector3::zero();
     }
 }
