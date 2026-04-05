@@ -30,7 +30,7 @@ pub fn start(world: &mut World) {
         cursor_manager
             .get_component_mut::<CursorManager>()
             .unwrap()
-            .cursor_lock_mode = CursorLockMode::GrabbedHidden;
+            .cursor_lock_mode = CursorLockMode::LockedHidden;
     }
 }
 
@@ -40,6 +40,15 @@ pub fn player_input(world: &mut World) {
     let input_dir = world
         .input_manager
         .input_vector_3d("right", "left", "up", "down", "backward", "forward");
+
+    if world.input_manager.is_keybind_active("toggle_mouse") {
+        let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
+        let cursor_manager = cursor_manager
+            .unwrap()
+            .get_component_mut::<CursorManager>()
+            .unwrap();
+        cursor_manager.switch_mode();
+    }
 
     let player = world.get_node_with_component_mut::<Player>();
     let camera = world.get_node_with_component_mut::<Camera>();
@@ -81,7 +90,6 @@ pub fn player_input(world: &mut World) {
         player_component.previous_jump_pressed = jump_key_pressed;
 
         if jump_pressed_this_frame {
-            println!("Jump");
             let mut jump_factor = source_physics::JUMP_SPEED;
 
             if let Some(movement_stats) = player.get_component::<MovementStats>() {
@@ -93,8 +101,6 @@ pub fn player_input(world: &mut World) {
                 if velocity.is_grounded || velocity.time_since_ground < source_physics::COYOTE_TIME
                 {
                     velocity.jump(jump_factor, source_physics::BUNNY_HOP_FACTOR);
-                } else {
-                    println!("Not grounded");
                 }
             }
         }

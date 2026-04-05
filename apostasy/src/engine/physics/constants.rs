@@ -1,12 +1,12 @@
 pub mod source_physics {
     /// Gravity acceleration in sqr(m/s)
-    pub const GRAVITY: f32 = -15.0;
+    pub const GRAVITY: f32 = -16.0;
 
     /// Ground acceleration in sqr(m/s)
-    pub const GROUND_ACCELERATION: f32 = 25.0;
+    pub const GROUND_ACCELERATION: f32 = 12.0;
 
     /// Air acceleration in m/s
-    pub const AIR_ACCELERATION: f32 = 8.0;
+    pub const AIR_ACCELERATION: f32 = 4.0;
 
     /// Ground friction for control
     pub const GROUND_FRICTION: f32 = 12.0;
@@ -24,7 +24,7 @@ pub mod source_physics {
     pub const BUNNY_HOP_FACTOR: f32 = 0.95;
 
     /// Grace period for movement preservation after jump (in seconds)
-    pub const JUMP_GRACE_PERIOD: f32 = 0.2;
+    pub const JUMP_GRACE_PERIOD: f32 = 0.1;
 
     /// Coyote time allows jumping for this long after leaving ground (in seconds)
     pub const COYOTE_TIME: f32 = 0.15;
@@ -36,7 +36,7 @@ pub mod source_physics {
     pub const PHYSICS_LINEAR_DAMPING: f32 = 0.05;
 
     /// Physics object angular damping
-    pub const PHYSICS_ANGULAR_DAMPING: f32 = 0.1;
+    pub const PHYSICS_ANGULAR_DAMPING: f32 = 0.9;
 
     /// Resting threshold for physics objects
     pub const RESTING_THRESHOLD: f32 = 0.1;
@@ -44,4 +44,3 @@ pub mod source_physics {
     /// Terminal velocity for falling objects
     pub const TERMINAL_VELOCITY: f32 = 3500.0;
 }
-

@@ -1,5 +1,4 @@
 use crate::{
-    self as apostasy,
     engine::nodes::{
         scene::{SceneInstance, deserialize_scene},
         scene_serialization::find_registration,
@@ -10,7 +9,6 @@ use crate::{
 use std::any::TypeId;
 
 use anyhow::Result;
-use apostasy_macros::start;
 use cgmath::{Rotation, Vector3};
 
 use crate::engine::nodes::{

@@ -57,8 +57,6 @@ impl AssetLoader for GltfLoader {
 
         let mut meshes = Vec::new();
 
-        println!("Loading gltf: {}", path_str);
-
         for mesh in gltf.meshes() {
             for primitive in mesh.primitives() {
                 let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));

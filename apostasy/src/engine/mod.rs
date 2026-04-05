@@ -283,14 +283,14 @@ impl Engine {
                     .get_component_mut::<CursorManager>()
                     .unwrap();
 
-                cursor_manager.cursor_lock_mode = CursorLockMode::GrabbedHidden;
+                cursor_manager.cursor_lock_mode = CursorLockMode::LockedHidden;
             } else {
                 let cursor_manager = world.get_global_node_with_component_mut::<CursorManager>();
                 let cursor_manager = cursor_manager
                     .unwrap()
                     .get_component_mut::<CursorManager>()
                     .unwrap();
-                cursor_manager.cursor_lock_mode = CursorLockMode::UngrabbedVisible;
+                cursor_manager.cursor_lock_mode = CursorLockMode::NoneVisible;
             }
         }
     }
@@ -422,7 +422,7 @@ pub fn editor_camera_handle(world: &mut World, delta_time: f32) {
         .get_component::<CursorManager>()
         .unwrap()
         .cursor_lock_mode
-        != CursorLockMode::GrabbedHidden
+        != CursorLockMode::LockedHidden
         || !world.is_world_hovered
     {
         return;

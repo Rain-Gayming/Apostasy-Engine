@@ -118,6 +118,15 @@ impl Default for InputManager {
             ),
         );
 
+        default_keybinds.insert(
+            "toggle_mouse".to_string(),
+            KeyBind::new(
+                PhysicalKey::Code(KeyCode::AltRight),
+                KeyAction::Press,
+                "toggle_mouse".to_string(),
+            ),
+        );
+
         default_mousebinds.insert(
             "editor_camera_look".to_string(),
             MouseBind::new(
