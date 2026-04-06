@@ -8,7 +8,7 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 1726.0
+          x: 1266.0
           y: 1376.0
       fraction: 0.75307894
       fully_collapsed: false
@@ -19,7 +19,7 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 1299.0
+          x: 953.0
           y: 1376.0
       fraction: 0.67789316
       fully_collapsed: false
@@ -27,10 +27,10 @@ dock_state:
     - !Vertical
       rect:
         min:
-          x: 1300.0
+          x: 954.0
           y: 28.0
         max:
-          x: 1726.0
+          x: 1266.0
           y: 1376.0
       fraction: 0.6940559
       fully_collapsed: false
@@ -41,7 +41,7 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 1299.0
+          x: 953.0
           y: 941.0
       fraction: 0.29069766
       fully_collapsed: false
@@ -52,14 +52,14 @@ dock_state:
           x: 0.0
           y: 942.0
         max:
-          x: 1299.0
+          x: 953.0
           y: 1376.0
       viewport:
         min:
           x: 0.0
           y: 966.0
         max:
-          x: 1299.0
+          x: 953.0
           y: 1376.0
       tabs:
       - Files
@@ -70,17 +70,17 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 1300.0
+          x: 954.0
           y: 28.0
         max:
-          x: 1726.0
+          x: 1266.0
           y: 963.0
       viewport:
         min:
-          x: 1300.0
+          x: 954.0
           y: 52.0
         max:
-          x: 1726.0
+          x: 1266.0
           y: 963.0
       tabs:
       - Inspector
@@ -90,17 +90,17 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 1300.0
+          x: 954.0
           y: 964.0
         max:
-          x: 1726.0
+          x: 1266.0
           y: 1376.0
       viewport:
         min:
-          x: 1300.0
+          x: 954.0
           y: 988.0
         max:
-          x: 1726.0
+          x: 1266.0
           y: 1376.0
       tabs:
       - AssetEditor
@@ -113,14 +113,14 @@ dock_state:
           x: 0.0
           y: 28.0
         max:
-          x: 377.0
+          x: 277.0
           y: 941.0
       viewport:
         min:
           x: 0.0
           y: 52.0
         max:
-          x: 377.0
+          x: 277.0
           y: 941.0
       tabs:
       - Hierarchy
@@ -130,17 +130,17 @@ dock_state:
     - !Leaf
       rect:
         min:
-          x: 378.0
+          x: 278.0
           y: 28.0
         max:
-          x: 1299.0
+          x: 953.0
           y: 941.0
       viewport:
         min:
-          x: 378.0
+          x: 278.0
           y: 52.0
         max:
-          x: 1299.0
+          x: 953.0
           y: 941.0
       tabs:
       - Viewport

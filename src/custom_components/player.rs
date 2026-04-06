@@ -8,23 +8,12 @@ use apostasy::engine::{
         physics_body::PhysicsBody,
         velocity::{self, Velocity},
     },
-    windowing::cursor_manager::{CursorLockMode, CursorManager},
+    windowing::cursor_manager::CursorManager,
 };
-use apostasy_macros::{fixed_update, start, update};
+use apostasy_macros::{fixed_update, update};
 use cgmath::{InnerSpace, Vector3, num_traits::clamp};
 
 use crate::custom_components::movement_stats::MovementStats;
-
-#[start]
-pub fn start(world: &mut World) {
-    let cursor_manager = world.get_node_with_component_mut::<CursorManager>();
-    if let Some(mut cursor_manager) = cursor_manager {
-        cursor_manager
-            .get_component_mut::<CursorManager>()
-            .unwrap()
-            .cursor_lock_mode = CursorLockMode::LockedHidden;
-    }
-}
 
 #[update]
 pub fn player_input(world: &mut World) {

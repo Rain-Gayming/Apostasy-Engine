@@ -10,7 +10,11 @@ use crate::{
             inspector::render_inspector,
             terrain_editor::{TerrainEditorSettings, render_terrain_edtor},
         },
-        nodes::{Node, components::transform::Transform, scene::SceneInstance},
+        nodes::{
+            Node,
+            components::transform::Transform,
+            scene::{self, SceneInstance},
+        },
         rendering::{
             models::model::ModelRenderer, pipeline_settings::PipelineSettings,
             profiler::ProfilerState,
@@ -584,13 +588,13 @@ fn render_top_bar(context: &mut Context, world: &mut World, editor_storage: &mut
 
                     world.scene_manager.get_primary_scene();
 
-                    let scene_name = world
+                    let scene_path = world
                         .scene_manager
                         .primary_scene
                         .clone()
                         .unwrap_or_else(|| world.scene.path.clone());
 
-                    world.scene = world.scene_manager.load_scene(&scene_name).unwrap();
+                    world.scene = world.scene_manager.load_scene(&scene_path).unwrap();
                     world.check_node_ids();
                     editor_storage.is_editor_open = !editor_storage.is_editor_open;
                 }

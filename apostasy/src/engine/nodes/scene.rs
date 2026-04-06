@@ -115,8 +115,8 @@ impl SceneManager {
         scene_manager
     }
 
-    pub fn load_scene(&mut self, name: &str) -> Option<Scene> {
-        deserialize_scene(name.to_string())
+    pub fn load_scene(&mut self, path: &str) -> Option<Scene> {
+        deserialize_scene(path.to_string())
     }
 
     pub fn remove_scene(&mut self, path: &str) {
@@ -218,6 +218,7 @@ pub fn deserialize_scene(path: String) -> Option<Scene> {
     };
 
     let mut scene = Scene::new(path.clone());
+    println!("{}", path);
 
     // root_children
     if let Some(root_children_value) = value.get("root_children") {

@@ -190,6 +190,13 @@ root_children:
       is_gravity_enabled: true
       linear_damping: 0.05000000074505806
       angular_damping: 0.10000000149011612
+  - type: MovementStats
+    data:
+      current_speed: 10.0
+      walk_speed: 190.0
+      run_speed: 100.0
+      sprint_speed: 400.0
+      jump_speed: 5.0
   - type: Collider
     data:
       shape: !Capsule
