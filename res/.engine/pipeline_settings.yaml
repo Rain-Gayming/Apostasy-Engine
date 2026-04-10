@@ -13,5 +13,5 @@ image_settings:
   anisotropy_amount: 16
   mip_map_mode: NEAREST
 debug_settings:
-  collision_debug_enabled: true
+  collision_debug_enabled: false
   debug_line_width: 5.0
