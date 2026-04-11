@@ -54,7 +54,7 @@ impl Default for RasterizationSettings {
     fn default() -> Self {
         Self {
             polygon_mode: vk::PolygonMode::FILL,
-            cull_mode: vk::CullModeFlags::BACK,
+            cull_mode: vk::CullModeFlags::NONE,
             front_face: vk::FrontFace::COUNTER_CLOCKWISE,
             line_width: 1.0,
         }

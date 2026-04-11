@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::{fs, u64};
 
@@ -7,6 +8,8 @@ use ash::vk::{
     PipelineLayoutCreateInfo,
 };
 
+use crate::assets::gltf::load_model;
+use crate::rendering::shared::model::ModelRenderer;
 use crate::rendering::vulkan::image_layout::ImageLayouts;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::rendering::vulkan::{frame::VulkanFrame, swapchain::VulkanSwapchain};
@@ -197,10 +200,39 @@ impl RenderingAPI for VulkanRenderer {
                 vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline,
             );
-            // causes a segfault
-            self.context
-                .device
-                .cmd_draw(frame.command_buffer, 3, 1, 0, 0);
+
+            // TODO: REPLACE WITH PROPPER MODEL LOADING THIS IS JUST TESTING
+            // TEST
+
+            let mesh = load_model(
+                Path::new("res/model.glb"),
+                self.context.clone(),
+                self.command_pool,
+            )
+            .unwrap()
+            .meshes[0]
+                .clone();
+
+            self.context.device.cmd_bind_vertex_buffers(
+                frame.command_buffer,
+                0,
+                &[mesh.vertex_buffer],
+                &[0],
+            );
+            self.context.device.cmd_bind_index_buffer(
+                frame.command_buffer,
+                mesh.index_buffer,
+                0,
+                vk::IndexType::UINT32,
+            );
+            self.context.device.cmd_draw_indexed(
+                frame.command_buffer,
+                mesh.index_count,
+                1,
+                0,
+                0,
+                0,
+            );
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
@@ -226,7 +258,9 @@ impl RenderingAPI for VulkanRenderer {
     }
     fn update_command_buffer(&mut self) {}
 
-    fn recreate_swapchain(&mut self) {}
+    fn recreate_swapchain(&mut self) {
+        self.swapchain.resize().unwrap();
+    }
 
     fn resize(&mut self) -> anyhow::Result<()> {
         Ok(())

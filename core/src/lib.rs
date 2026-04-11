@@ -10,6 +10,7 @@ use winit::{
 use crate::rendering::{RenderingBackend, RenderingInfo};
 use winit::application::ApplicationHandler;
 
+pub mod assets;
 pub mod rendering;
 pub mod utils;
 
