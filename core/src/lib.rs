@@ -7,18 +7,19 @@ use winit::{
     window::WindowId,
 };
 
-use crate::rendering::{RenderingAPIEnum, RenderingInfo};
+use crate::rendering::{RenderingBackend, RenderingInfo};
 use winit::application::ApplicationHandler;
 
 pub mod rendering;
+pub mod utils;
 
 pub struct Core {
-    pub rendering_api: RenderingAPIEnum,
+    pub rendering_api: RenderingBackend,
     pub rendering_info: Option<Arc<Mutex<RenderingInfo>>>,
 }
 
 impl Core {
-    pub fn new(rendering_api: RenderingAPIEnum) -> Self {
+    pub fn new(rendering_api: RenderingBackend) -> Self {
         Self {
             rendering_api,
             rendering_info: None,
@@ -80,8 +81,8 @@ impl ApplicationHandler for Core {
     }
 }
 
-pub fn init_core() -> Result<()> {
-    let mut core = Core::new(RenderingAPIEnum::Vulkan);
+pub fn init_core(rendering_api: RenderingBackend) -> Result<()> {
+    let mut core = Core::new(rendering_api);
 
     let event_loop = EventLoop::new()?;
     event_loop.run_app(&mut core)?;

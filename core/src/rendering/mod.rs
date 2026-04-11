@@ -4,6 +4,7 @@ use anyhow::Result;
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
 use crate::rendering::{
+    opengl::OpenGLRenderer,
     shared::rendering_settings::RenderingSettings,
     vulkan::{
         VulkanRenderer,
@@ -17,8 +18,9 @@ pub mod shared;
 pub mod vulkan;
 
 #[derive(Clone, Copy)]
-pub enum RenderingAPIEnum {
+pub enum RenderingBackend {
     Vulkan,
+    OpenGl,
 }
 
 pub struct RenderingInfo {
@@ -43,7 +45,7 @@ pub trait RenderingAPI {
 }
 
 impl RenderingInfo {
-    pub fn new(event_loop: &ActiveEventLoop, rendering_api: RenderingAPIEnum) -> Arc<Mutex<Self>> {
+    pub fn new(event_loop: &ActiveEventLoop, rendering_api: RenderingBackend) -> Arc<Mutex<Self>> {
         let window = Arc::new(event_loop.create_window(Default::default()).unwrap());
 
         let rendering_info = Arc::new(Mutex::new(RenderingInfo {
@@ -58,8 +60,11 @@ impl RenderingInfo {
         }));
 
         match rendering_api {
-            RenderingAPIEnum::Vulkan => {
+            RenderingBackend::Vulkan => {
                 VulkanRenderer::new(rendering_info.clone()).unwrap();
+            }
+            RenderingBackend::OpenGl => {
+                println!("Opengl is not supported at the moment");
             }
         }
 

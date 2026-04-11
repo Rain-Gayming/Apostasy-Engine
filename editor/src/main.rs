@@ -1,6 +1,5 @@
-use anyhow::Result;
-use apostasy_core::init_core;
+use apostasy_core::{init_core, rendering::RenderingBackend};
 
-fn main() -> Result<()> {
-    init_core()
+fn main() {
+    init_core(RenderingBackend::Vulkan).unwrap();
 }
