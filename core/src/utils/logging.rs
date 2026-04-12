@@ -13,7 +13,7 @@ macro_rules! log {
     ($($arg:tt)*) => {{
         let msg = format!($($arg)*);
         println!("{}", msg);
-        $crate::get_log_buffer().lock().push(msg);
+        // $crate::get_log_buffer().lock().push(msg);
     }};
 }
 #[macro_export]
@@ -21,7 +21,7 @@ macro_rules! log_warn {
     ($($arg:tt)*) => {
         let msg = format!($($arg)*);
         println!("[WARN] {}", msg);
-        $crate::get_log_buffer().lock().push(msg);
+        // $crate::get_log_buffer().lock().push(msg);
     }
 }
 
@@ -30,6 +30,6 @@ macro_rules! log_error {
     ($($arg:tt)*) => {
         let msg = format!($($arg)*);
         println!("[ERROR!] {}", msg);
-        $crate::get_log_buffer().lock().push(msg);
+        // $crate::get_log_buffer().lock().push(msg);
     }
 }
