@@ -1,6 +1,10 @@
-pub use apostasy_macros::Component;
 extern crate self as apostasy_core;
+
+pub use apostasy_macros::Component;
+pub use apostasy_macros::fixed_update;
+pub use apostasy_macros::late_update;
 pub use apostasy_macros::start;
+pub use apostasy_macros::update;
 
 use std::sync::{Arc, Mutex};
 
@@ -91,7 +95,11 @@ impl ApplicationHandler for Core {
         self.window_event(event_loop, window_id, event);
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {}
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(render_info) = &self.rendering_info {
+            render_info.lock().unwrap().window.request_redraw();
+        }
+    }
 }
 
 /// Initializes the core of the application

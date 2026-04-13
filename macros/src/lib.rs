@@ -89,3 +89,75 @@ pub fn start(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     TokenStream::from(expanded)
 }
+
+/// Registers an update system, Update systems run each frame
+/// NOTE: systems with a higher priority run first
+/// NOTE: priority is non negative
+#[proc_macro_attribute]
+pub fn update(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as SystemArgs);
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+
+    let priority = args.priority.unwrap_or(0);
+
+    let expanded = quote! {
+        #input_fn
+        inventory::submit! {
+            apostasy_core::objects::systems::UpdateSystem{
+                name: stringify!(#fn_name),
+                func: #fn_name,
+                priority: #priority,
+            }
+        }
+    };
+    TokenStream::from(expanded)
+}
+
+/// Registers a fixed update system, Fixed update systems run x amount of times a second
+/// NOTE: systems with a higher priority run first
+/// NOTE: priority is non negative
+#[proc_macro_attribute]
+pub fn fixed_update(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as SystemArgs);
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+
+    let priority = args.priority.unwrap_or(0);
+
+    let expanded = quote! {
+        #input_fn
+        inventory::submit! {
+            apostasy_core::objects::systems::FixedUpdateSystem{
+                name: stringify!(#fn_name),
+                func: #fn_name,
+                priority: #priority,
+            }
+        }
+    };
+    TokenStream::from(expanded)
+}
+
+/// Registers a late update system, Late update systems run at the end of a frame
+/// NOTE: systems with a higher priority run first
+/// NOTE: priority is non negative
+#[proc_macro_attribute]
+pub fn late_update(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(attr as SystemArgs);
+    let input_fn = parse_macro_input!(item as ItemFn);
+    let fn_name = &input_fn.sig.ident;
+
+    let priority = args.priority.unwrap_or(0);
+
+    let expanded = quote! {
+        #input_fn
+        inventory::submit! {
+            apostasy_core::objects::systems::LateUpdateSystem{
+                name: stringify!(#fn_name),
+                func: #fn_name,
+                priority: #priority,
+            }
+        }
+    };
+    TokenStream::from(expanded)
+}
