@@ -38,6 +38,41 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
     output.into()
 }
 
+#[proc_macro_derive(Resource)]
+pub fn resource_derive(input: TokenStream) -> TokenStream {
+    let mut ast = parse_macro_input!(input as DeriveInput);
+    ast.generics
+        .make_where_clause()
+        .predicates
+        .push(parse_quote! { Self: Clone + Send + Sync + 'static });
+
+    let struct_name = &ast.ident;
+    let type_name_str = struct_name.to_string();
+
+    let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
+
+    let output = quote! {
+     impl #impl_generics apostasy_core::objects::resource::Resource for #struct_name #type_generics
+        #where_clause
+
+        {
+            fn name() -> &'static str where Self: Sized {
+                std::any::type_name::<#struct_name>()
+            }
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
+            }
+            fn type_name(&self) -> &'static str {
+                #type_name_str
+            }
+        }
+    };
+    output.into()
+}
+
 // ========== ========== Systems ========== ==========
 
 struct SystemArgs {

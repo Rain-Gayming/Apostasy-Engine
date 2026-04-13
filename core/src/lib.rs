@@ -6,6 +6,8 @@ pub use apostasy_macros::late_update;
 pub use apostasy_macros::start;
 pub use apostasy_macros::update;
 
+pub use anyhow;
+
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;

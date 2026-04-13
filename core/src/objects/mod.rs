@@ -9,6 +9,8 @@ use crate::{
 
 pub mod component;
 pub mod components;
+pub mod query;
+pub mod resource;
 pub mod systems;
 pub mod world;
 

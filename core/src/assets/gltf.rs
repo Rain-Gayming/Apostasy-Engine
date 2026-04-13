@@ -18,14 +18,11 @@ pub fn load_model(
 ) -> Result<GpuModel> {
     let path_str = path.to_str();
 
-    println!("{}", path_str.unwrap());
     let name = path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("model")
         .to_string();
-
-    println!("{}", name.clone());
 
     let (gltf, buffers, _images) = gltf::import(path_str.unwrap())?;
 

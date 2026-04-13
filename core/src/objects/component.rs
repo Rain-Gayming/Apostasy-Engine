@@ -4,9 +4,9 @@ pub trait Component: ComponentContainer {
     fn name() -> &'static str
     where
         Self: Sized;
-    fn type_name(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn type_name(&self) -> &'static str;
 }
 
 pub trait ComponentContainer {
