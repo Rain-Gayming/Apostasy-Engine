@@ -1,9 +1,7 @@
-use std::{
-    any::{Any, TypeId, type_name},
-    collections::HashMap,
-};
+use std::any::{Any, TypeId, type_name};
 
 use anyhow::{Result, anyhow};
+use hashbrown::HashMap;
 
 pub trait Resource: ResourceContainer {
     fn name() -> &'static str

@@ -7,9 +7,13 @@ use ash::vk::{
     self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
     PipelineLayoutCreateInfo,
 };
+use cgmath::{Deg, Matrix4, PerspectiveFov, SquareMatrix, Vector3};
 
 use crate::assets::gltf::load_model;
-use crate::rendering::shared::model::ModelRenderer;
+use crate::objects::components::Transform;
+use crate::objects::world::World;
+use crate::rendering::components::camera::{Camera, get_perspective_projection, get_view_matrix};
+use crate::rendering::shared::push_constants::PushConstants;
 use crate::rendering::vulkan::image_layout::ImageLayouts;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::rendering::vulkan::{frame::VulkanFrame, swapchain::VulkanSwapchain};
@@ -62,10 +66,15 @@ impl RenderingAPI for VulkanRenderer {
 
         unsafe {
             let context = rendering_info.context.clone();
-            let pipeline_layout = rendering_info
-                .context
-                .device
-                .create_pipeline_layout(&PipelineLayoutCreateInfo::default(), None)?;
+            let pipeline_layout = rendering_info.context.device.create_pipeline_layout(
+                &PipelineLayoutCreateInfo::default().push_constant_ranges(&[
+                    vk::PushConstantRange::default()
+                        .stage_flags(vk::ShaderStageFlags::VERTEX)
+                        .offset(0)
+                        .size(128),
+                ]),
+                None,
+            )?;
 
             let pipeline = context.create_graphics_pipeline(
                 vertex_shader,
@@ -134,7 +143,7 @@ impl RenderingAPI for VulkanRenderer {
         Ok(())
     }
 
-    fn render(&mut self) -> anyhow::Result<()> {
+    fn render(&mut self, world: &mut World) -> anyhow::Result<()> {
         let frame = &self.frames[self.current_frame];
 
         unsafe {
@@ -155,21 +164,12 @@ impl RenderingAPI for VulkanRenderer {
                 &ash::vk::CommandBufferBeginInfo::default(),
             )?;
 
-            // transition image layout to be used for color attachmant
+            // transition image layout to be used for color attachment
             self.context.transition_image_layout(
                 frame.command_buffer,
                 self.swapchain.images[image_index as usize],
                 self.image_layouts.undefined,
                 self.image_layouts.renderable,
-                vk::ImageAspectFlags::COLOR,
-            );
-
-            // transition image layout to be presented for rendering
-            self.context.transition_image_layout(
-                frame.command_buffer,
-                self.swapchain.images[image_index as usize],
-                self.image_layouts.renderable,
-                self.image_layouts.present,
                 vk::ImageAspectFlags::COLOR,
             );
 
@@ -185,21 +185,68 @@ impl RenderingAPI for VulkanRenderer {
             self.context.device.cmd_set_viewport(
                 frame.command_buffer,
                 0,
-                &[vk::Viewport::default()
-                    .width(self.swapchain.extent.width as f32)
-                    .height(self.swapchain.extent.height as f32)],
+                &[vk::Viewport {
+                    x: 0.0,
+                    y: 0.0,
+                    width: self.swapchain.extent.width as f32,
+                    height: self.swapchain.extent.height as f32,
+                    min_depth: 0.0,
+                    max_depth: 1.0,
+                }],
             );
 
             self.context.device.cmd_set_scissor(
                 frame.command_buffer,
                 0,
-                &[vk::Rect2D::default().extent(self.swapchain.extent)],
+                &[vk::Rect2D {
+                    offset: vk::Offset2D { x: 0, y: 0 },
+                    extent: self.swapchain.extent,
+                }],
             );
             self.context.device.cmd_bind_pipeline(
                 frame.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
                 self.pipeline,
             );
+
+            // Push constants
+            let aspect = self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
+
+            let cameras = world.get_objects_with_component::<Camera>();
+            if let Some(camera_obj) = cameras.first() {
+                let (view_matrix, proj_matrix) = {
+                    let camera = camera_obj.get_component::<Camera>().unwrap();
+                    let transform = camera_obj.get_component::<Transform>().unwrap();
+                    let view = get_view_matrix(transform);
+                    let proj = get_perspective_projection(camera, aspect);
+                    (view, proj)
+                };
+                let model_matrix = Matrix4::<f32>::identity();
+                let push = PushConstants {
+                    view_matrix,
+                    projection_matrix: proj_matrix,
+                    model_matrix,
+                };
+                let data = push.return_renderable();
+                self.context.device.cmd_push_constants(
+                    frame.command_buffer,
+                    self.pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX,
+                    0,
+                    &data,
+                );
+            } else {
+                let id = world.add_new_object();
+
+                let camera = world.get_object_mut(id);
+                camera
+                    .unwrap()
+                    .add_component(Camera::default())
+                    .add_component(Transform {
+                        global_position: Vector3::new(0.0, 0.0, 15.0),
+                        ..Default::default()
+                    });
+            }
 
             // TODO: REPLACE WITH PROPPER MODEL LOADING THIS IS JUST TESTING
             // TEST
@@ -236,6 +283,14 @@ impl RenderingAPI for VulkanRenderer {
 
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
+            self.context.transition_image_layout(
+                frame.command_buffer,
+                self.swapchain.images[image_index as usize],
+                self.image_layouts.renderable,
+                self.image_layouts.present,
+                vk::ImageAspectFlags::COLOR,
+            );
+
             self.context
                 .device
                 .end_command_buffer(frame.command_buffer)?;
@@ -263,6 +318,6 @@ impl RenderingAPI for VulkanRenderer {
     }
 
     fn resize(&mut self) -> anyhow::Result<()> {
-        Ok(())
+        self.swapchain.resize()
     }
 }

@@ -4,9 +4,9 @@ use cgmath::Matrix4;
 
 #[derive(Clone)]
 pub struct PushConstants {
-    view_matrix: Matrix4<f32>,
-    projection_matrix: Matrix4<f32>,
-    model_matrix: Matrix4<f32>,
+    pub view_matrix: Matrix4<f32>,
+    pub projection_matrix: Matrix4<f32>,
+    pub model_matrix: Matrix4<f32>,
 }
 
 impl PushConstants {
@@ -15,7 +15,7 @@ impl PushConstants {
             let mut push_constants = [0u8; 128];
 
             let mvp: [u8; 64] =
-                transmute(self.view_matrix * self.projection_matrix * self.model_matrix);
+                transmute(self.projection_matrix * self.view_matrix * self.model_matrix);
             let model: [u8; 64] = transmute(self.model_matrix);
 
             push_constants[0..64].copy_from_slice(&mvp);

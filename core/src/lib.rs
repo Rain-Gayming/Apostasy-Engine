@@ -71,7 +71,7 @@ impl Core {
                     world.update();
 
                     if let Some(renderer) = &mut rendering_info.renderer {
-                        renderer.render().unwrap();
+                        renderer.render(&mut world).unwrap();
                     }
 
                     world.late_update();

@@ -18,3 +18,4 @@ gl = "0.14.0"
 gltf = "1.4.1"
 inventory = "0.3.24"
 apostasy-macros = {path = "../macros/"}
+hashbrown = "0.17.0"

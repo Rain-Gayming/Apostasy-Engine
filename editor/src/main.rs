@@ -30,7 +30,5 @@ pub fn s(world: &mut World) -> Result<()> {
 pub fn u(world: &mut World) -> Result<()> {
     let r = world.get_resource::<Rb>()?;
 
-    println!("{}", r.b);
-
     Ok(())
 }

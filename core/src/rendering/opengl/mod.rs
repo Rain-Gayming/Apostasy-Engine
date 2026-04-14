@@ -6,6 +6,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::str;
 
+use crate::objects::world::World;
 use crate::rendering::RenderingAPI;
 
 // Vertex data
@@ -116,7 +117,7 @@ impl RenderingAPI for OpenGLRenderer {
     fn update_command_buffer(&mut self) {}
     fn recreate_swapchain(&mut self) {}
 
-    fn render(&mut self) -> Result<()> {
+    fn render(&mut self, _world: &mut World) -> Result<()> {
         let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
         let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
         let program = link_program(vs, fs);

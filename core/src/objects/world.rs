@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
+use hashbrown::HashMap;
 
 use crate::{
     log_error,
@@ -62,18 +61,18 @@ impl World {
         }
     }
 
-    // ========== ========== Nodes ========== ==========
-    /// Adds a new node to the world
-    pub fn add_new_node(&mut self) -> &mut Self {
+    // ========== ========== Objects ========== ==========
+    /// Adds a new Object to the world
+    pub fn add_new_object(&mut self) -> u64 {
         let index = self.objects.len();
         self.objects.insert(index as u64, Object::default());
 
-        self.assign_node_ids();
+        self.assign_object_ids();
 
-        self
+        index as u64
     }
 
-    pub(crate) fn assign_node_ids(&mut self) {
+    pub(crate) fn assign_object_ids(&mut self) {
         let mut index = 0;
 
         for object in self.objects.iter_mut() {
@@ -82,7 +81,7 @@ impl World {
         }
     }
 
-    pub fn debug_nodes(&self) {
+    pub fn debug_objects(&self) {
         for object in self.objects.iter() {
             println!("{}: {}", object.1.name, object.1.id);
         }
@@ -135,7 +134,6 @@ impl World {
     /// Insert a new resource into the map
     pub fn insert_resource<T: Resource + 'static>(&mut self, resource: T) -> &mut Self {
         self.resources.insert(resource);
-
         self
     }
 
@@ -152,7 +150,6 @@ impl World {
     /// Remove a resource from the map
     pub fn remove_resource<T: Resource + 'static>(&mut self) -> &mut Self {
         self.resources.remove::<T>();
-
         self
     }
 }
