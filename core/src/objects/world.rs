@@ -1,19 +1,16 @@
 use anyhow::Result;
-use hashbrown::HashMap;
 
-use crate::{
-    log_error,
-    objects::{
-        Object,
-        component::Component,
-        resource::{Resource, ResourceMap},
-        systems::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
-    },
+use crate::objects::{
+    Object,
+    component::Component,
+    resource::{Resource, ResourceMap},
+    scene::Scene,
+    systems::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
 };
 
 #[derive(Default)]
 pub struct World {
-    pub(crate) objects: HashMap<u64, Object>,
+    pub(crate) scene: Scene,
     pub(crate) resources: ResourceMap,
 }
 
@@ -63,70 +60,32 @@ impl World {
 
     // ========== ========== Objects ========== ==========
     /// Adds a new Object to the world
-    pub fn add_new_object(&mut self) -> u64 {
-        let index = self.objects.len();
-        self.objects.insert(index as u64, Object::default());
-
-        self.assign_object_ids();
-
-        index as u64
+    pub fn add_new_object(&mut self) -> &mut Object {
+        self.scene.add_new_object()
     }
 
     pub(crate) fn assign_object_ids(&mut self) {
-        let mut index = 0;
-
-        for object in self.objects.iter_mut() {
-            object.1.id = index;
-            index += 1;
-        }
+        self.scene.assign_object_ids();
     }
 
     pub fn debug_objects(&self) {
-        for object in self.objects.iter() {
-            println!("{}: {}", object.1.name, object.1.id);
-        }
+        self.scene.debug_objects();
     }
 
     pub fn get_object(&self, id: u64) -> Option<&Object> {
-        if let Some(object) = self.objects.get(&id) {
-            return Some(object);
-        }
-
-        log_error!("Object: {} does not exist!", id.to_string());
-        return None;
+        self.scene.get_object(id)
     }
 
     pub fn get_object_mut(&mut self, id: u64) -> Option<&mut Object> {
-        if let Some(object) = self.objects.get_mut(&id) {
-            return Some(object);
-        }
-
-        log_error!("Object: {} does not exist!", id.to_string());
-        return None;
+        self.scene.get_object_mut(id)
     }
 
     pub fn get_objects_with_component<T: Component + 'static>(&self) -> Vec<&Object> {
-        let mut objects: Vec<&Object> = Vec::new();
-
-        self.objects.iter().for_each(|(_id, object)| {
-            if object.has_component::<T>() {
-                objects.push(&object);
-            }
-        });
-
-        objects
+        self.scene.get_objects_with_component::<T>()
     }
 
     pub fn get_objects_with_component_mut<T: Component + 'static>(&mut self) -> Vec<&mut Object> {
-        let mut objects: Vec<&mut Object> = Vec::new();
-
-        self.objects.iter_mut().for_each(|(_id, object)| {
-            if object.has_component::<T>() {
-                objects.push(object);
-            }
-        });
-
-        objects
+        self.scene.get_objects_with_component_mut::<T>()
     }
 
     // ========== ========== Resources ========== ==========

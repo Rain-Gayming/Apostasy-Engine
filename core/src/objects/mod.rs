@@ -11,6 +11,7 @@ pub mod component;
 pub mod components;
 pub mod query;
 pub mod resource;
+pub mod scene;
 pub mod systems;
 pub mod world;
 
@@ -30,7 +31,7 @@ impl Default for Object {
 
 impl Object {
     pub fn new() -> Self {
-        let mut components: Vec<Box<dyn Component>> = Vec::new();
+        let /*mut*/ components: Vec<Box<dyn Component>> = Vec::new();
 
         Self {
             name: "Object".to_string(),

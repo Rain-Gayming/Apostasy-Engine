@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use anyhow::Result;
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
-use crate::objects::world::World;
+use crate::rendering::shared::model::GpuMesh;
 use crate::rendering::{
     shared::rendering_settings::RenderingSettings,
     vulkan::{
@@ -36,7 +36,7 @@ pub struct RenderingInfo {
 /// Used for Vulkan and Opengl
 pub trait RenderingAPI {
     fn resize(&mut self) -> Result<()>;
-    fn render(&mut self, world: &mut World) -> Result<()>;
+    fn render(&mut self, mesh: GpuMesh) -> Result<()>;
     fn update_command_buffer(&mut self);
     fn recreate_swapchain(&mut self);
     /// Assigns the rendering_info's renderer the the value created via this

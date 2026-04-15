@@ -17,6 +17,7 @@ use winit::{
     window::WindowId,
 };
 
+use crate::rendering::components::mesh_renderer::MeshRenderer;
 use crate::{
     objects::world::World,
     rendering::{RenderingBackend, RenderingInfo},
@@ -71,7 +72,10 @@ impl Core {
                     world.update();
 
                     if let Some(renderer) = &mut rendering_info.renderer {
-                        renderer.render(&mut world).unwrap();
+                        for object in world.get_objects_with_component::<MeshRenderer>() {
+                            let mesh_renderer = object.get_component::<MeshRenderer>().unwrap();
+                            renderer.render(mesh_renderer.mesh.clone()).unwrap();
+                        }
                     }
 
                     world.late_update();

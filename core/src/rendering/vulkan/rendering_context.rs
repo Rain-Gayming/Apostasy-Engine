@@ -298,7 +298,7 @@ impl VulkanRenderingContext {
         image_extent: vk::Extent2D,
         image_format: vk::Format,
         pipeline_layout: vk::PipelineLayout,
-        pipeline_chache: vk::PipelineCache,
+        _pipeline_chache: vk::PipelineCache,
     ) -> Result<vk::Pipeline> {
         let entry_point = std::ffi::CString::new("main").unwrap();
 

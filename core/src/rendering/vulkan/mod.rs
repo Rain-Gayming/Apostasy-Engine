@@ -1,23 +1,17 @@
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::{fs, u64};
 
-use anyhow::Result;
-use ash::vk::{
-    self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
-    PipelineLayoutCreateInfo,
-};
-use cgmath::{Deg, Matrix4, PerspectiveFov, SquareMatrix, Vector3};
-
-use crate::assets::gltf::load_model;
-use crate::objects::components::Transform;
-use crate::objects::world::World;
-use crate::rendering::components::camera::{Camera, get_perspective_projection, get_view_matrix};
+use crate::rendering::shared::model::GpuMesh;
 use crate::rendering::shared::push_constants::PushConstants;
 use crate::rendering::vulkan::image_layout::ImageLayouts;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::rendering::vulkan::{frame::VulkanFrame, swapchain::VulkanSwapchain};
 use crate::rendering::{RenderingAPI, RenderingInfo};
+use anyhow::Result;
+use ash::vk::{
+    self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
+    PipelineLayoutCreateInfo,
+};
 
 pub mod device;
 pub mod frame;
@@ -36,6 +30,7 @@ pub struct VulkanRenderer {
     pub image_layouts: ImageLayouts,
     pub pipeline: Pipeline,
     pub pipeline_layout: PipelineLayout,
+    pub push_constants: PushConstants,
     context: Arc<VulkanRenderingContext>,
 }
 
@@ -133,6 +128,7 @@ impl RenderingAPI for VulkanRenderer {
                 image_layouts: ImageLayouts::default(),
                 pipeline,
                 pipeline_layout,
+                push_constants: PushConstants::default(),
                 context: Arc::new(rendering_info.context.clone()),
                 swapchain,
             };
@@ -143,7 +139,7 @@ impl RenderingAPI for VulkanRenderer {
         Ok(())
     }
 
-    fn render(&mut self, world: &mut World) -> anyhow::Result<()> {
+    fn render(&mut self, mesh: GpuMesh) -> anyhow::Result<()> {
         let frame = &self.frames[self.current_frame];
 
         unsafe {
@@ -210,56 +206,6 @@ impl RenderingAPI for VulkanRenderer {
             );
 
             // Push constants
-            let aspect = self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32;
-
-            let cameras = world.get_objects_with_component::<Camera>();
-            if let Some(camera_obj) = cameras.first() {
-                let (view_matrix, proj_matrix) = {
-                    let camera = camera_obj.get_component::<Camera>().unwrap();
-                    let transform = camera_obj.get_component::<Transform>().unwrap();
-                    let view = get_view_matrix(transform);
-                    let proj = get_perspective_projection(camera, aspect);
-                    (view, proj)
-                };
-                let model_matrix = Matrix4::<f32>::identity();
-                let push = PushConstants {
-                    view_matrix,
-                    projection_matrix: proj_matrix,
-                    model_matrix,
-                };
-                let data = push.return_renderable();
-                self.context.device.cmd_push_constants(
-                    frame.command_buffer,
-                    self.pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX,
-                    0,
-                    &data,
-                );
-            } else {
-                let id = world.add_new_object();
-
-                let camera = world.get_object_mut(id);
-                camera
-                    .unwrap()
-                    .add_component(Camera::default())
-                    .add_component(Transform {
-                        global_position: Vector3::new(0.0, 0.0, 15.0),
-                        ..Default::default()
-                    });
-            }
-
-            // TODO: REPLACE WITH PROPPER MODEL LOADING THIS IS JUST TESTING
-            // TEST
-
-            let mesh = load_model(
-                Path::new("res/model.glb"),
-                self.context.clone(),
-                self.command_pool,
-            )
-            .unwrap()
-            .meshes[0]
-                .clone();
-
             self.context.device.cmd_bind_vertex_buffers(
                 frame.command_buffer,
                 0,

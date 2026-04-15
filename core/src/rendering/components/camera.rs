@@ -1,11 +1,14 @@
 use apostasy_macros::Component;
 use cgmath::{Deg, Matrix4, PerspectiveFov};
 
+use crate::objects::components::transform::Transform;
+
 #[derive(Component, Clone)]
 pub struct Camera {
     pub fov_y: f32,
     pub near: f32,
     pub far: f32,
+    pub is_main: bool,
 }
 
 impl Default for Camera {
@@ -14,6 +17,7 @@ impl Default for Camera {
             fov_y: 90.0,
             near: 0.001,
             far: 10000.0,
+            is_main: false,
         }
     }
 }
@@ -32,7 +36,7 @@ pub fn get_perspective_projection(camera: &Camera, aspect: f32) -> Matrix4<f32> 
     proj
 }
 
-pub fn get_view_matrix(transform: &crate::objects::components::Transform) -> Matrix4<f32> {
+pub fn get_view_matrix(transform: &Transform) -> Matrix4<f32> {
     let translation = Matrix4::from_translation(-transform.global_position);
     let rotation = Matrix4::from(transform.global_rotation.conjugate());
     rotation * translation
