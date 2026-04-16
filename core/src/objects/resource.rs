@@ -3,6 +3,8 @@ use std::any::{Any, TypeId, type_name};
 use anyhow::{Result, anyhow};
 use hashbrown::HashMap;
 
+use crate::log_warn;
+
 pub trait Resource: ResourceContainer {
     fn name() -> &'static str
     where
@@ -58,6 +60,11 @@ impl ResourceMap {
 
     /// Insert a new resource into the map
     pub fn insert<T: Resource + 'static>(&mut self, resource: T) {
+        if self.get::<T>().is_ok() {
+            log_warn!("Attempting to add multiple of the same resource!");
+            return;
+        }
+
         self.map.insert(TypeId::of::<T>(), Box::new(resource));
     }
 

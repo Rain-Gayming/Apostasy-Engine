@@ -6,6 +6,7 @@ use crate::objects::{
     resource::{Resource, ResourceMap},
     scene::Scene,
     systems::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
+    tag::Tag,
 };
 
 #[derive(Default)]
@@ -86,6 +87,10 @@ impl World {
 
     pub fn get_objects_with_component_mut<T: Component + 'static>(&mut self) -> Vec<&mut Object> {
         self.scene.get_objects_with_component_mut::<T>()
+    }
+
+    pub fn get_object_with_tag_mut<T: Tag + 'static>(&mut self) -> Result<&mut Object> {
+        self.scene.get_object_with_tag_mut::<T>()
     }
 
     // ========== ========== Resources ========== ==========

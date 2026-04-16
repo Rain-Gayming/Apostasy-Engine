@@ -6,16 +6,17 @@ use crate::{
     log_warn,
     objects::{
         component::{Component, get_component_registration},
-        scene::Scene,
+        tag::Tag,
     },
 };
-
 pub mod component;
 pub mod components;
 pub mod query;
 pub mod resource;
+pub mod resources;
 pub mod scene;
 pub mod systems;
+pub mod tag;
 pub mod world;
 
 #[derive(Clone)]
@@ -23,6 +24,7 @@ pub struct Object {
     pub id: u64,
     pub name: String,
     pub components: Vec<Box<dyn Component>>,
+    pub tags: Vec<Box<dyn Tag>>,
     pub parent: Option<u64>,
     pub children: Vec<u64>,
 }
@@ -41,6 +43,7 @@ impl Object {
             name: "Object".to_string(),
             id: 0,
             children: Vec::new(),
+            tags: Vec::new(),
             parent: None,
             components,
         }
@@ -56,6 +59,35 @@ impl Object {
         self.name = name;
 
         self
+    }
+
+    // ========== ========== Tags ========== ==========
+
+    /// Checks if the node has a tag of type T
+    pub fn has_tag<T: Tag + 'static>(&self) -> bool {
+        self.components
+            .iter()
+            .any(|tag| tag.as_any().downcast_ref::<T>().is_some())
+    }
+
+    /// Gets a tag of type T from the node
+    pub(crate) fn get_tag<T: Tag + 'static>(&self) -> Result<&T> {
+        self.tags
+            .iter()
+            .find(|c| c.as_any().type_id() == TypeId::of::<T>())
+            .and_then(|c| c.as_any().downcast_ref())
+            .ok_or(Error::msg("No Comopnent of type"))
+    }
+
+    /// Adds a tag of type T to the node
+    pub fn add_tag<T: Tag + 'static>(&mut self, tag: T) -> &mut Self {
+        if self.get_tag::<T>().is_ok() {
+            log_warn!("You can only have one of any tag on an entity");
+            return self;
+        } else {
+            self.tags.push(Box::new(tag));
+            return self;
+        }
     }
 
     // ========== ========== Components ========== ==========

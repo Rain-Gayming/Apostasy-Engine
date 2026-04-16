@@ -6,9 +6,9 @@ use crate::objects::{components::transform::Transform, world::World};
 
 #[derive(Component, Clone)]
 pub struct Velocity {
-    angular_velocity: Vector3<f32>,
-    linear_velocity: Vector3<f32>,
-    mass: f32,
+    pub angular_velocity: Vector3<f32>,
+    pub linear_velocity: Vector3<f32>,
+    pub mass: f32,
 }
 
 impl Default for Velocity {

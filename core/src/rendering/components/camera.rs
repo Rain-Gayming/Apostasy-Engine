@@ -1,4 +1,4 @@
-use apostasy_macros::Component;
+use apostasy_macros::{Component, Tag};
 use cgmath::{Deg, Matrix4, PerspectiveFov};
 
 use crate::objects::components::transform::Transform;
@@ -41,3 +41,6 @@ pub fn get_view_matrix(transform: &Transform) -> Matrix4<f32> {
     let rotation = Matrix4::from(transform.global_rotation.conjugate());
     rotation * translation
 }
+
+#[derive(Tag, Clone)]
+pub struct MainCamera;

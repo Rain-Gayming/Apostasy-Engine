@@ -1,11 +1,17 @@
-use cgmath::Vector3;
+use std::any::TypeId;
+
+use anyhow::{Result, anyhow};
+use gltf::camera;
 use hashbrown::HashMap;
 
 use crate::{
     log_error,
-    objects::{Object, component::Component, components::transform::Transform},
+    objects::{Object, component::Component, components::transform::Transform, tag::Tag},
     physics::velocity::Velocity,
-    rendering::components::{camera::Camera, model_renderer::ModelRenderer},
+    rendering::components::{
+        camera::{Camera, MainCamera},
+        model_renderer::ModelRenderer,
+    },
 };
 
 pub struct Scene {
@@ -96,13 +102,29 @@ impl Scene {
         objects
     }
 
+    pub fn get_object_with_tag_mut<T: Tag + 'static>(&mut self) -> Result<&mut Object> {
+        println!("{}", T::type_name_static());
+        self.objects
+            .iter_mut()
+            .find(|x| {
+                x.1.tags
+                    .iter()
+                    .any(|tag| tag.type_name() == T::type_name_static())
+            })
+            .map(|x| x.1)
+            .ok_or(anyhow!("No objects with the tag"))
+    }
+
     pub fn add_default_objects(&mut self) {
         let camera_object = Object::new()
             .add_component(Transform::default())
             .add_component(Velocity::default())
             .add_component(Camera::default())
+            .add_tag(MainCamera)
             .set_name("Camera".to_string())
             .clone();
+
+        println!("{}", camera_object.tags.first().unwrap().type_name());
 
         self.add_object(camera_object);
 

@@ -7,6 +7,7 @@ pub use apostasy_macros::start;
 pub use apostasy_macros::update;
 
 pub use anyhow;
+pub use winit;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -19,6 +20,7 @@ use winit::{
 };
 
 use crate::assets::gltf::load_model;
+use crate::objects::resources::input_manager::InputManager;
 use crate::rendering::components::camera::Camera;
 use crate::rendering::components::model_renderer::ModelRenderer;
 use crate::{
@@ -41,10 +43,13 @@ pub struct Core {
 
 impl Core {
     pub fn new(rendering_api: RenderingBackend) -> Self {
+        let mut world = World::default();
+        world.insert_resource(InputManager::default());
+
         Self {
             rendering_api,
             rendering_info: None,
-            world: Arc::new(Mutex::new(World::default())),
+            world: Arc::new(Mutex::new(world)),
         }
     }
 
@@ -56,6 +61,7 @@ impl Core {
     ) {
         if let Some(rendering_info) = &mut self.rendering_info {
             let mut rendering_info = rendering_info.lock().unwrap();
+
             match event {
                 WindowEvent::CloseRequested => {
                     event_loop.exit();
@@ -123,6 +129,10 @@ impl Core {
                 }
                 _ => {}
             }
+
+            let mut world = self.world.lock().unwrap();
+            let input_manager = world.get_resource_mut::<InputManager>().unwrap();
+            input_manager.handle_input_event(event.clone());
         }
     }
 
