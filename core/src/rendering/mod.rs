@@ -1,9 +1,11 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
+use ash::vk::CommandPool;
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
 use crate::rendering::shared::model::GpuMesh;
+use crate::rendering::shared::push_constants::PushConstants;
 use crate::rendering::{
     shared::rendering_settings::RenderingSettings,
     vulkan::{
@@ -30,15 +32,18 @@ pub struct RenderingInfo {
     pub window: Arc<Window>,
     pub settings: RenderingSettings,
     pub renderer: Option<Box<dyn RenderingAPI>>,
+    pub push_constants: PushConstants,
 }
 
 /// A trait assigned to any Rendering API
 /// Used for Vulkan and Opengl
 pub trait RenderingAPI {
     fn resize(&mut self) -> Result<()>;
-    fn render(&mut self, mesh: GpuMesh) -> Result<()>;
+    fn render(&mut self, mesh: GpuMesh, push_constants: PushConstants) -> Result<()>;
     fn update_command_buffer(&mut self);
     fn recreate_swapchain(&mut self);
+    fn get_command_pool(&self) -> Result<CommandPool>;
+    fn get_aspect(&self) -> f32;
     /// Assigns the rendering_info's renderer the the value created via this
     fn new(rendering_info: Arc<Mutex<RenderingInfo>>) -> Result<()>
     where
@@ -58,6 +63,7 @@ impl RenderingInfo {
             window,
             settings: RenderingSettings::default(),
             renderer: None,
+            push_constants: PushConstants::default(),
         }));
 
         match rendering_api {

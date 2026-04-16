@@ -1,6 +1,5 @@
 use std::mem::transmute;
 
-use anyhow::Result;
 use cgmath::{Matrix4, SquareMatrix};
 
 use crate::{
@@ -41,7 +40,7 @@ impl PushConstants {
         }
     }
 
-    pub fn set_camera_constants(&mut self, camera: Object, aspect: f32) -> Result<()> {
+    pub fn set_camera_constants(&mut self, camera: Object, aspect: f32) {
         let transform = camera.get_component::<Transform>().unwrap();
         let cam = camera.get_component::<Camera>().unwrap();
 
@@ -52,7 +51,5 @@ impl PushConstants {
         self.view_matrix = view;
         self.projection_matrix = proj;
         self.model_matrix = model_matrix;
-
-        Ok(())
     }
 }

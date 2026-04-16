@@ -139,7 +139,7 @@ impl RenderingAPI for VulkanRenderer {
         Ok(())
     }
 
-    fn render(&mut self, mesh: GpuMesh) -> anyhow::Result<()> {
+    fn render(&mut self, mesh: GpuMesh, push_constants: PushConstants) -> anyhow::Result<()> {
         let frame = &self.frames[self.current_frame];
 
         unsafe {
@@ -206,6 +206,15 @@ impl RenderingAPI for VulkanRenderer {
             );
 
             // Push constants
+            let data = push_constants.return_renderable();
+            self.context.device.cmd_push_constants(
+                frame.command_buffer,
+                self.pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                &data,
+            );
+
             self.context.device.cmd_bind_vertex_buffers(
                 frame.command_buffer,
                 0,
@@ -265,5 +274,13 @@ impl RenderingAPI for VulkanRenderer {
 
     fn resize(&mut self) -> anyhow::Result<()> {
         self.swapchain.resize()
+    }
+
+    fn get_command_pool(&self) -> Result<CommandPool> {
+        Ok(self.command_pool)
+    }
+
+    fn get_aspect(&self) -> f32 {
+        self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32
     }
 }

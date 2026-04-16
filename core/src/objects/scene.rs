@@ -1,13 +1,27 @@
+use cgmath::Vector3;
 use hashbrown::HashMap;
 
 use crate::{
     log_error,
-    objects::{Object, component::Component},
+    objects::{Object, component::Component, components::transform::Transform},
+    physics::velocity::Velocity,
+    rendering::components::{camera::Camera, model_renderer::ModelRenderer},
 };
 
-#[derive(Default)]
 pub struct Scene {
     pub(crate) objects: HashMap<u64, Object>,
+}
+
+impl Default for Scene {
+    fn default() -> Self {
+        let mut scene = Scene {
+            objects: HashMap::new(),
+        };
+
+        scene.add_default_objects();
+
+        scene
+    }
 }
 
 impl Scene {
@@ -19,6 +33,10 @@ impl Scene {
         self.assign_object_ids();
 
         self.objects.get_mut(&index).unwrap()
+    }
+
+    pub fn add_object(&mut self, object: Object) {
+        self.objects.insert(self.objects.len() as u64, object);
     }
 
     pub(crate) fn assign_object_ids(&mut self) {
@@ -78,5 +96,21 @@ impl Scene {
         objects
     }
 
-    pub fn add_default_objects(&mut self) {}
+    pub fn add_default_objects(&mut self) {
+        let camera_object = Object::new()
+            .add_component(Transform::default())
+            .add_component(Velocity::default())
+            .add_component(Camera::default())
+            .set_name("Camera".to_string())
+            .clone();
+
+        self.add_object(camera_object);
+
+        let test_model = Object::new()
+            .add_component(Transform::default())
+            .add_component(ModelRenderer::from_path("model.glb".to_string()))
+            .set_name("Test Model".to_string())
+            .clone();
+        self.add_object(test_model);
+    }
 }
