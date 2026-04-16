@@ -8,6 +8,8 @@ pub use apostasy_macros::update;
 
 pub use anyhow;
 pub use winit;
+use winit::event::DeviceEvent;
+use winit::event::DeviceId;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -127,6 +129,7 @@ impl Core {
 
                     world.late_update();
                 }
+
                 _ => {}
             }
 
@@ -134,6 +137,17 @@ impl Core {
             let input_manager = world.get_resource_mut::<InputManager>().unwrap();
             input_manager.handle_input_event(event.clone());
         }
+    }
+
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        let mut world = self.world.lock().unwrap();
+        let input_manager = world.get_resource_mut::<InputManager>().unwrap();
+        input_manager.handle_device_event(event.clone());
     }
 
     pub fn redraw(world: &mut World, rendering_info: &mut RenderingInfo) {}
@@ -152,6 +166,15 @@ impl ApplicationHandler for Core {
         event: WindowEvent,
     ) {
         self.window_event(event_loop, window_id, event);
+    }
+
+    fn device_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        self.device_event(event_loop, device_id, event);
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
