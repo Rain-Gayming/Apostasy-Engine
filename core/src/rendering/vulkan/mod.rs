@@ -76,6 +76,7 @@ impl RenderingAPI for VulkanRenderer {
                 fragment_shader,
                 swapchain.extent,
                 swapchain.format,
+                swapchain.depth_format,
                 pipeline_layout,
                 Default::default(),
             )?;
@@ -168,10 +169,18 @@ impl RenderingAPI for VulkanRenderer {
                 self.image_layouts.renderable,
                 vk::ImageAspectFlags::COLOR,
             );
+            self.context.transition_image_layout(
+                frame.command_buffer,
+                self.swapchain.depth_image,
+                self.image_layouts.undefined,
+                self.image_layouts.depth,
+                vk::ImageAspectFlags::DEPTH,
+            );
 
             self.context.begin_rendering(
                 frame.command_buffer,
                 self.swapchain.views[image_index as usize],
+                self.swapchain.depth_image_view,
                 ClearColorValue {
                     float32: [0.0, 0.2, 0.8, 1.0],
                 },

@@ -13,6 +13,7 @@ pub struct ImageLayouts {
     pub undefined: ImageLayoutState,
     pub renderable: ImageLayoutState,
     pub present: ImageLayoutState,
+    pub depth: ImageLayoutState,
 }
 
 impl Default for ImageLayouts {
@@ -36,11 +37,17 @@ impl Default for ImageLayouts {
             stage_mask: vk::PipelineStageFlags::BOTTOM_OF_PIPE,
             queue_family_index: vk::QUEUE_FAMILY_IGNORED,
         };
-
+        let depth = ImageLayoutState {
+            layout: vk::ImageLayout::DEPTH_ATTACHMENT_OPTIMAL,
+            access_mask: vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
+            stage_mask: vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
+            queue_family_index: vk::QUEUE_FAMILY_IGNORED,
+        };
         Self {
             undefined,
             renderable,
             present,
+            depth,
         }
     }
 }

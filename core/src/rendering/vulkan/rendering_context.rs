@@ -7,7 +7,13 @@ use ash::Entry;
 use ash::Instance;
 use ash::khr::*;
 use ash::vk;
+use ash::vk::AttachmentLoadOp;
+use ash::vk::AttachmentStoreOp;
+use ash::vk::ClearValue;
+use ash::vk::CompareOp;
+use ash::vk::ImageLayout;
 use ash::vk::Queue;
+use ash::vk::RenderingAttachmentInfo;
 use winit::raw_window_handle::HasDisplayHandle;
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::Window;
@@ -297,6 +303,7 @@ impl VulkanRenderingContext {
         fragment_shader: vk::ShaderModule,
         image_extent: vk::Extent2D,
         image_format: vk::Format,
+        depth_format: vk::Format,
         pipeline_layout: vk::PipelineLayout,
         _pipeline_chache: vk::PipelineCache,
     ) -> Result<vk::Pipeline> {
@@ -374,11 +381,18 @@ impl VulkanRenderingContext {
                                 vk::DynamicState::SCISSOR,
                             ]),
                         )
+                        .depth_stencil_state(
+                            &vk::PipelineDepthStencilStateCreateInfo::default()
+                                .depth_test_enable(true)
+                                .depth_write_enable(true)
+                                .depth_compare_op(CompareOp::LESS),
+                        )
                         .layout(pipeline_layout)
                         .render_pass(vk::RenderPass::null())
                         .push_next(
                             &mut vk::PipelineRenderingCreateInfo::default()
-                                .color_attachment_formats(&[image_format]),
+                                .color_attachment_formats(&[image_format])
+                                .depth_attachment_format(depth_format),
                         )],
                     None,
                 )
@@ -429,6 +443,7 @@ impl VulkanRenderingContext {
         &self,
         command_buffer: vk::CommandBuffer,
         view: vk::ImageView,
+        depth_view: vk::ImageView,
         clear_color: vk::ClearColorValue,
         render_area: vk::Rect2D,
     ) {
@@ -437,12 +452,25 @@ impl VulkanRenderingContext {
                 command_buffer,
                 &vk::RenderingInfo::default()
                     .layer_count(1)
-                    .color_attachments(&[vk::RenderingAttachmentInfo::default()
+                    .color_attachments(&[RenderingAttachmentInfo::default()
                         .image_view(view)
-                        .image_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-                        .clear_value(vk::ClearValue { color: clear_color })
-                        .load_op(vk::AttachmentLoadOp::CLEAR)
-                        .store_op(vk::AttachmentStoreOp::STORE)])
+                        .image_layout(ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                        .clear_value(ClearValue { color: clear_color })
+                        .load_op(AttachmentLoadOp::CLEAR)
+                        .store_op(AttachmentStoreOp::STORE)])
+                    .depth_attachment(
+                        &RenderingAttachmentInfo::default()
+                            .image_view(depth_view)
+                            .image_layout(ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
+                            .clear_value(vk::ClearValue {
+                                depth_stencil: vk::ClearDepthStencilValue {
+                                    depth: 1.0,
+                                    stencil: 0,
+                                },
+                            })
+                            .load_op(AttachmentLoadOp::CLEAR)
+                            .store_op(AttachmentStoreOp::STORE),
+                    )
                     .render_area(render_area),
             );
         }
