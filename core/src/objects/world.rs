@@ -89,8 +89,20 @@ impl World {
         self.scene.get_objects_with_component_mut::<T>()
     }
 
+    pub fn get_object_with_tag<T: Tag + 'static>(&self) -> Result<&Object> {
+        self.scene.get_object_with_tag::<T>()
+    }
+
     pub fn get_object_with_tag_mut<T: Tag + 'static>(&mut self) -> Result<&mut Object> {
         self.scene.get_object_with_tag_mut::<T>()
+    }
+
+    pub fn get_objects_with_tag<T: Tag + 'static>(&self) -> Vec<&Object> {
+        self.scene.get_objects_with_tag::<T>()
+    }
+
+    pub fn get_objects_with_tag_mut<T: Tag + 'static>(&mut self) -> Vec<&mut Object> {
+        self.scene.get_objects_with_tag_mut::<T>()
     }
 
     // ========== ========== Resources ========== ==========

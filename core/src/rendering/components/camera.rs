@@ -1,5 +1,5 @@
 use apostasy_macros::{Component, Tag};
-use cgmath::{Deg, Matrix4, PerspectiveFov};
+use cgmath::{Deg, Matrix4, PerspectiveFov, Point3};
 
 use crate::objects::components::transform::Transform;
 
@@ -37,9 +37,23 @@ pub fn get_perspective_projection(camera: &Camera, aspect: f32) -> Matrix4<f32> 
 }
 
 pub fn get_view_matrix(transform: &Transform) -> Matrix4<f32> {
-    let translation = Matrix4::from_translation(-transform.global_position);
-    let rotation = Matrix4::from(transform.global_rotation.conjugate());
-    rotation * translation
+    let eye = Point3::new(
+        transform.global_position.x,
+        transform.global_position.y,
+        transform.global_position.z,
+    );
+
+    let forward = transform.calculate_global_forward();
+
+    let look = Point3::new(
+        transform.global_position.x + forward.x,
+        transform.global_position.y + forward.y,
+        transform.global_position.z + forward.z,
+    );
+
+    let up = transform.calculate_up();
+
+    Matrix4::look_at_rh(eye, look, up)
 }
 
 #[derive(Tag, Clone)]

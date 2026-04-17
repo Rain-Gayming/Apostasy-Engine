@@ -27,7 +27,7 @@ fn velocity_process(world: &mut World) -> Result<()> {
         let linear = { node.get_component::<Velocity>()?.linear_velocity };
         let transform = node.get_component_mut::<Transform>()?;
 
-        transform.global_position += linear;
+        transform.local_position += linear;
     }
 
     Ok(())

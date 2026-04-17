@@ -28,6 +28,27 @@ impl Default for Scene {
 }
 
 impl Scene {
+    pub(crate) fn add_default_objects(&mut self) {
+        let camera_object = Object::new()
+            .add_component(Transform::default())
+            .add_component(Velocity::default())
+            .add_component(Camera::default())
+            .add_tag(GameCamera)
+            .set_name("Camera".to_string())
+            .clone();
+
+        println!("{}", camera_object.tags.first().unwrap().type_name());
+
+        self.add_object(camera_object);
+
+        let test_model = Object::new()
+            .add_component(Transform::default())
+            .add_component(ModelRenderer::from_path("model.glb".to_string()))
+            .set_name("Test Model".to_string())
+            .clone();
+        self.add_object(test_model);
+    }
+
     /// Adds a new Object to the world
     pub fn add_new_object(&mut self) -> &mut Object {
         let index = self.objects.len() as u64;
@@ -75,6 +96,7 @@ impl Scene {
         return None;
     }
 
+    // ========== ========== Components ========== ==========
     pub fn get_objects_with_component<T: Component + 'static>(&self) -> Vec<&Object> {
         let mut objects: Vec<&Object> = Vec::new();
 
@@ -99,6 +121,20 @@ impl Scene {
         objects
     }
 
+    // ========== ========== Tags ========== ==========
+
+    pub fn get_object_with_tag<T: Tag + 'static>(&self) -> Result<&Object> {
+        self.objects
+            .iter()
+            .find(|x| {
+                x.1.tags
+                    .iter()
+                    .any(|tag| tag.type_name() == T::type_name_static())
+            })
+            .map(|x| x.1)
+            .ok_or(anyhow!("No objects with the tag"))
+    }
+
     pub fn get_object_with_tag_mut<T: Tag + 'static>(&mut self) -> Result<&mut Object> {
         self.objects
             .iter_mut()
@@ -111,24 +147,27 @@ impl Scene {
             .ok_or(anyhow!("No objects with the tag"))
     }
 
-    pub fn add_default_objects(&mut self) {
-        let camera_object = Object::new()
-            .add_component(Transform::default())
-            .add_component(Velocity::default())
-            .add_component(Camera::default())
-            .add_tag(GameCamera)
-            .set_name("Camera".to_string())
-            .clone();
+    pub fn get_objects_with_tag<T: Tag + 'static>(&self) -> Vec<&Object> {
+        let mut objects: Vec<&Object> = Vec::new();
 
-        println!("{}", camera_object.tags.first().unwrap().type_name());
+        self.objects.iter().for_each(|(_id, object)| {
+            if object.has_tag::<T>() {
+                objects.push(&object);
+            }
+        });
 
-        self.add_object(camera_object);
+        objects
+    }
 
-        let test_model = Object::new()
-            .add_component(Transform::default())
-            .add_component(ModelRenderer::from_path("model.glb".to_string()))
-            .set_name("Test Model".to_string())
-            .clone();
-        self.add_object(test_model);
+    pub fn get_objects_with_tag_mut<T: Tag + 'static>(&mut self) -> Vec<&mut Object> {
+        let mut objects: Vec<&mut Object> = Vec::new();
+
+        self.objects.iter_mut().for_each(|(_id, object)| {
+            if object.has_tag::<T>() {
+                objects.push(object);
+            }
+        });
+
+        objects
     }
 }

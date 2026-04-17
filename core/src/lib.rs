@@ -7,6 +7,7 @@ pub use apostasy_macros::start;
 pub use apostasy_macros::update;
 
 pub use anyhow;
+pub use cgmath;
 pub use winit;
 use winit::event::DeviceEvent;
 use winit::event::DeviceId;

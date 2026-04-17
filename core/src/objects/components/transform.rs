@@ -1,5 +1,12 @@
-use apostasy_macros::Component;
-use cgmath::{Quaternion, Vector3};
+use anyhow::Result;
+use apostasy_macros::{Component, update};
+use cgmath::{Deg, Euler, Quaternion, Rotation, Vector3};
+
+use crate::objects::world::World;
+
+const UP: Vector3<f32> = Vector3::new(0.0, 1.0, 0.0);
+const RIGHT: Vector3<f32> = Vector3::new(1.0, 0.0, 0.0);
+const FORWARD: Vector3<f32> = Vector3::new(0.0, 0.0, -1.0);
 
 #[derive(Component, Clone)]
 pub struct Transform {
@@ -26,4 +33,60 @@ impl Default for Transform {
             global_scale: Vector3::new(1.0, 1.0, 1.0),
         }
     }
+}
+
+impl Transform {
+    pub fn calculate_up(&self) -> Vector3<f32> {
+        self.local_rotation.rotate_vector(UP)
+    }
+
+    pub fn calculate_forward(&self) -> Vector3<f32> {
+        self.local_rotation.rotate_vector(FORWARD)
+    }
+
+    pub fn calculate_right(&self) -> Vector3<f32> {
+        self.local_rotation.rotate_vector(RIGHT)
+    }
+
+    pub fn calculate_global_forward(&self) -> Vector3<f32> {
+        self.global_rotation.rotate_vector(FORWARD)
+    }
+
+    pub fn calculate_global_up(&self) -> Vector3<f32> {
+        self.global_rotation.rotate_vector(UP)
+    }
+    pub fn calculate_global_right(&self) -> Vector3<f32> {
+        self.global_rotation.rotate_vector(RIGHT)
+    }
+}
+
+#[update]
+pub fn transform_update(world: &mut World) -> Result<()> {
+    let transforms = world.get_objects_with_component_mut::<Transform>();
+
+    for transform in transforms {
+        let transform = transform.get_component_mut::<Transform>()?;
+
+        transform.local_rotation = Quaternion::from(Euler {
+            x: Deg(0.0),
+            y: Deg(transform.local_euler_angles.y),
+            z: Deg(0.0),
+        }) * Quaternion::from(Euler {
+            x: Deg(transform.local_euler_angles.x),
+            y: Deg(0.0),
+            z: Deg(0.0),
+        }) * Quaternion::from(Euler {
+            x: Deg(0.0),
+            y: Deg(0.0),
+            z: Deg(transform.local_euler_angles.z),
+        });
+
+        transform.global_rotation = transform.local_rotation;
+
+        transform.global_position = transform.local_position;
+        transform.global_scale = transform.local_scale;
+        transform.global_euler_angles = transform.local_euler_angles;
+    }
+
+    Ok(())
 }

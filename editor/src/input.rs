@@ -43,5 +43,26 @@ pub fn start(world: &mut World) -> Result<()> {
         "Downwards",
     ));
 
+    inputs.register_keybind(KeyBind::new(
+        PhysicalKey::Code(KeyCode::ArrowLeft),
+        KeyAction::Hold,
+        "LookLeft",
+    ));
+    inputs.register_keybind(KeyBind::new(
+        PhysicalKey::Code(KeyCode::ArrowRight),
+        KeyAction::Hold,
+        "LookRight",
+    ));
+    inputs.register_keybind(KeyBind::new(
+        PhysicalKey::Code(KeyCode::ArrowUp),
+        KeyAction::Hold,
+        "LookUp",
+    ));
+    inputs.register_keybind(KeyBind::new(
+        PhysicalKey::Code(KeyCode::ArrowDown),
+        KeyAction::Hold,
+        "LookDown",
+    ));
+
     Ok(())
 }
