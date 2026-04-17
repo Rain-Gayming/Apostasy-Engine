@@ -7,13 +7,84 @@ use ash::Entry;
 use ash::Instance;
 use ash::khr::*;
 use ash::vk;
+use ash::vk::ApplicationInfo;
 use ash::vk::AttachmentLoadOp;
 use ash::vk::AttachmentStoreOp;
+use ash::vk::Buffer;
+use ash::vk::BufferCopy;
+use ash::vk::BufferCreateInfo;
+use ash::vk::BufferUsageFlags;
+use ash::vk::ClearColorValue;
+use ash::vk::ClearDepthStencilValue;
 use ash::vk::ClearValue;
+use ash::vk::ColorComponentFlags;
+use ash::vk::CommandBuffer;
+use ash::vk::CommandBufferAllocateInfo;
+use ash::vk::CommandBufferBeginInfo;
+use ash::vk::CommandBufferLevel;
+use ash::vk::CommandBufferUsageFlags;
+use ash::vk::CommandPool;
 use ash::vk::CompareOp;
+use ash::vk::CullModeFlags;
+use ash::vk::DependencyFlags;
+use ash::vk::DeviceCreateInfo;
+use ash::vk::DeviceMemory;
+use ash::vk::DeviceQueueCreateInfo;
+use ash::vk::DeviceSize;
+use ash::vk::DynamicState;
+use ash::vk::Extent2D;
+use ash::vk::Extent3D;
+use ash::vk::Fence;
+use ash::vk::Format;
+use ash::vk::FrontFace;
+use ash::vk::GraphicsPipelineCreateInfo;
+use ash::vk::Image;
+use ash::vk::ImageAspectFlags;
+use ash::vk::ImageCreateInfo;
 use ash::vk::ImageLayout;
+use ash::vk::ImageMemoryBarrier;
+use ash::vk::ImageSubresourceRange;
+use ash::vk::ImageTiling;
+use ash::vk::ImageType;
+use ash::vk::ImageUsageFlags;
+use ash::vk::ImageView;
+use ash::vk::ImageViewCreateInfo;
+use ash::vk::ImageViewType;
+use ash::vk::InstanceCreateInfo;
+use ash::vk::MemoryAllocateInfo;
+use ash::vk::MemoryMapFlags;
+use ash::vk::MemoryPropertyFlags;
+use ash::vk::Offset2D;
+use ash::vk::PhysicalDeviceBufferDeviceAddressFeatures;
+use ash::vk::PhysicalDeviceDynamicRenderingFeatures;
+use ash::vk::Pipeline;
+use ash::vk::PipelineCache;
+use ash::vk::PipelineColorBlendAttachmentState;
+use ash::vk::PipelineColorBlendStateCreateInfo;
+use ash::vk::PipelineDepthStencilStateCreateInfo;
+use ash::vk::PipelineDynamicStateCreateInfo;
+use ash::vk::PipelineInputAssemblyStateCreateInfo;
+use ash::vk::PipelineLayout;
+use ash::vk::PipelineMultisampleStateCreateInfo;
+use ash::vk::PipelineRasterizationStateCreateInfo;
+use ash::vk::PipelineRenderingCreateInfo;
+use ash::vk::PipelineShaderStageCreateInfo;
+use ash::vk::PipelineVertexInputStateCreateInfo;
+use ash::vk::PipelineViewportStateCreateInfo;
+use ash::vk::PolygonMode;
+use ash::vk::PrimitiveTopology;
 use ash::vk::Queue;
+use ash::vk::Rect2D;
+use ash::vk::RenderPass;
 use ash::vk::RenderingAttachmentInfo;
+use ash::vk::RenderingInfo;
+use ash::vk::SampleCountFlags;
+use ash::vk::ShaderModule;
+use ash::vk::ShaderModuleCreateInfo;
+use ash::vk::ShaderStageFlags;
+use ash::vk::SharingMode;
+use ash::vk::SubmitInfo;
+use ash::vk::Viewport;
 use winit::raw_window_handle::HasDisplayHandle;
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::Window;
@@ -54,10 +125,8 @@ impl VulkanRenderingContext {
             let raw_window_handle = attributes.compatability_window.window_handle()?.as_raw();
 
             let instance = entry.create_instance(
-                &vk::InstanceCreateInfo::default()
-                    .application_info(
-                        &vk::ApplicationInfo::default().api_version(vk::API_VERSION_1_3),
-                    )
+                &InstanceCreateInfo::default()
+                    .application_info(&ApplicationInfo::default().api_version(vk::API_VERSION_1_3))
                     .enabled_extension_names(ash_window::enumerate_required_extensions(
                         raw_display_handle,
                     )?),
@@ -124,7 +193,7 @@ impl VulkanRenderingContext {
                 .iter()
                 .copied()
                 .map(|index| {
-                    vk::DeviceQueueCreateInfo::default()
+                    DeviceQueueCreateInfo::default()
                         .queue_family_index(index)
                         .queue_priorities(&[1.0])
                 })
@@ -132,15 +201,15 @@ impl VulkanRenderingContext {
 
             let device = instance.create_device(
                 physical_device.handle,
-                &vk::DeviceCreateInfo::default()
+                &DeviceCreateInfo::default()
                     .queue_create_infos(&queue_create_infos)
                     .enabled_extension_names(&[ash::khr::swapchain::NAME.as_ptr()])
                     .push_next(
-                        &mut vk::PhysicalDeviceDynamicRenderingFeatures::default()
+                        &mut PhysicalDeviceDynamicRenderingFeatures::default()
                             .dynamic_rendering(true),
                     )
                     .push_next(
-                        &mut vk::PhysicalDeviceBufferDeviceAddressFeatures::default()
+                        &mut PhysicalDeviceBufferDeviceAddressFeatures::default()
                             .buffer_device_address(true),
                     ),
                 None,
@@ -200,11 +269,7 @@ impl VulkanRenderingContext {
             })
         }
     }
-    pub fn find_memory_type(
-        &self,
-        filter: u32,
-        properties: vk::MemoryPropertyFlags,
-    ) -> Result<u32> {
+    pub fn find_memory_type(&self, filter: u32, properties: MemoryPropertyFlags) -> Result<u32> {
         // First, try to find an exact match
         for i in 0..self.physical_device.memory_properties.memory_type_count {
             if (filter & (1 << i)) != 0
@@ -230,15 +295,15 @@ impl VulkanRenderingContext {
     }
     pub fn create_image(
         &self,
-        extent: vk::Extent2D,
-        format: vk::Format,
-        tiling: vk::ImageTiling,
-        usage: vk::ImageUsageFlags,
-        properties: vk::MemoryPropertyFlags,
-    ) -> Result<(vk::Image, vk::DeviceMemory)> {
-        let image_info = vk::ImageCreateInfo::default()
-            .image_type(vk::ImageType::TYPE_2D)
-            .extent(vk::Extent3D {
+        extent: Extent2D,
+        format: Format,
+        tiling: ImageTiling,
+        usage: ImageUsageFlags,
+        properties: MemoryPropertyFlags,
+    ) -> Result<(Image, DeviceMemory)> {
+        let image_info = ImageCreateInfo::default()
+            .image_type(ImageType::TYPE_2D)
+            .extent(Extent3D {
                 width: extent.width,
                 height: extent.height,
                 depth: 1,
@@ -247,15 +312,15 @@ impl VulkanRenderingContext {
             .array_layers(1)
             .format(format)
             .tiling(tiling)
-            .initial_layout(vk::ImageLayout::UNDEFINED)
+            .initial_layout(ImageLayout::UNDEFINED)
             .usage(usage)
-            .samples(vk::SampleCountFlags::TYPE_1)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+            .samples(SampleCountFlags::TYPE_1)
+            .sharing_mode(SharingMode::EXCLUSIVE);
 
         let image = unsafe { self.device.create_image(&image_info, None).unwrap() };
         let mem_reqs = unsafe { self.device.get_image_memory_requirements(image) };
 
-        let alloc_info = vk::MemoryAllocateInfo::default()
+        let alloc_info = MemoryAllocateInfo::default()
             .allocation_size(mem_reqs.size)
             .memory_type_index(self.find_memory_type(mem_reqs.memory_type_bits, properties)?);
 
@@ -265,18 +330,18 @@ impl VulkanRenderingContext {
     }
     pub fn create_image_view(
         &self,
-        image: vk::Image,
-        format: vk::Format,
-        aspect_flags: vk::ImageAspectFlags,
-    ) -> Result<vk::ImageView> {
+        image: Image,
+        format: Format,
+        aspect_flags: ImageAspectFlags,
+    ) -> Result<ImageView> {
         let image_view = unsafe {
             self.device.create_image_view(
-                &vk::ImageViewCreateInfo::default()
+                &ImageViewCreateInfo::default()
                     .image(image)
-                    .view_type(vk::ImageViewType::TYPE_2D)
+                    .view_type(ImageViewType::TYPE_2D)
                     .format(format)
                     .subresource_range(
-                        vk::ImageSubresourceRange::default()
+                        ImageSubresourceRange::default()
                             .aspect_mask(aspect_flags)
                             .base_mip_level(0)
                             .level_count(1)
@@ -289,24 +354,24 @@ impl VulkanRenderingContext {
         Ok(image_view)
     }
 
-    pub fn create_shader_module(&self, code: &[u8]) -> Result<vk::ShaderModule, vk::Result> {
+    pub fn create_shader_module(&self, code: &[u8]) -> Result<ShaderModule, vk::Result> {
         let mut code = io::Cursor::new(code);
         let code = ash::util::read_spv(&mut code).unwrap();
-        let create_info = vk::ShaderModuleCreateInfo::default().code(&code);
+        let create_info = ShaderModuleCreateInfo::default().code(&code);
         let shader_module = unsafe { self.device.create_shader_module(&create_info, None) }?;
         Ok(shader_module)
     }
 
     pub fn create_graphics_pipeline(
         &self,
-        vertex_shader: vk::ShaderModule,
-        fragment_shader: vk::ShaderModule,
-        image_extent: vk::Extent2D,
-        image_format: vk::Format,
-        depth_format: vk::Format,
-        pipeline_layout: vk::PipelineLayout,
-        _pipeline_chache: vk::PipelineCache,
-    ) -> Result<vk::Pipeline> {
+        vertex_shader: ShaderModule,
+        fragment_shader: ShaderModule,
+        image_extent: Extent2D,
+        image_format: Format,
+        depth_format: Format,
+        pipeline_layout: PipelineLayout,
+        _pipeline_chache: PipelineCache,
+    ) -> Result<Pipeline> {
         let entry_point = std::ffi::CString::new("main").unwrap();
 
         let bindings = vec![Vertex::get_binding_description()];
@@ -317,30 +382,30 @@ impl VulkanRenderingContext {
             Ok(self
                 .device
                 .create_graphics_pipelines(
-                    vk::PipelineCache::null(),
-                    &[vk::GraphicsPipelineCreateInfo::default()
+                    PipelineCache::null(),
+                    &[GraphicsPipelineCreateInfo::default()
                         .stages(&[
-                            vk::PipelineShaderStageCreateInfo::default()
-                                .stage(vk::ShaderStageFlags::VERTEX)
+                            PipelineShaderStageCreateInfo::default()
+                                .stage(ShaderStageFlags::VERTEX)
                                 .module(vertex_shader)
                                 .name(&entry_point),
-                            vk::PipelineShaderStageCreateInfo::default()
-                                .stage(vk::ShaderStageFlags::FRAGMENT)
+                            PipelineShaderStageCreateInfo::default()
+                                .stage(ShaderStageFlags::FRAGMENT)
                                 .module(fragment_shader)
                                 .name(&entry_point),
                         ])
                         .vertex_input_state(
-                            &vk::PipelineVertexInputStateCreateInfo::default()
+                            &PipelineVertexInputStateCreateInfo::default()
                                 .vertex_binding_descriptions(&bindings)
                                 .vertex_attribute_descriptions(&attributes),
                         )
                         .input_assembly_state(
-                            &vk::PipelineInputAssemblyStateCreateInfo::default()
-                                .topology(vk::PrimitiveTopology::TRIANGLE_LIST),
+                            &PipelineInputAssemblyStateCreateInfo::default()
+                                .topology(PrimitiveTopology::TRIANGLE_LIST),
                         )
                         .viewport_state(
-                            &vk::PipelineViewportStateCreateInfo::default()
-                                .viewports(&[vk::Viewport {
+                            &PipelineViewportStateCreateInfo::default()
+                                .viewports(&[Viewport {
                                     x: 0.0,
                                     y: 0.0,
                                     width: image_extent.width as f32,
@@ -348,49 +413,47 @@ impl VulkanRenderingContext {
                                     min_depth: 0.0,
                                     max_depth: 1.0,
                                 }])
-                                .scissors(&[vk::Rect2D {
-                                    offset: vk::Offset2D { x: 0, y: 0 },
+                                .scissors(&[Rect2D {
+                                    offset: Offset2D { x: 0, y: 0 },
                                     extent: image_extent,
                                 }]),
                         )
                         .rasterization_state(
-                            &vk::PipelineRasterizationStateCreateInfo::default()
+                            &PipelineRasterizationStateCreateInfo::default()
                                 .depth_clamp_enable(false)
                                 .rasterizer_discard_enable(false)
-                                .polygon_mode(vk::PolygonMode::FILL)
-                                .cull_mode(vk::CullModeFlags::NONE)
-                                .front_face(vk::FrontFace::CLOCKWISE)
+                                .polygon_mode(PolygonMode::FILL)
+                                .cull_mode(CullModeFlags::NONE)
+                                .front_face(FrontFace::CLOCKWISE)
                                 .depth_bias_enable(false)
                                 .line_width(1.0),
                         )
                         .multisample_state(
-                            &vk::PipelineMultisampleStateCreateInfo::default()
-                                .rasterization_samples(vk::SampleCountFlags::TYPE_1)
+                            &PipelineMultisampleStateCreateInfo::default()
+                                .rasterization_samples(SampleCountFlags::TYPE_1)
                                 .sample_shading_enable(false),
                         )
                         .color_blend_state(
-                            &vk::PipelineColorBlendStateCreateInfo::default().attachments(&[
-                                vk::PipelineColorBlendAttachmentState::default()
-                                    .color_write_mask(vk::ColorComponentFlags::RGBA)
+                            &PipelineColorBlendStateCreateInfo::default().attachments(&[
+                                PipelineColorBlendAttachmentState::default()
+                                    .color_write_mask(ColorComponentFlags::RGBA)
                                     .blend_enable(false),
                             ]),
                         )
                         .dynamic_state(
-                            &vk::PipelineDynamicStateCreateInfo::default().dynamic_states(&[
-                                vk::DynamicState::VIEWPORT,
-                                vk::DynamicState::SCISSOR,
-                            ]),
+                            &PipelineDynamicStateCreateInfo::default()
+                                .dynamic_states(&[DynamicState::VIEWPORT, DynamicState::SCISSOR]),
                         )
                         .depth_stencil_state(
-                            &vk::PipelineDepthStencilStateCreateInfo::default()
+                            &PipelineDepthStencilStateCreateInfo::default()
                                 .depth_test_enable(true)
                                 .depth_write_enable(true)
                                 .depth_compare_op(CompareOp::LESS),
                         )
                         .layout(pipeline_layout)
-                        .render_pass(vk::RenderPass::null())
+                        .render_pass(RenderPass::null())
                         .push_next(
-                            &mut vk::PipelineRenderingCreateInfo::default()
+                            &mut PipelineRenderingCreateInfo::default()
                                 .color_attachment_formats(&[image_format])
                                 .depth_attachment_format(depth_format),
                         )],
@@ -405,20 +468,20 @@ impl VulkanRenderingContext {
 
     pub fn transition_image_layout(
         &self,
-        command_buffer: vk::CommandBuffer,
-        image: vk::Image,
+        command_buffer: CommandBuffer,
+        image: Image,
         old_state: ImageLayoutState,
         new_state: ImageLayoutState,
-        aspect_mask: vk::ImageAspectFlags,
+        aspect_mask: ImageAspectFlags,
     ) {
-        let image_memory_barrier = vk::ImageMemoryBarrier::default()
+        let image_memory_barrier = ImageMemoryBarrier::default()
             .old_layout(old_state.layout)
             .new_layout(new_state.layout)
             .image(image)
             .src_access_mask(old_state.access_mask)
             .dst_access_mask(new_state.access_mask)
             .subresource_range(
-                vk::ImageSubresourceRange::default()
+                ImageSubresourceRange::default()
                     .aspect_mask(aspect_mask)
                     .base_mip_level(0)
                     .level_count(1)
@@ -431,7 +494,7 @@ impl VulkanRenderingContext {
                 command_buffer,
                 old_state.stage_mask,
                 new_state.stage_mask,
-                vk::DependencyFlags::empty(),
+                DependencyFlags::empty(),
                 &[],
                 &[],
                 &[image_memory_barrier],
@@ -441,16 +504,16 @@ impl VulkanRenderingContext {
 
     pub fn begin_rendering(
         &self,
-        command_buffer: vk::CommandBuffer,
-        view: vk::ImageView,
-        depth_view: vk::ImageView,
-        clear_color: vk::ClearColorValue,
-        render_area: vk::Rect2D,
+        command_buffer: CommandBuffer,
+        view: ImageView,
+        depth_view: ImageView,
+        clear_color: ClearColorValue,
+        render_area: Rect2D,
     ) {
         unsafe {
             self.device.cmd_begin_rendering(
                 command_buffer,
-                &vk::RenderingInfo::default()
+                &RenderingInfo::default()
                     .layer_count(1)
                     .color_attachments(&[RenderingAttachmentInfo::default()
                         .image_view(view)
@@ -462,8 +525,8 @@ impl VulkanRenderingContext {
                         &RenderingAttachmentInfo::default()
                             .image_view(depth_view)
                             .image_layout(ImageLayout::DEPTH_ATTACHMENT_OPTIMAL)
-                            .clear_value(vk::ClearValue {
-                                depth_stencil: vk::ClearDepthStencilValue {
+                            .clear_value(ClearValue {
+                                depth_stencil: ClearDepthStencilValue {
                                     depth: 1.0,
                                     stencil: 0,
                                 },
@@ -476,15 +539,15 @@ impl VulkanRenderingContext {
         }
     }
 
-    pub fn begin_single_time_commands(&self, command_pool: vk::CommandPool) -> vk::CommandBuffer {
-        let alloc_info = vk::CommandBufferAllocateInfo::default()
-            .level(vk::CommandBufferLevel::PRIMARY)
+    pub fn begin_single_time_commands(&self, command_pool: CommandPool) -> CommandBuffer {
+        let alloc_info = CommandBufferAllocateInfo::default()
+            .level(CommandBufferLevel::PRIMARY)
             .command_pool(command_pool)
             .command_buffer_count(1);
 
         let cmd_buf = unsafe { self.device.allocate_command_buffers(&alloc_info).unwrap()[0] };
-        let begin_info = vk::CommandBufferBeginInfo::default()
-            .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+        let begin_info =
+            CommandBufferBeginInfo::default().flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
         unsafe {
             self.device
@@ -496,17 +559,17 @@ impl VulkanRenderingContext {
 
     pub fn end_single_time_commands(
         &self,
-        cmd_buf: vk::CommandBuffer,
-        queue: vk::Queue,
-        command_pool: vk::CommandPool,
+        cmd_buf: CommandBuffer,
+        queue: Queue,
+        command_pool: CommandPool,
     ) {
         unsafe {
             self.device.end_command_buffer(cmd_buf).unwrap();
 
             let buffer = &[cmd_buf];
-            let submit_info = vk::SubmitInfo::default().command_buffers(buffer);
+            let submit_info = SubmitInfo::default().command_buffers(buffer);
             self.device
-                .queue_submit(queue, &[submit_info], vk::Fence::null())
+                .queue_submit(queue, &[submit_info], Fence::null())
                 .unwrap();
             self.device.queue_wait_idle(queue).unwrap();
             self.device.free_command_buffers(command_pool, &[cmd_buf]);
@@ -514,19 +577,19 @@ impl VulkanRenderingContext {
     }
     pub fn create_buffer(
         &self,
-        size: vk::DeviceSize,
-        usage: vk::BufferUsageFlags,
-        properties: vk::MemoryPropertyFlags,
-    ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
-        let buffer_info = vk::BufferCreateInfo::default()
+        size: DeviceSize,
+        usage: BufferUsageFlags,
+        properties: MemoryPropertyFlags,
+    ) -> Result<(Buffer, DeviceMemory)> {
+        let buffer_info = BufferCreateInfo::default()
             .size(size)
             .usage(usage)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+            .sharing_mode(SharingMode::EXCLUSIVE);
 
         let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
         let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
 
-        let alloc_info = vk::MemoryAllocateInfo::default()
+        let alloc_info = MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
             .memory_type_index(
                 self.find_memory_type(mem_requirements.memory_type_bits, properties)?,
@@ -542,42 +605,40 @@ impl VulkanRenderingContext {
     pub fn create_vertex_buffer<T: VertexDefinition>(
         &self,
         vertices: &[T],
-        command_pool: vk::CommandPool,
-    ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
-        let buffer_size = (size_of::<T>() * vertices.len()) as vk::DeviceSize;
+        command_pool: CommandPool,
+    ) -> Result<(Buffer, vk::DeviceMemory)> {
+        let buffer_size = (size_of::<T>() * vertices.len()) as DeviceSize;
 
         // Create staging buffer
         let (staging_buffer, staging_memory) = self.create_buffer(
             buffer_size,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            BufferUsageFlags::TRANSFER_SRC,
+            MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )?;
 
         unsafe {
-            let data_ptr = self.device.map_memory(
-                staging_memory,
-                0,
-                buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )? as *mut T;
+            let data_ptr =
+                self.device
+                    .map_memory(staging_memory, 0, buffer_size, MemoryMapFlags::empty())?
+                    as *mut T;
             data_ptr.copy_from_nonoverlapping(vertices.as_ptr(), vertices.len());
             self.device.unmap_memory(staging_memory);
         }
 
         // Create device local buffer
-        let buffer_info = vk::BufferCreateInfo::default()
+        let buffer_info = BufferCreateInfo::default()
             .size(buffer_size)
-            .usage(vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+            .usage(BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER)
+            .sharing_mode(SharingMode::EXCLUSIVE);
 
         let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
         let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
 
-        let alloc_info = vk::MemoryAllocateInfo::default()
+        let alloc_info = MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
             .memory_type_index(self.find_memory_type(
                 mem_requirements.memory_type_bits,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                MemoryPropertyFlags::DEVICE_LOCAL,
             )?);
 
         let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
@@ -586,7 +647,7 @@ impl VulkanRenderingContext {
         // Copy staging -> device local
         let cmd = self.begin_single_time_commands(command_pool);
         unsafe {
-            let copy_region = vk::BufferCopy::default().size(buffer_size);
+            let copy_region = BufferCopy::default().size(buffer_size);
             self.device
                 .cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
         }
@@ -605,42 +666,40 @@ impl VulkanRenderingContext {
     pub fn create_index_buffer(
         &self,
         indices: &[u32],
-        command_pool: vk::CommandPool,
-    ) -> Result<(vk::Buffer, vk::DeviceMemory)> {
-        let buffer_size = (std::mem::size_of::<u32>() * indices.len()) as vk::DeviceSize;
+        command_pool: CommandPool,
+    ) -> Result<(Buffer, vk::DeviceMemory)> {
+        let buffer_size = (std::mem::size_of::<u32>() * indices.len()) as DeviceSize;
 
         // staging
         let (staging_buffer, staging_memory) = self.create_buffer(
             buffer_size,
-            vk::BufferUsageFlags::TRANSFER_SRC,
-            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            BufferUsageFlags::TRANSFER_SRC,
+            MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
         )?;
 
         unsafe {
-            let data_ptr = self.device.map_memory(
-                staging_memory,
-                0,
-                buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )? as *mut u32;
+            let data_ptr =
+                self.device
+                    .map_memory(staging_memory, 0, buffer_size, MemoryMapFlags::empty())?
+                    as *mut u32;
             data_ptr.copy_from_nonoverlapping(indices.as_ptr(), indices.len());
             self.device.unmap_memory(staging_memory);
         }
 
         // device local
-        let buffer_info = vk::BufferCreateInfo::default()
+        let buffer_info = BufferCreateInfo::default()
             .size(buffer_size)
-            .usage(vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER)
-            .sharing_mode(vk::SharingMode::EXCLUSIVE);
+            .usage(BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER)
+            .sharing_mode(SharingMode::EXCLUSIVE);
 
         let buffer = unsafe { self.device.create_buffer(&buffer_info, None)? };
         let mem_requirements = unsafe { self.device.get_buffer_memory_requirements(buffer) };
 
-        let alloc_info = vk::MemoryAllocateInfo::default()
+        let alloc_info = MemoryAllocateInfo::default()
             .allocation_size(mem_requirements.size)
             .memory_type_index(self.find_memory_type(
                 mem_requirements.memory_type_bits,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                MemoryPropertyFlags::DEVICE_LOCAL,
             )?);
 
         let buffer_memory = unsafe { self.device.allocate_memory(&alloc_info, None)? };
@@ -649,7 +708,7 @@ impl VulkanRenderingContext {
         // copy
         let cmd = self.begin_single_time_commands(command_pool);
         unsafe {
-            let copy_region = vk::BufferCopy::default().size(buffer_size);
+            let copy_region = BufferCopy::default().size(buffer_size);
             self.device
                 .cmd_copy_buffer(cmd, staging_buffer, buffer, &[copy_region]);
         }
