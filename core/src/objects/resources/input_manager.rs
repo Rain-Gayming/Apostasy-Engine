@@ -64,10 +64,24 @@ impl InputManager {
         // self.serialize_input_manager().unwrap();
     }
 
+    /// Registers a keybind to the input manager, usage:
+    /// ```rust
+    /// pub fn start(world: &mut World) -> Result<()> {
+    ///     let inputs = world.get_resource_mut::<InputManager>()?;
+    ///  
+    ///     inputs.register_keybind(KeyBind::new(
+    ///         PhysicalKey::Code(KeyCode::KeyW),
+    ///         KeyAction::Hold,
+    ///         "Forwards",
+    ///     ));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn register_keybind(&mut self, key: KeyBind) {
         log!("registering keybind: {}", key.name.clone());
         if self.keybinds.contains_key(&key.name) {
-            log_warn!("keybind already exists: {}", key.name);
+            log_warn!("Keybinding {} already exists", key.name);
             return;
         }
         self.keybinds.insert(key.name.clone(), key);
@@ -77,16 +91,18 @@ impl InputManager {
     pub fn register_mousebind(&mut self, key: MouseBind) {
         log!("registering mousebind: {}", key.name.clone());
         if self.mouse_keybinds.contains_key(&key.name) {
-            log_warn!("mousebind already exists: {}", key.name);
+            log_warn!("Mouse binding {} already exists", key.name);
             return;
         }
         self.mouse_keybinds.insert(key.name.clone(), key);
         // self.serialize_input_manager().unwrap();
     }
 
+    /// Detects if a keybind with the specified name is active
     pub fn is_keybind_active(&self, name: &str) -> bool {
         let key = self.keybinds.get(name);
         if key.is_none() {
+            log_warn!("Key: {} does not exist", name.to_string());
             return false;
         }
         let key = key.unwrap();
@@ -97,6 +113,7 @@ impl InputManager {
         }
     }
 
+    /// Detects if a mousebind with the specified name is active
     pub fn is_mousebind_active(&self, name: &str) -> bool {
         let key = self.mouse_keybinds.get(name);
         if key.is_none() {
@@ -331,6 +348,7 @@ impl InputManager {
 pub fn clear_actions(world: &mut World) -> Result<()> {
     let input_manager = world.get_resource_mut::<InputManager>()?;
 
+    input_manager.keys_held.clear();
     input_manager.keys_pressed.clear();
     input_manager.keys_released.clear();
     input_manager.mouse_pressed.clear();

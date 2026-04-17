@@ -9,6 +9,7 @@ use crate::{
         tag::Tag,
     },
 };
+
 pub mod component;
 pub mod components;
 pub mod query;
@@ -17,6 +18,7 @@ pub mod resources;
 pub mod scene;
 pub mod systems;
 pub mod tag;
+pub mod tags;
 pub mod world;
 
 #[derive(Clone)]

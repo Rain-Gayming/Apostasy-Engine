@@ -43,4 +43,7 @@ pub fn get_view_matrix(transform: &Transform) -> Matrix4<f32> {
 }
 
 #[derive(Tag, Clone)]
-pub struct MainCamera;
+pub struct GameCamera;
+
+#[derive(Tag, Clone)]
+pub struct EditorCamera;

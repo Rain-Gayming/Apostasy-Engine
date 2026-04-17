@@ -1,7 +1,4 @@
-use std::any::TypeId;
-
 use anyhow::{Result, anyhow};
-use gltf::camera;
 use hashbrown::HashMap;
 
 use crate::{
@@ -9,7 +6,7 @@ use crate::{
     objects::{Object, component::Component, components::transform::Transform, tag::Tag},
     physics::velocity::Velocity,
     rendering::components::{
-        camera::{Camera, MainCamera},
+        camera::{Camera, GameCamera},
         model_renderer::ModelRenderer,
     },
 };
@@ -103,7 +100,6 @@ impl Scene {
     }
 
     pub fn get_object_with_tag_mut<T: Tag + 'static>(&mut self) -> Result<&mut Object> {
-        println!("{}", T::type_name_static());
         self.objects
             .iter_mut()
             .find(|x| {
@@ -120,7 +116,7 @@ impl Scene {
             .add_component(Transform::default())
             .add_component(Velocity::default())
             .add_component(Camera::default())
-            .add_tag(MainCamera)
+            .add_tag(GameCamera)
             .set_name("Camera".to_string())
             .clone();
 

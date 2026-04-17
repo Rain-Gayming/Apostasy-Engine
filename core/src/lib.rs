@@ -149,8 +149,6 @@ impl Core {
         let input_manager = world.get_resource_mut::<InputManager>().unwrap();
         input_manager.handle_device_event(event.clone());
     }
-
-    pub fn redraw(world: &mut World, rendering_info: &mut RenderingInfo) {}
 }
 impl ApplicationHandler for Core {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
