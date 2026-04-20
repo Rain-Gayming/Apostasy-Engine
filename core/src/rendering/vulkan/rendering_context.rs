@@ -97,6 +97,7 @@ use crate::rendering::vulkan::queue_family::QueueFamilies;
 use crate::rendering::vulkan::queue_family::QueueFamily;
 use crate::rendering::vulkan::queue_family::QueueFamilyPicker;
 use crate::rendering::vulkan::surface::Surface;
+use crate::voxels::meshes::VoxelVertex;
 
 pub struct RenderingContextAttributes<'window> {
     pub compatability_window: &'window Window,
@@ -375,8 +376,110 @@ impl VulkanRenderingContext {
         let entry_point = std::ffi::CString::new("main").unwrap();
 
         let bindings = vec![Vertex::get_binding_description()];
-
         let attributes = Vertex::get_attribute_descriptions();
+
+        unsafe {
+            Ok(self
+                .device
+                .create_graphics_pipelines(
+                    PipelineCache::null(),
+                    &[GraphicsPipelineCreateInfo::default()
+                        .stages(&[
+                            PipelineShaderStageCreateInfo::default()
+                                .stage(ShaderStageFlags::VERTEX)
+                                .module(vertex_shader)
+                                .name(&entry_point),
+                            PipelineShaderStageCreateInfo::default()
+                                .stage(ShaderStageFlags::FRAGMENT)
+                                .module(fragment_shader)
+                                .name(&entry_point),
+                        ])
+                        .vertex_input_state(
+                            &PipelineVertexInputStateCreateInfo::default()
+                                .vertex_binding_descriptions(&bindings)
+                                .vertex_attribute_descriptions(&attributes),
+                        )
+                        .input_assembly_state(
+                            &PipelineInputAssemblyStateCreateInfo::default()
+                                .topology(PrimitiveTopology::TRIANGLE_LIST),
+                        )
+                        .viewport_state(
+                            &PipelineViewportStateCreateInfo::default()
+                                .viewports(&[Viewport {
+                                    x: 0.0,
+                                    y: 0.0,
+                                    width: image_extent.width as f32,
+                                    height: image_extent.height as f32,
+                                    min_depth: 0.0,
+                                    max_depth: 1.0,
+                                }])
+                                .scissors(&[Rect2D {
+                                    offset: Offset2D { x: 0, y: 0 },
+                                    extent: image_extent,
+                                }]),
+                        )
+                        .rasterization_state(
+                            &PipelineRasterizationStateCreateInfo::default()
+                                .depth_clamp_enable(false)
+                                .rasterizer_discard_enable(false)
+                                .polygon_mode(PolygonMode::FILL)
+                                .cull_mode(CullModeFlags::NONE)
+                                .front_face(FrontFace::CLOCKWISE)
+                                .depth_bias_enable(false)
+                                .line_width(1.0),
+                        )
+                        .multisample_state(
+                            &PipelineMultisampleStateCreateInfo::default()
+                                .rasterization_samples(SampleCountFlags::TYPE_1)
+                                .sample_shading_enable(false),
+                        )
+                        .color_blend_state(
+                            &PipelineColorBlendStateCreateInfo::default().attachments(&[
+                                PipelineColorBlendAttachmentState::default()
+                                    .color_write_mask(ColorComponentFlags::RGBA)
+                                    .blend_enable(false),
+                            ]),
+                        )
+                        .dynamic_state(
+                            &PipelineDynamicStateCreateInfo::default()
+                                .dynamic_states(&[DynamicState::VIEWPORT, DynamicState::SCISSOR]),
+                        )
+                        .depth_stencil_state(
+                            &PipelineDepthStencilStateCreateInfo::default()
+                                .depth_test_enable(true)
+                                .depth_write_enable(true)
+                                .depth_compare_op(CompareOp::LESS),
+                        )
+                        .layout(pipeline_layout)
+                        .render_pass(RenderPass::null())
+                        .push_next(
+                            &mut PipelineRenderingCreateInfo::default()
+                                .color_attachment_formats(&[image_format])
+                                .depth_attachment_format(depth_format),
+                        )],
+                    None,
+                )
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap())
+        }
+    }
+
+    pub fn create_voxel_graphics_pipeline(
+        &self,
+        vertex_shader: ShaderModule,
+        fragment_shader: ShaderModule,
+        image_extent: Extent2D,
+        image_format: Format,
+        depth_format: Format,
+        pipeline_layout: PipelineLayout,
+        _pipeline_chache: PipelineCache,
+    ) -> Result<Pipeline> {
+        let entry_point = std::ffi::CString::new("main").unwrap();
+
+        let bindings = vec![VoxelVertex::get_binding_description()];
+        let attributes = VoxelVertex::get_attribute_descriptions();
 
         unsafe {
             Ok(self

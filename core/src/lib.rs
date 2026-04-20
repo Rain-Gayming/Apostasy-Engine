@@ -37,6 +37,7 @@ pub mod objects;
 pub mod physics;
 pub mod rendering;
 pub mod utils;
+pub mod voxels;
 
 pub struct Core {
     pub rendering_api: RenderingBackend,
