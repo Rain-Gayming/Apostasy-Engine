@@ -2,12 +2,12 @@ use ash::vk::{Buffer, DeviceMemory};
 
 #[derive(Clone, Debug)]
 pub struct GpuModel {
-    pub meshes: Vec<GpuMesh>,
+    pub meshes: Vec<Mesh>,
     pub name: String,
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GpuMesh {
+pub struct Mesh {
     pub vertex_buffer: Buffer,
     pub vertex_buffer_memory: DeviceMemory,
     pub index_buffer: Buffer,
@@ -16,8 +16,26 @@ pub struct GpuMesh {
     pub material_name: String,
 }
 
+impl GpuMesh for Mesh {
+    fn get_vertex_buffer(&self) -> Buffer {
+        self.vertex_buffer.clone()
+    }
+    fn get_index_buffer(&self) -> Buffer {
+        self.index_buffer.clone()
+    }
+    fn get_index_count(&self) -> u32 {
+        self.index_count
+    }
+}
+
 #[derive(Clone)]
 pub struct ModelRenderer {
     pub loaded_model: String,
     // pub material_path: String,
+}
+
+pub trait GpuMesh {
+    fn get_vertex_buffer(&self) -> Buffer;
+    fn get_index_buffer(&self) -> Buffer;
+    fn get_index_count(&self) -> u32;
 }

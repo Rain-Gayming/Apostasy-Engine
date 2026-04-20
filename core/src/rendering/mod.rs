@@ -39,7 +39,7 @@ pub struct RenderingInfo {
 /// Used for Vulkan and Opengl
 pub trait RenderingAPI {
     fn resize(&mut self) -> Result<()>;
-    fn render(&mut self, mesh: GpuMesh, push_constants: PushConstants) -> Result<()>;
+    fn render(&mut self, mesh: Box<dyn GpuMesh>, push_constants: PushConstants) -> Result<()>;
     fn update_command_buffer(&mut self);
     fn recreate_swapchain(&mut self);
     fn get_command_pool(&self) -> Result<CommandPool>;

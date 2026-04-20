@@ -140,7 +140,11 @@ impl RenderingAPI for VulkanRenderer {
         Ok(())
     }
 
-    fn render(&mut self, mesh: GpuMesh, push_constants: PushConstants) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        mesh: Box<dyn GpuMesh>,
+        push_constants: PushConstants,
+    ) -> anyhow::Result<()> {
         let frame = &self.frames[self.current_frame];
 
         unsafe {
@@ -227,18 +231,18 @@ impl RenderingAPI for VulkanRenderer {
             self.context.device.cmd_bind_vertex_buffers(
                 frame.command_buffer,
                 0,
-                &[mesh.vertex_buffer],
+                &[mesh.get_vertex_buffer()],
                 &[0],
             );
             self.context.device.cmd_bind_index_buffer(
                 frame.command_buffer,
-                mesh.index_buffer,
+                mesh.get_index_buffer(),
                 0,
                 vk::IndexType::UINT32,
             );
             self.context.device.cmd_draw_indexed(
                 frame.command_buffer,
-                mesh.index_count,
+                mesh.get_index_count(),
                 1,
                 0,
                 0,

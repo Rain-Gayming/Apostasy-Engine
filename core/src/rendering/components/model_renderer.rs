@@ -4,7 +4,7 @@ use crate::rendering::shared::model::GpuModel;
 
 #[derive(Component, Clone)]
 pub struct ModelRenderer {
-    pub model: Option<GpuModel>,
+    pub model: Option<Box<GpuModel>>,
     pub model_path: String,
 }
 

@@ -109,21 +109,21 @@ impl Core {
                                 let Some(command_pool) = renderer.get_command_pool().ok() else {
                                     continue;
                                 };
-                                mesh_renderer.model = Some(
+                                mesh_renderer.model = Some(Box::new(
                                     load_model(
                                         Path::new(&mesh_renderer.model_path),
                                         context.clone(),
                                         command_pool,
                                     )
                                     .unwrap(),
-                                );
+                                ));
                                 mesh_renderer.model.as_ref().unwrap()
                             }
                         };
 
                         for mesh in &model.meshes {
                             renderer
-                                .render(mesh.clone(), push_constants.clone())
+                                .render(Box::new(mesh.clone()), push_constants.clone())
                                 .unwrap();
                         }
                     }

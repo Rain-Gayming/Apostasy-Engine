@@ -5,7 +5,7 @@ use ash::vk::CommandPool;
 
 use crate::rendering::{
     shared::{
-        model::{GpuMesh, GpuModel},
+        model::{GpuMesh, GpuModel, Mesh},
         vertex::Vertex,
     },
     vulkan::rendering_context::VulkanRenderingContext,
@@ -69,7 +69,7 @@ pub fn load_model(
                 .unwrap_or("material")
                 .to_string();
 
-            meshes.push(GpuMesh {
+            meshes.push(Mesh {
                 vertex_buffer: vertex_buffer.0,
                 vertex_buffer_memory: vertex_buffer.1,
                 index_buffer: index_buffer.0,
