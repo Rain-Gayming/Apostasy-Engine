@@ -1,0 +1,11 @@
+name: Dirt
+namespace: Apostasy
+class: Block
+
+components:
+  is_solid: true 
+  translucent: 0.85
+  breakable: 10.0
+  drop:
+    - item: Apostasy:Dirt
+      count: 1
