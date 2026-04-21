@@ -1,5 +1,6 @@
 use anyhow::Result;
 use apostasy_macros::Component;
+use rand::RngExt;
 
 use crate::{
     objects::{Object, components::transform::Transform, world::World},
@@ -50,6 +51,11 @@ pub fn create_test_chunk(world: &mut World) -> Result<()> {
     for reg in registry.defs.iter() {
         println!("{}:{}", reg.namespace, reg.name);
     }
+    let grass_id = registry
+        .name_to_id
+        .get("Apostasy:Grass")
+        .copied()
+        .expect("Apostasy:Dirt not found in registry");
 
     let dirt_id = registry
         .name_to_id
@@ -58,11 +64,19 @@ pub fn create_test_chunk(world: &mut World) -> Result<()> {
         .expect("Apostasy:Dirt not found in registry");
 
     let mut chunk = Chunk::default();
-
+    let mut rng = rand::rng();
     for z in 0..32u32 {
-        for y in 0..16u32 {
+        for y in 0..32u32 {
             for x in 0..32u32 {
-                chunk.set(x, y, z, Voxel { id: dirt_id });
+                let rand = rng.random_range(0..=4);
+
+                if rand == 0 {
+                    chunk.set(x, y, z, Voxel { id: grass_id });
+                } else if rand >= 3 {
+                    chunk.set(x, y, z, Voxel { id: dirt_id });
+                } else {
+                    chunk.set(x, y, z, Voxel { id: 0 });
+                }
             }
         }
     }

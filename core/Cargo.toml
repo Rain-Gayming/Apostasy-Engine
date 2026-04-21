@@ -21,3 +21,4 @@ serde_yaml = "0.9.34"
 inventory = "0.3.24"
 apostasy-macros = {path = "../macros/"}
 hashbrown = "0.17.0"
+rand = "0.10.0"

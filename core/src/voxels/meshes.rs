@@ -44,57 +44,197 @@ impl VoxelVertex {
         Self { data }
     }
 }
-
 pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
 
-    for z in 0..32u8 {
-        for y in 0..32u8 {
-            for x in 0..32u8 {
-                let id = chunk.voxels[flatten(x as u32, y as u32, z as u32, 32)];
-                if id == 0 {
-                    continue;
-                }
+    // axis 0 = X, 1 = Y, 2 = Z
+    for axis in 0..3usize {
+        let u = (axis + 1) % 3;
+        let v = (axis + 2) % 3;
 
-                let def = &registry.defs[id as usize];
-                for (face, normal) in FACE_NORMALS.iter().enumerate() {
-                    let nx = x as i32 + normal[0];
-                    let ny = y as i32 + normal[1];
-                    let nz = z as i32 + normal[2];
+        for slice in 0..32usize {
+            let mut forward_mask = [[0u16; 32]; 32];
+            let mut backward_mask = [[0u16; 32]; 32];
 
-                    let should_draw =
-                        if nx >= 0 && nx < 32 && ny >= 0 && ny < 32 && nz >= 0 && nz < 32 {
-                            let nid = chunk.voxels[flatten(nx as u32, ny as u32, nz as u32, 32)];
-                            nid == 0
-                        } else {
-                            true
-                        };
+            for ui in 0..32usize {
+                for vi in 0..32usize {
+                    let mut pos = [0usize; 3];
+                    pos[axis] = slice;
+                    pos[u] = ui;
+                    pos[v] = vi;
 
-                    if !should_draw {
+                    let id = chunk.voxels[flatten(pos[0] as u32, pos[1] as u32, pos[2] as u32, 32)];
+
+                    if id == 0 {
                         continue;
                     }
 
-                    let base = vertices.len() as u32;
-                    for (i, corner) in FACE_VERTICES[face].iter().enumerate() {
-                        vertices.push(VoxelVertex::pack(
-                            (x as u16 + corner[0] as u16) as u8,
-                            (y as u16 + corner[1] as u16) as u8,
-                            (z as u16 + corner[2] as u16) as u8,
-                            face as u8,
-                            FACE_UVS[i][0],
-                            FACE_UVS[i][1],
-                        ));
+                    // +axis neighbour
+                    if slice + 1 < 32 {
+                        let mut npos = pos;
+                        npos[axis] = slice + 1;
+                        let nid = chunk.voxels
+                            [flatten(npos[0] as u32, npos[1] as u32, npos[2] as u32, 32)];
+                        if nid == 0 {
+                            forward_mask[ui][vi] = id;
+                        }
+                    } else {
+                        forward_mask[ui][vi] = id;
                     }
 
-                    indices.extend_from_slice(&[
-                        base,
-                        base + 1,
-                        base + 3,
-                        base + 1,
-                        base + 2,
-                        base + 3,
-                    ]);
+                    // -axis neighbour
+                    if slice > 0 {
+                        let mut npos = pos;
+                        npos[axis] = slice - 1;
+                        let nid = chunk.voxels
+                            [flatten(npos[0] as u32, npos[1] as u32, npos[2] as u32, 32)];
+                        if nid == 0 {
+                            backward_mask[ui][vi] = id;
+                        }
+                    } else {
+                        backward_mask[ui][vi] = id;
+                    }
+                }
+            }
+
+            // greedy merge each mask
+            for (mask, face_dir) in [(&mut forward_mask, 0u8), (&mut backward_mask, 1u8)] {
+                let face = (axis * 2) as u8 + face_dir;
+
+                let mut ui = 0;
+                while ui < 32 {
+                    let mut vi = 0;
+                    while vi < 32 {
+                        let id = mask[ui][vi];
+                        if id == 0 {
+                            vi += 1;
+                            continue;
+                        }
+
+                        // expand width
+                        let mut width = 1;
+                        while ui + width < 32 && mask[ui + width][vi] == id {
+                            width += 1;
+                        }
+
+                        // expand height along vertical
+                        let mut height = 1;
+                        'outer: while vi + height < 32 {
+                            for w in 0..width {
+                                if mask[ui + w][vi + height] != id {
+                                    break 'outer;
+                                }
+                            }
+                            height += 1;
+                        }
+
+                        // clear merged region
+                        for w in 0..width {
+                            for h in 0..height {
+                                mask[ui + w][vi + h] = 0;
+                            }
+                        }
+
+                        // build quad corners
+                        let s = slice as u8 + if face_dir == 0 { 1 } else { 0 };
+
+                        // corner positions depend on which axis were on
+                        let (p0, p1, p2, p3) = match face_dir {
+                            0 => (
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = ui as u8;
+                                    p[v] = vi as u8;
+                                    p
+                                },
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = (ui + width) as u8;
+                                    p[v] = vi as u8;
+                                    p
+                                },
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = (ui + width) as u8;
+                                    p[v] = (vi + height) as u8;
+                                    p
+                                },
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = ui as u8;
+                                    p[v] = (vi + height) as u8;
+                                    p
+                                },
+                            ),
+                            _ => (
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = ui as u8;
+                                    p[v] = (vi + height) as u8;
+                                    p
+                                },
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = (ui + width) as u8;
+                                    p[v] = (vi + height) as u8;
+                                    p
+                                },
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = (ui + width) as u8;
+                                    p[v] = vi as u8;
+                                    p
+                                },
+                                {
+                                    let mut p = [0u8; 3];
+                                    p[axis] = s;
+                                    p[u] = ui as u8;
+                                    p[v] = vi as u8;
+                                    p
+                                },
+                            ),
+                        };
+
+                        let base = vertices.len() as u32;
+                        vertices.push(VoxelVertex::pack(p0[0], p0[1], p0[2], face, 0, 0));
+                        vertices.push(VoxelVertex::pack(p1[0], p1[1], p1[2], face, width as u8, 0));
+                        vertices.push(VoxelVertex::pack(
+                            p2[0],
+                            p2[1],
+                            p2[2],
+                            face,
+                            width as u8,
+                            height as u8,
+                        ));
+                        vertices.push(VoxelVertex::pack(
+                            p3[0],
+                            p3[1],
+                            p3[2],
+                            face,
+                            0,
+                            height as u8,
+                        ));
+
+                        indices.extend_from_slice(&[
+                            base,
+                            base + 1,
+                            base + 3,
+                            base + 1,
+                            base + 2,
+                            base + 3,
+                        ]);
+
+                        vi += height;
+                    }
+                    ui += 1;
                 }
             }
         }

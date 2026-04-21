@@ -1,0 +1,7 @@
+
+name: Grass 
+namespace: Apostasy
+class: Voxel 
+
+components:
+  IsSolid: true 

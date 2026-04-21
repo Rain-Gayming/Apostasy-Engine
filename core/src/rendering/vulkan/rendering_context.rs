@@ -526,9 +526,9 @@ impl VulkanRenderingContext {
                             &PipelineRasterizationStateCreateInfo::default()
                                 .depth_clamp_enable(false)
                                 .rasterizer_discard_enable(false)
-                                .polygon_mode(PolygonMode::LINE)
-                                .cull_mode(CullModeFlags::NONE)
-                                .front_face(FrontFace::CLOCKWISE)
+                                .polygon_mode(PolygonMode::FILL)
+                                .cull_mode(CullModeFlags::BACK)
+                                .front_face(FrontFace::COUNTER_CLOCKWISE)
                                 .depth_bias_enable(false)
                                 .line_width(1.0),
                         )
