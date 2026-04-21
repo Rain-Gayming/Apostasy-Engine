@@ -1,28 +1,29 @@
-
 #version 450
 
-layout(location = 0) in int data;
+layout(location = 0) in uint data_lo;
+layout(location = 1) in uint data_hi;
 
 layout(location = 0) out vec3 fragColor;
-
-mat4 model = mat4(
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
-    );
 
 layout(push_constant) uniform Push {
     mat4 view;
     mat4 proj;
 } pc;
 
-void main() {
-    int posZ = (data >> 12) & 63;
-    int posY = (data >> 6) & 63;
-    int posX = data & 63;
+mat4 model = mat4(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+);
 
-    vec3 position = vec3(vec3(posX, posY, posZ)  );
+void main() {
+ uint x    = (data_lo >> 0u)  & 0x3Fu;  // 6 bits
+uint y    = (data_lo >> 6u)  & 0x3Fu;  // 6 bits
+uint z    = (data_lo >> 12u) & 0x3Fu;  // 6 bits
+uint face = (data_lo >> 18u) & 0x7u;   // 3 bits
+
+    vec3 position = vec3(float(x), float(y), float(z));
     gl_Position = pc.proj * pc.view * model * vec4(position, 1.0);
     fragColor = vec3(0.1, 0.1, 0.1);
 }

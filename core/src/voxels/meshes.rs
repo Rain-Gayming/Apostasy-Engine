@@ -35,12 +35,12 @@ const FACE_UVS: [[u8; 2]; 4] = [[0, 0], [0, 1], [1, 1], [1, 0]];
 
 impl VoxelVertex {
     pub fn pack(x: u8, y: u8, z: u8, face: u8, u: u8, v: u8) -> Self {
-        let data: u64 = (x as u64)
-            | ((y as u64) << 5)
-            | ((z as u64) << 10)
-            | ((face as u64) << 15)
-            | ((u as u64) << 18)
-            | ((v as u64) << 20);
+        let data: u64 = (x as u64)        // bits 0-5,  6 bits (0-32)
+            | ((y as u64) << 6)           // bits 6-11, 6 bits
+            | ((z as u64) << 12)          // bits 12-17, 6 bits
+            | ((face as u64) << 18)       // bits 18-20, 3 bits
+            | ((u as u64) << 21)          // bits 21-22, 2 bits
+            | ((v as u64) << 23); // bits 23-24, 2 bits
         Self { data }
     }
 }
@@ -53,36 +53,34 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
         for y in 0..32u8 {
             for x in 0..32u8 {
                 let id = chunk.voxels[flatten(x as u32, y as u32, z as u32, 32)];
+                if id == 0 {
+                    continue;
+                }
 
                 let def = &registry.defs[id as usize];
-
                 for (face, normal) in FACE_NORMALS.iter().enumerate() {
                     let nx = x as i32 + normal[0];
                     let ny = y as i32 + normal[1];
                     let nz = z as i32 + normal[2];
 
-                    let neighbour_solid =
+                    let should_draw =
                         if nx >= 0 && nx < 32 && ny >= 0 && ny < 32 && nz >= 0 && nz < 32 {
                             let nid = chunk.voxels[flatten(nx as u32, ny as u32, nz as u32, 32)];
-                            if nid == 0 {
-                                false
-                            } else {
-                                registry.defs[nid as usize].has_component::<IsSolid>()
-                            }
+                            nid == 0
                         } else {
-                            false
+                            true
                         };
 
-                    if neighbour_solid {
+                    if !should_draw {
                         continue;
                     }
 
                     let base = vertices.len() as u32;
                     for (i, corner) in FACE_VERTICES[face].iter().enumerate() {
                         vertices.push(VoxelVertex::pack(
-                            x + corner[0],
-                            y + corner[1],
-                            z + corner[2],
+                            (x as u16 + corner[0] as u16) as u8,
+                            (y as u16 + corner[1] as u16) as u8,
+                            (z as u16 + corner[2] as u16) as u8,
                             face as u8,
                             FACE_UVS[i][0],
                             FACE_UVS[i][1],
@@ -92,8 +90,8 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                     indices.extend_from_slice(&[
                         base,
                         base + 1,
-                        base + 2,
-                        base,
+                        base + 3,
+                        base + 1,
                         base + 2,
                         base + 3,
                     ]);
