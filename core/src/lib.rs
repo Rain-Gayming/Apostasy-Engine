@@ -8,11 +8,13 @@ pub use apostasy_macros::update;
 
 pub use anyhow;
 pub use cgmath;
+use gltf::json::Asset;
 pub use winit;
 use winit::event::DeviceEvent;
 use winit::event::DeviceId;
 
 use std::path::Path;
+use std::sync::RwLock;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
@@ -22,10 +24,13 @@ use winit::{
     window::WindowId,
 };
 
+use crate::assets::asset_manager::AssetManager;
 use crate::assets::gltf::load_model;
+use crate::assets::loaders::voxel_loader::VoxelLoader;
 use crate::objects::resources::input_manager::InputManager;
 use crate::rendering::components::camera::Camera;
 use crate::rendering::components::model_renderer::ModelRenderer;
+use crate::voxels::voxel::VoxelRegistry;
 use crate::{
     objects::world::World,
     rendering::{RenderingBackend, RenderingInfo},
@@ -43,6 +48,7 @@ pub struct Core {
     pub rendering_api: RenderingBackend,
     pub rendering_info: Option<Arc<Mutex<RenderingInfo>>>,
     pub world: Arc<Mutex<World>>,
+    pub asset_loader: AssetManager,
 }
 
 impl Core {
@@ -50,10 +56,29 @@ impl Core {
         let mut world = World::default();
         world.insert_resource(InputManager::default());
 
+        let mut asset_manager = AssetManager::new();
+        let voxel_registry = Arc::new(RwLock::new(VoxelRegistry::default()));
+        asset_manager.register_loader(VoxelLoader {
+            registry: Arc::clone(&voxel_registry),
+        });
+
+        // Read the files in apostasy-core's res/ folder
+        asset_manager
+            .load_directory(Path::new(&format!(
+                "{}/{}",
+                env!("CARGO_MANIFEST_DIR"),
+                "res/"
+            )))
+            .unwrap();
+
+        // Read the files in the project that impliments apostasy-core's res/ folder
+        asset_manager.load_directory(Path::new("res/")).unwrap();
+
         Self {
             rendering_api,
             rendering_info: None,
             world: Arc::new(Mutex::new(world)),
+            asset_loader: asset_manager,
         }
     }
 

@@ -1,37 +1,38 @@
 use std::any::Any;
 
-pub trait Component: ComponentContainer {
+pub type BoxedComponent = Box<dyn Component + Send + Sync>;
+
+pub trait Component: Send + Sync + 'static + ComponentContainer {
     fn name() -> &'static str
     where
         Self: Sized;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn type_name(&self) -> &'static str;
+    fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 pub trait ComponentContainer {
-    fn clone_box(&self) -> Box<dyn Component>;
+    fn clone_box(&self) -> BoxedComponent;
 }
 
-impl<T> ComponentContainer for T
-where
-    T: 'static + Component + Clone,
-{
-    fn clone_box(&self) -> Box<dyn Component> {
+impl<T: Component + Clone + Send + Sync + 'static> ComponentContainer for T {
+    fn clone_box(&self) -> BoxedComponent {
         Box::new(self.clone())
     }
 }
-impl Clone for Box<dyn Component> {
-    fn clone(&self) -> Box<dyn Component> {
+
+impl Clone for BoxedComponent {
+    fn clone(&self) -> BoxedComponent {
         self.clone_box()
     }
 }
 
 pub struct ComponentRegistration {
     pub type_name: &'static str,
-    // pub serialize: fn(&dyn Component) -> serde_yaml::Value,
-    // pub deserialize: fn(serde_yaml::Value) -> Box<dyn Component>,
-    pub create: fn() -> Box<dyn Component>,
+    pub create: fn() -> BoxedComponent,
 }
 
 inventory::collect!(ComponentRegistration);

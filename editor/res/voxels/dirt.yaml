@@ -3,7 +3,7 @@ namespace: Apostasy
 class: Voxel 
 
 components:
-  is_solid: true 
+  IsSolid: true 
   translucent: 0.85
   breakable: 10.0
   drop:

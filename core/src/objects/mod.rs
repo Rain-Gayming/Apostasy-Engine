@@ -21,16 +21,17 @@ pub mod tag;
 pub mod tags;
 pub mod world;
 
+use crate::objects::component::BoxedComponent;
+
 #[derive(Clone)]
 pub struct Object {
     pub id: u64,
     pub name: String,
-    pub components: Vec<Box<dyn Component>>,
+    pub components: Vec<BoxedComponent>,
     pub tags: Vec<Box<dyn Tag>>,
     pub parent: Option<u64>,
     pub children: Vec<u64>,
 }
-
 impl Default for Object {
     fn default() -> Self {
         Object::new()
@@ -39,15 +40,13 @@ impl Default for Object {
 
 impl Object {
     pub fn new() -> Self {
-        let /*mut*/ components: Vec<Box<dyn Component>> = Vec::new();
-
         Self {
             name: "Object".to_string(),
             id: 0,
             children: Vec::new(),
             tags: Vec::new(),
             parent: None,
-            components,
+            components: Vec::new(),
         }
     }
     /// Adds a child to the node

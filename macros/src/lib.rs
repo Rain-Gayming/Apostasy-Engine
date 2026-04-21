@@ -12,7 +12,7 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
         .push(parse_quote! { Self: Clone + Send + Sync + 'static });
 
     let struct_name = &ast.ident;
-
+    let struct_name_str = struct_name.to_string();
     let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
 
     let output = quote! {
@@ -32,8 +32,19 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
             fn type_name(&self) -> &'static str {
                 std::any::type_name::<Self>()
             }
+            fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+                Ok(())
+            }
         }
+        inventory::submit! {
+            apostasy_core::objects::component::ComponentRegistration {
+                type_name: #struct_name_str,
+                create: || Box::new(#struct_name::default()),
+            }
+        };
+
     };
+
     output.into()
 }
 

@@ -3,7 +3,7 @@ use std::any::TypeId;
 use anyhow::{Error, Result};
 use hashbrown::HashMap;
 
-use crate::objects::component::Component;
+use crate::objects::component::{BoxedComponent, Component};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Voxel {
@@ -14,7 +14,7 @@ pub struct VoxelDefinition {
     pub name: String,
     pub namespace: String,
     pub class: String,
-    pub components: Vec<Box<dyn Component>>,
+    pub components: Vec<BoxedComponent>,
 }
 
 impl VoxelDefinition {
@@ -37,6 +37,7 @@ impl VoxelDefinition {
 
 pub type VoxelId = u16;
 
+#[derive(Default)]
 pub struct VoxelRegistry {
     pub defs: Vec<VoxelDefinition>,
     pub name_to_id: HashMap<String, VoxelId>,

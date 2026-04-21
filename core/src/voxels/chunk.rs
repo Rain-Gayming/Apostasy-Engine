@@ -9,6 +9,13 @@ use crate::{
 struct Chunk {
     voxels: Box<[VoxelId; 32 * 32 * 32]>,
 }
+impl Default for Chunk {
+    fn default() -> Self {
+        Self {
+            voxels: Box::new([VoxelId::default(); 32 * 32 * 32]),
+        }
+    }
+}
 
 impl Chunk {
     fn get_def<'a>(
