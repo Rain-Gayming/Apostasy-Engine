@@ -37,8 +37,6 @@ impl Scene {
             .set_name("Camera".to_string())
             .clone();
 
-        println!("{}", camera_object.tags.first().unwrap().type_name());
-
         self.add_object(camera_object);
 
         let test_model = Object::new()

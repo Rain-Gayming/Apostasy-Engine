@@ -59,6 +59,10 @@ impl RenderingAPI for VulkanRenderer {
             load_shader_module(&rendering_info.context.clone().into(), "shader.vert.spv")?;
         let fragment_shader =
             load_shader_module(&rendering_info.context.clone().into(), "shader.frag.spv")?;
+        let voxel_vertex_shader =
+            load_shader_module(&rendering_info.context.clone().into(), "voxel.vert.spv")?;
+        let voxel_fragment_shader =
+            load_shader_module(&rendering_info.context.clone().into(), "voxel.frag.spv")?;
 
         unsafe {
             let context = rendering_info.context.clone();
@@ -83,8 +87,8 @@ impl RenderingAPI for VulkanRenderer {
             )?;
 
             let voxel_pipeline = context.create_voxel_graphics_pipeline(
-                vertex_shader,
-                fragment_shader,
+                voxel_vertex_shader,
+                voxel_fragment_shader,
                 swapchain.extent,
                 swapchain.format,
                 swapchain.depth_format,

@@ -1,5 +1,6 @@
 extern crate self as apostasy_core;
 
+use anyhow::Context;
 pub use apostasy_macros::Component;
 pub use apostasy_macros::fixed_update;
 pub use apostasy_macros::late_update;
@@ -30,6 +31,8 @@ use crate::objects::resources::input_manager::InputManager;
 use crate::packages::Packages;
 use crate::rendering::components::camera::Camera;
 use crate::rendering::components::model_renderer::ModelRenderer;
+use crate::voxels::meshes::VoxelChunkMesh;
+use crate::voxels::meshes::remesh_chunks;
 use crate::voxels::voxel::VoxelRegistry;
 use crate::{
     objects::world::World,
@@ -137,32 +140,17 @@ impl Core {
                     let mut push_constants = push_constants;
                     push_constants.set_camera_constants(camera.to_owned(), aspect);
 
-                    for object in world.get_objects_with_component_mut::<ModelRenderer>() {
-                        let mesh_renderer = object.get_component_mut::<ModelRenderer>().unwrap();
+                    if let Ok(command_pool) = renderer.get_command_pool() {
+                        remesh_chunks(&mut world, &context, command_pool)
+                            .expect("Failed to remesh chunks");
+                    }
 
-                        let model = match &mesh_renderer.model {
-                            Some(m) => m,
-                            None => {
-                                let Some(command_pool) = renderer.get_command_pool().ok() else {
-                                    continue;
-                                };
-                                mesh_renderer.model = Some(Box::new(
-                                    load_model(
-                                        Path::new(&mesh_renderer.model_path),
-                                        context.clone(),
-                                        command_pool,
-                                    )
-                                    .unwrap(),
-                                ));
-                                mesh_renderer.model.as_ref().unwrap()
-                            }
-                        };
+                    for object in world.get_objects_with_component::<VoxelChunkMesh>() {
+                        let voxel_mesh = object.get_component::<VoxelChunkMesh>().unwrap();
 
-                        for mesh in &model.meshes {
-                            renderer
-                                .render(Box::new(mesh.clone()), push_constants.clone())
-                                .unwrap();
-                        }
+                        renderer
+                            .voxel_render(Box::new(voxel_mesh.clone()), push_constants.clone())
+                            .unwrap();
                     }
 
                     world.late_update();
@@ -191,6 +179,20 @@ impl Core {
 impl ApplicationHandler for Core {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.rendering_info = Some(RenderingInfo::new(&event_loop, self.rendering_api));
+
+        {
+            let mut world = self.world.lock().unwrap();
+            let context = self
+                .rendering_info
+                .clone()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .context
+                .clone();
+
+            world.insert_resource(context);
+        }
     }
 
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {}

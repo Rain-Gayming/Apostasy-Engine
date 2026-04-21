@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::io;
 
 use anyhow::Result;
+use apostasy_macros::Resource;
 use ash::Device;
 use ash::Entry;
 use ash::Instance;
@@ -104,7 +105,7 @@ pub struct RenderingContextAttributes<'window> {
     pub queue_family_picker: QueueFamilyPicker,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Resource)]
 pub struct VulkanRenderingContext {
     pub queues: Vec<Queue>,
     pub device: Device,
@@ -525,7 +526,7 @@ impl VulkanRenderingContext {
                             &PipelineRasterizationStateCreateInfo::default()
                                 .depth_clamp_enable(false)
                                 .rasterizer_discard_enable(false)
-                                .polygon_mode(PolygonMode::FILL)
+                                .polygon_mode(PolygonMode::LINE)
                                 .cull_mode(CullModeFlags::NONE)
                                 .front_face(FrontFace::CLOCKWISE)
                                 .depth_bias_enable(false)

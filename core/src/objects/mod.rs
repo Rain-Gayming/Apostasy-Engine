@@ -66,7 +66,7 @@ impl Object {
 
     /// Checks if the node has a tag of type T
     pub fn has_tag<T: Tag + 'static>(&self) -> bool {
-        self.components
+        self.tags
             .iter()
             .any(|tag| tag.as_any().downcast_ref::<T>().is_some())
     }
@@ -77,7 +77,7 @@ impl Object {
             .iter()
             .find(|c| c.as_any().type_id() == TypeId::of::<T>())
             .and_then(|c| c.as_any().downcast_ref())
-            .ok_or(Error::msg("No Comopnent of type"))
+            .ok_or(Error::msg("No Component of type"))
     }
 
     /// Adds a tag of type T to the node
@@ -88,6 +88,18 @@ impl Object {
         } else {
             self.tags.push(Box::new(tag));
             return self;
+        }
+    }
+
+    /// Gets a tag of type T from the node
+    pub(crate) fn remove_tag<T: Tag + 'static>(&mut self) {
+        let index = self
+            .tags
+            .iter()
+            .position(|c| c.as_any().type_id() == TypeId::of::<T>());
+
+        if let Some(i) = index {
+            self.tags.remove(i);
         }
     }
 
@@ -102,11 +114,12 @@ impl Object {
 
     /// Gets a component of type T from the node
     pub fn get_component<T: Component + 'static>(&self) -> Result<&T> {
+        let msg = format!("No Component of type: {}", T::name());
         self.components
             .iter()
             .find(|c| c.as_any().type_id() == TypeId::of::<T>())
             .and_then(|c| c.as_any().downcast_ref())
-            .ok_or(Error::msg("No Comopnent of type"))
+            .ok_or(Error::msg(msg))
     }
 
     pub fn get_component_mut<T: Component + 'static>(&mut self) -> Result<&mut T> {

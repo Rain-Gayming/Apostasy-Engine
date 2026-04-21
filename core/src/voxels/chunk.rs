@@ -4,12 +4,15 @@ use apostasy_macros::Component;
 use crate::{
     objects::{Object, components::transform::Transform, world::World},
     utils::flatten::flatten,
-    voxels::voxel::{Voxel, VoxelDefinition, VoxelId, VoxelRegistry},
+    voxels::{
+        meshes::NeedsRemeshing,
+        voxel::{Voxel, VoxelDefinition, VoxelId, VoxelRegistry},
+    },
 };
 
 #[derive(Clone, Component, Debug)]
-struct Chunk {
-    voxels: Box<[VoxelId; 32 * 32 * 32]>,
+pub struct Chunk {
+    pub voxels: Box<[VoxelId; 32 * 32 * 32]>,
 }
 impl Default for Chunk {
     fn default() -> Self {
@@ -68,6 +71,8 @@ pub fn create_test_chunk(world: &mut World) -> Result<()> {
     object.set_name("Chunk".to_string());
     object.add_component(Transform::default());
     object.add_component(chunk);
+    object.add_tag(NeedsRemeshing);
+
     world.add_object(object);
 
     Ok(())
