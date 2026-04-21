@@ -8,7 +8,7 @@ const UP: Vector3<f32> = Vector3::new(0.0, 1.0, 0.0);
 const RIGHT: Vector3<f32> = Vector3::new(1.0, 0.0, 0.0);
 const FORWARD: Vector3<f32> = Vector3::new(0.0, 0.0, -1.0);
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 pub struct Transform {
     pub local_position: Vector3<f32>,
     pub local_euler_angles: Vector3<f32>,

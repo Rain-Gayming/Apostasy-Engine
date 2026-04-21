@@ -2,7 +2,7 @@ use std::any::Any;
 
 pub type BoxedComponent = Box<dyn Component + Send + Sync>;
 
-pub trait Component: Send + Sync + 'static + ComponentContainer {
+pub trait Component: Send + Sync + 'static + ComponentContainer + std::fmt::Debug {
     fn name() -> &'static str
     where
         Self: Sized;

@@ -3,7 +3,7 @@ use cgmath::{Deg, Matrix4, PerspectiveFov, Point3};
 
 use crate::objects::components::transform::Transform;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 pub struct Camera {
     pub fov_y: f32,
     pub near: f32,

@@ -1,6 +1,7 @@
 use std::any::TypeId;
 
 use anyhow::{Error, Result};
+use apostasy_macros::Resource;
 use hashbrown::HashMap;
 
 use crate::objects::component::{BoxedComponent, Component};
@@ -10,11 +11,23 @@ pub struct Voxel {
     pub id: VoxelId,
 }
 
+#[derive(Clone)]
 pub struct VoxelDefinition {
     pub name: String,
     pub namespace: String,
     pub class: String,
     pub components: Vec<BoxedComponent>,
+}
+
+impl std::fmt::Debug for VoxelDefinition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VoxelDefinition")
+            .field("name", &self.name)
+            .field("namespace", &self.namespace)
+            .field("class", &self.class)
+            .field("component_count", &self.components.len())
+            .finish()
+    }
 }
 
 impl VoxelDefinition {
@@ -37,7 +50,7 @@ impl VoxelDefinition {
 
 pub type VoxelId = u16;
 
-#[derive(Default)]
+#[derive(Default, Resource, Clone, Debug)]
 pub struct VoxelRegistry {
     pub defs: Vec<VoxelDefinition>,
     pub name_to_id: HashMap<String, VoxelId>,

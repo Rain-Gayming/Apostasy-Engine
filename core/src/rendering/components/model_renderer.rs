@@ -2,7 +2,7 @@ use apostasy_macros::Component;
 
 use crate::rendering::shared::model::GpuModel;
 
-#[derive(Component, Default, Clone)]
+#[derive(Component, Default, Clone, Debug)]
 pub struct ModelRenderer {
     pub model: Option<Box<GpuModel>>,
     pub model_path: String,

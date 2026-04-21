@@ -4,7 +4,7 @@ use cgmath::{Vector3, Zero};
 
 use crate::objects::{components::transform::Transform, world::World};
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Debug)]
 pub struct Velocity {
     pub angular_velocity: Vector3<f32>,
     pub linear_velocity: Vector3<f32>,

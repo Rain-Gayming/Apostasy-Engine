@@ -4,8 +4,3 @@ class: Voxel
 
 components:
   IsSolid: true 
-  translucent: 0.85
-  breakable: 10.0
-  drop:
-    - item: Apostasy:Dirt
-      count: 1

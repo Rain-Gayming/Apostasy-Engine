@@ -8,7 +8,6 @@ pub use apostasy_macros::update;
 
 pub use anyhow;
 pub use cgmath;
-use gltf::json::Asset;
 pub use winit;
 use winit::event::DeviceEvent;
 use winit::event::DeviceId;
@@ -28,6 +27,7 @@ use crate::assets::asset_manager::AssetManager;
 use crate::assets::gltf::load_model;
 use crate::assets::loaders::voxel_loader::VoxelLoader;
 use crate::objects::resources::input_manager::InputManager;
+use crate::packages::Packages;
 use crate::rendering::components::camera::Camera;
 use crate::rendering::components::model_renderer::ModelRenderer;
 use crate::voxels::voxel::VoxelRegistry;
@@ -39,6 +39,7 @@ use winit::application::ApplicationHandler;
 
 pub mod assets;
 pub mod objects;
+pub mod packages;
 pub mod physics;
 pub mod rendering;
 pub mod utils;
@@ -52,27 +53,37 @@ pub struct Core {
 }
 
 impl Core {
-    pub fn new(rendering_api: RenderingBackend) -> Self {
+    pub fn new(rendering_api: RenderingBackend, _packages: Vec<Packages>) -> Self {
+        let asset_manager = AssetManager::new();
         let mut world = World::default();
         world.insert_resource(InputManager::default());
 
-        let mut asset_manager = AssetManager::new();
         let voxel_registry = Arc::new(RwLock::new(VoxelRegistry::default()));
-        asset_manager.register_loader(VoxelLoader {
-            registry: Arc::clone(&voxel_registry),
-        });
 
-        // Read the files in apostasy-core's res/ folder
-        asset_manager
-            .load_directory(Path::new(&format!(
-                "{}/{}",
-                env!("CARGO_MANIFEST_DIR"),
-                "res/"
-            )))
-            .unwrap();
+        {
+            let mut asset_manager = AssetManager::new();
+            asset_manager.register_loader(VoxelLoader {
+                registry: Arc::clone(&voxel_registry),
+            });
 
-        // Read the files in the project that impliments apostasy-core's res/ folder
-        asset_manager.load_directory(Path::new("res/")).unwrap();
+            asset_manager
+                .load_directory(Path::new(&format!(
+                    "{}/{}",
+                    env!("CARGO_MANIFEST_DIR"),
+                    "res/"
+                )))
+                .unwrap();
+
+            // Read the files in the project that impliments apostasy-core's res/ folder
+            asset_manager.load_directory(Path::new("res/")).unwrap();
+        }
+
+        let registry = Arc::try_unwrap(voxel_registry)
+            .expect("VoxelRegistry still has multiple owners")
+            .into_inner()
+            .expect("VoxelRegistry RwLock poisoned");
+
+        world.insert_resource(registry);
 
         Self {
             rendering_api,
@@ -212,12 +223,13 @@ impl ApplicationHandler for Core {
 /// Initializes the core of the application
 /// Note: nothing can run in main after this
 /// Note: automatically runs all start systems
-pub fn init_core(rendering_api: RenderingBackend) -> Result<()> {
-    let mut core = Core::new(rendering_api);
+pub fn init_core(rendering_api: RenderingBackend, packages: Vec<Packages>) -> Result<()> {
+    let mut core = Core::new(rendering_api, packages);
 
     // run all start systems
     {
         let mut world = core.world.lock().unwrap();
+
         world.start();
     }
 
