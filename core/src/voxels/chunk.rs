@@ -66,7 +66,7 @@ pub fn create_test_chunk(world: &mut World) -> Result<()> {
     }
 
     let mut object = Object::new();
-    object.set_name("Chunk".to_string());
+    object.set_name("Chunk ".to_string());
     object.add_component(Transform::default());
     object.add_component(chunk);
 
