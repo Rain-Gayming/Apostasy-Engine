@@ -20,7 +20,7 @@ impl Default for Chunk {
 }
 
 impl Chunk {
-    fn get_def<'a>(
+    fn _get_def<'a>(
         &self,
         x: u32,
         y: u32,
@@ -56,7 +56,6 @@ pub fn create_test_chunk(world: &mut World) -> Result<()> {
 
     let mut chunk = Chunk::default();
 
-    // fill bottom half with dirt
     for z in 0..32u32 {
         for y in 0..16u32 {
             for x in 0..32u32 {
@@ -69,6 +68,7 @@ pub fn create_test_chunk(world: &mut World) -> Result<()> {
     object.set_name("Chunk".to_string());
     object.add_component(Transform::default());
     object.add_component(chunk);
+    world.add_object(object);
 
     Ok(())
 }

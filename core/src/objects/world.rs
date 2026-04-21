@@ -60,9 +60,15 @@ impl World {
     }
 
     // ========== ========== Objects ========== ==========
+
     /// Adds a new Object to the world
     pub fn add_new_object(&mut self) -> &mut Object {
         self.scene.add_new_object()
+    }
+
+    /// Adds a Object to the world
+    pub fn add_object(&mut self, object: Object) {
+        self.scene.add_object(object)
     }
 
     pub(crate) fn assign_object_ids(&mut self) {

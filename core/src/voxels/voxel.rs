@@ -54,4 +54,5 @@ pub type VoxelId = u16;
 pub struct VoxelRegistry {
     pub defs: Vec<VoxelDefinition>,
     pub name_to_id: HashMap<String, VoxelId>,
+    pub id_to_name: HashMap<VoxelId, String>,
 }

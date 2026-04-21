@@ -87,7 +87,8 @@ impl AssetLoader for VoxelLoader {
         let id = registry.defs.len() as VoxelId;
         let full_name = format!("{}:{}", namespace, name);
         registry.defs.push(def);
-        registry.name_to_id.insert(full_name, id);
+        registry.name_to_id.insert(full_name.clone(), id);
+        registry.id_to_name.insert(id, full_name);
 
         Ok(())
     }
