@@ -1,0 +1,10 @@
+
+name: Wood 
+namespace: Apostasy
+class: Voxel
+
+textures:
+  all: textures/missing.png
+
+components:
+  IsSolid: true

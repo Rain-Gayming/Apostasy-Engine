@@ -1,0 +1,10 @@
+
+name: Stone 
+namespace: Apostasy
+class: Voxel
+
+textures:
+  all: textures/stone.png
+
+components:
+  IsSolid: true

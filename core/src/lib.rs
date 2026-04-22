@@ -145,10 +145,10 @@ impl Core {
                         log_error!("No renderer found!");
                         return;
                     };
-                    let Some(&camera) = world.get_objects_with_component::<Camera>().first() else {
-                        log_error!("No camera found!");
-                        return;
-                    };
+                    let &camera = world
+                        .get_objects_with_component::<Camera>()
+                        .first()
+                        .unwrap();
 
                     let aspect = renderer.get_aspect();
 

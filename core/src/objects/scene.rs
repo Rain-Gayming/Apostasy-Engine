@@ -4,11 +4,7 @@ use hashbrown::HashMap;
 use crate::{
     log_error,
     objects::{Object, component::Component, components::transform::Transform, tag::Tag},
-    physics::velocity::Velocity,
-    rendering::components::{
-        camera::{Camera, GameCamera},
-        model_renderer::ModelRenderer,
-    },
+    rendering::components::model_renderer::ModelRenderer,
 };
 
 pub struct Scene {
@@ -29,16 +25,6 @@ impl Default for Scene {
 
 impl Scene {
     pub(crate) fn add_default_objects(&mut self) {
-        let camera_object = Object::new()
-            .add_component(Transform::default())
-            .add_component(Velocity::default())
-            .add_component(Camera::default())
-            .add_tag(GameCamera)
-            .set_name("Camera".to_string())
-            .clone();
-
-        self.add_object(camera_object);
-
         let test_model = Object::new()
             .add_component(Transform::default())
             .add_component(ModelRenderer::from_path("model.glb".to_string()))

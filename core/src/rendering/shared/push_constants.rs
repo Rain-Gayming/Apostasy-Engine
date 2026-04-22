@@ -7,7 +7,7 @@ use crate::{
     rendering::components::camera::{Camera, get_perspective_projection, get_view_matrix},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PushConstants {
     pub view_matrix: Matrix4<f32>,
     pub projection_matrix: Matrix4<f32>,

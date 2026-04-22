@@ -1,0 +1,11 @@
+
+
+name: Grassy 
+namespace: Apostasy
+class: Voxel
+
+textures:
+  all: textures/grassy.png
+
+components:
+  IsSolid: true

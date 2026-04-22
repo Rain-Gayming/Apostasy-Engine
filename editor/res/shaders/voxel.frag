@@ -12,11 +12,11 @@ layout(location = 0) out vec4 outColor;
 void main() {
     float tile_size = 1.0 / float(fragAtlasTiles);
 
-    float tx = float(fragTexId % fragAtlasTiles) * tile_size;
+    float tx = float(fragTexId % fragAtlasTiles ) * tile_size;
     float ty = float(fragTexId / fragAtlasTiles) * tile_size;
 
     vec2 uv = vec2(tx, ty) + fract(fragUV) * tile_size;
 
     vec4 color = texture(atlas, uv);
-    outColor = color ;
+    outColor = color / fragFace;
 }
