@@ -3,7 +3,12 @@ namespace: Apostasy
 class: Voxel
 
 textures:
-  all: textures/grass.png
+  front: textures/grass_side.png
+  back: textures/grass_side.png
+  left: textures/grass_side.png
+  right: textures/grass_side.png
+  top: textures/grass_top.png
+  bottom: textures/dirt.png
 
 components:
   IsSolid: true

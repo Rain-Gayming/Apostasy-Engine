@@ -27,21 +27,20 @@ impl Default for PushConstants {
 }
 
 impl PushConstants {
-    #[allow(unnecessary_transmutes)]
     pub fn return_renderable(&self) -> Vec<u8> {
         unsafe {
             let mut data = Vec::with_capacity(196);
             let proj_view: [u8; 64] = transmute(self.projection_matrix * self.view_matrix);
             let model: [u8; 64] = transmute(self.model_matrix);
+            let chunk: [u8; 64] = transmute(Matrix4::<f32>::identity()); // placeholder
             let atlas: [u8; 4] = transmute(self.atlas_tiles);
-            data.extend_from_slice(&proj_view);
-            data.extend_from_slice(&model);
-            data.extend_from_slice(&atlas);
-            data.extend_from_slice(&[0u8; 12]);
-            data
+            data.extend_from_slice(&proj_view); // offset 0
+            data.extend_from_slice(&model); // offset 64
+            data.extend_from_slice(&chunk); // offset 128
+            data.extend_from_slice(&atlas); // offset 192
+            data // 196 bytes
         }
     }
-
     pub fn set_camera_constants(&mut self, camera: Object, aspect: f32) {
         let transform = camera.get_component::<Transform>().unwrap();
         let cam = camera.get_component::<Camera>().unwrap();

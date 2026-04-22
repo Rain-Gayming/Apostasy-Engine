@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use ash::vk::{CommandPool, DescriptorSet};
+use ash::vk::{self, CommandPool, DescriptorSet};
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
 use crate::rendering::shared::model::GpuMesh;
@@ -51,6 +51,8 @@ pub trait RenderingAPI {
     fn recreate_swapchain(&mut self);
     fn get_command_pool(&self) -> Result<CommandPool>;
     fn get_aspect(&self) -> f32;
+    fn get_descriptor_pool(&self) -> vk::DescriptorPool;
+    fn get_voxel_descriptor_set_layout(&self) -> vk::DescriptorSetLayout;
     /// Assigns the rendering_info's renderer the the value created via this
     fn new(rendering_info: Arc<Mutex<RenderingInfo>>) -> Result<()>
     where

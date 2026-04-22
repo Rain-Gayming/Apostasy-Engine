@@ -8,43 +8,144 @@ use crate::rendering::shared::model::GpuMesh;
 use crate::rendering::shared::vertex::VertexDefinition;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::utils::flatten::flatten;
-use crate::voxels::IsSolid;
 use crate::voxels::chunk::Chunk;
 use crate::voxels::voxel::VoxelRegistry;
 
-// Face order: +X, -X, +Y, -Y, +Z, -Z
-const FACE_NORMALS: [[i32; 3]; 6] = [
-    [1, 0, 0],
-    [-1, 0, 0],
-    [0, 1, 0],
-    [0, -1, 0],
-    [0, 0, 1],
-    [0, 0, -1],
-];
-
-const FACE_VERTICES: [[[u8; 3]; 4]; 6] = [
-    [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]], // +X
-    [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]], // -X
-    [[0, 1, 0], [0, 1, 1], [1, 1, 1], [1, 1, 0]], // +Y
-    [[0, 0, 1], [0, 0, 0], [1, 0, 0], [1, 0, 1]], // -Y
-    [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]], // +Z
-    [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]], // -Z
-];
-
-const FACE_UVS: [[u8; 2]; 4] = [[0, 0], [0, 1], [1, 1], [1, 0]];
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct VoxelVertex {
+    pub data_lo: u32,
+    pub data_hi: u32,
+}
 
 impl VoxelVertex {
-    pub fn pack(x: u8, y: u8, z: u8, face: u8, u: u8, v: u8, texture_id: u32) -> Self {
-        let data: u64 = (x as u64)        // bits 0-5,  6 bits
-            | ((y as u64) << 6)           // bits 6-11, 6 bits
-            | ((z as u64) << 12)          // bits 12-17, 6 bits
-            | ((face as u64) << 18)       // bits 18-20, 3 bits
-            | ((u as u64) << 21)          // bits 21-26, 6 bits
-            | ((v as u64) << 27)          // bits 27-32, 6 bits
-            | ((texture_id as u64) << 33); // bits 33-63, 31 bits for texture id
-        Self { data }
+    pub fn pack(
+        x: u8,
+        y: u8,
+        z: u8,
+        face: u8,
+        u: u8,
+        v: u8,
+        texture_id: u16,
+        quad_w: u8,
+        quad_h: u8,
+    ) -> Self {
+        let data_lo: u32 = (x as u32)
+            | ((y as u32) << 6)
+            | ((z as u32) << 12)
+            | ((face as u32) << 18)
+            | ((u as u32) << 21)
+            | ((v as u32) << 27);
+        let data_hi: u32 = (texture_id as u32) | ((quad_w as u32) << 16) | ((quad_h as u32) << 24);
+        Self { data_lo, data_hi }
     }
 }
+
+impl VertexDefinition for VoxelVertex {
+    fn get_binding_description() -> vk::VertexInputBindingDescription {
+        vk::VertexInputBindingDescription::default()
+            .binding(0)
+            .stride(std::mem::size_of::<VoxelVertex>() as u32)
+            .input_rate(vk::VertexInputRate::VERTEX)
+    }
+
+    fn get_attribute_descriptions() -> Vec<vk::VertexInputAttributeDescription> {
+        vec![
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(0)
+                .format(vk::Format::R32_UINT)
+                .offset(0),
+            vk::VertexInputAttributeDescription::default()
+                .binding(0)
+                .location(1)
+                .format(vk::Format::R32_UINT)
+                .offset(4),
+        ]
+    }
+}
+
+#[derive(Debug, Component, Clone, Default)]
+pub struct VoxelChunkMesh {
+    pub vertex_buffer: Buffer,
+    pub vertex_buffer_memory: DeviceMemory,
+    pub index_buffer: Buffer,
+    pub index_buffer_memory: DeviceMemory,
+    pub index_count: u32,
+}
+
+#[derive(Debug, Tag, Clone, Default)]
+pub struct NeedsRemeshing;
+
+impl GpuMesh for VoxelChunkMesh {
+    fn get_vertex_buffer(&self) -> Buffer {
+        self.vertex_buffer
+    }
+    fn get_index_buffer(&self) -> Buffer {
+        self.index_buffer
+    }
+    fn get_index_count(&self) -> u32 {
+        self.index_count
+    }
+}
+
+pub fn remesh_chunks(
+    world: &mut World,
+    ctx: &VulkanRenderingContext,
+    command_pool: CommandPool,
+) -> Result<()> {
+    let registry = world
+        .get_resource::<VoxelRegistry>()
+        .expect("No VoxelRegistry resource")
+        .clone();
+
+    for object in world.get_objects_with_tag_mut::<NeedsRemeshing>() {
+        let Ok(chunk) = object.get_component::<Chunk>() else {
+            continue;
+        };
+        let chunk = chunk.clone();
+
+        let (vertices, indices) = generate_mesh(&chunk, &registry);
+
+        if vertices.is_empty() || indices.is_empty() {
+            println!("Empty mesh, skipping upload");
+            object.remove_tag::<NeedsRemeshing>();
+            continue;
+        }
+
+        if let Ok(mesh) = object.get_component::<VoxelChunkMesh>() {
+            if mesh.vertex_buffer != vk::Buffer::null() {
+                unsafe {
+                    ctx.device.destroy_buffer(mesh.vertex_buffer, None);
+                    ctx.device.free_memory(mesh.vertex_buffer_memory, None);
+                    ctx.device.destroy_buffer(mesh.index_buffer, None);
+                    ctx.device.free_memory(mesh.index_buffer_memory, None);
+                }
+            }
+        }
+
+        let (vertex_buffer, vertex_buffer_memory) =
+            ctx.create_vertex_buffer(&vertices, command_pool)?;
+        let (index_buffer, index_buffer_memory) =
+            ctx.create_index_buffer(&indices, command_pool)?;
+
+        if !object.has_component::<VoxelChunkMesh>() {
+            object.add_component(VoxelChunkMesh::default());
+        }
+
+        let mesh = object.get_component_mut::<VoxelChunkMesh>().unwrap();
+        mesh.vertex_buffer = vertex_buffer;
+        mesh.vertex_buffer_memory = vertex_buffer_memory;
+        mesh.index_buffer = index_buffer;
+        mesh.index_buffer_memory = index_buffer_memory;
+        mesh.index_count = indices.len() as u32;
+
+        object.remove_tag::<NeedsRemeshing>();
+    }
+
+    Ok(())
+}
+
 pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
@@ -208,25 +309,37 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                         let texture_id = registry.defs[id as usize].textures.get_for_face(face);
 
                         vertices.push(VoxelVertex::pack(
-                            p0[0], p0[1], p0[2], face, 0, 0, texture_id,
+                            p0[0],
+                            p0[1],
+                            p0[2],
+                            face,
+                            0,
+                            0,
+                            texture_id as u16,
+                            width as u8,
+                            height as u8,
                         ));
                         vertices.push(VoxelVertex::pack(
                             p1[0],
                             p1[1],
                             p1[2],
                             face,
-                            width as u8,
+                            1,
                             0,
-                            texture_id,
+                            texture_id as u16,
+                            width as u8,
+                            height as u8,
                         ));
                         vertices.push(VoxelVertex::pack(
                             p2[0],
                             p2[1],
                             p2[2],
                             face,
+                            1,
+                            1,
+                            texture_id as u16,
                             width as u8,
                             height as u8,
-                            texture_id,
                         ));
                         vertices.push(VoxelVertex::pack(
                             p3[0],
@@ -234,9 +347,12 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                             p3[2],
                             face,
                             0,
+                            1,
+                            texture_id as u16,
+                            width as u8,
                             height as u8,
-                            texture_id,
                         ));
+
                         indices.extend_from_slice(&[
                             base,
                             base + 1,
@@ -255,115 +371,4 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
     }
 
     (vertices, indices)
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct VoxelVertex {
-    pub data: u64,
-}
-
-impl VertexDefinition for VoxelVertex {
-    fn get_binding_description() -> vk::VertexInputBindingDescription {
-        vk::VertexInputBindingDescription::default()
-            .binding(0)
-            .stride(std::mem::size_of::<VoxelVertex>() as u32)
-            .input_rate(vk::VertexInputRate::VERTEX)
-    }
-
-    fn get_attribute_descriptions() -> Vec<vk::VertexInputAttributeDescription> {
-        vec![
-            vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(0)
-                .format(vk::Format::R32_UINT)
-                .offset(0),
-            vk::VertexInputAttributeDescription::default()
-                .binding(0)
-                .location(1)
-                .format(vk::Format::R32_UINT)
-                .offset(4),
-        ]
-    }
-}
-
-#[derive(Debug, Component, Clone, Default)]
-pub struct VoxelChunkMesh {
-    pub vertex_buffer: Buffer,
-    pub vertex_buffer_memory: DeviceMemory,
-    pub index_buffer: Buffer,
-    pub index_buffer_memory: DeviceMemory,
-    pub index_count: u32,
-}
-
-#[derive(Debug, Tag, Clone, Default)]
-pub struct NeedsRemeshing;
-
-impl GpuMesh for VoxelChunkMesh {
-    fn get_vertex_buffer(&self) -> Buffer {
-        self.vertex_buffer
-    }
-    fn get_index_buffer(&self) -> Buffer {
-        self.index_buffer
-    }
-    fn get_index_count(&self) -> u32 {
-        self.index_count
-    }
-}
-
-pub fn remesh_chunks(
-    world: &mut World,
-    ctx: &VulkanRenderingContext,
-    command_pool: CommandPool,
-) -> Result<()> {
-    let registry = world
-        .get_resource::<VoxelRegistry>()
-        .expect("No VoxelRegistry resource")
-        .clone();
-
-    for object in world.get_objects_with_tag_mut::<NeedsRemeshing>() {
-        let Ok(chunk) = object.get_component::<Chunk>() else {
-            continue;
-        };
-        let chunk = chunk.clone();
-
-        let (vertices, indices) = generate_mesh(&chunk, &registry);
-
-        if vertices.is_empty() || indices.is_empty() {
-            println!("Empty mesh, skipping upload");
-            object.remove_tag::<NeedsRemeshing>();
-            continue;
-        }
-
-        if let Ok(mesh) = object.get_component::<VoxelChunkMesh>() {
-            if mesh.vertex_buffer != vk::Buffer::null() {
-                unsafe {
-                    ctx.device.destroy_buffer(mesh.vertex_buffer, None);
-                    ctx.device.free_memory(mesh.vertex_buffer_memory, None);
-                    ctx.device.destroy_buffer(mesh.index_buffer, None);
-                    ctx.device.free_memory(mesh.index_buffer_memory, None);
-                }
-            }
-        }
-
-        let (vertex_buffer, vertex_buffer_memory) =
-            ctx.create_vertex_buffer(&vertices, command_pool)?;
-        let (index_buffer, index_buffer_memory) =
-            ctx.create_index_buffer(&indices, command_pool)?;
-
-        if !object.has_component::<VoxelChunkMesh>() {
-            object.add_component(VoxelChunkMesh::default());
-        }
-
-        let mesh = object.get_component_mut::<VoxelChunkMesh>().unwrap();
-        mesh.vertex_buffer = vertex_buffer;
-        mesh.vertex_buffer_memory = vertex_buffer_memory;
-        mesh.index_buffer = index_buffer;
-        mesh.index_buffer_memory = index_buffer_memory;
-        mesh.index_count = indices.len() as u32;
-
-        object.remove_tag::<NeedsRemeshing>();
-    }
-
-    Ok(())
 }

@@ -8,11 +8,10 @@ use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::rendering::vulkan::{frame::VulkanFrame, swapchain::VulkanSwapchain};
 use crate::rendering::{RenderingAPI, RenderingInfo};
 use crate::voxels::texture_atlas::VoxelTextureAtlas;
-use crate::voxels::voxel::Voxel;
 use anyhow::Result;
 use ash::vk::{
-    self, ClearColorValue, CommandBufferResetFlags, CommandPool, DescriptorSet, Pipeline,
-    PipelineLayout, PipelineLayoutCreateInfo,
+    self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
+    PipelineLayoutCreateInfo,
 };
 
 pub mod device;
@@ -43,10 +42,16 @@ pub struct VulkanRenderer {
     pub current_frame: usize,
     pub command_pool: CommandPool,
     pub image_layouts: ImageLayouts,
+
     pub pipeline: Pipeline,
     pub pipeline_layout: PipelineLayout,
+
     pub voxel_pipeline: Pipeline,
+    pub voxel_wireframe_pipeline: Pipeline,
     pub voxel_pipeline_layout: PipelineLayout,
+    pub voxel_descriptor_pool: vk::DescriptorPool,
+    pub voxel_descriptor_set_layout: vk::DescriptorSetLayout,
+
     pub push_constants: PushConstants,
 
     pub ubo: Ubo,
@@ -145,6 +150,16 @@ impl RenderingAPI for VulkanRenderer {
                 Default::default(),
             )?;
 
+            let voxel_wireframe_pipeline = context.create_voxel_wireframe_pipeline(
+                voxel_vertex_shader,
+                voxel_fragment_shader,
+                swapchain.extent,
+                swapchain.format,
+                swapchain.depth_format,
+                voxel_pipeline_layout,
+                Default::default(),
+            )?;
+
             context.device.destroy_shader_module(vertex_shader, None);
             context.device.destroy_shader_module(fragment_shader, None);
 
@@ -196,13 +211,6 @@ impl RenderingAPI for VulkanRenderer {
                 memory: default_ubo_mem,
             };
 
-            let transfer_command_pool = context.device.create_command_pool(
-                &vk::CommandPoolCreateInfo::default()
-                    .queue_family_index(context.queue_families.transfer)
-                    .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER),
-                None,
-            )?;
-
             let renderer = VulkanRenderer {
                 in_flight_frames_count,
                 current_frame: 0,
@@ -212,7 +220,12 @@ impl RenderingAPI for VulkanRenderer {
                 pipeline,
                 pipeline_layout,
                 voxel_pipeline_layout,
+
                 voxel_pipeline,
+                voxel_wireframe_pipeline,
+                voxel_descriptor_pool: descriptor_pool,
+                voxel_descriptor_set_layout: descriptor_set_layout,
+
                 push_constants: PushConstants::default(),
                 ubo,
                 context: Arc::new(rendering_info.context.clone()),
@@ -484,6 +497,33 @@ impl RenderingAPI for VulkanRenderer {
                 0,
             );
 
+            self.context.device.cmd_bind_pipeline(
+                frame.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.voxel_wireframe_pipeline,
+            );
+
+            self.context.device.cmd_bind_vertex_buffers(
+                frame.command_buffer,
+                0,
+                &[mesh.get_vertex_buffer()],
+                &[0],
+            );
+            self.context.device.cmd_bind_index_buffer(
+                frame.command_buffer,
+                mesh.get_index_buffer(),
+                0,
+                vk::IndexType::UINT32,
+            );
+            self.context.device.cmd_draw_indexed(
+                frame.command_buffer,
+                mesh.get_index_count(),
+                1,
+                0,
+                0,
+                0,
+            );
+
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             self.context.transition_image_layout(
@@ -531,5 +571,12 @@ impl RenderingAPI for VulkanRenderer {
 
     fn get_aspect(&self) -> f32 {
         self.swapchain.extent.width as f32 / self.swapchain.extent.height as f32
+    }
+
+    fn get_descriptor_pool(&self) -> vk::DescriptorPool {
+        self.voxel_descriptor_pool
+    }
+    fn get_voxel_descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
+        self.voxel_descriptor_set_layout
     }
 }

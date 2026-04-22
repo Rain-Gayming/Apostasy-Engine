@@ -212,51 +212,17 @@ impl ApplicationHandler for Core {
                 .context
                 .clone();
 
-            let pending = world.get_resource::<PendingAtlas>().unwrap();
-            let command_pool = self
-                .rendering_info
-                .as_ref()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .renderer
-                .as_ref()
-                .unwrap()
-                .get_command_pool()
-                .unwrap();
+            let pending = world.get_resource::<PendingAtlas>().unwrap().clone();
 
-            let sampler_binding = vk::DescriptorSetLayoutBinding::default()
-                .binding(1)
-                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT);
-
-            let descriptor_set_layout = context
-                .device
-                .create_descriptor_set_layout(
-                    &vk::DescriptorSetLayoutCreateInfo::default().bindings(&[sampler_binding]),
-                    None,
+            let (command_pool, descriptor_pool, descriptor_set_layout) = {
+                let ri = self.rendering_info.as_ref().unwrap().lock().unwrap();
+                let renderer = ri.renderer.as_ref().unwrap();
+                (
+                    renderer.get_command_pool().unwrap(),
+                    renderer.get_descriptor_pool(),
+                    renderer.get_voxel_descriptor_set_layout(),
                 )
-                .unwrap();
-
-            let descriptor_pool = context
-                .device
-                .create_descriptor_pool(
-                    &vk::DescriptorPoolCreateInfo::default()
-                        .max_sets(200)
-                        .pool_sizes(&[
-                            vk::DescriptorPoolSize {
-                                ty: vk::DescriptorType::UNIFORM_BUFFER,
-                                descriptor_count: 100,
-                            },
-                            vk::DescriptorPoolSize {
-                                ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                                descriptor_count: 100,
-                            },
-                        ]),
-                    None,
-                )
-                .unwrap();
+            };
 
             let atlas = upload_atlas(
                 &context,
@@ -272,7 +238,6 @@ impl ApplicationHandler for Core {
             world.insert_resource(atlas);
         }
     }
-
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {}
 
     fn window_event(

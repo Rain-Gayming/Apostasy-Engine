@@ -111,7 +111,7 @@ impl AssetLoader for VoxelLoader {
                 return Err(Error::msg(msg));
             }
         }
-
+        println!("Loading voxel yaml textures section: {:?}", raw["textures"]);
         let id = registry.defs.len() as VoxelId;
         let full_name = format!("{}:{}", namespace, name);
         registry.defs.push(def);

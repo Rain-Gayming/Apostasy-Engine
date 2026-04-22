@@ -42,6 +42,7 @@ impl AtlasBuilder {
     }
 
     pub fn add_texture(&mut self, path: &str) -> u32 {
+        println!("Adding texture: {}", path);
         if let Some(idx) = self.tiles.iter().position(|(p, _)| p == path) {
             return idx as u32;
         }
@@ -72,6 +73,10 @@ impl AtlasBuilder {
         let count = self.tiles.len() as u32;
         let atlas_tiles = (count as f32).sqrt().ceil() as u32;
         let atlas_px = atlas_tiles * self.tile_size;
+        let count = self.tiles.len() as u32;
+        println!("Atlas builder has {} tiles", count);
+        let atlas_tiles = (count as f32).sqrt().ceil() as u32;
+        println!("Atlas tiles grid: {}", atlas_tiles);
 
         let mut atlas = RgbaImage::new(atlas_px, atlas_px);
 
@@ -130,7 +135,7 @@ pub fn upload_atlas(
     // create GPU image
     let (vk_image, image_memory) = ctx.create_image(
         vk::Extent2D { width, height },
-        vk::Format::R8G8B8A8_SRGB,
+        vk::Format::R8G8B8A8_UNORM,
         vk::ImageTiling::OPTIMAL,
         vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
@@ -232,11 +237,10 @@ pub fn upload_atlas(
     // image view
     let image_view = ctx.create_image_view(
         vk_image,
-        vk::Format::R8G8B8A8_SRGB,
+        vk::Format::R8G8B8A8_UNORM,
         vk::ImageAspectFlags::COLOR,
     )?;
 
-    // sampler — nearest filter for pixel art voxel look
     let sampler = unsafe {
         ctx.device.create_sampler(
             &vk::SamplerCreateInfo::default()
