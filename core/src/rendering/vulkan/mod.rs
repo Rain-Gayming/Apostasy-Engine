@@ -31,6 +31,7 @@ pub struct VulkanRenderer {
     pub pipeline: Pipeline,
     pub pipeline_layout: PipelineLayout,
     pub voxel_pipeline: Pipeline,
+    pub voxel_pipeline_layout: PipelineLayout,
     pub push_constants: PushConstants,
     context: Arc<VulkanRenderingContext>,
 }
@@ -86,13 +87,23 @@ impl RenderingAPI for VulkanRenderer {
                 Default::default(),
             )?;
 
+            let voxel_pipeline_layout = context.device.create_pipeline_layout(
+                &PipelineLayoutCreateInfo::default().push_constant_ranges(&[
+                    vk::PushConstantRange::default()
+                        .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
+                        .offset(0)
+                        .size(208),
+                ]),
+                None,
+            )?;
+
             let voxel_pipeline = context.create_voxel_graphics_pipeline(
                 voxel_vertex_shader,
                 voxel_fragment_shader,
                 swapchain.extent,
                 swapchain.format,
                 swapchain.depth_format,
-                pipeline_layout,
+                voxel_pipeline_layout,
                 Default::default(),
             )?;
 
@@ -144,6 +155,7 @@ impl RenderingAPI for VulkanRenderer {
                 image_layouts: ImageLayouts::default(),
                 pipeline,
                 pipeline_layout,
+                voxel_pipeline_layout,
                 voxel_pipeline,
                 push_constants: PushConstants::default(),
                 context: Arc::new(rendering_info.context.clone()),
@@ -378,7 +390,7 @@ impl RenderingAPI for VulkanRenderer {
             let data = push_constants.return_renderable();
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
-                self.pipeline_layout,
+                self.voxel_pipeline_layout,
                 vk::ShaderStageFlags::VERTEX,
                 0,
                 &data,

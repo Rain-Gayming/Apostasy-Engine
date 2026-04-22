@@ -34,13 +34,14 @@ const FACE_VERTICES: [[[u8; 3]; 4]; 6] = [
 const FACE_UVS: [[u8; 2]; 4] = [[0, 0], [0, 1], [1, 1], [1, 0]];
 
 impl VoxelVertex {
-    pub fn pack(x: u8, y: u8, z: u8, face: u8, u: u8, v: u8) -> Self {
+    pub fn pack(x: u8, y: u8, z: u8, face: u8, u: u8, v: u8, texture_id: u32) -> Self {
         let data: u64 = (x as u64)        // bits 0-5,  6 bits (0-32)
             | ((y as u64) << 6)           // bits 6-11, 6 bits
             | ((z as u64) << 12)          // bits 12-17, 6 bits
             | ((face as u64) << 18)       // bits 18-20, 3 bits
             | ((u as u64) << 21)          // bits 21-22, 2 bits
-            | ((v as u64) << 23); // bits 23-24, 2 bits
+            | ((v as u64) << 23) // bits 23-24, 2 bits
+            | ((texture_id as u64) << 33); // 31 bits remaining for texture id
         Self { data }
     }
 }
@@ -204,8 +205,20 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                         };
 
                         let base = vertices.len() as u32;
-                        vertices.push(VoxelVertex::pack(p0[0], p0[1], p0[2], face, 0, 0));
-                        vertices.push(VoxelVertex::pack(p1[0], p1[1], p1[2], face, width as u8, 0));
+                        let texture_id = registry.defs[id as usize].textures.get_for_face(face);
+
+                        vertices.push(VoxelVertex::pack(
+                            p0[0], p0[1], p0[2], face, 0, 0, texture_id,
+                        ));
+                        vertices.push(VoxelVertex::pack(
+                            p1[0],
+                            p1[1],
+                            p1[2],
+                            face,
+                            width as u8,
+                            0,
+                            texture_id,
+                        ));
                         vertices.push(VoxelVertex::pack(
                             p2[0],
                             p2[1],
@@ -213,6 +226,7 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                             face,
                             width as u8,
                             height as u8,
+                            texture_id,
                         ));
                         vertices.push(VoxelVertex::pack(
                             p3[0],
@@ -221,8 +235,8 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                             face,
                             0,
                             height as u8,
+                            texture_id,
                         ));
-
                         indices.extend_from_slice(&[
                             base,
                             base + 1,

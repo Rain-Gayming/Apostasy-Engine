@@ -1,6 +1,4 @@
 extern crate self as apostasy_core;
-
-use anyhow::Context;
 pub use apostasy_macros::Component;
 pub use apostasy_macros::fixed_update;
 pub use apostasy_macros::late_update;
@@ -25,14 +23,16 @@ use winit::{
 };
 
 use crate::assets::asset_manager::AssetManager;
-use crate::assets::gltf::load_model;
 use crate::assets::loaders::voxel_loader::VoxelLoader;
 use crate::objects::resources::input_manager::InputManager;
 use crate::packages::Packages;
 use crate::rendering::components::camera::Camera;
-use crate::rendering::components::model_renderer::ModelRenderer;
 use crate::voxels::meshes::VoxelChunkMesh;
 use crate::voxels::meshes::remesh_chunks;
+use crate::voxels::texture_atlas::AtlasBuilder;
+use crate::voxels::texture_atlas::PendingAtlas;
+use crate::voxels::texture_atlas::VoxelTextureAtlas;
+use crate::voxels::texture_atlas::upload_atlas;
 use crate::voxels::voxel::VoxelRegistry;
 use crate::{
     objects::world::World,
@@ -57,16 +57,17 @@ pub struct Core {
 
 impl Core {
     pub fn new(rendering_api: RenderingBackend, _packages: Vec<Packages>) -> Self {
-        let asset_manager = AssetManager::new();
         let mut world = World::default();
         world.insert_resource(InputManager::default());
 
         let voxel_registry = Arc::new(RwLock::new(VoxelRegistry::default()));
+        let atlas_builder = Arc::new(RwLock::new(AtlasBuilder::new(16)));
 
         {
             let mut asset_manager = AssetManager::new();
             asset_manager.register_loader(VoxelLoader {
                 registry: Arc::clone(&voxel_registry),
+                atlas_builder: Arc::clone(&atlas_builder),
             });
 
             asset_manager
@@ -77,7 +78,6 @@ impl Core {
                 )))
                 .unwrap();
 
-            // Read the files in the project that impliments apostasy-core's res/ folder
             asset_manager.load_directory(Path::new("res/")).unwrap();
         }
 
@@ -86,16 +86,26 @@ impl Core {
             .into_inner()
             .expect("VoxelRegistry RwLock poisoned");
 
+        let atlas_builder = Arc::try_unwrap(atlas_builder)
+            .unwrap()
+            .into_inner()
+            .unwrap();
+
+        let (atlas_image, atlas_tiles) = atlas_builder.build();
+
         world.insert_resource(registry);
+        world.insert_resource(PendingAtlas {
+            image: atlas_image,
+            tiles: atlas_tiles,
+        });
 
         Self {
             rendering_api,
             rendering_info: None,
             world: Arc::new(Mutex::new(world)),
-            asset_loader: asset_manager,
+            asset_loader: AssetManager::new(),
         }
     }
-
     pub fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -124,7 +134,11 @@ impl Core {
                     world.update();
 
                     let context = Arc::new(rendering_info.context.clone());
-                    let push_constants = rendering_info.push_constants.clone();
+                    let mut push_constants = rendering_info.push_constants.clone();
+
+                    if let Some(atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
+                        push_constants.set_atlas_tiles(atlas.atlas_size);
+                    }
 
                     let Some(renderer) = &mut rendering_info.renderer else {
                         log_error!("No renderer found!");
@@ -191,7 +205,24 @@ impl ApplicationHandler for Core {
                 .context
                 .clone();
 
+            let pending = world.get_resource::<PendingAtlas>().unwrap();
+            let command_pool = self
+                .rendering_info
+                .as_ref()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .renderer
+                .as_ref()
+                .unwrap()
+                .get_command_pool()
+                .unwrap();
+
+            let atlas = upload_atlas(&context, command_pool, &pending.image, pending.tiles)
+                .expect("Failed to upload voxel atlas");
+
             world.insert_resource(context);
+            world.insert_resource(atlas);
         }
     }
 

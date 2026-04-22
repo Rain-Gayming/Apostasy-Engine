@@ -6,6 +6,41 @@ use hashbrown::HashMap;
 
 use crate::objects::component::{BoxedComponent, Component};
 
+#[derive(Debug, Clone)]
+pub struct VoxelTextures {
+    pub top: u32,
+    pub bottom: u32,
+    pub front: u32,
+    pub back: u32,
+    pub left: u32,
+    pub right: u32,
+}
+
+impl VoxelTextures {
+    pub fn all(index: u32) -> Self {
+        Self {
+            top: index,
+            bottom: index,
+            front: index,
+            back: index,
+            left: index,
+            right: index,
+        }
+    }
+
+    pub fn get_for_face(&self, face: u8) -> u32 {
+        match face {
+            0 => self.right,  // +X
+            1 => self.left,   // -X
+            2 => self.top,    // +Y
+            3 => self.bottom, // -Y
+            4 => self.front,  // +Z
+            5 => self.back,   // -Z
+            _ => 0,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Voxel {
     pub id: VoxelId,
@@ -17,6 +52,7 @@ pub struct VoxelDefinition {
     pub namespace: String,
     pub class: String,
     pub components: Vec<BoxedComponent>,
+    pub textures: VoxelTextures,
 }
 
 impl std::fmt::Debug for VoxelDefinition {
@@ -75,6 +111,7 @@ impl VoxelRegistry {
             namespace: "Apostasy".to_string(),
             class: "Voxel".to_string(),
             components: vec![],
+            textures: VoxelTextures::all(0),
         });
         name_to_id.insert("Apostasy:Air".to_string(), 0);
         id_to_name.insert(0, "Apostasy:Air".to_string());

@@ -6,11 +6,15 @@ use crate::{
     assets::loader::AssetLoader,
     log_warn,
     objects::component::{BoxedComponent, get_component_registration},
-    voxels::voxel::{VoxelDefinition, VoxelId, VoxelRegistry},
+    voxels::{
+        texture_atlas::AtlasBuilder,
+        voxel::{VoxelDefinition, VoxelId, VoxelRegistry, VoxelTextures},
+    },
 };
 
 pub struct VoxelLoader {
     pub registry: Arc<RwLock<VoxelRegistry>>,
+    pub atlas_builder: Arc<RwLock<AtlasBuilder>>,
 }
 
 impl AssetLoader for VoxelLoader {
@@ -45,6 +49,29 @@ impl AssetLoader for VoxelLoader {
             }
         }
 
+        let textures = if let Some(tex) = raw["textures"].as_mapping() {
+            let mut atlas = self.atlas_builder.write().unwrap();
+
+            let mut get = |key: &str| -> u32 {
+                tex.get(key)
+                    .or_else(|| tex.get("all"))
+                    .and_then(|v| v.as_str())
+                    .map(|path| atlas.add_texture(path))
+                    .unwrap_or(0)
+            };
+
+            VoxelTextures {
+                top: get("top"),
+                bottom: get("bottom"),
+                front: get("front"),
+                back: get("back"),
+                left: get("left"),
+                right: get("right"),
+            }
+        } else {
+            VoxelTextures::all(0)
+        };
+
         let mut components: Vec<BoxedComponent> = Vec::new();
 
         if let Some(comp_map) = raw["components"].as_mapping() {
@@ -68,6 +95,7 @@ impl AssetLoader for VoxelLoader {
             namespace: namespace.clone(),
             class: "Voxel".to_string(),
             components,
+            textures,
         };
 
         let mut registry = self.registry.write().unwrap();
