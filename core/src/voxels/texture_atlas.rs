@@ -24,6 +24,7 @@ pub struct VoxelTextureAtlas {
     pub texture_index: HashMap<String, u32>,
     pub texture_size: u32,
     pub atlas_size: u32,
+    pub descriptor_set: vk::DescriptorSet,
 }
 
 #[derive(Debug)]
@@ -94,11 +95,18 @@ impl AtlasBuilder {
 pub fn upload_atlas(
     ctx: &VulkanRenderingContext,
     command_pool: vk::CommandPool,
+    descriptor_pool: vk::DescriptorPool,
+    descriptor_set_layout: vk::DescriptorSetLayout,
     image: &RgbaImage,
     tiles: u32,
 ) -> Result<VoxelTextureAtlas> {
     let width = image.width();
     let height = image.height();
+
+    if width == 0 || height == 0 || tiles == 0 {
+        return Err(anyhow::anyhow!("Cannot upload empty texture atlas"));
+    }
+
     let pixels = image.as_raw();
     let size = pixels.len() as vk::DeviceSize;
 
@@ -246,6 +254,13 @@ pub fn upload_atlas(
         )?
     };
 
+    let descriptor_set = ctx.create_texture_descriptor_set(
+        descriptor_pool,
+        descriptor_set_layout,
+        image_view,
+        sampler,
+    );
+
     Ok(VoxelTextureAtlas {
         image: vk_image,
         image_memory,
@@ -254,5 +269,6 @@ pub fn upload_atlas(
         texture_index: HashMap::new(),
         texture_size: width / tiles,
         atlas_size: tiles,
+        descriptor_set,
     })
 }

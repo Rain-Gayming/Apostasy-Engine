@@ -6,6 +6,7 @@ pub use apostasy_macros::start;
 pub use apostasy_macros::update;
 
 pub use anyhow;
+use ash::vk;
 pub use cgmath;
 pub use winit;
 use winit::event::DeviceEvent;
@@ -159,12 +160,18 @@ impl Core {
                             .expect("Failed to remesh chunks");
                     }
 
-                    for object in world.get_objects_with_component::<VoxelChunkMesh>() {
-                        let voxel_mesh = object.get_component::<VoxelChunkMesh>().unwrap();
+                    if let Some(texture_atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
+                        for object in world.get_objects_with_component::<VoxelChunkMesh>() {
+                            let voxel_mesh = object.get_component::<VoxelChunkMesh>().unwrap();
 
-                        renderer
-                            .voxel_render(Box::new(voxel_mesh.clone()), push_constants.clone())
-                            .unwrap();
+                            renderer
+                                .voxel_render(
+                                    Box::new(voxel_mesh.clone()),
+                                    texture_atlas.clone(),
+                                    push_constants.clone(),
+                                )
+                                .unwrap();
+                        }
                     }
 
                     world.late_update();
@@ -194,7 +201,7 @@ impl ApplicationHandler for Core {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.rendering_info = Some(RenderingInfo::new(&event_loop, self.rendering_api));
 
-        {
+        unsafe {
             let mut world = self.world.lock().unwrap();
             let context = self
                 .rendering_info
@@ -218,8 +225,48 @@ impl ApplicationHandler for Core {
                 .get_command_pool()
                 .unwrap();
 
-            let atlas = upload_atlas(&context, command_pool, &pending.image, pending.tiles)
-                .expect("Failed to upload voxel atlas");
+            let sampler_binding = vk::DescriptorSetLayoutBinding::default()
+                .binding(1)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT);
+
+            let descriptor_set_layout = context
+                .device
+                .create_descriptor_set_layout(
+                    &vk::DescriptorSetLayoutCreateInfo::default().bindings(&[sampler_binding]),
+                    None,
+                )
+                .unwrap();
+
+            let descriptor_pool = context
+                .device
+                .create_descriptor_pool(
+                    &vk::DescriptorPoolCreateInfo::default()
+                        .max_sets(200)
+                        .pool_sizes(&[
+                            vk::DescriptorPoolSize {
+                                ty: vk::DescriptorType::UNIFORM_BUFFER,
+                                descriptor_count: 100,
+                            },
+                            vk::DescriptorPoolSize {
+                                ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                                descriptor_count: 100,
+                            },
+                        ]),
+                    None,
+                )
+                .unwrap();
+
+            let atlas = upload_atlas(
+                &context,
+                command_pool,
+                descriptor_pool,
+                descriptor_set_layout,
+                &pending.image,
+                pending.tiles,
+            )
+            .expect("Failed to upload voxel atlas");
 
             world.insert_resource(context);
             world.insert_resource(atlas);

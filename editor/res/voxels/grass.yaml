@@ -1,7 +1,9 @@
-
-name: Grass 
+name: Grass
 namespace: Apostasy
-class: Voxel 
+class: Voxel
+
+textures:
+  all: textures/grass.png
 
 components:
-  IsSolid: true 
+  IsSolid: true

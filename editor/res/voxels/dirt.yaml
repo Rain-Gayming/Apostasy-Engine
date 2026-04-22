@@ -1,6 +1,9 @@
 name: Dirt
 namespace: Apostasy
-class: Voxel 
+class: Voxel
+
+textures:
+  all: textures/dirt.png
 
 components:
-  IsSolid: true 
+  IsSolid: true

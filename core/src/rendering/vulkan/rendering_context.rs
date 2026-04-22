@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::io;
+use std::path::Path;
 
 use anyhow::Result;
+use anyhow::anyhow;
 use apostasy_macros::Resource;
 use ash::Device;
 use ash::Entry;
@@ -90,6 +92,7 @@ use winit::raw_window_handle::HasDisplayHandle;
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::Window;
 
+use crate::rendering::shared::texture::GpuTexture;
 use crate::rendering::shared::vertex::Vertex;
 use crate::rendering::shared::vertex::VertexDefinition;
 use crate::rendering::vulkan::device::PhysicalDevice;
@@ -640,6 +643,42 @@ impl VulkanRenderingContext {
                     )
                     .render_area(render_area),
             );
+        }
+    }
+
+    /// Creates a texture descriptor set
+    pub fn create_texture_descriptor_set(
+        &self,
+        descriptor_pool: vk::DescriptorPool,
+        descriptor_set_layout: vk::DescriptorSetLayout,
+        image_view: vk::ImageView,
+        sampler: vk::Sampler,
+    ) -> vk::DescriptorSet {
+        unsafe {
+            let set = self
+                .device
+                .allocate_descriptor_sets(
+                    &vk::DescriptorSetAllocateInfo::default()
+                        .descriptor_pool(descriptor_pool)
+                        .set_layouts(&[descriptor_set_layout]),
+                )
+                .unwrap()[0];
+
+            let image_info = vk::DescriptorImageInfo::default()
+                .image_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .image_view(image_view)
+                .sampler(sampler);
+
+            self.device.update_descriptor_sets(
+                &[vk::WriteDescriptorSet::default()
+                    .dst_set(set)
+                    .dst_binding(1)
+                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                    .image_info(&[image_info])],
+                &[],
+            );
+
+            set
         }
     }
 

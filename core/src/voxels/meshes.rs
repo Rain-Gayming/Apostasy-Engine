@@ -35,13 +35,13 @@ const FACE_UVS: [[u8; 2]; 4] = [[0, 0], [0, 1], [1, 1], [1, 0]];
 
 impl VoxelVertex {
     pub fn pack(x: u8, y: u8, z: u8, face: u8, u: u8, v: u8, texture_id: u32) -> Self {
-        let data: u64 = (x as u64)        // bits 0-5,  6 bits (0-32)
+        let data: u64 = (x as u64)        // bits 0-5,  6 bits
             | ((y as u64) << 6)           // bits 6-11, 6 bits
             | ((z as u64) << 12)          // bits 12-17, 6 bits
             | ((face as u64) << 18)       // bits 18-20, 3 bits
-            | ((u as u64) << 21)          // bits 21-22, 2 bits
-            | ((v as u64) << 23) // bits 23-24, 2 bits
-            | ((texture_id as u64) << 33); // 31 bits remaining for texture id
+            | ((u as u64) << 21)          // bits 21-26, 6 bits
+            | ((v as u64) << 27)          // bits 27-32, 6 bits
+            | ((texture_id as u64) << 33); // bits 33-63, 31 bits for texture id
         Self { data }
     }
 }

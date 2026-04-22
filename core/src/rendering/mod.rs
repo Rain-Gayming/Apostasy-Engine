@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use ash::vk::CommandPool;
+use ash::vk::{CommandPool, DescriptorSet};
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
 use crate::rendering::shared::model::GpuMesh;
@@ -14,6 +14,7 @@ use crate::rendering::{
         rendering_context::{RenderingContextAttributes, VulkanRenderingContext},
     },
 };
+use crate::voxels::texture_atlas::VoxelTextureAtlas;
 
 pub mod components;
 pub mod opengl;
@@ -40,8 +41,12 @@ pub struct RenderingInfo {
 pub trait RenderingAPI {
     fn resize(&mut self) -> Result<()>;
     fn render(&mut self, mesh: Box<dyn GpuMesh>, push_constants: PushConstants) -> Result<()>;
-    fn voxel_render(&mut self, mesh: Box<dyn GpuMesh>, push_constants: PushConstants)
-    -> Result<()>;
+    fn voxel_render(
+        &mut self,
+        mesh: Box<dyn GpuMesh>,
+        atlas: VoxelTextureAtlas,
+        push_constants: PushConstants,
+    ) -> Result<()>;
     fn update_command_buffer(&mut self);
     fn recreate_swapchain(&mut self);
     fn get_command_pool(&self) -> Result<CommandPool>;

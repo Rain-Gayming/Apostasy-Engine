@@ -7,10 +7,12 @@ use crate::rendering::vulkan::image_layout::ImageLayouts;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::rendering::vulkan::{frame::VulkanFrame, swapchain::VulkanSwapchain};
 use crate::rendering::{RenderingAPI, RenderingInfo};
+use crate::voxels::texture_atlas::VoxelTextureAtlas;
+use crate::voxels::voxel::Voxel;
 use anyhow::Result;
 use ash::vk::{
-    self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
-    PipelineLayoutCreateInfo,
+    self, ClearColorValue, CommandBufferResetFlags, CommandPool, DescriptorSet, Pipeline,
+    PipelineLayout, PipelineLayoutCreateInfo,
 };
 
 pub mod device;
@@ -20,6 +22,19 @@ pub mod queue_family;
 pub mod rendering_context;
 pub mod surface;
 pub mod swapchain;
+
+/// A container for a descriptor and it's data
+pub struct Descriptor {
+    pub descriptor_pool: vk::DescriptorPool,
+    pub descriptor_set_layout: vk::DescriptorSetLayout,
+    pub descriptor_set: vk::DescriptorSet,
+}
+
+/// A container for a UBO
+pub struct Ubo {
+    pub buffer: vk::Buffer,
+    pub memory: vk::DeviceMemory,
+}
 
 pub struct VulkanRenderer {
     pub in_flight_frames_count: usize,
@@ -33,6 +48,8 @@ pub struct VulkanRenderer {
     pub voxel_pipeline: Pipeline,
     pub voxel_pipeline_layout: PipelineLayout,
     pub push_constants: PushConstants,
+
+    pub ubo: Ubo,
     context: Arc<VulkanRenderingContext>,
 }
 
@@ -77,6 +94,27 @@ impl RenderingAPI for VulkanRenderer {
                 None,
             )?;
 
+            let sampler_binding = vk::DescriptorSetLayoutBinding::default()
+                .binding(0)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .descriptor_count(1)
+                .stage_flags(vk::ShaderStageFlags::FRAGMENT);
+
+            let descriptor_set_layout = context.device.create_descriptor_set_layout(
+                &vk::DescriptorSetLayoutCreateInfo::default().bindings(&[sampler_binding]),
+                None,
+            )?;
+
+            let descriptor_pool = context.device.create_descriptor_pool(
+                &vk::DescriptorPoolCreateInfo::default()
+                    .max_sets(200)
+                    .pool_sizes(&[vk::DescriptorPoolSize {
+                        ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                        descriptor_count: 100,
+                    }]),
+                None,
+            )?;
+
             let pipeline = context.create_graphics_pipeline(
                 vertex_shader,
                 fragment_shader,
@@ -88,12 +126,12 @@ impl RenderingAPI for VulkanRenderer {
             )?;
 
             let voxel_pipeline_layout = context.device.create_pipeline_layout(
-                &PipelineLayoutCreateInfo::default().push_constant_ranges(&[
-                    vk::PushConstantRange::default()
+                &PipelineLayoutCreateInfo::default()
+                    .push_constant_ranges(&[vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
                         .offset(0)
-                        .size(208),
-                ]),
+                        .size(208)])
+                    .set_layouts(&[descriptor_set_layout]),
                 None,
             )?;
 
@@ -147,6 +185,24 @@ impl RenderingAPI for VulkanRenderer {
                 });
             }
 
+            let (default_ubo, default_ubo_mem) = context.create_buffer(
+                256,
+                vk::BufferUsageFlags::UNIFORM_BUFFER,
+                vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            )?;
+
+            let ubo = Ubo {
+                buffer: default_ubo,
+                memory: default_ubo_mem,
+            };
+
+            let transfer_command_pool = context.device.create_command_pool(
+                &vk::CommandPoolCreateInfo::default()
+                    .queue_family_index(context.queue_families.transfer)
+                    .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER),
+                None,
+            )?;
+
             let renderer = VulkanRenderer {
                 in_flight_frames_count,
                 current_frame: 0,
@@ -158,6 +214,7 @@ impl RenderingAPI for VulkanRenderer {
                 voxel_pipeline_layout,
                 voxel_pipeline,
                 push_constants: PushConstants::default(),
+                ubo,
                 context: Arc::new(rendering_info.context.clone()),
                 swapchain,
             };
@@ -311,6 +368,7 @@ impl RenderingAPI for VulkanRenderer {
     fn voxel_render(
         &mut self,
         mesh: Box<dyn GpuMesh>,
+        atlas: VoxelTextureAtlas,
         push_constants: PushConstants,
     ) -> anyhow::Result<()> {
         let frame = &self.frames[self.current_frame];
@@ -394,6 +452,15 @@ impl RenderingAPI for VulkanRenderer {
                 vk::ShaderStageFlags::VERTEX,
                 0,
                 &data,
+            );
+
+            self.context.device.cmd_bind_descriptor_sets(
+                frame.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.voxel_pipeline_layout,
+                0,
+                &[atlas.descriptor_set],
+                &[],
             );
 
             self.context.device.cmd_bind_vertex_buffers(
