@@ -348,7 +348,6 @@ impl InputManager {
 pub fn clear_actions(world: &mut World) -> Result<()> {
     let input_manager = world.get_resource_mut::<InputManager>()?;
 
-    input_manager.keys_held.clear();
     input_manager.keys_pressed.clear();
     input_manager.keys_released.clear();
     input_manager.mouse_pressed.clear();

@@ -3,41 +3,56 @@ use std::any::TypeId;
 use anyhow::{Error, Result};
 use apostasy_macros::Resource;
 use hashbrown::HashMap;
+use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
 use crate::objects::component::{BoxedComponent, Component};
 
 #[derive(Debug, Clone)]
 pub struct VoxelTextures {
-    pub top: u32,
-    pub bottom: u32,
-    pub front: u32,
-    pub back: u32,
-    pub left: u32,
-    pub right: u32,
+    pub top: Vec<u32>,
+    pub bottom: Vec<u32>,
+    pub front: Vec<u32>,
+    pub back: Vec<u32>,
+    pub left: Vec<u32>,
+    pub right: Vec<u32>,
 }
 
 impl VoxelTextures {
+    pub fn single(index: u32) -> Vec<u32> {
+        vec![index]
+    }
+
     pub fn all(index: u32) -> Self {
         Self {
-            top: index,
-            bottom: index,
-            front: index,
-            back: index,
-            left: index,
-            right: index,
+            top: vec![index],
+            bottom: vec![index],
+            front: vec![index],
+            back: vec![index],
+            left: vec![index],
+            right: vec![index],
         }
     }
 
-    pub fn get_for_face(&self, face: u8) -> u32 {
-        match face {
-            0 => self.right,  // +X
-            1 => self.left,   // -X
-            2 => self.top,    // +Y
-            3 => self.bottom, // -Y
-            4 => self.front,  // +Z
-            5 => self.back,   // -Z
-            _ => 0,
+    pub fn get_for_face(&self, face: u8, x: u32, y: u32, z: u32) -> u32 {
+        let options = match face {
+            0 => &self.right,
+            1 => &self.left,
+            2 => &self.top,
+            3 => &self.bottom,
+            4 => &self.front,
+            5 => &self.back,
+            _ => &self.top,
+        };
+
+        if options.len() == 1 {
+            return options[0];
         }
+
+        // seed with position so same block always gets same texture
+        let seed = ((x as u64) << 32) ^ ((y as u64) << 16) ^ (z as u64) ^ ((face as u64) << 48);
+        let mut rng = SmallRng::seed_from_u64(seed);
+        let index = rng.random_range(0..options.len());
+        options[index]
     }
 }
 

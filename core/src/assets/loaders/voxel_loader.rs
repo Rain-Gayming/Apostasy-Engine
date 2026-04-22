@@ -52,26 +52,25 @@ impl AssetLoader for VoxelLoader {
         let textures = if let Some(tex) = raw["textures"].as_mapping() {
             let mut atlas = self.atlas_builder.write().unwrap();
 
-            let mut get = |key: &str| -> u32 {
+            let mut get = |key: &str, fallback: &str| -> Vec<u32> {
                 tex.get(key)
+                    .or_else(|| tex.get(fallback))
                     .or_else(|| tex.get("all"))
-                    .and_then(|v| v.as_str())
-                    .map(|path| atlas.add_texture(path))
-                    .unwrap_or(0)
+                    .map(|v| parse_texture_list(v, &mut atlas))
+                    .unwrap_or_else(|| vec![0])
             };
 
             VoxelTextures {
-                top: get("top"),
-                bottom: get("bottom"),
-                front: get("front"),
-                back: get("back"),
-                left: get("left"),
-                right: get("right"),
+                top: get("top", "all"),
+                bottom: get("bottom", "all"),
+                front: get("front", "side"),
+                back: get("back", "side"),
+                left: get("left", "side"),
+                right: get("right", "side"),
             }
         } else {
             VoxelTextures::all(0)
         };
-
         let mut components: Vec<BoxedComponent> = Vec::new();
 
         if let Some(comp_map) = raw["components"].as_mapping() {
@@ -111,7 +110,7 @@ impl AssetLoader for VoxelLoader {
                 return Err(Error::msg(msg));
             }
         }
-        println!("Loading voxel yaml textures section: {:?}", raw["textures"]);
+
         let id = registry.defs.len() as VoxelId;
         let full_name = format!("{}:{}", namespace, name);
         registry.defs.push(def);
@@ -119,5 +118,19 @@ impl AssetLoader for VoxelLoader {
         registry.id_to_name.insert(id, full_name);
 
         Ok(())
+    }
+}
+
+fn parse_texture_list(value: &serde_yaml::Value, atlas: &mut AtlasBuilder) -> Vec<u32> {
+    match value {
+        serde_yaml::Value::String(path) => {
+            vec![atlas.add_texture(path)]
+        }
+        serde_yaml::Value::Sequence(seq) => seq
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|path| atlas.add_texture(path))
+            .collect(),
+        _ => vec![0],
     }
 }

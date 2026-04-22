@@ -135,7 +135,7 @@ pub fn upload_atlas(
     // create GPU image
     let (vk_image, image_memory) = ctx.create_image(
         vk::Extent2D { width, height },
-        vk::Format::R8G8B8A8_UNORM,
+        vk::Format::R8G8B8A8_SRGB,
         vk::ImageTiling::OPTIMAL,
         vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,
@@ -237,7 +237,7 @@ pub fn upload_atlas(
     // image view
     let image_view = ctx.create_image_view(
         vk_image,
-        vk::Format::R8G8B8A8_UNORM,
+        vk::Format::R8G8B8A8_SRGB,
         vk::ImageAspectFlags::COLOR,
     )?;
 

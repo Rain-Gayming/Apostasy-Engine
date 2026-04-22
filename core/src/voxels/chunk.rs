@@ -1,5 +1,6 @@
 use anyhow::Result;
 use apostasy_macros::Component;
+use noise::{NoiseFn, Perlin};
 use rand::RngExt;
 
 use crate::{
@@ -64,18 +65,20 @@ pub fn create_test_chunk(world: &mut World) -> Result<()> {
         .expect("Apostasy:Dirt not found in registry");
 
     let mut chunk = Chunk::default();
-    let mut rng = rand::rng();
+
+    let noise = Perlin::new(12345);
+
     for z in 0..32u32 {
         for y in 0..32u32 {
             for x in 0..32u32 {
-                let rand = rng.random_range(0..=4);
+                let val = noise.get([x as f64 * 0.05, y as f64 * 0.05, z as f64 * 0.05]) * 7.0;
 
-                if rand == 0 {
-                    chunk.set(x, y, z, Voxel { id: grass_id });
-                } else if rand >= 3 {
-                    chunk.set(x, y, z, Voxel { id: dirt_id });
-                } else {
+                if y as f64 > 10.0 + val {
                     chunk.set(x, y, z, Voxel { id: 0 });
+                } else if y as f64 > 10.0 - 3.0 {
+                    chunk.set(x, y, z, Voxel { id: grass_id });
+                } else {
+                    chunk.set(x, y, z, Voxel { id: dirt_id });
                 }
             }
         }

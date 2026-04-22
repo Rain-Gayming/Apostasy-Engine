@@ -150,225 +150,153 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
 
-    // axis 0 = X, 1 = Y, 2 = Z
-    for axis in 0..3usize {
-        let u = (axis + 1) % 3;
-        let v = (axis + 2) % 3;
+    const FACE_NORMALS: [[i32; 3]; 6] = [
+        [1, 0, 0],  // +X
+        [-1, 0, 0], // -X
+        [0, 1, 0],  // +Y
+        [0, -1, 0], // -Y
+        [0, 0, 1],  // +Z
+        [0, 0, -1], // -Z
+    ];
 
-        for slice in 0..32usize {
-            let mut forward_mask = [[0u16; 32]; 32];
-            let mut backward_mask = [[0u16; 32]; 32];
+    for z in 0..32usize {
+        for y in 0..32usize {
+            for x in 0..32usize {
+                let id = chunk.voxels[flatten(x as u32, y as u32, z as u32, 32)];
+                if id == 0 {
+                    continue;
+                }
 
-            for ui in 0..32usize {
-                for vi in 0..32usize {
-                    let mut pos = [0usize; 3];
-                    pos[axis] = slice;
-                    pos[u] = ui;
-                    pos[v] = vi;
+                for face in 0..6usize {
+                    let normal = FACE_NORMALS[face];
+                    let nx = x as i32 + normal[0];
+                    let ny = y as i32 + normal[1];
+                    let nz = z as i32 + normal[2];
 
-                    let id = chunk.voxels[flatten(pos[0] as u32, pos[1] as u32, pos[2] as u32, 32)];
+                    // check neighbour
+                    let neighbour_solid =
+                        if nx >= 0 && nx < 32 && ny >= 0 && ny < 32 && nz >= 0 && nz < 32 {
+                            let nid = chunk.voxels[flatten(nx as u32, ny as u32, nz as u32, 32)];
+                            nid != 0
+                        } else {
+                            false
+                        };
 
-                    if id == 0 {
+                    if neighbour_solid {
                         continue;
                     }
 
-                    // +axis neighbour
-                    if slice + 1 < 32 {
-                        let mut npos = pos;
-                        npos[axis] = slice + 1;
-                        let nid = chunk.voxels
-                            [flatten(npos[0] as u32, npos[1] as u32, npos[2] as u32, 32)];
-                        if nid == 0 {
-                            forward_mask[ui][vi] = id;
-                        }
-                    } else {
-                        forward_mask[ui][vi] = id;
-                    }
+                    let texture_id = registry.defs[id as usize]
+                        .textures
+                        .get_for_face(face as u8, x as u32, y as u32, z as u32);
 
-                    // -axis neighbour
-                    if slice > 0 {
-                        let mut npos = pos;
-                        npos[axis] = slice - 1;
-                        let nid = chunk.voxels
-                            [flatten(npos[0] as u32, npos[1] as u32, npos[2] as u32, 32)];
-                        if nid == 0 {
-                            backward_mask[ui][vi] = id;
-                        }
-                    } else {
-                        backward_mask[ui][vi] = id;
-                    }
-                }
-            }
+                    // build the single voxel quad for this face
+                    let base = vertices.len() as u32;
 
-            // greedy merge each mask
-            for (mask, face_dir) in [(&mut forward_mask, 0u8), (&mut backward_mask, 1u8)] {
-                let face = (axis * 2) as u8 + face_dir;
+                    // get the 4 corners of this face
+                    let corners = face_corners(x, y, z, face);
 
-                let mut ui = 0;
-                while ui < 32 {
-                    let mut vi = 0;
-                    while vi < 32 {
-                        let id = mask[ui][vi];
-                        if id == 0 {
-                            vi += 1;
-                            continue;
-                        }
+                    vertices.push(VoxelVertex::pack(
+                        corners[0][0],
+                        corners[0][1],
+                        corners[0][2],
+                        face as u8,
+                        0,
+                        0,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
+                    vertices.push(VoxelVertex::pack(
+                        corners[1][0],
+                        corners[1][1],
+                        corners[1][2],
+                        face as u8,
+                        1,
+                        0,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
+                    vertices.push(VoxelVertex::pack(
+                        corners[2][0],
+                        corners[2][1],
+                        corners[2][2],
+                        face as u8,
+                        1,
+                        1,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
+                    vertices.push(VoxelVertex::pack(
+                        corners[3][0],
+                        corners[3][1],
+                        corners[3][2],
+                        face as u8,
+                        0,
+                        1,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
 
-                        // expand width
-                        let mut width = 1;
-                        while ui + width < 32 && mask[ui + width][vi] == id {
-                            width += 1;
-                        }
-
-                        // expand height along vertical
-                        let mut height = 1;
-                        'outer: while vi + height < 32 {
-                            for w in 0..width {
-                                if mask[ui + w][vi + height] != id {
-                                    break 'outer;
-                                }
-                            }
-                            height += 1;
-                        }
-
-                        // clear merged region
-                        for w in 0..width {
-                            for h in 0..height {
-                                mask[ui + w][vi + h] = 0;
-                            }
-                        }
-
-                        // build quad corners
-                        let s = slice as u8 + if face_dir == 0 { 1 } else { 0 };
-
-                        // corner positions depend on which axis were on
-                        let (p0, p1, p2, p3) = match face_dir {
-                            0 => (
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = ui as u8;
-                                    p[v] = vi as u8;
-                                    p
-                                },
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = (ui + width) as u8;
-                                    p[v] = vi as u8;
-                                    p
-                                },
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = (ui + width) as u8;
-                                    p[v] = (vi + height) as u8;
-                                    p
-                                },
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = ui as u8;
-                                    p[v] = (vi + height) as u8;
-                                    p
-                                },
-                            ),
-                            _ => (
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = ui as u8;
-                                    p[v] = (vi + height) as u8;
-                                    p
-                                },
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = (ui + width) as u8;
-                                    p[v] = (vi + height) as u8;
-                                    p
-                                },
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = (ui + width) as u8;
-                                    p[v] = vi as u8;
-                                    p
-                                },
-                                {
-                                    let mut p = [0u8; 3];
-                                    p[axis] = s;
-                                    p[u] = ui as u8;
-                                    p[v] = vi as u8;
-                                    p
-                                },
-                            ),
-                        };
-
-                        let base = vertices.len() as u32;
-                        let texture_id = registry.defs[id as usize].textures.get_for_face(face);
-
-                        vertices.push(VoxelVertex::pack(
-                            p0[0],
-                            p0[1],
-                            p0[2],
-                            face,
-                            0,
-                            0,
-                            texture_id as u16,
-                            width as u8,
-                            height as u8,
-                        ));
-                        vertices.push(VoxelVertex::pack(
-                            p1[0],
-                            p1[1],
-                            p1[2],
-                            face,
-                            1,
-                            0,
-                            texture_id as u16,
-                            width as u8,
-                            height as u8,
-                        ));
-                        vertices.push(VoxelVertex::pack(
-                            p2[0],
-                            p2[1],
-                            p2[2],
-                            face,
-                            1,
-                            1,
-                            texture_id as u16,
-                            width as u8,
-                            height as u8,
-                        ));
-                        vertices.push(VoxelVertex::pack(
-                            p3[0],
-                            p3[1],
-                            p3[2],
-                            face,
-                            0,
-                            1,
-                            texture_id as u16,
-                            width as u8,
-                            height as u8,
-                        ));
-
-                        indices.extend_from_slice(&[
-                            base,
-                            base + 1,
-                            base + 3,
-                            base + 1,
-                            base + 2,
-                            base + 3,
-                        ]);
-
-                        vi += height;
-                    }
-                    ui += 1;
+                    indices.extend_from_slice(&[
+                        base,
+                        base + 1,
+                        base + 3,
+                        base + 1,
+                        base + 2,
+                        base + 3,
+                    ]);
                 }
             }
         }
     }
 
     (vertices, indices)
+}
+
+fn face_corners(x: usize, y: usize, z: usize, face: usize) -> [[u8; 3]; 4] {
+    let x = x as u8;
+    let y = y as u8;
+    let z = z as u8;
+
+    match face {
+        0 => [
+            // +X
+            [x + 1, y, z],
+            [x + 1, y + 1, z],
+            [x + 1, y + 1, z + 1],
+            [x + 1, y, z + 1],
+        ],
+        1 => [
+            // -X
+            [x, y, z + 1],
+            [x, y + 1, z + 1],
+            [x, y + 1, z],
+            [x, y, z],
+        ],
+        2 => [
+            [x, y + 1, z + 1],
+            [x + 1, y + 1, z + 1],
+            [x + 1, y + 1, z],
+            [x, y + 1, z],
+        ],
+        3 => [[x, y, z], [x + 1, y, z], [x + 1, y, z + 1], [x, y, z + 1]],
+        4 => [
+            // +Z
+            [x + 1, y, z + 1],
+            [x + 1, y + 1, z + 1],
+            [x, y + 1, z + 1],
+            [x, y, z + 1],
+        ],
+        _ => [
+            // -Z
+            [x, y, z],
+            [x, y + 1, z],
+            [x + 1, y + 1, z],
+            [x + 1, y, z],
+        ],
+    }
 }

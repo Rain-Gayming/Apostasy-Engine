@@ -3,7 +3,8 @@ namespace: Apostasy
 class: Voxel
 
 textures:
-  all: textures/dirt.png
+  all: 
+    - textures/dirt.png
 
 components:
   IsSolid: true

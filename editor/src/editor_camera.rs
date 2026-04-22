@@ -47,7 +47,7 @@ pub fn update(world: &mut World) -> Result<()> {
 
     let velocity = camera.get_component_mut::<Velocity>()?;
 
-    velocity.linear_velocity = rotation * direction;
+    velocity.linear_velocity = rotation * direction / 15.0;
 
     let transform = camera.get_component_mut::<Transform>()?;
     transform.local_euler_angles.y -= mouse_delta.0 as f32;
