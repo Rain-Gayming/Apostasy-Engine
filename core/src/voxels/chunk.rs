@@ -1,5 +1,6 @@
 use anyhow::Result;
 use apostasy_macros::Component;
+use apostasy_macros::start;
 use cgmath::Vector3;
 use noise::{NoiseFn, Perlin};
 use rand::RngExt;
@@ -47,8 +48,6 @@ impl Chunk {
         self.lod = lod;
     }
 }
-
-use apostasy_macros::start;
 
 #[start]
 pub fn create_test_chunk(world: &mut World) -> Result<()> {

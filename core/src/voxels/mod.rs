@@ -2,6 +2,7 @@ use apostasy_macros::Component;
 use cgmath::{Vector3, Zero};
 
 pub mod chunk;
+pub mod chunk_loader;
 pub mod meshes;
 pub mod texture_atlas;
 pub mod voxel;

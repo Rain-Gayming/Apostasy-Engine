@@ -6,16 +6,12 @@ pub use apostasy_macros::start;
 pub use apostasy_macros::update;
 
 pub use anyhow;
-use ash::vk;
 pub use cgmath;
 use cgmath::Vector3;
-use gltf::binary::ChunkType;
 pub use winit;
 use winit::event::DeviceEvent;
 use winit::event::DeviceId;
 
-use std::path::Path;
-use std::sync::RwLock;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
@@ -26,19 +22,16 @@ use winit::{
 };
 
 use crate::assets::asset_manager::AssetManager;
-use crate::assets::loaders::voxel_loader::VoxelLoader;
-use crate::objects::components::transform::Transform;
 use crate::objects::resources::input_manager::InputManager;
 use crate::packages::Packages;
+use crate::packages::add_package;
 use crate::rendering::components::camera::Camera;
 use crate::voxels::VoxelTransform;
 use crate::voxels::meshes::VoxelChunkMesh;
 use crate::voxels::meshes::remesh_chunks;
-use crate::voxels::texture_atlas::AtlasBuilder;
 use crate::voxels::texture_atlas::PendingAtlas;
 use crate::voxels::texture_atlas::VoxelTextureAtlas;
 use crate::voxels::texture_atlas::upload_atlas;
-use crate::voxels::voxel::VoxelRegistry;
 use crate::{
     objects::world::World,
     rendering::{RenderingBackend, RenderingInfo},
@@ -61,48 +54,13 @@ pub struct Core {
 }
 
 impl Core {
-    pub fn new(rendering_api: RenderingBackend, _packages: Vec<Packages>) -> Self {
+    pub fn new(rendering_api: RenderingBackend, packages: Vec<Packages>) -> Self {
         let mut world = World::default();
         world.insert_resource(InputManager::default());
 
-        let voxel_registry = Arc::new(RwLock::new(VoxelRegistry::default()));
-        let atlas_builder = Arc::new(RwLock::new(AtlasBuilder::new(16)));
-
-        {
-            let mut asset_manager = AssetManager::new();
-            asset_manager.register_loader(VoxelLoader {
-                registry: Arc::clone(&voxel_registry),
-                atlas_builder: Arc::clone(&atlas_builder),
-            });
-
-            asset_manager
-                .load_directory(Path::new(&format!(
-                    "{}/{}",
-                    env!("CARGO_MANIFEST_DIR"),
-                    "res/"
-                )))
-                .unwrap();
-
-            asset_manager.load_directory(Path::new("res/")).unwrap();
+        for package in packages {
+            add_package(&mut world, package);
         }
-
-        let registry = Arc::try_unwrap(voxel_registry)
-            .expect("VoxelRegistry still has multiple owners")
-            .into_inner()
-            .expect("VoxelRegistry RwLock poisoned");
-
-        let atlas_builder = Arc::try_unwrap(atlas_builder)
-            .unwrap()
-            .into_inner()
-            .unwrap();
-
-        let (atlas_image, atlas_tiles) = atlas_builder.build();
-
-        world.insert_resource(registry);
-        world.insert_resource(PendingAtlas {
-            image: atlas_image,
-            tiles: atlas_tiles,
-        });
 
         Self {
             rendering_api,

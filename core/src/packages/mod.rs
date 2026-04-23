@@ -1,4 +1,4 @@
-use crate::{log, objects::world::World, packages::voxel_package::add_voxel_package};
+use crate::{objects::world::World, packages::voxel_package::add_voxel_package};
 
 pub mod voxel_package;
 

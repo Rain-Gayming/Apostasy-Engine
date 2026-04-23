@@ -2,8 +2,10 @@ use apostasy_core::{
     anyhow::Result,
     cgmath::num_traits::clamp,
     objects::{
-        components::transform::Transform, resources::input_manager::InputManager,
-        tags::skips_serilization::SkipsSerilization, world::World,
+        components::transform::Transform,
+        resources::input_manager::InputManager,
+        tags::{Player, skips_serilization::SkipsSerilization},
+        world::World,
     },
     physics::velocity::Velocity,
     rendering::components::camera::{Camera, EditorCamera},
@@ -18,6 +20,7 @@ pub fn start(world: &mut World) -> Result<()> {
         .add_component(Camera::default())
         .add_component(Transform::default())
         .add_tag(EditorCamera)
+        .add_tag(Player)
         .add_tag(SkipsSerilization);
 
     Ok(())
