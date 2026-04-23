@@ -46,6 +46,9 @@ impl Scene {
     pub fn add_object(&mut self, object: Object) {
         self.objects.insert(self.objects.len() as u64, object);
     }
+    pub fn remove_object(&mut self, id: u64) {
+        self.objects.remove(&id);
+    }
 
     pub(crate) fn assign_object_ids(&mut self) {
         let mut index = 0;
@@ -72,12 +75,7 @@ impl Scene {
     }
 
     pub fn get_object_mut(&mut self, id: u64) -> Option<&mut Object> {
-        if let Some(object) = self.objects.get_mut(&id) {
-            return Some(object);
-        }
-
-        log_error!("Object: {} does not exist!", id.to_string());
-        return None;
+        return self.objects.get_mut(&id);
     }
 
     // ========== ========== Components ========== ==========

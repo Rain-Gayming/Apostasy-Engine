@@ -122,6 +122,7 @@ impl Core {
                             .expect("Failed to remesh chunks");
                     }
                     renderer.begin_frame(push_constants.clone()).unwrap();
+
                     if let Some(texture_atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
                         for object in world.get_objects_with_component::<VoxelChunkMesh>() {
                             let transform = object.get_component::<VoxelTransform>().unwrap();
@@ -134,6 +135,7 @@ impl Core {
                                 transform.position.y * 32,
                                 transform.position.z * 32,
                             ));
+
                             renderer
                                 .voxel_render(
                                     Box::new(voxel_mesh.clone()),

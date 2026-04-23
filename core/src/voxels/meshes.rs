@@ -2,12 +2,16 @@ use anyhow::Result;
 use apostasy_macros::{Component, Tag};
 use ash::vk::Buffer;
 use ash::vk::{self, CommandPool, DeviceMemory};
+use cgmath::Vector3;
+use hashbrown::HashMap;
 
+use crate::log;
 use crate::objects::world::World;
 use crate::rendering::shared::model::GpuMesh;
 use crate::rendering::shared::vertex::VertexDefinition;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::utils::flatten::flatten;
+use crate::voxels::VoxelTransform;
 use crate::voxels::chunk::Chunk;
 use crate::voxels::voxel::VoxelRegistry;
 
@@ -89,6 +93,61 @@ impl GpuMesh for VoxelChunkMesh {
     }
 }
 
+pub struct ChunkNeighbours<'a> {
+    pub px: Option<&'a Chunk>, // +X
+    pub nx: Option<&'a Chunk>, // -X
+    pub py: Option<&'a Chunk>, // +Y
+    pub ny: Option<&'a Chunk>, // -Y
+    pub pz: Option<&'a Chunk>, // +Z
+    pub nz: Option<&'a Chunk>, // -Z
+}
+
+impl<'a> ChunkNeighbours<'a> {
+    pub fn empty() -> Self {
+        Self {
+            px: None,
+            nx: None,
+            py: None,
+            ny: None,
+            pz: None,
+            nz: None,
+        }
+    }
+}
+fn sample_neighbour(
+    neighbours: &ChunkNeighbours,
+    face: usize,
+    u: usize,
+    v: usize,
+    lod: usize,
+) -> u16 {
+    let neighbour = match face {
+        0 => neighbours.px,
+        1 => neighbours.nx,
+        2 => neighbours.py,
+        3 => neighbours.ny,
+        4 => neighbours.pz,
+        5 => neighbours.nz,
+        _ => None,
+    };
+
+    let Some(neighbour) = neighbour else {
+        return 0;
+    };
+
+    let (x, y, z) = match face {
+        0 => (0usize, u, v), // entering +X neighbour at x=0
+        1 => (31, u, v),     // entering -X neighbour at x=31
+        2 => (u, 0, v),      // entering +Y neighbour at y=0
+        3 => (u, 31, v),     // entering -Y neighbour at y=31
+        4 => (u, v, 0),      // entering +Z neighbour at z=0
+        5 => (u, v, 31),     // entering -Z neighbour at z=31
+        _ => (0, 0, 0),
+    };
+
+    get_representative_voxel(neighbour, x, y, z, lod)
+}
+
 pub fn remesh_chunks(
     world: &mut World,
     ctx: &VulkanRenderingContext,
@@ -99,16 +158,59 @@ pub fn remesh_chunks(
         .expect("No VoxelRegistry resource")
         .clone();
 
-    for object in world.get_objects_with_tag_mut::<NeedsRemeshing>() {
+    let chunk_data: Vec<(u64, Vector3<i32>, Chunk)> = world
+        .get_objects_with_component::<Chunk>()
+        .iter()
+        .filter_map(|obj| {
+            let transform = obj.get_component::<VoxelTransform>().ok()?;
+            let chunk = obj.get_component::<Chunk>().ok()?;
+            Some((obj.id, transform.position, chunk.clone()))
+        })
+        .collect();
+
+    let chunk_map: HashMap<(i32, i32, i32), Chunk> = chunk_data
+        .iter()
+        .map(|(_, pos, chunk)| ((pos.x, pos.y, pos.z), chunk.clone()))
+        .collect();
+
+    // collect ids that need remeshing
+    let needs_remesh: Vec<u64> = world
+        .get_objects_with_tag_mut::<NeedsRemeshing>()
+        .iter()
+        .map(|o| o.id)
+        .collect();
+
+    for id in needs_remesh {
+        let Some(object) = world.get_object_mut(id) else {
+            log!("no object");
+            continue;
+        };
+
         let Ok(chunk) = object.get_component::<Chunk>() else {
+            log!("no chunk");
             continue;
         };
         let chunk = chunk.clone();
 
-        let (vertices, indices) = generate_mesh(&chunk, &registry);
+        let Ok(transform) = object.get_component::<VoxelTransform>() else {
+            log!("no transform");
+            continue;
+        };
+        let pos = transform.position;
+
+        // look up neighbours
+        let neighbours = ChunkNeighbours {
+            px: chunk_map.get(&(pos.x + 1, pos.y, pos.z)),
+            nx: chunk_map.get(&(pos.x - 1, pos.y, pos.z)),
+            py: chunk_map.get(&(pos.x, pos.y + 1, pos.z)),
+            ny: chunk_map.get(&(pos.x, pos.y - 1, pos.z)),
+            pz: chunk_map.get(&(pos.x, pos.y, pos.z + 1)),
+            nz: chunk_map.get(&(pos.x, pos.y, pos.z - 1)),
+        };
+
+        let (vertices, indices) = generate_mesh(&chunk, &registry, &neighbours);
 
         if vertices.is_empty() || indices.is_empty() {
-            println!("Empty mesh, skipping upload");
             object.remove_tag::<NeedsRemeshing>();
             continue;
         }
@@ -145,7 +247,12 @@ pub fn remesh_chunks(
 
     Ok(())
 }
-pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVertex>, Vec<u32>) {
+
+pub fn generate_mesh(
+    chunk: &Chunk,
+    registry: &VoxelRegistry,
+    neighbours: &ChunkNeighbours,
+) -> (Vec<VoxelVertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     let lod = chunk.lod as usize;
@@ -166,13 +273,13 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                 if id == 0 {
                     continue;
                 }
+
                 for face in 0..6usize {
                     let normal = FACE_NORMALS[face];
                     let nx = x as i32 + normal[0] * lod as i32;
                     let ny = y as i32 + normal[1] * lod as i32;
                     let nz = z as i32 + normal[2] * lod as i32;
 
-                    // check if neighbouring LOD cell has any solid voxel
                     let neighbour_solid = if nx >= 0
                         && nx < 32
                         && ny >= 0
@@ -183,11 +290,19 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
                         get_representative_voxel(chunk, nx as usize, ny as usize, nz as usize, lod)
                             != 0
                     } else {
-                        false
+                        let (u, v) = match face {
+                            0 | 1 => (y, z), // X face, u=y v=z
+                            2 | 3 => (x, z), // Y face, u=x v=z
+                            4 | 5 => (x, y), // Z face, u=x v=y
+                            _ => (0, 0),
+                        };
+                        sample_neighbour(neighbours, face, u, v, lod) != 0
                     };
+
                     if neighbour_solid {
                         continue;
                     }
+
                     let texture_id = registry.defs[id as usize]
                         .textures
                         .get_for_face(face as u8, x as u32, y as u32, z as u32);

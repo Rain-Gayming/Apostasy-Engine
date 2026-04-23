@@ -63,12 +63,22 @@ impl World {
 
     /// Adds a new Object to the world
     pub fn add_new_object(&mut self) -> &mut Object {
-        self.scene.add_new_object()
+        let object = self.scene.add_new_object();
+        self.scene.assign_object_ids();
+        let index = self.scene.objects.len() - 1;
+        self.scene.objects.get_mut(&(index as u64)).unwrap()
     }
 
-    /// Adds a Object to the world
+    /// Adds an Object to the world
     pub fn add_object(&mut self, object: Object) {
-        self.scene.add_object(object)
+        self.scene.add_object(object);
+        self.scene.assign_object_ids();
+    }
+
+    /// Removes an Object from the world
+    pub fn remove_object(&mut self, id: u64) {
+        self.scene.remove_object(id);
+        self.scene.assign_object_ids();
     }
 
     pub(crate) fn assign_object_ids(&mut self) {
