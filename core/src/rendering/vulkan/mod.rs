@@ -36,6 +36,7 @@ pub struct Ubo {
 }
 
 pub struct VulkanRenderer {
+    pub current_image_index: u32,
     pub in_flight_frames_count: usize,
     pub swapchain: VulkanSwapchain,
     pub frames: Vec<VulkanFrame>,
@@ -135,7 +136,7 @@ impl RenderingAPI for VulkanRenderer {
                     .push_constant_ranges(&[vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT)
                         .offset(0)
-                        .size(208)])
+                        .size(156)])
                     .set_layouts(&[descriptor_set_layout]),
                 None,
             )?;
@@ -212,6 +213,7 @@ impl RenderingAPI for VulkanRenderer {
             };
 
             let renderer = VulkanRenderer {
+                current_image_index: 0,
                 in_flight_frames_count,
                 current_frame: 0,
                 frames,
@@ -377,25 +379,17 @@ impl RenderingAPI for VulkanRenderer {
 
         Ok(())
     }
-
-    fn voxel_render(
-        &mut self,
-        mesh: Box<dyn GpuMesh>,
-        atlas: VoxelTextureAtlas,
-        push_constants: PushConstants,
-    ) -> anyhow::Result<()> {
+    fn begin_frame(&mut self, _push_constants: PushConstants) -> Result<()> {
         let frame = &self.frames[self.current_frame];
-
         unsafe {
             self.context
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
-
             self.context
                 .device
                 .reset_command_buffer(frame.command_buffer, CommandBufferResetFlags::empty())?;
 
-            let image_index = self
+            self.current_image_index = self
                 .swapchain
                 .acquire_next_image(frame.image_available_semaphore)?;
 
@@ -404,10 +398,9 @@ impl RenderingAPI for VulkanRenderer {
                 &ash::vk::CommandBufferBeginInfo::default(),
             )?;
 
-            // transition image layout to be used for color attachment
             self.context.transition_image_layout(
                 frame.command_buffer,
-                self.swapchain.images[image_index as usize],
+                self.swapchain.images[self.current_image_index as usize],
                 self.image_layouts.undefined,
                 self.image_layouts.renderable,
                 vk::ImageAspectFlags::COLOR,
@@ -422,7 +415,7 @@ impl RenderingAPI for VulkanRenderer {
 
             self.context.begin_rendering(
                 frame.command_buffer,
-                self.swapchain.views[image_index as usize],
+                self.swapchain.views[self.current_image_index as usize],
                 self.swapchain.depth_image_view,
                 ClearColorValue {
                     float32: [0.0, 0.2, 0.8, 1.0],
@@ -442,7 +435,6 @@ impl RenderingAPI for VulkanRenderer {
                     max_depth: 1.0,
                 }],
             );
-
             self.context.device.cmd_set_scissor(
                 frame.command_buffer,
                 0,
@@ -451,84 +443,18 @@ impl RenderingAPI for VulkanRenderer {
                     extent: self.swapchain.extent,
                 }],
             );
-            self.context.device.cmd_bind_pipeline(
-                frame.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.voxel_pipeline,
-            );
+        }
+        Ok(())
+    }
 
-            // Push constants
-            let data = push_constants.return_renderable();
-            self.context.device.cmd_push_constants(
-                frame.command_buffer,
-                self.voxel_pipeline_layout,
-                vk::ShaderStageFlags::VERTEX,
-                0,
-                &data,
-            );
-
-            self.context.device.cmd_bind_descriptor_sets(
-                frame.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.voxel_pipeline_layout,
-                0,
-                &[atlas.descriptor_set],
-                &[],
-            );
-
-            self.context.device.cmd_bind_vertex_buffers(
-                frame.command_buffer,
-                0,
-                &[mesh.get_vertex_buffer()],
-                &[0],
-            );
-            self.context.device.cmd_bind_index_buffer(
-                frame.command_buffer,
-                mesh.get_index_buffer(),
-                0,
-                vk::IndexType::UINT32,
-            );
-            self.context.device.cmd_draw_indexed(
-                frame.command_buffer,
-                mesh.get_index_count(),
-                1,
-                0,
-                0,
-                0,
-            );
-
-            self.context.device.cmd_bind_pipeline(
-                frame.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.voxel_wireframe_pipeline,
-            );
-
-            self.context.device.cmd_bind_vertex_buffers(
-                frame.command_buffer,
-                0,
-                &[mesh.get_vertex_buffer()],
-                &[0],
-            );
-            self.context.device.cmd_bind_index_buffer(
-                frame.command_buffer,
-                mesh.get_index_buffer(),
-                0,
-                vk::IndexType::UINT32,
-            );
-            self.context.device.cmd_draw_indexed(
-                frame.command_buffer,
-                mesh.get_index_count(),
-                1,
-                0,
-                0,
-                0,
-            );
-
+    fn end_frame(&mut self) -> Result<()> {
+        let frame = &self.frames[self.current_frame];
+        unsafe {
             self.context.device.cmd_end_rendering(frame.command_buffer);
 
             self.context.transition_image_layout(
                 frame.command_buffer,
-                self.swapchain.images[image_index as usize],
+                self.swapchain.images[self.current_image_index as usize],
                 self.image_layouts.renderable,
                 self.image_layouts.present,
                 vk::ImageAspectFlags::COLOR,
@@ -549,12 +475,63 @@ impl RenderingAPI for VulkanRenderer {
             )?;
 
             self.swapchain
-                .present_image(image_index, frame.render_finished_semaphore)?;
+                .present_image(self.current_image_index, frame.render_finished_semaphore)?;
         }
-
         Ok(())
     }
 
+    fn voxel_render(
+        &mut self,
+        mesh: Box<dyn GpuMesh>,
+        atlas: VoxelTextureAtlas,
+        push_constants: PushConstants,
+    ) -> Result<()> {
+        let frame = &self.frames[self.current_frame];
+        let data = push_constants.return_renderable();
+        unsafe {
+            self.context.device.cmd_bind_pipeline(
+                frame.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.voxel_pipeline,
+            );
+            self.context.device.cmd_push_constants(
+                frame.command_buffer,
+                self.voxel_pipeline_layout,
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                0,
+                &data,
+            );
+            self.context.device.cmd_bind_descriptor_sets(
+                frame.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.voxel_pipeline_layout,
+                0,
+                &[atlas.descriptor_set],
+                &[],
+            );
+            self.context.device.cmd_bind_vertex_buffers(
+                frame.command_buffer,
+                0,
+                &[mesh.get_vertex_buffer()],
+                &[0],
+            );
+            self.context.device.cmd_bind_index_buffer(
+                frame.command_buffer,
+                mesh.get_index_buffer(),
+                0,
+                vk::IndexType::UINT32,
+            );
+            self.context.device.cmd_draw_indexed(
+                frame.command_buffer,
+                mesh.get_index_count(),
+                1,
+                0,
+                0,
+                0,
+            );
+        }
+        Ok(())
+    }
     fn update_command_buffer(&mut self) {}
 
     fn recreate_swapchain(&mut self) {

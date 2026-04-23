@@ -145,101 +145,69 @@ pub fn remesh_chunks(
 
     Ok(())
 }
-
 pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVertex>, Vec<u32>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
+    let lod = chunk.lod as usize;
 
     const FACE_NORMALS: [[i32; 3]; 6] = [
-        [1, 0, 0],  // +X
-        [-1, 0, 0], // -X
-        [0, 1, 0],  // +Y
-        [0, -1, 0], // -Y
-        [0, 0, 1],  // +Z
-        [0, 0, -1], // -Z
+        [1, 0, 0],
+        [-1, 0, 0],
+        [0, 1, 0],
+        [0, -1, 0],
+        [0, 0, 1],
+        [0, 0, -1],
     ];
 
-    for z in 0..32usize {
-        for y in 0..32usize {
-            for x in 0..32usize {
-                let id = chunk.voxels[flatten(x as u32, y as u32, z as u32, 32)];
+    for z in (0..32).step_by(lod) {
+        for y in (0..32).step_by(lod) {
+            for x in (0..32).step_by(lod) {
+                let id = get_representative_voxel(chunk, x, y, z, lod);
                 if id == 0 {
                     continue;
                 }
-
                 for face in 0..6usize {
                     let normal = FACE_NORMALS[face];
-                    let nx = x as i32 + normal[0];
-                    let ny = y as i32 + normal[1];
-                    let nz = z as i32 + normal[2];
+                    let nx = x as i32 + normal[0] * lod as i32;
+                    let ny = y as i32 + normal[1] * lod as i32;
+                    let nz = z as i32 + normal[2] * lod as i32;
 
-                    // check neighbour
-                    let neighbour_solid =
-                        if nx >= 0 && nx < 32 && ny >= 0 && ny < 32 && nz >= 0 && nz < 32 {
-                            let nid = chunk.voxels[flatten(nx as u32, ny as u32, nz as u32, 32)];
-                            nid != 0
-                        } else {
-                            false
-                        };
-
+                    // check if neighbouring LOD cell has any solid voxel
+                    let neighbour_solid = if nx >= 0
+                        && nx < 32
+                        && ny >= 0
+                        && ny < 32
+                        && nz >= 0
+                        && nz < 32
+                    {
+                        get_representative_voxel(chunk, nx as usize, ny as usize, nz as usize, lod)
+                            != 0
+                    } else {
+                        false
+                    };
                     if neighbour_solid {
                         continue;
                     }
-
                     let texture_id = registry.defs[id as usize]
                         .textures
                         .get_for_face(face as u8, x as u32, y as u32, z as u32);
 
-                    // build the single voxel quad for this face
                     let base = vertices.len() as u32;
+                    let corners = face_corners(x, y, z, face, lod);
 
-                    // get the 4 corners of this face
-                    let corners = face_corners(x, y, z, face);
-
-                    vertices.push(VoxelVertex::pack(
-                        corners[0][0],
-                        corners[0][1],
-                        corners[0][2],
-                        face as u8,
-                        0,
-                        0,
-                        texture_id as u16,
-                        1,
-                        1,
-                    ));
-                    vertices.push(VoxelVertex::pack(
-                        corners[1][0],
-                        corners[1][1],
-                        corners[1][2],
-                        face as u8,
-                        1,
-                        0,
-                        texture_id as u16,
-                        1,
-                        1,
-                    ));
-                    vertices.push(VoxelVertex::pack(
-                        corners[2][0],
-                        corners[2][1],
-                        corners[2][2],
-                        face as u8,
-                        1,
-                        1,
-                        texture_id as u16,
-                        1,
-                        1,
-                    ));
-                    vertices.push(VoxelVertex::pack(
-                        corners[3][0],
-                        corners[3][1],
-                        corners[3][2],
-                        face as u8,
-                        0,
-                        1,
-                        texture_id as u16,
-                        1,
-                        1,
-                    ));
+                    for (i, &(u, v)) in [(0u8, 0u8), (1, 0), (1, 1), (0, 1)].iter().enumerate() {
+                        vertices.push(VoxelVertex::pack(
+                            corners[i][0],
+                            corners[i][1],
+                            corners[i][2],
+                            face as u8,
+                            u,
+                            v,
+                            texture_id as u16,
+                            1,
+                            1,
+                        ));
+                    }
 
                     indices.extend_from_slice(&[
                         base,
@@ -257,46 +225,74 @@ pub fn generate_mesh(chunk: &Chunk, registry: &VoxelRegistry) -> (Vec<VoxelVerte
     (vertices, indices)
 }
 
-fn face_corners(x: usize, y: usize, z: usize, face: usize) -> [[u8; 3]; 4] {
+fn get_representative_voxel(chunk: &Chunk, x: usize, y: usize, z: usize, lod: usize) -> u16 {
+    for dz in 0..lod {
+        for dy in 0..lod {
+            for dx in 0..lod {
+                let sx = x + dx;
+                let sy = y + dy;
+                let sz = z + dz;
+
+                if sx >= 32 || sy >= 32 || sz >= 32 {
+                    continue;
+                }
+                let id = chunk.voxels[flatten(sx as u32, sy as u32, sz as u32, 32)];
+                if id != 0 {
+                    return id;
+                }
+            }
+        }
+    }
+    0
+}
+fn face_corners(x: usize, y: usize, z: usize, face: usize, lod: usize) -> [[u8; 3]; 4] {
     let x = x as u8;
     let y = y as u8;
     let z = z as u8;
+    let l = lod as u8;
 
     match face {
         0 => [
             // +X
-            [x + 1, y, z],
-            [x + 1, y + 1, z],
-            [x + 1, y + 1, z + 1],
-            [x + 1, y, z + 1],
+            [x + l, y, z],
+            [x + l, y + l, z],
+            [x + l, y + l, z + l],
+            [x + l, y, z + l],
         ],
         1 => [
             // -X
-            [x, y, z + 1],
-            [x, y + 1, z + 1],
-            [x, y + 1, z],
+            [x, y, z + l],
+            [x, y + l, z + l],
+            [x, y + l, z],
             [x, y, z],
         ],
         2 => [
-            [x, y + 1, z + 1],
-            [x + 1, y + 1, z + 1],
-            [x + 1, y + 1, z],
-            [x, y + 1, z],
+            // +Y
+            [x, y + l, z + l],
+            [x + l, y + l, z + l],
+            [x + l, y + l, z],
+            [x, y + l, z],
         ],
-        3 => [[x, y, z], [x + 1, y, z], [x + 1, y, z + 1], [x, y, z + 1]],
+        3 => [
+            // -Y
+            [x, y, z],
+            [x + l, y, z],
+            [x + l, y, z + l],
+            [x, y, z + l],
+        ],
         4 => [
             // +Z
-            [x + 1, y, z + 1],
-            [x + 1, y + 1, z + 1],
-            [x, y + 1, z + 1],
-            [x, y, z + 1],
+            [x + l, y, z + l],
+            [x + l, y + l, z + l],
+            [x, y + l, z + l],
+            [x, y, z + l],
         ],
         _ => [
             // -Z
             [x, y, z],
-            [x, y + 1, z],
-            [x + 1, y + 1, z],
-            [x + 1, y, z],
+            [x, y + l, z],
+            [x + l, y + l, z],
+            [x + l, y, z],
         ],
     }
 }

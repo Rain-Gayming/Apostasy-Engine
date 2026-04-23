@@ -41,6 +41,9 @@ pub struct RenderingInfo {
 pub trait RenderingAPI {
     fn resize(&mut self) -> Result<()>;
     fn render(&mut self, mesh: Box<dyn GpuMesh>, push_constants: PushConstants) -> Result<()>;
+    fn begin_frame(&mut self, push_constants: PushConstants) -> Result<()>;
+    fn end_frame(&mut self) -> Result<()>;
+
     fn voxel_render(
         &mut self,
         mesh: Box<dyn GpuMesh>,

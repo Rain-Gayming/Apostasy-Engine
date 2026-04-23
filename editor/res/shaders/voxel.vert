@@ -12,12 +12,14 @@ layout(location = 4) out flat uint fragQuadW;
 layout(location = 5) out flat uint fragQuadH;
 
 layout(push_constant) uniform Push {
-    mat4 proj_view;   // 64 bytes
-    mat4 model;       // 64 bytes
-    mat4 chunk_pos;   // 64 bytes 
-    uint atlas_tiles; // 4 bytes
+    mat4 proj_view;   // offset 0,   64 bytes
+    mat4 model;       // offset 64,  64 bytes
+    uint atlas_tiles; // offset 128, 4 bytes
+    uint _pad0;       // offset 132, 4 bytes padding
+    uint _pad1;       // offset 136, 4 bytes padding  
+    uint _pad2;       // offset 140, 4 bytes padding
+    ivec3 world_pos;  // offset 144, 12 bytes
 } pc;
-
 
 void main() {
     uint x    = (data_lo >> 0u)  & 0x3Fu;
@@ -38,5 +40,8 @@ void main() {
     fragQuadW = quad_w;
     fragQuadH = quad_h;
 
-    gl_Position = pc.proj_view * vec4(float(x), float(y), float(z), 1.0);
+    vec3 world_offset = vec3(pc.world_pos);
+    gl_Position = pc.proj_view * vec4(float(x) + world_offset.x, 
+                                       float(y) + world_offset.y, 
+                                       float(z) + world_offset.z, 1.0);
 }

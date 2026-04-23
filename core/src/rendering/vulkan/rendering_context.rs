@@ -775,7 +775,7 @@ impl VulkanRenderingContext {
             self.device.update_descriptor_sets(
                 &[vk::WriteDescriptorSet::default()
                     .dst_set(set)
-                    .dst_binding(1)
+                    .dst_binding(0)
                     .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
                     .image_info(&[image_info])],
                 &[],

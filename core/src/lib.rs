@@ -8,6 +8,8 @@ pub use apostasy_macros::update;
 pub use anyhow;
 use ash::vk;
 pub use cgmath;
+use cgmath::Vector3;
+use gltf::binary::ChunkType;
 pub use winit;
 use winit::event::DeviceEvent;
 use winit::event::DeviceId;
@@ -25,9 +27,11 @@ use winit::{
 
 use crate::assets::asset_manager::AssetManager;
 use crate::assets::loaders::voxel_loader::VoxelLoader;
+use crate::objects::components::transform::Transform;
 use crate::objects::resources::input_manager::InputManager;
 use crate::packages::Packages;
 use crate::rendering::components::camera::Camera;
+use crate::voxels::VoxelTransform;
 use crate::voxels::meshes::VoxelChunkMesh;
 use crate::voxels::meshes::remesh_chunks;
 use crate::voxels::texture_atlas::AtlasBuilder;
@@ -159,27 +163,35 @@ impl Core {
                         remesh_chunks(&mut world, &context, command_pool)
                             .expect("Failed to remesh chunks");
                     }
-
+                    renderer.begin_frame(push_constants.clone()).unwrap();
                     if let Some(texture_atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
                         for object in world.get_objects_with_component::<VoxelChunkMesh>() {
+                            let transform = object.get_component::<VoxelTransform>().unwrap();
                             let voxel_mesh = object.get_component::<VoxelChunkMesh>().unwrap();
 
+                            let mut chunk_push = push_constants.clone();
+
+                            chunk_push.set_position(Vector3::new(
+                                transform.position.x * 32,
+                                transform.position.y * 32,
+                                transform.position.z * 32,
+                            ));
                             renderer
                                 .voxel_render(
                                     Box::new(voxel_mesh.clone()),
                                     texture_atlas.clone(),
-                                    push_constants.clone(),
+                                    chunk_push,
                                 )
                                 .unwrap();
                         }
                     }
 
+                    renderer.end_frame().unwrap();
                     world.late_update();
                 }
 
                 _ => {}
             }
-
             let mut world = self.world.lock().unwrap();
             let input_manager = world.get_resource_mut::<InputManager>().unwrap();
             input_manager.handle_input_event(event.clone());
