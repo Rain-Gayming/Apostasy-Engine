@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use hashbrown::HashMap;
+use slotmap::{DefaultKey, SlotMap};
 
 use crate::{
     log_error,
@@ -7,14 +7,15 @@ use crate::{
     rendering::components::model_renderer::ModelRenderer,
 };
 
+pub type ObjectId = DefaultKey;
 pub struct Scene {
-    pub(crate) objects: HashMap<u64, Object>,
+    pub(crate) objects: SlotMap<ObjectId, Object>,
 }
 
 impl Default for Scene {
     fn default() -> Self {
         let mut scene = Scene {
-            objects: HashMap::new(),
+            objects: SlotMap::new(),
         };
 
         scene.add_default_objects();
@@ -32,124 +33,100 @@ impl Scene {
             .clone();
         self.add_object(test_model);
     }
-
-    /// Adds a new Object to the world
-    pub fn add_new_object(&mut self) -> &mut Object {
-        let index = self.objects.len() as u64;
-        self.objects.insert(index, Object::default());
-
-        self.assign_object_ids();
-
-        self.objects.get_mut(&index).unwrap()
+    /// Adds a new default Object and returns its ID
+    pub fn add_new_object(&mut self) -> ObjectId {
+        self.objects.insert(Object::default())
     }
 
-    pub fn add_object(&mut self, object: Object) {
-        self.objects.insert(self.objects.len() as u64, object);
-    }
-    pub fn remove_object(&mut self, id: u64) {
-        self.objects.remove(&id);
+    /// Adds an Object and returns its ID
+    pub fn add_object(&mut self, object: Object) -> ObjectId {
+        self.objects.insert(object)
     }
 
-    pub(crate) fn assign_object_ids(&mut self) {
-        let mut index = 0;
-
-        for object in self.objects.iter_mut() {
-            object.1.id = index;
-            index += 1;
+    /// Removes an Object by ID
+    pub fn remove_object(&mut self, id: ObjectId) {
+        if let Some(object) = self.objects.get(id) {
+            self.objects.remove(id);
+        } else {
+            log_error!("Object does not exist!");
         }
     }
 
     pub fn debug_objects(&self) {
-        for object in self.objects.iter() {
-            println!("{}: {}", object.1.name, object.1.id);
+        for (id, object) in self.objects.iter() {
+            println!("{}: {:?}", object.name, id);
         }
     }
 
-    pub fn get_object(&self, id: u64) -> Option<&Object> {
-        if let Some(object) = self.objects.get(&id) {
+    pub fn get_object(&self, id: ObjectId) -> Option<&Object> {
+        if let Some(object) = self.objects.get(id) {
             return Some(object);
         }
-
-        log_error!("Object: {} does not exist!", id.to_string());
-        return None;
+        log_error!("Object does not exist!");
+        None
     }
 
-    pub fn get_object_mut(&mut self, id: u64) -> Option<&mut Object> {
-        return self.objects.get_mut(&id);
+    pub fn get_object_mut(&mut self, id: ObjectId) -> Option<&mut Object> {
+        self.objects.get_mut(id)
     }
 
     // ========== ========== Components ========== ==========
     pub fn get_objects_with_component<T: Component + 'static>(&self) -> Vec<&Object> {
-        let mut objects: Vec<&Object> = Vec::new();
-
-        self.objects.iter().for_each(|(_id, object)| {
-            if object.has_component::<T>() {
-                objects.push(&object);
-            }
-        });
-
-        objects
+        self.objects
+            .values()
+            .filter(|object| object.has_component::<T>())
+            .collect()
     }
 
     pub fn get_objects_with_component_mut<T: Component + 'static>(&mut self) -> Vec<&mut Object> {
-        let mut objects: Vec<&mut Object> = Vec::new();
+        self.objects
+            .values_mut()
+            .filter(|object| object.has_component::<T>())
+            .collect()
+    }
 
-        self.objects.iter_mut().for_each(|(_id, object)| {
-            if object.has_component::<T>() {
-                objects.push(object);
-            }
-        });
-
-        objects
+    pub fn get_objects_with_component_with_ids<T: Component + 'static>(
+        &self,
+    ) -> Vec<(ObjectId, &Object)> {
+        self.objects
+            .iter()
+            .filter(|(_id, object)| object.has_component::<T>())
+            .map(|(id, object)| (id, object))
+            .collect()
     }
 
     // ========== ========== Tags ========== ==========
-
     pub fn get_object_with_tag<T: Tag + 'static>(&self) -> Result<&Object> {
         self.objects
-            .iter()
-            .find(|x| {
-                x.1.tags
-                    .iter()
-                    .any(|tag| tag.type_name() == T::type_name_static())
-            })
-            .map(|x| x.1)
+            .values()
+            .find(|object| object.has_tag::<T>())
             .ok_or(anyhow!("No objects with the tag"))
     }
 
     pub fn get_object_with_tag_mut<T: Tag + 'static>(&mut self) -> Result<&mut Object> {
         self.objects
-            .iter_mut()
-            .find(|x| {
-                x.1.tags
-                    .iter()
-                    .any(|tag| tag.type_name() == T::type_name_static())
-            })
-            .map(|x| x.1)
+            .values_mut()
+            .find(|object| object.has_tag::<T>())
             .ok_or(anyhow!("No objects with the tag"))
     }
 
     pub fn get_objects_with_tag<T: Tag + 'static>(&self) -> Vec<&Object> {
-        let mut objects: Vec<&Object> = Vec::new();
-
-        self.objects.iter().for_each(|(_id, object)| {
-            if object.has_tag::<T>() {
-                objects.push(&object);
-            }
-        });
-
-        objects
+        self.objects
+            .values()
+            .filter(|object| object.has_tag::<T>())
+            .collect()
     }
 
     pub fn get_objects_with_tag_mut<T: Tag + 'static>(&mut self) -> Vec<&mut Object> {
-        let mut objects: Vec<&mut Object> = Vec::new();
-
-        self.objects.iter_mut().for_each(|(_id, object)| {
-            if object.has_tag::<T>() {
-                objects.push(object);
-            }
-        });
-
-        objects
+        self.objects
+            .values_mut()
+            .filter(|object| object.has_tag::<T>())
+            .collect()
+    }
+    pub fn get_objects_with_tag_with_ids<T: Tag + 'static>(&self) -> Vec<(ObjectId, &Object)> {
+        self.objects
+            .iter()
+            .filter(|(_id, object)| object.has_tag::<T>())
+            .collect()
     }
 }

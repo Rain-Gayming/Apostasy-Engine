@@ -2,27 +2,30 @@ use apostasy_core::{
     anyhow::Result,
     cgmath::num_traits::clamp,
     objects::{
+        Object,
         components::transform::Transform,
         resources::input_manager::InputManager,
         tags::{Player, skips_serilization::SkipsSerilization},
         world::World,
     },
     physics::velocity::Velocity,
-    rendering::components::camera::{Camera, EditorCamera},
+    rendering::components::camera::{ActiveCamera, Camera, EditorCamera},
     start, update,
 };
 
 #[start]
 pub fn start(world: &mut World) -> Result<()> {
-    world
-        .add_new_object()
+    let cam = Object::new()
         .add_component(Velocity::default())
         .add_component(Camera::default())
         .add_component(Transform::default())
         .add_tag(EditorCamera)
+        .add_tag(ActiveCamera)
         .add_tag(Player)
-        .add_tag(SkipsSerilization);
+        .add_tag(SkipsSerilization)
+        .set_name("Camera".to_string());
 
+    world.add_object(cam);
     Ok(())
 }
 
@@ -53,9 +56,9 @@ pub fn update(world: &mut World) -> Result<()> {
     velocity.linear_velocity = rotation * direction / 15.0;
 
     let transform = camera.get_component_mut::<Transform>()?;
-    transform.local_euler_angles.y -= mouse_delta.0 as f32;
+    transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
     transform.local_euler_angles.x = clamp(
-        transform.local_euler_angles.x - mouse_delta.1 as f32,
+        transform.local_euler_angles.x - mouse_delta.1 as f32 * 4.0,
         -90.0,
         90.0,
     );

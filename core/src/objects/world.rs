@@ -4,8 +4,8 @@ use crate::objects::{
     Object,
     component::Component,
     resource::{Resource, ResourceMap},
-    scene::Scene,
-    systems::{FixedUpdateSystem, LateUpdateSystem, StartSystem, UpdateSystem},
+    scene::{ObjectId, Scene},
+    systems::{FixedUpdateSystem, HasPriority, LateUpdateSystem, StartSystem, UpdateSystem},
     tag::Tag,
 };
 
@@ -13,12 +13,30 @@ use crate::objects::{
 pub struct World {
     pub(crate) scene: Scene,
     pub(crate) resources: ResourceMap,
+
+    update_systems: Vec<&'static UpdateSystem>,
+    fixed_update_systems: Vec<&'static FixedUpdateSystem>,
+    late_update_systems: Vec<&'static LateUpdateSystem>,
 }
 
 #[allow(unused)]
 impl World {
     // ========== ========== Systems ========== ==========
 
+    /// Collects and caches all systems
+    pub fn build_systems(&mut self) {
+        self.update_systems = Self::collect_sorted(inventory::iter::<UpdateSystem>());
+        self.fixed_update_systems = Self::collect_sorted(inventory::iter::<FixedUpdateSystem>());
+        self.late_update_systems = Self::collect_sorted(inventory::iter::<LateUpdateSystem>());
+    }
+
+    /// Collects and sorts the Iterator
+    fn collect_sorted<T: HasPriority>(iter: impl Iterator<Item = &'static T>) -> Vec<&'static T> {
+        let mut systems: Vec<_> = iter.collect();
+        systems.sort_by(|a, b| b.priority().cmp(&a.priority()));
+
+        systems
+    }
     /// Runs all start systems
     pub(crate) fn start(&mut self) {
         let mut systems = inventory::iter::<StartSystem>().collect::<Vec<_>>();
@@ -31,70 +49,62 @@ impl World {
 
     /// Runs all update systems
     pub(crate) fn update(&mut self) {
-        let mut systems = inventory::iter::<UpdateSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
+        let systems = std::mem::take(&mut self.update_systems);
+        for system in &systems {
             (system.func)(self);
         }
+        self.update_systems = systems;
     }
 
     /// Runs all fixed update systems
     pub(crate) fn fixed_update(&mut self, delta: f32) {
-        let mut systems = inventory::iter::<FixedUpdateSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
+        let systems = std::mem::take(&mut self.fixed_update_systems);
+        for system in &systems {
             (system.func)(self, delta);
         }
+        self.fixed_update_systems = systems;
     }
 
     /// Runs all late update systems
     pub(crate) fn late_update(&mut self) {
-        let mut systems = inventory::iter::<LateUpdateSystem>().collect::<Vec<_>>();
-        systems.sort_by(|a, b| a.priority.cmp(&b.priority));
-        systems.reverse();
-        for system in systems.iter_mut() {
+        let systems = std::mem::take(&mut self.late_update_systems);
+        for system in &systems {
             (system.func)(self);
         }
-    }
-
-    // ========== ========== Objects ========== ==========
+        self.late_update_systems = systems;
+    } // ========== ========== Objects ========== ==========
 
     /// Adds a new Object to the world
-    pub fn add_new_object(&mut self) -> &mut Object {
-        let object = self.scene.add_new_object();
-        self.scene.assign_object_ids();
-        let index = self.scene.objects.len() - 1;
-        self.scene.objects.get_mut(&(index as u64)).unwrap()
+    pub fn add_new_object(&mut self) -> ObjectId {
+        self.scene.add_new_object()
     }
 
     /// Adds an Object to the world
     pub fn add_object(&mut self, object: Object) {
         self.scene.add_object(object);
-        self.scene.assign_object_ids();
     }
 
     /// Removes an Object from the world
-    pub fn remove_object(&mut self, id: u64) {
+    pub fn remove_object(&mut self, id: ObjectId) {
         self.scene.remove_object(id);
-        self.scene.assign_object_ids();
-    }
-
-    pub(crate) fn assign_object_ids(&mut self) {
-        self.scene.assign_object_ids();
     }
 
     pub fn debug_objects(&self) {
         self.scene.debug_objects();
     }
 
-    pub fn get_object(&self, id: u64) -> Option<&Object> {
+    pub fn get_object(&self, id: ObjectId) -> Option<&Object> {
         self.scene.get_object(id)
     }
 
-    pub fn get_object_mut(&mut self, id: u64) -> Option<&mut Object> {
+    pub fn get_object_mut(&mut self, id: ObjectId) -> Option<&mut Object> {
         self.scene.get_object_mut(id)
+    }
+
+    pub fn get_objects_with_component_with_ids<T: Component + 'static>(
+        &self,
+    ) -> Vec<(ObjectId, &Object)> {
+        self.scene.get_objects_with_component_with_ids::<T>()
     }
 
     pub fn get_objects_with_component<T: Component + 'static>(&self) -> Vec<&Object> {
@@ -119,6 +129,9 @@ impl World {
 
     pub fn get_objects_with_tag_mut<T: Tag + 'static>(&mut self) -> Vec<&mut Object> {
         self.scene.get_objects_with_tag_mut::<T>()
+    }
+    pub fn get_objects_with_tag_with_ids<T: Tag + 'static>(&self) -> Vec<(ObjectId, &Object)> {
+        self.scene.get_objects_with_tag_with_ids::<T>()
     }
 
     // ========== ========== Resources ========== ==========

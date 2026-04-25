@@ -3,7 +3,7 @@ use std::any::TypeId;
 use anyhow::{Error, Result};
 
 use crate::{
-    log_warn,
+    log, log_warn,
     objects::{
         component::{Component, get_component_registration},
         tag::Tag,
@@ -56,10 +56,10 @@ impl Object {
         self
     }
 
-    pub fn set_name(&mut self, name: String) -> &mut Self {
+    pub fn set_name(&mut self, name: String) -> Self {
         self.name = name;
 
-        self
+        self.clone()
     }
 
     // ========== ========== Tags ========== ==========
@@ -81,13 +81,13 @@ impl Object {
     }
 
     /// Adds a tag of type T to the node
-    pub fn add_tag<T: Tag + 'static>(&mut self, tag: T) -> &mut Self {
+    pub fn add_tag<T: Tag + 'static>(&mut self, tag: T) -> Self {
         if self.get_tag::<T>().is_ok() {
             log_warn!("You can only have one of any tag on an entity");
-            return self;
+            return self.clone();
         } else {
             self.tags.push(Box::new(tag));
-            return self;
+            return self.clone();
         }
     }
 
@@ -111,7 +111,16 @@ impl Object {
             .iter()
             .any(|component| component.as_any().downcast_ref::<T>().is_some())
     }
+    pub fn remove_component<T: Component + 'static>(&mut self) {
+        let index = self
+            .components
+            .iter()
+            .position(|c| c.as_any().type_id() == TypeId::of::<T>());
 
+        if let Some(i) = index {
+            self.components.remove(i);
+        }
+    }
     /// Gets a component of type T from the node
     pub fn get_component<T: Component + 'static>(&self) -> Result<&T> {
         let msg = format!("No Component of type: {}", T::name());
@@ -123,21 +132,22 @@ impl Object {
     }
 
     pub fn get_component_mut<T: Component + 'static>(&mut self) -> Result<&mut T> {
+        let msg = format!("No Component of type: {}", T::name());
         self.components
             .iter_mut()
             .find(|c| c.as_any().type_id() == TypeId::of::<T>())
             .and_then(|c| c.as_any_mut().downcast_mut())
-            .ok_or(Error::msg("No Comopnent of type"))
+            .ok_or(Error::msg(msg))
     }
 
     /// Adds a component of type T to the node
-    pub fn add_component<T: Component + 'static>(&mut self, component: T) -> &mut Self {
+    pub fn add_component<T: Component + 'static>(&mut self, component: T) -> Self {
         if self.get_component::<T>().is_ok() {
             log_warn!("You can only have one of any component on an entity");
-            return self;
+            return self.clone();
         } else {
             self.components.push(Box::new(component));
-            return self;
+            return self.clone();
         }
     }
 

@@ -483,8 +483,8 @@ impl RenderingAPI for VulkanRenderer {
     fn voxel_render(
         &mut self,
         mesh: Box<dyn GpuMesh>,
-        atlas: VoxelTextureAtlas,
-        push_constants: PushConstants,
+        atlas: &VoxelTextureAtlas,
+        push_constants: &PushConstants,
     ) -> Result<()> {
         let frame = &self.frames[self.current_frame];
         let data = push_constants.return_renderable();

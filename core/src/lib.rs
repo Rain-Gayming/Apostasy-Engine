@@ -25,8 +25,10 @@ use crate::assets::asset_manager::AssetManager;
 use crate::objects::resources::input_manager::InputManager;
 use crate::packages::Packages;
 use crate::packages::add_package;
+use crate::rendering::components::camera::ActiveCamera;
 use crate::rendering::components::camera::Camera;
 use crate::voxels::VoxelTransform;
+use crate::voxels::meshes::NeedsRemeshing;
 use crate::voxels::meshes::VoxelChunkMesh;
 use crate::voxels::meshes::remesh_chunks;
 use crate::voxels::texture_atlas::PendingAtlas;
@@ -107,19 +109,21 @@ impl Core {
                         log_error!("No renderer found!");
                         return;
                     };
-                    let &camera = world
-                        .get_objects_with_component::<Camera>()
-                        .first()
-                        .unwrap();
 
+                    let camera = world.get_object_with_tag::<ActiveCamera>().unwrap();
                     let aspect = renderer.get_aspect();
 
                     let mut push_constants = push_constants;
                     push_constants.set_camera_constants(camera.to_owned(), aspect);
 
-                    if let Ok(command_pool) = renderer.get_command_pool() {
-                        remesh_chunks(&mut world, &context, command_pool)
-                            .expect("Failed to remesh chunks");
+                    if !world
+                        .get_objects_with_tag_with_ids::<NeedsRemeshing>()
+                        .is_empty()
+                    {
+                        if let Ok(command_pool) = renderer.get_command_pool() {
+                            remesh_chunks(&mut world, &context, command_pool)
+                                .expect("Failed to remesh chunks");
+                        }
                     }
                     renderer.begin_frame(push_constants.clone()).unwrap();
 
@@ -139,8 +143,8 @@ impl Core {
                             renderer
                                 .voxel_render(
                                     Box::new(voxel_mesh.clone()),
-                                    texture_atlas.clone(),
-                                    chunk_push,
+                                    &texture_atlas,
+                                    &chunk_push,
                                 )
                                 .unwrap();
                         }
@@ -247,6 +251,7 @@ pub fn init_core(rendering_api: RenderingBackend, packages: Vec<Packages>) -> Re
     {
         let mut world = core.world.lock().unwrap();
 
+        world.build_systems();
         world.start();
     }
 

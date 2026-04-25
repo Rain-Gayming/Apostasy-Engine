@@ -61,3 +61,6 @@ pub struct GameCamera;
 
 #[derive(Tag, Clone)]
 pub struct EditorCamera;
+
+#[derive(Tag, Clone)]
+pub struct ActiveCamera;

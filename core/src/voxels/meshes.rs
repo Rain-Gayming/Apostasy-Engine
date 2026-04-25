@@ -6,6 +6,7 @@ use cgmath::Vector3;
 use hashbrown::HashMap;
 
 use crate::log;
+use crate::objects::scene::ObjectId;
 use crate::objects::world::World;
 use crate::rendering::shared::model::GpuMesh;
 use crate::rendering::shared::vertex::VertexDefinition;
@@ -158,33 +159,31 @@ pub fn remesh_chunks(
         .expect("No VoxelRegistry resource")
         .clone();
 
-    let chunk_data: Vec<(u64, Vector3<i32>, Chunk)> = world
+    let chunk_map: HashMap<(i32, i32, i32), Chunk> = world
         .get_objects_with_component::<Chunk>()
         .iter()
         .filter_map(|obj| {
-            let transform = obj.get_component::<VoxelTransform>().ok()?;
-            let chunk = obj.get_component::<Chunk>().ok()?;
-            Some((obj.id, transform.position, chunk.clone()))
+            let pos = obj.get_component::<VoxelTransform>().ok()?.position;
+            let chunk = obj.get_component::<Chunk>().ok()?.clone();
+            Some(((pos.x, pos.y, pos.z), chunk))
         })
         .collect();
-
-    let chunk_map: HashMap<(i32, i32, i32), Chunk> = chunk_data
-        .iter()
-        .map(|(_, pos, chunk)| ((pos.x, pos.y, pos.z), chunk.clone()))
-        .collect();
-
     // collect ids that need remeshing
-    let needs_remesh: Vec<u64> = world
-        .get_objects_with_tag_mut::<NeedsRemeshing>()
-        .iter()
-        .map(|o| o.id)
+    // collect ids that need remeshing
+    let needs_remesh: Vec<ObjectId> = world
+        .get_objects_with_tag_with_ids::<NeedsRemeshing>()
+        .into_iter()
+        .map(|(id, _o)| id)
         .collect();
 
     for id in needs_remesh {
         let Some(object) = world.get_object_mut(id) else {
-            log!("no object");
             continue;
         };
+
+        if !object.has_tag::<NeedsRemeshing>() {
+            continue;
+        }
 
         let Ok(chunk) = object.get_component::<Chunk>() else {
             log!("no chunk");
