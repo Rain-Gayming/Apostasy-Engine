@@ -1,0 +1,39 @@
+name: Plains
+namespace: Apostasy
+class: Biome
+default_weather:
+  - name: "Apostasy:Weather:Sunny"
+seasons:
+  - name: "Apostasy:Seasons:Spring"
+    temperature: [5.0, 15.0]
+    available_weather:
+      - name: "Apostasy:Weather:Rain"
+        chance: 0.05
+      - name: "Apostasy:Weather:HeavyRain"
+        chance: 0.02
+      - name: "Apostasy:Weather:Thunder"
+        chance: 0.01
+      - name: "Apostasy:Weather:Cloudy"
+        chance: 0.25
+  - name: "Apostasy:Seasons:Autumn"
+    temperature: [5.0, 10.0]
+    available_weather:
+      - name: "Apostasy:Weather:Rain"
+        chance: 0.1
+      - name: "Apostasy:Weather:Snow"
+        chance: 0.05
+  - name: "Apostasy:Seasons:Winter"
+    temperature: [-5.0, 5.0]
+    available_weather:
+      - name: "Apostasy:Weather:Rain"
+        chance: 0.05
+      - name: "Apostasy:Weather:Snow"
+        chance: 0.1
+ambient_graphics:
+  water_color:
+    rgb: [255, 255, 255]
+  foliage_color:
+    rgb: [255, 255, 255]
+voxel:
+  surface:
+    - "Apostasy:Voxels:Dirt"

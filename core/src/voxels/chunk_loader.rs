@@ -27,7 +27,7 @@ impl Default for ChunkLoader {
         Self {
             last_chunk_position: Vector3::new(-1, 0, 0),
             load_radius: 4,
-            chunk_lod_distances: vec![2, 3, 4, 7],
+            chunk_lod_distances: vec![5, 8, 10, 14],
         }
     }
 }
@@ -111,7 +111,6 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
                         let dz = (pos.z - player_chunk_position.z) as f32;
 
                         let distance = (dx * dx + dy * dy + dz * dz).sqrt().floor();
-                        log!("{}", distance);
                         if distance < lod as f32 {
                             new_positions.push(pos);
 
@@ -130,8 +129,11 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
                                 )
                                 .unwrap();
 
-                            object.get_component_mut::<Chunk>().unwrap().lod = lod as u8 + 1;
-                            object.add_tag(NeedsRemeshing);
+                            let chunk = object.get_component_mut::<Chunk>().unwrap();
+                            if lod as u8 != chunk.lod {
+                                object.get_component_mut::<Chunk>().unwrap().lod = lod as u8 + 1;
+                                object.add_tag(NeedsRemeshing);
+                            }
 
                             break;
                         }
@@ -145,7 +147,6 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
                     let dz = (pos.z - player_chunk_position.z) as f32;
 
                     let distance = (dx * dx + dy * dy + dz * dz).sqrt().floor();
-                    log!("{}", distance);
                     if distance < lod as f32 {
                         new_positions.push(pos);
 
