@@ -39,6 +39,16 @@ pub struct MouseBind {
     pub name: String,
 }
 
+impl MouseBind {
+    pub fn new(key: MouseButton, action: KeyAction, name: &str) -> Self {
+        Self {
+            key,
+            action,
+            name: name.to_string(),
+        }
+    }
+}
+
 #[derive(Resource, Clone, Default)]
 pub struct InputManager {
     pub keybinds: HashMap<String, KeyBind>,

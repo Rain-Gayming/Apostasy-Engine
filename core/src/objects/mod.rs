@@ -6,6 +6,7 @@ use crate::{
     log, log_warn,
     objects::{
         component::{Component, get_component_registration},
+        scene::ObjectId,
         tag::Tag,
     },
 };
@@ -25,12 +26,12 @@ use crate::objects::component::BoxedComponent;
 
 #[derive(Clone)]
 pub struct Object {
-    pub id: u64,
+    pub id: ObjectId,
     pub name: String,
     pub components: Vec<BoxedComponent>,
     pub tags: Vec<Box<dyn Tag>>,
-    pub parent: Option<u64>,
-    pub children: Vec<u64>,
+    pub parent: Option<ObjectId>,
+    pub children: Vec<ObjectId>,
 }
 impl Default for Object {
     fn default() -> Self {
@@ -42,7 +43,7 @@ impl Object {
     pub fn new() -> Self {
         Self {
             name: "Object".to_string(),
-            id: 0,
+            id: ObjectId::default(),
             children: Vec::new(),
             tags: Vec::new(),
             parent: None,

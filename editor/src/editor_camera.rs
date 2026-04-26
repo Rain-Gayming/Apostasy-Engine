@@ -11,6 +11,7 @@ use apostasy_core::{
     physics::velocity::Velocity,
     rendering::components::camera::{ActiveCamera, Camera, EditorCamera},
     start, update,
+    voxels::voxel_raycast::voxel_raycast_system,
 };
 
 #[start]
@@ -35,6 +36,8 @@ pub fn update(world: &mut World) -> Result<()> {
 
     let mouse_delta = inputs.mouse_delta;
     let look_keyboard = inputs.input_vector_2d("LookRight", "LookLeft", "LookUp", "LookDown") * 5.0;
+    let to_break = inputs.is_mousebind_active("Break");
+    let to_place = inputs.is_mousebind_active("Place");
     let direction = inputs.input_vector_3d(
         "Right",
         "Left",
@@ -53,7 +56,7 @@ pub fn update(world: &mut World) -> Result<()> {
 
     let velocity = camera.get_component_mut::<Velocity>()?;
 
-    velocity.linear_velocity = rotation * direction / 15.0;
+    velocity.linear_velocity = rotation * direction / 150.0;
 
     let transform = camera.get_component_mut::<Transform>()?;
     transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
@@ -69,6 +72,13 @@ pub fn update(world: &mut World) -> Result<()> {
         -90.0,
         90.0,
     );
+
+    if to_break {
+        voxel_raycast_system(world, Some(0))?;
+    }
+    if to_place {
+        voxel_raycast_system(world, Some(2))?;
+    }
 
     Ok(())
 }

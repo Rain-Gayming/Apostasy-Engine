@@ -24,7 +24,7 @@ impl Default for ChunkLoader {
     fn default() -> Self {
         Self {
             last_chunk_position: Vector3::new(-1, 0, 0),
-            load_radius: 4,
+            load_radius: 2,
         }
     }
 }

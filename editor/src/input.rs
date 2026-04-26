@@ -1,11 +1,14 @@
 use apostasy_core::{
     anyhow::Result,
     objects::{
-        resources::input_manager::{InputManager, KeyAction, KeyBind},
+        resources::input_manager::{InputManager, KeyAction, KeyBind, MouseBind},
         world::World,
     },
     start,
-    winit::keyboard::{KeyCode, PhysicalKey},
+    winit::{
+        event::MouseButton,
+        keyboard::{KeyCode, PhysicalKey},
+    },
 };
 
 #[start]
@@ -63,6 +66,9 @@ pub fn start(world: &mut World) -> Result<()> {
         KeyAction::Hold,
         "LookDown",
     ));
+
+    inputs.register_mousebind(MouseBind::new(MouseButton::Left, KeyAction::Press, "Break"));
+    inputs.register_mousebind(MouseBind::new(MouseButton::Right, KeyAction::Hold, "Place"));
 
     Ok(())
 }

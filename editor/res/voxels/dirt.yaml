@@ -5,6 +5,8 @@ class: Voxel
 textures:
   all: 
     - textures/dirt.png
+    - textures/dirt2.png
+    - textures/dirt3.png
 
 components:
   IsSolid: true

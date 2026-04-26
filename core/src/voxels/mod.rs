@@ -6,6 +6,7 @@ pub mod chunk_loader;
 pub mod meshes;
 pub mod texture_atlas;
 pub mod voxel;
+pub mod voxel_raycast;
 
 #[derive(Component, Default, Clone, Debug)]
 pub struct IsSolid(bool);
