@@ -1,6 +1,10 @@
 name: Plains
 namespace: Apostasy
 class: Biome
+amplitude: 7.0
+frequency: 0.05
+humidity: 0.6
+temperature: 0.5
 default_weather:
   - name: "Apostasy:Weather:Sunny"
 seasons:

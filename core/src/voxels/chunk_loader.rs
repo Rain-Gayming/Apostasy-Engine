@@ -162,6 +162,7 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
                             pos,
                             &registry,
                             &biome_registry,
+                            12311231 as u32,
                             lod as u8 + 1,
                         ));
                         break;

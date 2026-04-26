@@ -1,8 +1,12 @@
 name: Dirty
 namespace: Apostasy
 class: Biome
+amplitude: 12.0
+frequency: 0.9
+humidity: 0.5
+temperature: 0.5
 voxel:
   surface:
-    - "Apostasy:Voxels:Dirt"
+    - "Apostasy:Voxels:Stone"
   subsurface:
     - "Apostasy:Voxels:Dirt"

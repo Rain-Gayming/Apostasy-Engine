@@ -3,14 +3,13 @@ use apostasy_macros::{Component, update};
 use cgmath::Vector3;
 use noise::{NoiseFn, Perlin};
 use rand::{RngExt, rng};
-use slotmap::DefaultKey;
 
 use crate::{
     objects::{Object, scene::ObjectId, world::World},
     utils::flatten::flatten,
     voxels::{
         VoxelTransform,
-        biome::{BiomeId, BiomeRegistry},
+        biome::{BiomeId, BiomeRegistry, sample_biome_weights},
         meshes::NeedsRemeshing,
         voxel::{Voxel, VoxelDefinition, VoxelId, VoxelRegistry},
         voxel_raycast::RaycastHit,
@@ -60,39 +59,48 @@ impl Chunk {
         self.lod = lod;
     }
 }
-
 pub fn generate_chunk(
     position: Vector3<i32>,
     registry: &VoxelRegistry,
     biome_registry: &BiomeRegistry,
+    seed: u32,
     lod: u8,
 ) -> Object {
-    let mut rng = rng();
-    let biome_index = rng.random_range(0..=biome_registry.defs.len() - 1);
-    let biome = biome_registry.defs.get(biome_index).unwrap();
-
-    let surface_voxel = *registry
-        .name_to_id
-        .get(biome.surface_voxels.first().unwrap())
-        .expect("Apostasy:Grass not found in registry");
-    let subsurface_voxel = *registry
-        .name_to_id
-        .get(biome.subsurface_voxels.first().unwrap())
-        .expect("Apostasy:Dirt not found in registry");
-
-    let noise = Perlin::new(12345);
+    let noise = Perlin::new(seed);
 
     let world_x = position.x as f64 * 32.0;
     let world_y = position.y as f64 * 32.0;
     let world_z = position.z as f64 * 32.0;
 
     let mut heightmap = [0i32; 32 * 32];
+    let mut column_biome = [0u16; 32 * 32];
+
     for z in 0..32usize {
         for x in 0..32usize {
-            let nx = (world_x + x as f64) * 0.05;
-            let nz = (world_z + z as f64) * 0.05;
-            let val = noise.get([nx, nz]) * 7.0;
-            heightmap[z * 32 + x] = (10.0 + val) as i32;
+            let wx = world_x + x as f64;
+            let wz = world_z + z as f64;
+
+            let weights = sample_biome_weights(wx, wz, biome_registry, seed, 0.05);
+
+            let mut blended_height = 0.0f64;
+            let mut dominant_biome = 0u16;
+            let mut dominant_weight = 0.0f64;
+
+            for (biome_id, weight) in &weights {
+                let biome = &biome_registry.defs[*biome_id as usize];
+                let nx = wx * biome.frequency;
+                let nz = wz * biome.frequency;
+                let val = noise.get([nx, nz]) * biome.amplitude;
+                blended_height += (10.0 + val) * weight;
+
+                if *weight > dominant_weight {
+                    dominant_weight = *weight;
+                    dominant_biome = *biome_id;
+                }
+            }
+
+            heightmap[z * 32 + x] = blended_height as i32;
+            column_biome[z * 32 + x] = dominant_biome;
         }
     }
 
@@ -101,10 +109,22 @@ pub fn generate_chunk(
     for z in 0..32usize {
         for x in 0..32usize {
             let surface_y = heightmap[z * 32 + x];
+            let biome_id = column_biome[z * 32 + x];
+            let biome = &biome_registry.defs[biome_id as usize];
+
+            let surface_voxel = *registry
+                .name_to_id
+                .get(biome.surface_voxels.first().unwrap())
+                .expect("surface voxel not found");
+            let subsurface_voxel = *registry
+                .name_to_id
+                .get(biome.subsurface_voxels.first().unwrap())
+                .expect("subsurface voxel not found");
+
             for y in 0..32usize {
                 let wy = world_y as i32 + y as i32;
                 let id = if wy > surface_y {
-                    0 // air
+                    0
                 } else if wy == surface_y {
                     surface_voxel
                 } else {
@@ -118,12 +138,13 @@ pub fn generate_chunk(
     let voxels: Box<[VoxelId; 32 * 32 * 32]> =
         voxels.try_into().expect("voxel array size mismatch");
 
+    let center_biome = column_biome[16 * 32 + 16];
+
     let chunk = Chunk {
         voxels,
         lod,
-        biome: biome_index as u16,
+        biome: center_biome,
     };
-
     let transform = VoxelTransform { position };
 
     let mut object = Object::new();

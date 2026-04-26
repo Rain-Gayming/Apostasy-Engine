@@ -56,6 +56,21 @@ impl AssetLoader for BiomeLoader {
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect::<Vec<_>>();
 
+        let amplitude = raw["amplitude"]
+            .as_f64()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'amplitude'"))?;
+
+        let frequency = raw["frequency"]
+            .as_f64()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'frequency'"))?;
+
+        let humidity = raw["humidity"]
+            .as_f64()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'humidity'"))?;
+
+        let temperature = raw["temperature"]
+            .as_f64()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'temperature'"))?;
         let def = BiomeDefinition {
             name: name.clone(),
             namespace: namespace.clone(),
@@ -63,6 +78,12 @@ impl AssetLoader for BiomeLoader {
 
             surface_voxels,
             subsurface_voxels,
+
+            amplitude,
+            frequency,
+
+            humidity,
+            temperature,
         };
 
         let mut registry = self.registry.write().unwrap();
