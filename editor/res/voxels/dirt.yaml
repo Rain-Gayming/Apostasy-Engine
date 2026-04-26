@@ -10,3 +10,5 @@ textures:
 
 components:
   IsSolid: true
+  BreakTime: 1.0 
+  Drops: "Apostasy:Item:Dirt"

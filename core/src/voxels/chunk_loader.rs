@@ -18,13 +18,16 @@ use crate::{
 pub struct ChunkLoader {
     pub last_chunk_position: Vector3<i32>,
     pub load_radius: i32,
+
+    pub chunk_lod_distances: Vec<u32>,
 }
 
 impl Default for ChunkLoader {
     fn default() -> Self {
         Self {
             last_chunk_position: Vector3::new(-1, 0, 0),
-            load_radius: 2,
+            load_radius: 4,
+            chunk_lod_distances: vec![2, 3, 4, 7],
         }
     }
 }
@@ -82,6 +85,11 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
         .filter_map(|o| o.get_component::<VoxelTransform>().ok())
         .map(|t| t.position)
         .collect();
+    let existing_position_ids: Vec<ObjectId> = world
+        .get_objects_with_component_with_ids::<VoxelTransform>()
+        .iter()
+        .map(|o| o.0)
+        .collect();
 
     // generate new chunks and track their positions
     let mut new_positions = Vec::new();
@@ -93,13 +101,64 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
             {
                 let pos = Vector3::new(x, y, z);
 
-                // skip if already loaded
+                let chunk_loader = world.get_resource::<ChunkLoader>()?;
+
+                // check if lod has changed then skip
                 if existing_positions.contains(&pos) {
+                    for lod in chunk_loader.clone().chunk_lod_distances {
+                        let dx = (pos.x - player_chunk_position.x) as f32;
+                        let dy = (pos.y - player_chunk_position.y) as f32;
+                        let dz = (pos.z - player_chunk_position.z) as f32;
+
+                        let distance = (dx * dx + dy * dy + dz * dz).sqrt().floor();
+                        log!("{}", distance);
+                        if distance < lod as f32 {
+                            new_positions.push(pos);
+
+                            let lod = chunk_loader
+                                .chunk_lod_distances
+                                .iter()
+                                .position(|&r| r == lod)
+                                .unwrap();
+
+                            let obj_index =
+                                existing_positions.iter().position(|&r| r == pos).unwrap();
+
+                            let object = world
+                                .get_object_mut(
+                                    existing_position_ids.get(obj_index).unwrap().clone(),
+                                )
+                                .unwrap();
+
+                            object.get_component_mut::<Chunk>().unwrap().lod = lod as u8 + 1;
+                            object.add_tag(NeedsRemeshing);
+
+                            break;
+                        }
+                    }
                     continue;
                 }
 
-                new_positions.push(pos);
-                world.add_object(generate_chunk(pos, &registry, 1));
+                for lod in chunk_loader.clone().chunk_lod_distances {
+                    let dx = (pos.x - player_chunk_position.x) as f32;
+                    let dy = (pos.y - player_chunk_position.y) as f32;
+                    let dz = (pos.z - player_chunk_position.z) as f32;
+
+                    let distance = (dx * dx + dy * dy + dz * dz).sqrt().floor();
+                    log!("{}", distance);
+                    if distance < lod as f32 {
+                        new_positions.push(pos);
+
+                        let lod = chunk_loader
+                            .chunk_lod_distances
+                            .iter()
+                            .position(|&r| r == lod)
+                            .unwrap();
+
+                        world.add_object(generate_chunk(pos, &registry, lod as u8 + 1));
+                        break;
+                    }
+                }
             }
         }
     }
