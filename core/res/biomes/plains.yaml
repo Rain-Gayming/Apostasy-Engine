@@ -15,6 +15,11 @@ seasons:
         chance: 0.01
       - name: "Apostasy:Weather:Cloudy"
         chance: 0.25
+  - name: "Apostasy:Seasons:Summer"
+    temperature: [15.0, 25.0]
+    available_weather:
+      - name: "Apostasy:Weather:Rain"
+        chance: 0.05
   - name: "Apostasy:Seasons:Autumn"
     temperature: [5.0, 10.0]
     available_weather:
@@ -36,4 +41,6 @@ ambient_graphics:
     rgb: [255, 255, 255]
 voxel:
   surface:
+    - "Apostasy:Voxels:Grass"
+  subsurface:
     - "Apostasy:Voxels:Dirt"

@@ -12,7 +12,7 @@ pub fn get_log_buffer() -> &'static Mutex<Vec<String>> {
 macro_rules! log {
     ($($arg:tt)*) => {{
         let msg = format!($($arg)*);
-        println!("{}", msg);
+        println!("[LOG] {}", msg);
         // $crate::get_log_buffer().lock().push(msg);
     }};
 }

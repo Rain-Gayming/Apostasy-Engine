@@ -2,6 +2,7 @@ use anyhow::Result;
 use apostasy_macros::{Component, update};
 use cgmath::Vector3;
 use noise::{NoiseFn, Perlin};
+use rand::{RngExt, rng};
 use slotmap::DefaultKey;
 
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
     utils::flatten::flatten,
     voxels::{
         VoxelTransform,
+        biome::{BiomeId, BiomeRegistry},
         meshes::NeedsRemeshing,
         voxel::{Voxel, VoxelDefinition, VoxelId, VoxelRegistry},
         voxel_raycast::RaycastHit,
@@ -19,6 +21,7 @@ use crate::{
 pub struct Chunk {
     pub voxels: Box<[VoxelId; 32 * 32 * 32]>,
     pub lod: u8,
+    pub biome: BiomeId,
 }
 
 impl Default for Chunk {
@@ -26,6 +29,7 @@ impl Default for Chunk {
         Self {
             voxels: Box::new([VoxelId::default(); 32 * 32 * 32]),
             lod: 1,
+            biome: 0,
         }
     }
 }
@@ -57,14 +61,23 @@ impl Chunk {
     }
 }
 
-pub fn generate_chunk(position: Vector3<i32>, registry: &VoxelRegistry, lod: u8) -> Object {
-    let grass_id = *registry
+pub fn generate_chunk(
+    position: Vector3<i32>,
+    registry: &VoxelRegistry,
+    biome_registry: &BiomeRegistry,
+    lod: u8,
+) -> Object {
+    let mut rng = rng();
+    let biome_index = rng.random_range(0..=biome_registry.defs.len() - 1);
+    let biome = biome_registry.defs.get(biome_index).unwrap();
+
+    let surface_voxel = *registry
         .name_to_id
-        .get("Apostasy:Grass")
+        .get(biome.surface_voxels.first().unwrap())
         .expect("Apostasy:Grass not found in registry");
-    let dirt_id = *registry
+    let subsurface_voxel = *registry
         .name_to_id
-        .get("Apostasy:Dirt")
+        .get(biome.subsurface_voxels.first().unwrap())
         .expect("Apostasy:Dirt not found in registry");
 
     let noise = Perlin::new(12345);
@@ -93,9 +106,9 @@ pub fn generate_chunk(position: Vector3<i32>, registry: &VoxelRegistry, lod: u8)
                 let id = if wy > surface_y {
                     0 // air
                 } else if wy == surface_y {
-                    grass_id
+                    surface_voxel
                 } else {
-                    dirt_id
+                    subsurface_voxel
                 };
                 voxels[flatten(x as u32, y as u32, z as u32, 32)] = id;
             }
@@ -105,7 +118,11 @@ pub fn generate_chunk(position: Vector3<i32>, registry: &VoxelRegistry, lod: u8)
     let voxels: Box<[VoxelId; 32 * 32 * 32]> =
         voxels.try_into().expect("voxel array size mismatch");
 
-    let chunk = Chunk { voxels, lod };
+    let chunk = Chunk {
+        voxels,
+        lod,
+        biome: biome_index as u16,
+    };
 
     let transform = VoxelTransform { position };
 

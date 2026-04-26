@@ -1,0 +1,8 @@
+name: Dirty
+namespace: Apostasy
+class: Biome
+voxel:
+  surface:
+    - "Apostasy:Voxels:Dirt"
+  subsurface:
+    - "Apostasy:Voxels:Dirt"

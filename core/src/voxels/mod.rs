@@ -1,6 +1,7 @@
 use apostasy_macros::Component;
 use cgmath::{Vector3, Zero};
 
+pub mod biome;
 pub mod chunk;
 pub mod chunk_loader;
 pub mod meshes;

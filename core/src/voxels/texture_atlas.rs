@@ -42,7 +42,6 @@ impl AtlasBuilder {
     }
 
     pub fn add_texture(&mut self, path: &str) -> u32 {
-        println!("Adding texture: {}", path);
         if let Some(idx) = self.tiles.iter().position(|(p, _)| p == path) {
             return idx as u32;
         }

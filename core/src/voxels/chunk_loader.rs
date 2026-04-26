@@ -8,6 +8,7 @@ use crate::{
     objects::{components::transform::Transform, scene::ObjectId, tags::Player, world::World},
     voxels::{
         VoxelTransform,
+        biome::BiomeRegistry,
         chunk::{Chunk, generate_chunk},
         meshes::NeedsRemeshing,
         voxel::VoxelRegistry,
@@ -55,6 +56,7 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
 
     let load_radius = world.get_resource::<ChunkLoader>()?.load_radius;
     let registry = world.get_resource::<VoxelRegistry>()?.clone();
+    let biome_registry = world.get_resource::<BiomeRegistry>()?.clone();
 
     // collect ids of chunks too far away to unload
     let unload_ids: Vec<ObjectId> = world
@@ -156,7 +158,12 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
                             .position(|&r| r == lod)
                             .unwrap();
 
-                        world.add_object(generate_chunk(pos, &registry, lod as u8 + 1));
+                        world.add_object(generate_chunk(
+                            pos,
+                            &registry,
+                            &biome_registry,
+                            lod as u8 + 1,
+                        ));
                         break;
                     }
                 }

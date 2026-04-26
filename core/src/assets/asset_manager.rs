@@ -22,18 +22,24 @@ impl AssetManager {
     }
 
     /// Load a single .yaml file
-    pub fn load_file(&self, path: &Path) -> Result<()> {
+    pub fn load_file(&mut self, path: &Path) -> Result<()> {
         let content = std::fs::read_to_string(path)?;
         let raw: serde_yaml::Value = serde_yaml::from_str(&content)?;
 
+        let name = raw["name"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'class' field in {:?}", path))?;
+        let namespace = raw["namespace"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'class' field in {:?}", path))?;
         let class = raw["class"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("Missing 'class' field in {:?}", path))?;
 
-        match self.loaders.get(class) {
+        match self.loaders.get_mut(class) {
             Some(loader) => {
                 loader.load(&raw)?;
-                log!("Loaded {:?} as class '{}'", path, class);
+                log!("Loaded {:?}:{:?} as class '{}'", namespace, name, class);
             }
             None => {
                 log_warn!("No loader registered for class '{}' in {:?}", class, path);
@@ -44,7 +50,7 @@ impl AssetManager {
     }
 
     /// Recursively load all .yaml files in a directory
-    pub fn load_directory(&self, path: &Path) -> Result<()> {
+    pub fn load_directory(&mut self, path: &Path) -> Result<()> {
         for entry in std::fs::read_dir(path)? {
             let entry = entry?;
             let path = entry.path();

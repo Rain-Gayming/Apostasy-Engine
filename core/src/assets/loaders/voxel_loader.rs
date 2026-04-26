@@ -22,7 +22,7 @@ impl AssetLoader for VoxelLoader {
         "Voxel"
     }
 
-    fn load(&self, raw: &serde_yaml::Value) -> Result<()> {
+    fn load(&mut self, raw: &serde_yaml::Value) -> Result<()> {
         let name: String = raw["name"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("Missing 'name'"))?
@@ -112,7 +112,7 @@ impl AssetLoader for VoxelLoader {
         }
 
         let id = registry.defs.len() as VoxelId;
-        let full_name = format!("{}:{}", namespace, name);
+        let full_name = format!("{}:Voxels:{}", namespace, name);
         registry.defs.push(def);
         registry.name_to_id.insert(full_name.clone(), id);
         registry.id_to_name.insert(id, full_name);

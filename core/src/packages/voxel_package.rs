@@ -4,10 +4,14 @@ use std::{
 };
 
 use crate::{
-    assets::{asset_manager::AssetManager, loaders::voxel_loader::VoxelLoader},
+    assets::{
+        asset_manager::AssetManager,
+        loaders::{biome_loader::BiomeLoader, voxel_loader::VoxelLoader},
+    },
     log,
     objects::world::World,
     voxels::{
+        biome::BiomeRegistry,
         chunk_loader::ChunkLoader,
         texture_atlas::{AtlasBuilder, PendingAtlas},
         voxel::VoxelRegistry,
@@ -18,6 +22,7 @@ pub(crate) fn add_voxel_package(world: &mut World) {
     log!("Implimanting voxel package");
 
     let voxel_registry = Arc::new(RwLock::new(VoxelRegistry::default()));
+    let biome_registry = Arc::new(RwLock::new(BiomeRegistry::default()));
     let atlas_builder = Arc::new(RwLock::new(AtlasBuilder::new(16)));
 
     {
@@ -26,6 +31,10 @@ pub(crate) fn add_voxel_package(world: &mut World) {
             registry: Arc::clone(&voxel_registry),
             atlas_builder: Arc::clone(&atlas_builder),
         });
+        asset_manager.register_loader(BiomeLoader {
+            registry: Arc::clone(&biome_registry),
+        });
+
         asset_manager
             .load_directory(Path::new(&format!(
                 "{}/{}",
@@ -42,6 +51,11 @@ pub(crate) fn add_voxel_package(world: &mut World) {
         .into_inner()
         .expect("VoxelRegistry RwLock poisoned");
 
+    let biome_registry = Arc::try_unwrap(biome_registry)
+        .expect("BiomeRegistry still has multiple owners")
+        .into_inner()
+        .expect("BiomeRegistry RwLock poisoned");
+
     let atlas_builder = Arc::try_unwrap(atlas_builder)
         .unwrap()
         .into_inner()
@@ -50,6 +64,7 @@ pub(crate) fn add_voxel_package(world: &mut World) {
     let (atlas_image, atlas_tiles) = atlas_builder.build();
 
     world.insert_resource(registry);
+    world.insert_resource(biome_registry);
     world.insert_resource(PendingAtlas {
         image: atlas_image,
         tiles: atlas_tiles,
