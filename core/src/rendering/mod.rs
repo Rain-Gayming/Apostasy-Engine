@@ -72,7 +72,7 @@ impl RenderingInfo {
                 queue_family_picker: queue_family_picker::single_queue_family,
             })
             .unwrap(),
-            window,
+            window: window.clone(),
             settings: RenderingSettings::default(),
             renderer: None,
             push_constants: PushConstants::default(),
