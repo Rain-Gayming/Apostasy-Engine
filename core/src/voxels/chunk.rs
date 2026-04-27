@@ -40,7 +40,7 @@ impl Default for Chunk {
 }
 
 impl Chunk {
-    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+    pub fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
         Ok(())
     }
     fn _get_def<'a>(

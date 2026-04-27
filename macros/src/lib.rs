@@ -3,7 +3,7 @@ use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::{DeriveInput, ItemFn, LitInt, parse_macro_input, parse_quote};
 
-#[proc_macro_derive(Component)]
+#[proc_macro_derive(Component, attributes(component_deserialize))]
 pub fn component_derive(input: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     ast.generics
@@ -17,23 +17,18 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
 
     let output = quote! {
         impl #impl_generics apostasy_core::objects::component::Component for #struct_name #type_generics
-            #where_clause
-
+        #where_clause
         {
             fn name() -> &'static str where Self: Sized {
                 std::any::type_name::<#struct_name>()
             }
-            fn as_any(&self) -> &dyn std::any::Any {
-                self
-            }
-            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-                self
-            }
+            fn as_any(&self) -> &dyn std::any::Any { self }
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
             fn type_name(&self) -> &'static str {
                 std::any::type_name::<Self>()
             }
-
         }
+
         inventory::submit! {
             apostasy_core::objects::component::ComponentRegistration {
                 type_name: #struct_name_str,
@@ -46,8 +41,7 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
                     }
                 },
             }
-        }
-
+        };
     };
 
     output.into()
