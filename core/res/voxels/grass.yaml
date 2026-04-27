@@ -10,4 +10,4 @@ textures:
   bottom: textures/dirt.png
 components:
   IsSolid: true
-  BreakTicks: 5
+  BreakTicks: 10

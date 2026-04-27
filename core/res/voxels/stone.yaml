@@ -8,3 +8,4 @@ textures:
 
 components:
   IsSolid: true
+  BreakTicks: 25
