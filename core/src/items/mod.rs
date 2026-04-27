@@ -5,6 +5,8 @@ use hashbrown::HashMap;
 
 use crate::objects::component::BoxedComponent;
 
+pub mod container;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Item {
     pub id: ItemId,

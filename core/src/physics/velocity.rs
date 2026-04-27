@@ -22,7 +22,7 @@ impl Default for Velocity {
 }
 
 impl Velocity {
-    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+    pub fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
         Ok(())
     }
 }

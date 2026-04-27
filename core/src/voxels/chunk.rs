@@ -5,9 +5,14 @@ use hashbrown::HashMap;
 use noise::{NoiseFn, Perlin};
 
 use crate::{
-    items::ItemRegistry,
+    items::{
+        ItemRegistry,
+        container::{Container, ContainerItem},
+    },
     log, log_error,
-    objects::{Object, resources::input_manager::InputManager, scene::ObjectId, world::World},
+    objects::{
+        Object, resources::input_manager::InputManager, scene::ObjectId, tags::Player, world::World,
+    },
     utils::flatten::flatten,
     voxels::{
         VoxelTransform,
@@ -251,7 +256,32 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
 
             if let Ok(drops) = def.get_component::<Drops>() {
                 if let Ok(item_registry) = world.get_resource::<ItemRegistry>() {
-                    if let Some(item) = item_registry.name_to_id.get(&drops.0) {
+                    if let Some(_) = item_registry.name_to_id.get(&drops.0) {
+                        let player_id = world
+                            .get_objects_with_tag_with_ids::<Player>()
+                            .first()
+                            .map(|o| o.0);
+
+                        if let Some(pid) = player_id {
+                            let player = world.get_object_mut(pid).unwrap();
+
+                            if let Ok(container) = player.get_component_mut::<Container>() {
+                                // check if item already exists in container
+                                if let Some(existing) =
+                                    container.items.iter_mut().find(|i| i.item == drops.0)
+                                {
+                                    existing.amount += 1;
+                                } else {
+                                    container.add_item(ContainerItem {
+                                        item: drops.0.clone(),
+                                        amount: 1,
+                                    });
+                                }
+                                log!("Added {} to inventory", drops.0);
+                            } else {
+                                log_error!("Player has no Container component");
+                            }
+                        }
                         log!("Dropping item: {}", drops.0);
                     } else {
                         log_error!(

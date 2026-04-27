@@ -1,6 +1,7 @@
 use apostasy_core::{
     anyhow::Result,
     cgmath::{Vector3, num_traits::clamp},
+    items::container::Container,
     objects::{
         Object,
         components::transform::Transform,
@@ -20,6 +21,7 @@ pub fn start(world: &mut World) -> Result<()> {
     let cam = Object::new()
         .add_component(Velocity::default())
         .add_component(Camera::default())
+        .add_component(Container::default())
         .add_component(Transform {
             local_position: Vector3::new(0.0, 18.0, 0.0),
             ..Default::default()
