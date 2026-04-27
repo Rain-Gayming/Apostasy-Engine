@@ -14,7 +14,7 @@ use ash::vk::{
     self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
     PipelineLayoutCreateInfo,
 };
-use egui::TextureId;
+use egui::{Context, TextureId};
 use epaint::ImageDelta;
 use winit::event::WindowEvent;
 use winit::window::Window;
@@ -550,19 +550,13 @@ impl RenderingAPI for VulkanRenderer {
         }
         Ok(())
     }
-    fn begin_ui(&mut self, window: &Window) {
-        let raw_input = self.ui_renderer.state.take_egui_input(window);
-        self.ui_renderer.context.begin_pass(raw_input);
 
-        self.ui_renderer.context.clone().show_viewport_immediate(
-            egui::ViewportId::ROOT,
-            egui::ViewportBuilder::default(),
-            |ctx, _| {
-                egui::Window::new("Debug").show(ctx, |ui| {
-                    ui.label("Hello from egui!");
-                });
-            },
-        );
+    fn begin_ui(&mut self) {
+        let raw_input = self
+            .ui_renderer
+            .state
+            .take_egui_input(&self.ui_renderer.window);
+        self.ui_renderer.context.begin_pass(raw_input);
     }
 
     fn end_ui(&mut self) -> Result<()> {
@@ -601,12 +595,18 @@ impl RenderingAPI for VulkanRenderer {
 
         Ok(())
     }
-    fn handle_ui_event(&mut self, event: &WindowEvent, window: &Window) -> bool {
+
+    fn handle_ui_event(&mut self, event: &WindowEvent) -> bool {
         self.ui_renderer
             .state
-            .on_window_event(window, event)
+            .on_window_event(&self.ui_renderer.window, event)
             .consumed
     }
+
+    fn get_egui_context(&self) -> Context {
+        self.ui_renderer.context.clone()
+    }
+
     fn update_command_buffer(&mut self) {}
 
     fn recreate_swapchain(&mut self) {

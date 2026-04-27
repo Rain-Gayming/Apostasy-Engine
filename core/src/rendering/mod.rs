@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use ash::vk::{self, CommandPool};
+use egui::Context;
 use winit::event::WindowEvent;
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
@@ -40,11 +41,7 @@ pub struct RenderingInfo {
 /// A trait assigned to any Rendering API
 /// Used for Vulkan and Opengl
 pub trait RenderingAPI {
-    fn resize(&mut self) -> Result<()>;
     fn render(&mut self, mesh: Box<dyn GpuMesh>, push_constants: PushConstants) -> Result<()>;
-    fn begin_ui(&mut self, window: &Window);
-    fn end_ui(&mut self) -> Result<()>;
-    fn handle_ui_event(&mut self, event: &WindowEvent, window: &Window) -> bool;
     fn begin_frame(&mut self, push_constants: PushConstants) -> Result<()>;
     fn end_frame(&mut self) -> Result<()>;
 
@@ -54,8 +51,16 @@ pub trait RenderingAPI {
         atlas: &VoxelTextureAtlas,
         push_constants: &PushConstants,
     ) -> Result<()>;
+
+    fn begin_ui(&mut self);
+    fn end_ui(&mut self) -> Result<()>;
+    fn handle_ui_event(&mut self, event: &WindowEvent) -> bool;
+    fn get_egui_context(&self) -> Context;
+
+    fn resize(&mut self) -> Result<()>;
     fn update_command_buffer(&mut self);
     fn recreate_swapchain(&mut self);
+
     fn get_command_pool(&self) -> Result<CommandPool>;
     fn get_aspect(&self) -> f32;
     fn get_descriptor_pool(&self) -> vk::DescriptorPool;

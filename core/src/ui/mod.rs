@@ -1,16 +1,16 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use ash::vk::DescriptorSet;
 use egui::{Context, FontDefinitions, FontFamily};
 use egui_ash_renderer::{DynamicRendering, Options, Renderer};
 use egui_winit::State;
+use std::sync::Arc;
 use winit::window::Window;
 
 use crate::rendering::vulkan::{
     rendering_context::VulkanRenderingContext, swapchain::VulkanSwapchain,
 };
 
+pub mod ui_context;
 pub struct UIRenderer {
     pub state: State,
     pub renderer: Renderer,

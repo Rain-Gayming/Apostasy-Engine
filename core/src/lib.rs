@@ -23,10 +23,13 @@ use winit::{
 
 use crate::assets::asset_manager::AssetManager;
 use crate::objects::resources::input_manager::InputManager;
+use crate::objects::systems::DeltaTime;
 use crate::packages::Packages;
 use crate::packages::add_package;
 use crate::rendering::components::camera::ActiveCamera;
+use crate::ui::ui_context::EguiContext;
 use crate::voxels::VoxelTransform;
+use crate::voxels::chunk::Chunk;
 use crate::voxels::meshes::NeedsRemeshing;
 use crate::voxels::meshes::VoxelChunkMesh;
 use crate::voxels::meshes::remesh_chunks;
@@ -72,6 +75,7 @@ impl Core {
             asset_loader: AssetManager::new(),
         }
     }
+
     pub fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -81,9 +85,8 @@ impl Core {
         if let Some(rendering_info) = &mut self.rendering_info {
             let mut rendering_info = rendering_info.lock().unwrap();
 
-            let window = rendering_info.window.clone();
             if let Some(renderer) = &mut rendering_info.renderer {
-                let _ = renderer.handle_ui_event(&event.clone(), &window);
+                let _ = renderer.handle_ui_event(&event.clone());
             }
 
             match event {
@@ -103,17 +106,12 @@ impl Core {
                 WindowEvent::RedrawRequested => {
                     let mut world = self.world.lock().unwrap();
 
-                    world.update();
-                    world.fixed_update();
-
                     let context = Arc::new(rendering_info.context.clone());
                     let mut push_constants = rendering_info.push_constants.clone();
 
                     if let Some(atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
                         push_constants.set_atlas_tiles(atlas.atlas_size);
                     }
-
-                    let window = rendering_info.window.clone();
 
                     let Some(renderer) = &mut rendering_info.renderer else {
                         log_error!("No renderer found!");
@@ -137,7 +135,9 @@ impl Core {
                     }
                     renderer.begin_frame(push_constants.clone()).unwrap();
 
-                    renderer.begin_ui(&window);
+                    renderer.begin_ui();
+                    world.update();
+                    world.fixed_update();
 
                     if let Some(texture_atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
                         for object in world.get_objects_with_component::<VoxelChunkMesh>() {
@@ -202,13 +202,14 @@ impl ApplicationHandler for Core {
 
         let pending = world.get_resource::<PendingAtlas>().unwrap().clone();
 
-        let (command_pool, descriptor_pool, descriptor_set_layout) = {
+        let (command_pool, descriptor_pool, descriptor_set_layout, egui_context) = {
             let ri = self.rendering_info.as_ref().unwrap().lock().unwrap();
             let renderer = ri.renderer.as_ref().unwrap();
             (
                 renderer.get_command_pool().unwrap(),
                 renderer.get_descriptor_pool(),
                 renderer.get_voxel_descriptor_set_layout(),
+                renderer.get_egui_context(),
             )
         };
 
@@ -222,9 +223,11 @@ impl ApplicationHandler for Core {
         )
         .expect("Failed to upload voxel atlas");
 
+        world.insert_resource(EguiContext(egui_context));
         world.insert_resource(context);
         world.insert_resource(atlas);
     }
+
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {}
 
     fn window_event(
@@ -269,6 +272,38 @@ pub fn init_core(rendering_api: RenderingBackend, packages: Vec<Packages>) -> Re
     // begin event loop
     let event_loop = EventLoop::new()?;
     event_loop.run_app(&mut core)?;
+
+    Ok(())
+}
+
+#[update]
+pub fn hud(world: &mut World) -> Result<()> {
+    let ctx = world.get_resource::<EguiContext>()?.0.clone();
+
+    egui::Area::new(egui::Id::new("crosshair"))
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .show(&ctx, |ui| {
+            ui.label(
+                egui::RichText::new("+")
+                    .size(24.0)
+                    .color(egui::Color32::WHITE),
+            );
+        });
+
+    egui::Window::new("Debug")
+        .anchor(egui::Align2::LEFT_TOP, [10.0, 10.0])
+        .resizable(false)
+        .collapsible(false)
+        .title_bar(false)
+        .show(&ctx, |ui| {
+            if let Ok(dt) = world.get_resource::<DeltaTime>() {
+                ui.label(format!("FPS: {:.0}", 1.0 / dt.0));
+            }
+            ui.label(format!(
+                "Chunks: {}",
+                world.get_objects_with_component::<Chunk>().len()
+            ));
+        });
 
     Ok(())
 }
