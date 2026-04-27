@@ -176,11 +176,6 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
     let inputs = world.get_resource::<InputManager>()?;
     let is_breaking = inputs.is_mousebind_active("Break");
 
-    if !is_breaking {
-        world.remove_resource::<RaycastHit>();
-        return Ok(());
-    }
-
     let Ok(raycast_hit) = world.get_resource::<RaycastHit>() else {
         if let Ok(progress) = world.get_resource_mut::<VoxelBreakProgress>() {
             progress.progress.clear();
@@ -196,6 +191,10 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
 
     // breaking a voxel
     if set_to == 0 {
+        if !is_breaking {
+            world.remove_resource::<RaycastHit>();
+            return Ok(());
+        }
         let hit_world_pos = (
             raycast_hit.chunk_pos.x * 32 + raycast_hit.local_pos.x,
             raycast_hit.chunk_pos.y * 32 + raycast_hit.local_pos.y,
@@ -335,7 +334,7 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
     // placing a voxel  existing placement code unchanged
     let (target_chunk_pos, target_local_pos) = {
         let offset = match raycast_hit.face {
-            0 => Vector3::new(1i32, 0, 0),
+            0 => Vector3::new(1, 0, 0),
             1 => Vector3::new(-1, 0, 0),
             2 => Vector3::new(0, 1, 0),
             3 => Vector3::new(0, -1, 0),
