@@ -1,4 +1,5 @@
 use anyhow::Result;
+use apostasy_macros::Resource;
 
 use crate::objects::world::World;
 
@@ -40,6 +41,17 @@ impl HasPriority for FixedUpdateSystem {
         self.priority
     }
 }
+
+#[derive(Resource, Clone, Default)]
+pub struct DeltaTime(pub f32);
+
+#[derive(Resource, Clone, Default)]
+pub struct FixedUpdateTimer {
+    pub accumulator: f32,
+    pub fixed_timestep: f32, // 1.0 / 20.0 = 0.05s for 20 tps
+    pub last_time: Option<std::time::Instant>,
+}
+
 /// A system that happens at the end over every frame
 pub struct LateUpdateSystem {
     pub name: &'static str,

@@ -26,7 +26,6 @@ use crate::objects::resources::input_manager::InputManager;
 use crate::packages::Packages;
 use crate::packages::add_package;
 use crate::rendering::components::camera::ActiveCamera;
-use crate::rendering::components::camera::Camera;
 use crate::voxels::VoxelTransform;
 use crate::voxels::meshes::NeedsRemeshing;
 use crate::voxels::meshes::VoxelChunkMesh;
@@ -96,7 +95,9 @@ impl Core {
                 }
                 WindowEvent::RedrawRequested => {
                     let mut world = self.world.lock().unwrap();
+
                     world.update();
+                    world.fixed_update();
 
                     let context = Arc::new(rendering_info.context.clone());
                     let mut push_constants = rendering_info.push_constants.clone();

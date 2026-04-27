@@ -5,7 +5,10 @@ use crate::objects::{
     component::Component,
     resource::{Resource, ResourceMap},
     scene::{ObjectId, Scene},
-    systems::{FixedUpdateSystem, HasPriority, LateUpdateSystem, StartSystem, UpdateSystem},
+    systems::{
+        DeltaTime, FixedUpdateSystem, FixedUpdateTimer, HasPriority, LateUpdateSystem, StartSystem,
+        UpdateSystem,
+    },
     tag::Tag,
 };
 
@@ -28,6 +31,12 @@ impl World {
         self.update_systems = Self::collect_sorted(inventory::iter::<UpdateSystem>());
         self.fixed_update_systems = Self::collect_sorted(inventory::iter::<FixedUpdateSystem>());
         self.late_update_systems = Self::collect_sorted(inventory::iter::<LateUpdateSystem>());
+        self.insert_resource(FixedUpdateTimer {
+            accumulator: 0.0,
+            fixed_timestep: 1.0 / 20.0,
+            last_time: None,
+        });
+        self.insert_resource(DeltaTime(0.0));
     }
 
     /// Collects and sorts the Iterator
@@ -47,22 +56,58 @@ impl World {
         }
     }
 
-    /// Runs all update systems
     pub(crate) fn update(&mut self) {
-        let systems = std::mem::take(&mut self.update_systems);
-        for system in &systems {
-            (system.func)(self);
+        // update delta time
+        {
+            let timer = self.get_resource_mut::<FixedUpdateTimer>().unwrap();
+            let now = std::time::Instant::now();
+            let delta = match timer.last_time {
+                Some(last) => now.duration_since(last).as_secs_f32().min(0.25),
+                None => 0.0,
+            };
+            timer.last_time = Some(now);
+            timer.accumulator += delta;
+            timer.accumulator = timer.accumulator.min(timer.fixed_timestep * 5.0);
+
+            let dt = self.get_resource_mut::<DeltaTime>().unwrap();
+            dt.0 = delta;
         }
-        self.update_systems = systems;
+
+        // run regular update systems immediately, no waiting
+        let mut systems: Vec<&UpdateSystem> = inventory::iter::<UpdateSystem>().collect();
+        systems.sort_by(|a, b| b.priority().cmp(&a.priority()));
+
+        for system in systems {
+            (system.func)(self).unwrap();
+        }
     }
 
-    /// Runs all fixed update systems
-    pub(crate) fn fixed_update(&mut self, delta: f32) {
-        let systems = std::mem::take(&mut self.fixed_update_systems);
-        for system in &systems {
-            (system.func)(self, delta);
+    pub(crate) fn fixed_update(&mut self) {
+        loop {
+            let (should_run, timestep) = {
+                let timer = self.get_resource::<FixedUpdateTimer>().unwrap();
+                (
+                    timer.accumulator >= timer.fixed_timestep,
+                    timer.fixed_timestep,
+                )
+            };
+
+            if !should_run {
+                break;
+            }
+
+            self.get_resource_mut::<FixedUpdateTimer>()
+                .unwrap()
+                .accumulator -= timestep;
+
+            let mut systems: Vec<&FixedUpdateSystem> =
+                inventory::iter::<FixedUpdateSystem>().collect();
+            systems.sort_by(|a, b| b.priority().cmp(&a.priority()));
+
+            for system in systems {
+                (system.func)(self, timestep).unwrap();
+            }
         }
-        self.fixed_update_systems = systems;
     }
 
     /// Runs all late update systems

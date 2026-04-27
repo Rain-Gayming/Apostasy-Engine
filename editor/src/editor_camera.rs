@@ -5,6 +5,7 @@ use apostasy_core::{
         Object,
         components::transform::Transform,
         resources::input_manager::InputManager,
+        systems::DeltaTime,
         tags::{Player, skips_serilization::SkipsSerilization},
         world::World,
     },
@@ -32,6 +33,7 @@ pub fn start(world: &mut World) -> Result<()> {
 
 #[update]
 pub fn update(world: &mut World) -> Result<()> {
+    let delta = world.get_resource::<DeltaTime>()?.0;
     let inputs = world.get_resource_mut::<InputManager>()?;
 
     let mouse_delta = inputs.mouse_delta;
@@ -56,7 +58,7 @@ pub fn update(world: &mut World) -> Result<()> {
 
     let velocity = camera.get_component_mut::<Velocity>()?;
 
-    velocity.linear_velocity = rotation * direction / 150.0;
+    velocity.linear_velocity = rotation * direction * delta * 5.0;
 
     let transform = camera.get_component_mut::<Transform>()?;
     transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;

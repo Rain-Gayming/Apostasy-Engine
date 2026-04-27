@@ -157,7 +157,9 @@ pub fn generate_chunk(
 
 #[update]
 pub fn check_voxel_raycast(world: &mut World) -> Result<()> {
-    let raycast_hit = world.get_resource_mut::<RaycastHit>()?.clone();
+    let Ok(raycast_hit) = world.get_resource_mut::<RaycastHit>() else {
+        return Ok(());
+    };
 
     let Some(set_to) = raycast_hit.set_to else {
         world.remove_resource::<RaycastHit>();
