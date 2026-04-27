@@ -21,6 +21,12 @@ impl Default for Velocity {
     }
 }
 
+impl Velocity {
+    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
 #[update]
 fn velocity_process(world: &mut World) -> Result<()> {
     for node in world.get_objects_with_component_mut::<Velocity>() {

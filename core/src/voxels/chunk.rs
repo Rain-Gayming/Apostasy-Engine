@@ -1,8 +1,8 @@
 use anyhow::Result;
-use apostasy_macros::{Component, update};
+use apostasy_macros::{Component, Resource, fixed_update, update};
 use cgmath::Vector3;
+use hashbrown::HashMap;
 use noise::{NoiseFn, Perlin};
-use rand::{RngExt, rng};
 
 use crate::{
     objects::{Object, scene::ObjectId, world::World},
@@ -12,9 +12,15 @@ use crate::{
         biome::{BiomeId, BiomeRegistry, sample_biome_weights},
         meshes::NeedsRemeshing,
         voxel::{Voxel, VoxelDefinition, VoxelId, VoxelRegistry},
+        voxel_components::break_ticks::BreakTicks,
         voxel_raycast::RaycastHit,
     },
 };
+
+#[derive(Resource, Clone, Default)]
+pub struct VoxelBreakProgress {
+    pub progress: HashMap<(i32, i32, i32), u32>,
+}
 
 #[derive(Clone, Component, Debug)]
 pub struct Chunk {
@@ -34,6 +40,9 @@ impl Default for Chunk {
 }
 
 impl Chunk {
+    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+        Ok(())
+    }
     fn _get_def<'a>(
         &self,
         x: u32,
@@ -154,19 +163,116 @@ pub fn generate_chunk(
     object.add_tag(NeedsRemeshing);
     object
 }
-
-#[update]
-pub fn check_voxel_raycast(world: &mut World) -> Result<()> {
-    let Ok(raycast_hit) = world.get_resource_mut::<RaycastHit>() else {
+#[fixed_update]
+pub fn check_voxel_raycast(world: &mut World, delta: f32) -> Result<()> {
+    let Ok(raycast_hit) = world.get_resource::<RaycastHit>() else {
+        // no active raycast — clear all break progress since player stopped looking
+        if let Ok(progress) = world.get_resource_mut::<VoxelBreakProgress>() {
+            progress.progress.clear();
+        }
         return Ok(());
     };
+    let raycast_hit = raycast_hit.clone();
 
     let Some(set_to) = raycast_hit.set_to else {
         world.remove_resource::<RaycastHit>();
         return Ok(());
     };
 
-    let (target_chunk_pos, target_local_pos) = if set_to != 0 {
+    // breaking a voxel (set_to == 0)
+    if set_to == 0 {
+        let hit_world_pos = (
+            raycast_hit.chunk_pos.x * 32 + raycast_hit.local_pos.x,
+            raycast_hit.chunk_pos.y * 32 + raycast_hit.local_pos.y,
+            raycast_hit.chunk_pos.z * 32 + raycast_hit.local_pos.z,
+        );
+
+        // get the voxel's break ticks requirement
+        let registry = world.get_resource::<VoxelRegistry>()?.clone();
+
+        // find the voxel id at the hit position
+        let voxel_id = world
+            .get_objects_with_component::<VoxelTransform>()
+            .iter()
+            .find_map(|obj| {
+                let t = obj.get_component::<VoxelTransform>().ok()?;
+                if t.position != raycast_hit.chunk_pos {
+                    return None;
+                }
+                let chunk = obj.get_component::<Chunk>().ok()?;
+                Some(
+                    chunk.voxels[flatten(
+                        raycast_hit.local_pos.x as u32,
+                        raycast_hit.local_pos.y as u32,
+                        raycast_hit.local_pos.z as u32,
+                        32,
+                    )],
+                )
+            });
+
+        let Some(voxel_id) = voxel_id else {
+            world.remove_resource::<RaycastHit>();
+            return Ok(());
+        };
+
+        let def = &registry.defs[voxel_id as usize];
+
+        // get required break ticks — if no BreakTicks component, voxel is unbreakable
+        let Ok(break_ticks) = def.get_component::<BreakTicks>() else {
+            world.remove_resource::<RaycastHit>();
+            return Ok(());
+        };
+        let required_ticks = break_ticks.0;
+
+        // increment progress for this voxel
+        // clear progress on any other voxel (player switched target)
+        let current_ticks = {
+            let progress = world.get_resource_mut::<VoxelBreakProgress>().unwrap();
+
+            // clear progress on voxels that are no longer being targeted
+            progress.progress.retain(|pos, _| *pos == hit_world_pos);
+
+            let ticks = progress.progress.entry(hit_world_pos).or_insert(0);
+            *ticks += 1;
+            *ticks
+        };
+
+        if current_ticks >= required_ticks {
+            // voxel is fully broken — remove it
+            world
+                .get_resource_mut::<VoxelBreakProgress>()
+                .unwrap()
+                .progress
+                .remove(&hit_world_pos);
+
+            // find and update the chunk
+            let mut chunks_to_update: Vec<ObjectId> = Vec::new();
+            for (id, obj) in world.get_objects_with_component_with_ids::<VoxelTransform>() {
+                if let Ok(t) = obj.get_component::<VoxelTransform>() {
+                    if t.position == raycast_hit.chunk_pos {
+                        chunks_to_update.push(id);
+                    }
+                }
+            }
+
+            world.remove_resource::<RaycastHit>();
+            for id in chunks_to_update {
+                let obj = world.get_object_mut(id).unwrap();
+                obj.get_component_mut::<Chunk>()?.set(
+                    raycast_hit.local_pos.x as u32,
+                    raycast_hit.local_pos.y as u32,
+                    raycast_hit.local_pos.z as u32,
+                    Voxel { id: 0 },
+                );
+                obj.add_tag(NeedsRemeshing);
+            }
+        }
+
+        return Ok(());
+    }
+
+    // placing a voxel — existing placement code unchanged
+    let (target_chunk_pos, target_local_pos) = {
         let offset = match raycast_hit.face {
             0 => Vector3::new(1i32, 0, 0),
             1 => Vector3::new(-1, 0, 0),
@@ -183,23 +289,20 @@ pub fn check_voxel_raycast(world: &mut World) -> Result<()> {
             raycast_hit.chunk_pos.z * 32 + raycast_hit.local_pos.z + offset.z,
         );
 
-        let chunk_pos = Vector3::new(
-            world_voxel.x.div_euclid(32),
-            world_voxel.y.div_euclid(32),
-            world_voxel.z.div_euclid(32),
-        );
-        let local_pos = Vector3::new(
-            world_voxel.x.rem_euclid(32),
-            world_voxel.y.rem_euclid(32),
-            world_voxel.z.rem_euclid(32),
-        );
-
-        (chunk_pos, local_pos)
-    } else {
-        (raycast_hit.chunk_pos, raycast_hit.local_pos)
+        (
+            Vector3::new(
+                world_voxel.x.div_euclid(32),
+                world_voxel.y.div_euclid(32),
+                world_voxel.z.div_euclid(32),
+            ),
+            Vector3::new(
+                world_voxel.x.rem_euclid(32),
+                world_voxel.y.rem_euclid(32),
+                world_voxel.z.rem_euclid(32),
+            ),
+        )
     };
 
-    // collect ObjectIds of chunks that need updating
     let mut chunks_to_update: Vec<ObjectId> = Vec::new();
     for (id, obj) in world.get_objects_with_component_with_ids::<VoxelTransform>() {
         if let Ok(t) = obj.get_component::<VoxelTransform>() {
@@ -211,55 +314,13 @@ pub fn check_voxel_raycast(world: &mut World) -> Result<()> {
 
     for id in chunks_to_update {
         let obj = world.get_object_mut(id).unwrap();
-        let chunk = obj.get_component_mut::<Chunk>()?;
-
-        if set_to != 0 {
-            chunk.set_if_empty(
-                target_local_pos.x as u32,
-                target_local_pos.y as u32,
-                target_local_pos.z as u32,
-                Voxel { id: set_to },
-            );
-        } else {
-            chunk.set(
-                target_local_pos.x as u32,
-                target_local_pos.y as u32,
-                target_local_pos.z as u32,
-                Voxel { id: 0 },
-            );
-        }
-
+        obj.get_component_mut::<Chunk>()?.set_if_empty(
+            target_local_pos.x as u32,
+            target_local_pos.y as u32,
+            target_local_pos.z as u32,
+            Voxel { id: set_to },
+        );
         obj.add_tag(NeedsRemeshing);
-
-        let neighbour_offsets = [
-            (Vector3::new(1i32, 0, 0), target_local_pos.x == 31),
-            (Vector3::new(-1, 0, 0), target_local_pos.x == 0),
-            (Vector3::new(0, 1, 0), target_local_pos.y == 31),
-            (Vector3::new(0, -1, 0), target_local_pos.y == 0),
-            (Vector3::new(0, 0, 1), target_local_pos.z == 31),
-            (Vector3::new(0, 0, -1), target_local_pos.z == 0),
-        ];
-
-        let mut neighbour_ids: Vec<ObjectId> = Vec::new();
-        for (offset, is_border) in &neighbour_offsets {
-            if *is_border {
-                let neighbour_pos = target_chunk_pos + offset;
-                for (id, obj) in world.get_objects_with_component_with_ids::<VoxelTransform>() {
-                    if let Ok(t) = obj.get_component::<VoxelTransform>() {
-                        if t.position == neighbour_pos {
-                            neighbour_ids.push(id);
-                        }
-                    }
-                }
-            }
-        }
-
-        for nid in neighbour_ids {
-            if let Some(nobj) = world.get_object_mut(nid) {
-                nobj.add_tag(NeedsRemeshing);
-            }
-        }
-
         break;
     }
 

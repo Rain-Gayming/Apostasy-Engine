@@ -16,8 +16,8 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
     let (impl_generics, type_generics, where_clause) = &ast.generics.split_for_impl();
 
     let output = quote! {
-     impl #impl_generics apostasy_core::objects::component::Component for #struct_name #type_generics
-        #where_clause
+        impl #impl_generics apostasy_core::objects::component::Component for #struct_name #type_generics
+            #where_clause
 
         {
             fn name() -> &'static str where Self: Sized {
@@ -32,16 +32,21 @@ pub fn component_derive(input: TokenStream) -> TokenStream {
             fn type_name(&self) -> &'static str {
                 std::any::type_name::<Self>()
             }
-            fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
-                Ok(())
-            }
+
         }
         inventory::submit! {
             apostasy_core::objects::component::ComponentRegistration {
                 type_name: #struct_name_str,
                 create: || Box::new(#struct_name::default()),
+                deserialize: |component, value| {
+                    if let Some(c) = component.as_any_mut().downcast_mut::<#struct_name>() {
+                        c.deserialize(value)
+                    } else {
+                        Ok(())
+                    }
+                },
             }
-        };
+        }
 
     };
 

@@ -1,7 +1,6 @@
 name: Grass
 namespace: Apostasy
 class: Voxel
-
 textures:
   front: textures/grass_side.png
   back: textures/grass_side.png
@@ -9,6 +8,6 @@ textures:
   right: textures/grass_side.png
   top: textures/grass_top.png
   bottom: textures/dirt.png
-
 components:
   IsSolid: true
+  BreakTicks: 5

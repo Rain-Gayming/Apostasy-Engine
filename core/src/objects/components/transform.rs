@@ -36,6 +36,9 @@ impl Default for Transform {
 }
 
 impl Transform {
+    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+        Ok(())
+    }
     pub fn calculate_up(&self) -> Vector3<f32> {
         self.local_rotation.rotate_vector(UP)
     }

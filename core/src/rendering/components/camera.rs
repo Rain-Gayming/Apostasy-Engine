@@ -22,6 +22,12 @@ impl Default for Camera {
     }
 }
 
+impl Camera {
+    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
 pub fn get_perspective_projection(camera: &Camera, aspect: f32) -> Matrix4<f32> {
     let mut proj: Matrix4<f32> = PerspectiveFov::to_perspective(&PerspectiveFov {
         fovy: Deg(camera.fov_y).into(),

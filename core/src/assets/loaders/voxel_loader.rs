@@ -81,7 +81,7 @@ impl AssetLoader for VoxelLoader {
 
                 if let Some(registration) = get_component_registration(component_name) {
                     let mut component = (registration.create)();
-                    component.deserialize(value)?;
+                    (registration.deserialize)(&mut component, value)?;
                     components.push(component);
                 } else {
                     log_warn!("Unknown component: {}", component_name);

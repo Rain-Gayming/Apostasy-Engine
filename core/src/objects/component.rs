@@ -9,9 +9,6 @@ pub trait Component: Send + Sync + 'static + ComponentContainer + std::fmt::Debu
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn type_name(&self) -> &'static str;
-    fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
-        Ok(())
-    }
 }
 
 pub trait ComponentContainer {
@@ -33,6 +30,7 @@ impl Clone for BoxedComponent {
 pub struct ComponentRegistration {
     pub type_name: &'static str,
     pub create: fn() -> BoxedComponent,
+    pub deserialize: fn(&mut BoxedComponent, &serde_yaml::Value) -> anyhow::Result<()>,
 }
 
 inventory::collect!(ComponentRegistration);

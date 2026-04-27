@@ -14,7 +14,7 @@ use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::utils::flatten::flatten;
 use crate::voxels::VoxelTransform;
 use crate::voxels::chunk::Chunk;
-use crate::voxels::voxel::VoxelRegistry;
+use crate::voxels::voxel::{Voxel, VoxelRegistry};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -77,6 +77,12 @@ pub struct VoxelChunkMesh {
     pub index_buffer: Buffer,
     pub index_buffer_memory: DeviceMemory,
     pub index_count: u32,
+}
+
+impl VoxelChunkMesh {
+    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Tag, Clone, Default)]
