@@ -57,7 +57,7 @@ pub trait RenderingAPI {
     fn get_descriptor_pool(&self) -> vk::DescriptorPool;
     fn get_voxel_descriptor_set_layout(&self) -> vk::DescriptorSetLayout;
     /// Assigns the rendering_info's renderer the the value created via this
-    fn new(rendering_info: Arc<Mutex<RenderingInfo>>) -> Result<()>
+    fn new(rendering_info: Arc<Mutex<RenderingInfo>>, window: Arc<Window>) -> Result<()>
     where
         Self: Sized;
 }
@@ -80,7 +80,7 @@ impl RenderingInfo {
 
         match rendering_api {
             RenderingBackend::Vulkan => {
-                VulkanRenderer::new(rendering_info.clone()).unwrap();
+                VulkanRenderer::new(rendering_info.clone(), window).unwrap();
             }
             RenderingBackend::OpenGl => {
                 println!("Opengl is not supported at the moment");

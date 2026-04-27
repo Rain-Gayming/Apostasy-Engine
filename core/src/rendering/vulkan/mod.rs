@@ -7,12 +7,14 @@ use crate::rendering::vulkan::image_layout::ImageLayouts;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::rendering::vulkan::{frame::VulkanFrame, swapchain::VulkanSwapchain};
 use crate::rendering::{RenderingAPI, RenderingInfo};
+use crate::ui::UIRenderer;
 use crate::voxels::texture_atlas::VoxelTextureAtlas;
 use anyhow::Result;
 use ash::vk::{
     self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
     PipelineLayoutCreateInfo,
 };
+use winit::window::Window;
 
 pub mod device;
 pub mod frame;
@@ -47,6 +49,8 @@ pub struct VulkanRenderer {
     pub pipeline: Pipeline,
     pub pipeline_layout: PipelineLayout,
 
+    pub ui_renderer: UIRenderer,
+
     pub voxel_pipeline: Pipeline,
     pub voxel_wireframe_pipeline: Pipeline,
     pub voxel_pipeline_layout: PipelineLayout,
@@ -70,7 +74,7 @@ fn load_shader_module(
 }
 
 impl RenderingAPI for VulkanRenderer {
-    fn new(rendering_info: Arc<Mutex<RenderingInfo>>) -> Result<()> {
+    fn new(rendering_info: Arc<Mutex<RenderingInfo>>, window: Arc<Window>) -> Result<()> {
         let mut rendering_info = rendering_info.lock().unwrap();
         let mut swapchain = VulkanSwapchain::new(
             rendering_info.context.clone().into(),
@@ -218,6 +222,8 @@ impl RenderingAPI for VulkanRenderer {
                 memory: default_ubo_mem,
             };
 
+            let ui_renderer = UIRenderer::new(context.clone(), &swapchain, &window)?;
+
             let renderer = VulkanRenderer {
                 current_image_index: 0,
                 in_flight_frames_count,
@@ -228,6 +234,8 @@ impl RenderingAPI for VulkanRenderer {
                 pipeline,
                 pipeline_layout,
                 voxel_pipeline_layout,
+
+                ui_renderer,
 
                 voxel_pipeline,
                 voxel_wireframe_pipeline,

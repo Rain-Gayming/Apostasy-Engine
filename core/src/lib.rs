@@ -45,6 +45,7 @@ pub mod objects;
 pub mod packages;
 pub mod physics;
 pub mod rendering;
+pub mod ui;
 pub mod utils;
 pub mod voxels;
 
