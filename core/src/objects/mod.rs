@@ -3,7 +3,7 @@ use std::any::TypeId;
 use anyhow::{Error, Result};
 
 use crate::{
-    log, log_warn,
+    log_warn,
     objects::{
         component::{Component, get_component_registration},
         scene::ObjectId,

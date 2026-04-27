@@ -277,12 +277,10 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
                                         amount: 1,
                                     });
                                 }
-                                log!("Added {} to inventory", drops.0);
                             } else {
                                 log_error!("Player has no Container component");
                             }
                         }
-                        log!("Dropping item: {}", drops.0);
                     } else {
                         log_error!(
                             "Drops expected for voxel: {}:{}:{} but there is no item registered as {}",

@@ -1,9 +1,7 @@
 use std::collections::HashSet;
 use std::io;
-use std::path::Path;
 
 use anyhow::Result;
-use anyhow::anyhow;
 use apostasy_macros::Resource;
 use ash::Device;
 use ash::Entry;
@@ -92,7 +90,6 @@ use winit::raw_window_handle::HasDisplayHandle;
 use winit::raw_window_handle::HasWindowHandle;
 use winit::window::Window;
 
-use crate::rendering::shared::texture::GpuTexture;
 use crate::rendering::shared::vertex::Vertex;
 use crate::rendering::shared::vertex::VertexDefinition;
 use crate::rendering::vulkan::device::PhysicalDevice;

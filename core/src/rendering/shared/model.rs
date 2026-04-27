@@ -1,4 +1,3 @@
-use apostasy_macros::Component;
 use ash::vk::{Buffer, DeviceMemory};
 
 #[derive(Clone, Debug)]

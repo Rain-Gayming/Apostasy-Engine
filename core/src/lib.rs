@@ -179,42 +179,40 @@ impl ApplicationHandler for Core {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.rendering_info = Some(RenderingInfo::new(&event_loop, self.rendering_api));
 
-        unsafe {
-            let mut world = self.world.lock().unwrap();
-            let context = self
-                .rendering_info
-                .clone()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .context
-                .clone();
+        let mut world = self.world.lock().unwrap();
+        let context = self
+            .rendering_info
+            .clone()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .context
+            .clone();
 
-            let pending = world.get_resource::<PendingAtlas>().unwrap().clone();
+        let pending = world.get_resource::<PendingAtlas>().unwrap().clone();
 
-            let (command_pool, descriptor_pool, descriptor_set_layout) = {
-                let ri = self.rendering_info.as_ref().unwrap().lock().unwrap();
-                let renderer = ri.renderer.as_ref().unwrap();
-                (
-                    renderer.get_command_pool().unwrap(),
-                    renderer.get_descriptor_pool(),
-                    renderer.get_voxel_descriptor_set_layout(),
-                )
-            };
-
-            let atlas = upload_atlas(
-                &context,
-                command_pool,
-                descriptor_pool,
-                descriptor_set_layout,
-                &pending.image,
-                pending.tiles,
+        let (command_pool, descriptor_pool, descriptor_set_layout) = {
+            let ri = self.rendering_info.as_ref().unwrap().lock().unwrap();
+            let renderer = ri.renderer.as_ref().unwrap();
+            (
+                renderer.get_command_pool().unwrap(),
+                renderer.get_descriptor_pool(),
+                renderer.get_voxel_descriptor_set_layout(),
             )
-            .expect("Failed to upload voxel atlas");
+        };
 
-            world.insert_resource(context);
-            world.insert_resource(atlas);
-        }
+        let atlas = upload_atlas(
+            &context,
+            command_pool,
+            descriptor_pool,
+            descriptor_set_layout,
+            &pending.image,
+            pending.tiles,
+        )
+        .expect("Failed to upload voxel atlas");
+
+        world.insert_resource(context);
+        world.insert_resource(atlas);
     }
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {}
 

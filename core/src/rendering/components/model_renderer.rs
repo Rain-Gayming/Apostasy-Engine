@@ -9,7 +9,7 @@ pub struct ModelRenderer {
 }
 
 impl ModelRenderer {
-    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+    pub fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
         Ok(())
     }
     pub fn from_path(path: String) -> Self {

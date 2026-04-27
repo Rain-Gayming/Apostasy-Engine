@@ -2,7 +2,6 @@ use anyhow::Result;
 use apostasy_macros::{Component, Tag};
 use ash::vk::Buffer;
 use ash::vk::{self, CommandPool, DeviceMemory};
-use cgmath::Vector3;
 use hashbrown::HashMap;
 
 use crate::log;
@@ -14,7 +13,7 @@ use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::utils::flatten::flatten;
 use crate::voxels::VoxelTransform;
 use crate::voxels::chunk::Chunk;
-use crate::voxels::voxel::{Voxel, VoxelRegistry};
+use crate::voxels::voxel::VoxelRegistry;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -80,7 +79,7 @@ pub struct VoxelChunkMesh {
 }
 
 impl VoxelChunkMesh {
-    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+    pub fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
         Ok(())
     }
 }

@@ -4,7 +4,7 @@ use apostasy_macros::Component;
 pub struct IsSolid();
 
 impl IsSolid {
-    pub fn deserialize(&mut self, value: &serde_yaml::Value) -> anyhow::Result<()> {
+    pub fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
         Ok(())
     }
 }

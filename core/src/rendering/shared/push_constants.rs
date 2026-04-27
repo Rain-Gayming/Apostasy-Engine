@@ -1,6 +1,6 @@
 use std::mem::transmute;
 
-use cgmath::{Matrix, Matrix4, SquareMatrix, Vector3, Zero};
+use cgmath::{Matrix4, SquareMatrix, Vector3, Zero};
 
 use crate::{
     objects::{Object, components::transform::Transform},
@@ -29,6 +29,7 @@ impl Default for PushConstants {
 }
 
 impl PushConstants {
+    #[allow(unnecessary_transmutes)]
     pub fn return_renderable(&self) -> Vec<u8> {
         unsafe {
             let mut data = Vec::with_capacity(156);

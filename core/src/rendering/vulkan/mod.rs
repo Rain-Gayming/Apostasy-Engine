@@ -162,7 +162,13 @@ impl RenderingAPI for VulkanRenderer {
             )?;
 
             context.device.destroy_shader_module(vertex_shader, None);
+            context
+                .device
+                .destroy_shader_module(voxel_vertex_shader, None);
             context.device.destroy_shader_module(fragment_shader, None);
+            context
+                .device
+                .destroy_shader_module(voxel_fragment_shader, None);
 
             let command_pool = context.device.create_command_pool(
                 &ash::vk::CommandPoolCreateInfo::default()

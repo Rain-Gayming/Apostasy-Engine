@@ -45,7 +45,7 @@ impl Scene {
 
     /// Removes an Object by ID
     pub fn remove_object(&mut self, id: ObjectId) {
-        if let Some(object) = self.objects.get(id) {
+        if let Some(_) = self.objects.get(id) {
             self.objects.remove(id);
         } else {
             log_error!("Object does not exist!");

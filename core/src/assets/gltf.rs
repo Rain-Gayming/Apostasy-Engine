@@ -5,7 +5,7 @@ use ash::vk::CommandPool;
 
 use crate::rendering::{
     shared::{
-        model::{GpuMesh, GpuModel, Mesh},
+        model::{GpuModel, Mesh},
         vertex::Vertex,
     },
     vulkan::rendering_context::VulkanRenderingContext,
