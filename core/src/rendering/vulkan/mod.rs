@@ -391,6 +391,7 @@ impl RenderingAPI for VulkanRenderer {
             self.context
                 .device
                 .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
+            self.context.device.reset_fences(&[frame.in_flight_fence])?;
             self.context
                 .device
                 .reset_command_buffer(frame.command_buffer, CommandBufferResetFlags::empty())?;
