@@ -1,18 +1,20 @@
 use anyhow::Result;
-use apostasy_macros::{Component, Resource, fixed_update, update};
+use apostasy_macros::{Component, Resource, fixed_update};
 use cgmath::Vector3;
 use hashbrown::HashMap;
 use noise::{NoiseFn, Perlin};
 
 use crate::{
-    objects::{Object, scene::ObjectId, world::World},
+    items::ItemRegistry,
+    log, log_error,
+    objects::{Object, resources::input_manager::InputManager, scene::ObjectId, world::World},
     utils::flatten::flatten,
     voxels::{
         VoxelTransform,
         biome::{BiomeId, BiomeRegistry, sample_biome_weights},
         meshes::NeedsRemeshing,
         voxel::{Voxel, VoxelDefinition, VoxelId, VoxelRegistry},
-        voxel_components::break_ticks::BreakTicks,
+        voxel_components::{break_ticks::BreakTicks, drops::Drops},
         voxel_raycast::RaycastHit,
     },
 };
@@ -163,10 +165,18 @@ pub fn generate_chunk(
     object.add_tag(NeedsRemeshing);
     object
 }
+
 #[fixed_update]
-pub fn check_voxel_raycast(world: &mut World, delta: f32) -> Result<()> {
+pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
+    let inputs = world.get_resource::<InputManager>()?;
+    let is_breaking = inputs.is_mousebind_active("Break");
+
+    if !is_breaking {
+        world.remove_resource::<RaycastHit>();
+        return Ok(());
+    }
+
     let Ok(raycast_hit) = world.get_resource::<RaycastHit>() else {
-        // no active raycast — clear all break progress since player stopped looking
         if let Ok(progress) = world.get_resource_mut::<VoxelBreakProgress>() {
             progress.progress.clear();
         }
@@ -179,7 +189,7 @@ pub fn check_voxel_raycast(world: &mut World, delta: f32) -> Result<()> {
         return Ok(());
     };
 
-    // breaking a voxel (set_to == 0)
+    // breaking a voxel
     if set_to == 0 {
         let hit_world_pos = (
             raycast_hit.chunk_pos.x * 32 + raycast_hit.local_pos.x,
@@ -217,7 +227,7 @@ pub fn check_voxel_raycast(world: &mut World, delta: f32) -> Result<()> {
 
         let def = &registry.defs[voxel_id as usize];
 
-        // get required break ticks — if no BreakTicks component, voxel is unbreakable
+        // get required break ticks if no BreakTicks component, voxel is unbreakable
         let Ok(break_ticks) = def.get_component::<BreakTicks>() else {
             world.remove_resource::<RaycastHit>();
             return Ok(());
@@ -225,7 +235,6 @@ pub fn check_voxel_raycast(world: &mut World, delta: f32) -> Result<()> {
         let required_ticks = break_ticks.0;
 
         // increment progress for this voxel
-        // clear progress on any other voxel (player switched target)
         let current_ticks = {
             let progress = world.get_resource_mut::<VoxelBreakProgress>().unwrap();
 
@@ -238,7 +247,31 @@ pub fn check_voxel_raycast(world: &mut World, delta: f32) -> Result<()> {
         };
 
         if current_ticks >= required_ticks {
-            // voxel is fully broken — remove it
+            // voxel is fully broken
+
+            if let Ok(drops) = def.get_component::<Drops>() {
+                if let Ok(item_registry) = world.get_resource::<ItemRegistry>() {
+                    if let Some(item) = item_registry.name_to_id.get(&drops.0) {
+                        log!("Dropping item: {}", drops.0);
+                    } else {
+                        log_error!(
+                            "Drops expected for voxel: {}:{}:{} but there is no item registered as {}",
+                            def.name,
+                            def.class,
+                            def.name,
+                            drops.0
+                        );
+                    }
+                } else {
+                    log_error!(
+                        "Drops expected for voxel: {}:{}:{} but there is no registered ItemRegistry",
+                        def.name,
+                        def.class,
+                        def.name
+                    );
+                    log!("A regsitry can be added via the package system 'ItemSystemPackage'");
+                }
+            }
             world
                 .get_resource_mut::<VoxelBreakProgress>()
                 .unwrap()
@@ -271,7 +304,7 @@ pub fn check_voxel_raycast(world: &mut World, delta: f32) -> Result<()> {
         return Ok(());
     }
 
-    // placing a voxel — existing placement code unchanged
+    // placing a voxel  existing placement code unchanged
     let (target_chunk_pos, target_local_pos) = {
         let offset = match raycast_hit.face {
             0 => Vector3::new(1i32, 0, 0),

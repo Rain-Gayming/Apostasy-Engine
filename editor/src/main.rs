@@ -4,5 +4,9 @@ pub mod editor_camera;
 pub mod input;
 
 fn main() {
-    init_core(RenderingBackend::Vulkan, vec![Packages::Voxel]).unwrap();
+    init_core(
+        RenderingBackend::Vulkan,
+        vec![Packages::Voxel, Packages::ItemSystem],
+    )
+    .unwrap();
 }

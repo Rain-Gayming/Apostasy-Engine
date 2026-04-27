@@ -40,6 +40,7 @@ use crate::{
 use winit::application::ApplicationHandler;
 
 pub mod assets;
+pub mod items;
 pub mod objects;
 pub mod packages;
 pub mod physics;

@@ -42,7 +42,7 @@ impl AssetManager {
                 log!("Loaded {:?}:{:?} as class '{}'", namespace, name, class);
             }
             None => {
-                log_warn!("No loader registered for class '{}' in {:?}", class, path);
+                // log_warn!("No loader registered for class '{}' in {:?}", class, path);
             }
         }
 
