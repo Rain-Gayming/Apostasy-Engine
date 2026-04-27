@@ -14,6 +14,9 @@ use ash::vk::{
     self, ClearColorValue, CommandBufferResetFlags, CommandPool, Pipeline, PipelineLayout,
     PipelineLayoutCreateInfo,
 };
+use egui::TextureId;
+use epaint::ImageDelta;
+use winit::event::WindowEvent;
 use winit::window::Window;
 
 pub mod device;
@@ -222,7 +225,7 @@ impl RenderingAPI for VulkanRenderer {
                 memory: default_ubo_mem,
             };
 
-            let ui_renderer = UIRenderer::new(context.clone(), &swapchain, &window)?;
+            let ui_renderer = UIRenderer::new(context.clone(), &swapchain, window)?;
 
             let renderer = VulkanRenderer {
                 current_image_index: 0,
@@ -546,6 +549,63 @@ impl RenderingAPI for VulkanRenderer {
             );
         }
         Ok(())
+    }
+    fn begin_ui(&mut self, window: &Window) {
+        let raw_input = self.ui_renderer.state.take_egui_input(window);
+        self.ui_renderer.context.begin_pass(raw_input);
+
+        self.ui_renderer.context.clone().show_viewport_immediate(
+            egui::ViewportId::ROOT,
+            egui::ViewportBuilder::default(),
+            |ctx, _| {
+                egui::Window::new("Debug").show(ctx, |ui| {
+                    ui.label("Hello from egui!");
+                });
+            },
+        );
+    }
+
+    fn end_ui(&mut self) -> Result<()> {
+        let full_output = self.ui_renderer.context.end_pass();
+
+        self.ui_renderer
+            .state
+            .handle_platform_output(&self.ui_renderer.window, full_output.platform_output);
+
+        let clipped_primitives = self
+            .ui_renderer
+            .context
+            .tessellate(full_output.shapes, full_output.pixels_per_point);
+
+        let texture_updates: Vec<(TextureId, ImageDelta)> = full_output
+            .textures_delta
+            .set
+            .iter()
+            .map(|(id, delta)| (*id, delta.clone()))
+            .collect();
+
+        if !texture_updates.is_empty() {
+            self.ui_renderer.renderer.set_textures(
+                self.context.queues[self.context.queue_families.graphics as usize],
+                self.command_pool,
+                &texture_updates,
+            )?;
+        }
+
+        self.ui_renderer.renderer.cmd_draw(
+            self.frames[self.current_frame].command_buffer,
+            self.swapchain.extent,
+            full_output.pixels_per_point,
+            &clipped_primitives,
+        )?;
+
+        Ok(())
+    }
+    fn handle_ui_event(&mut self, event: &WindowEvent, window: &Window) -> bool {
+        self.ui_renderer
+            .state
+            .on_window_event(window, event)
+            .consumed
     }
     fn update_command_buffer(&mut self) {}
 

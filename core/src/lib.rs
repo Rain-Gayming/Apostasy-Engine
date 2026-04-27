@@ -81,6 +81,11 @@ impl Core {
         if let Some(rendering_info) = &mut self.rendering_info {
             let mut rendering_info = rendering_info.lock().unwrap();
 
+            let window = rendering_info.window.clone();
+            if let Some(renderer) = &mut rendering_info.renderer {
+                let _ = renderer.handle_ui_event(&event.clone(), &window);
+            }
+
             match event {
                 WindowEvent::CloseRequested => {
                     event_loop.exit();
@@ -108,6 +113,8 @@ impl Core {
                         push_constants.set_atlas_tiles(atlas.atlas_size);
                     }
 
+                    let window = rendering_info.window.clone();
+
                     let Some(renderer) = &mut rendering_info.renderer else {
                         log_error!("No renderer found!");
                         return;
@@ -129,6 +136,8 @@ impl Core {
                         }
                     }
                     renderer.begin_frame(push_constants.clone()).unwrap();
+
+                    renderer.begin_ui(&window);
 
                     if let Some(texture_atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
                         for object in world.get_objects_with_component::<VoxelChunkMesh>() {
@@ -153,6 +162,7 @@ impl Core {
                         }
                     }
 
+                    renderer.end_ui().unwrap();
                     renderer.end_frame().unwrap();
                     world.late_update();
                 }

@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use ash::vk::{self, CommandPool};
+use winit::event::WindowEvent;
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
 use crate::rendering::shared::model::GpuMesh;
@@ -41,6 +42,9 @@ pub struct RenderingInfo {
 pub trait RenderingAPI {
     fn resize(&mut self) -> Result<()>;
     fn render(&mut self, mesh: Box<dyn GpuMesh>, push_constants: PushConstants) -> Result<()>;
+    fn begin_ui(&mut self, window: &Window);
+    fn end_ui(&mut self) -> Result<()>;
+    fn handle_ui_event(&mut self, event: &WindowEvent, window: &Window) -> bool;
     fn begin_frame(&mut self, push_constants: PushConstants) -> Result<()>;
     fn end_frame(&mut self) -> Result<()>;
 
