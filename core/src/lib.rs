@@ -22,14 +22,14 @@ use winit::{
 };
 
 use crate::assets::asset_manager::AssetManager;
+use crate::objects::resources::cursor_manager::CursorManager;
 use crate::objects::resources::input_manager::InputManager;
-use crate::objects::systems::DeltaTime;
+use crate::objects::resources::window_manager::WindowManager;
 use crate::packages::Packages;
 use crate::packages::add_package;
 use crate::rendering::components::camera::ActiveCamera;
 use crate::ui::ui_context::EguiContext;
 use crate::voxels::VoxelTransform;
-use crate::voxels::chunk::Chunk;
 use crate::voxels::meshes::NeedsRemeshing;
 use crate::voxels::meshes::VoxelChunkMesh;
 use crate::voxels::meshes::remesh_chunks;
@@ -63,6 +63,8 @@ impl Core {
     pub fn new(rendering_api: RenderingBackend, packages: Vec<Packages>) -> Self {
         let mut world = World::default();
         world.insert_resource(InputManager::default());
+        world.insert_resource(CursorManager::default());
+        world.insert_resource(WindowManager::default());
 
         for package in packages {
             add_package(&mut world, package);
@@ -188,9 +190,21 @@ impl Core {
 }
 impl ApplicationHandler for Core {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.rendering_info = Some(RenderingInfo::new(&event_loop, self.rendering_api));
-
+        let rendering_info = Some(RenderingInfo::new(&event_loop, self.rendering_api));
         let mut world = self.world.lock().unwrap();
+        {
+            let ri = rendering_info.as_ref().unwrap();
+            let locked = ri.lock().unwrap();
+
+            let window_id = locked.window.id();
+            let window = locked.window.clone();
+
+            let window_manager = world.get_resource_mut::<WindowManager>().unwrap();
+            window_manager.windows.insert(window_id, window);
+            window_manager.primary_window_id = window_id;
+        }
+
+        self.rendering_info = rendering_info;
         let context = self
             .rendering_info
             .clone()
@@ -226,6 +240,8 @@ impl ApplicationHandler for Core {
         world.insert_resource(EguiContext(egui_context));
         world.insert_resource(context);
         world.insert_resource(atlas);
+
+        world.start();
     }
 
     fn suspended(&mut self, _event_loop: &ActiveEventLoop) {}
@@ -266,44 +282,11 @@ pub fn init_core(rendering_api: RenderingBackend, packages: Vec<Packages>) -> Re
         let mut world = core.world.lock().unwrap();
 
         world.build_systems();
-        world.start();
     }
 
     // begin event loop
     let event_loop = EventLoop::new()?;
     event_loop.run_app(&mut core)?;
-
-    Ok(())
-}
-
-#[update]
-pub fn hud(world: &mut World) -> Result<()> {
-    let ctx = world.get_resource::<EguiContext>()?.0.clone();
-
-    egui::Area::new(egui::Id::new("crosshair"))
-        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-        .show(&ctx, |ui| {
-            ui.label(
-                egui::RichText::new("+")
-                    .size(24.0)
-                    .color(egui::Color32::WHITE),
-            );
-        });
-
-    egui::Window::new("Debug")
-        .anchor(egui::Align2::LEFT_TOP, [10.0, 10.0])
-        .resizable(false)
-        .collapsible(false)
-        .title_bar(false)
-        .show(&ctx, |ui| {
-            if let Ok(dt) = world.get_resource::<DeltaTime>() {
-                ui.label(format!("FPS: {:.0}", 1.0 / dt.0));
-            }
-            ui.label(format!(
-                "Chunks: {}",
-                world.get_objects_with_component::<Chunk>().len()
-            ));
-        });
 
     Ok(())
 }
