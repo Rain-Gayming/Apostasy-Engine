@@ -30,7 +30,7 @@ pub fn player_init(world: &mut World) -> Result<()> {
     let transform = Transform::default();
 
     let camera = Object::new()
-        .add_component(transform.clone())
+        .add_component(Transform::default())
         .add_component(Camera::default())
         .add_tag(ActiveCamera)
         .add_tag(GameCamera);
@@ -40,9 +40,9 @@ pub fn player_init(world: &mut World) -> Result<()> {
         .add_tag(Player)
         .add_tag(NeedsSpawnPoint);
 
-    world.set_parent(camera.id, Some(player.id))?;
-
-    world.add_object(player.clone());
+    let player_id = world.add_object(player.clone());
+    let cam_id = world.add_object(camera.clone());
+    world.set_parent(cam_id, Some(player_id))?;
     Ok(())
 }
 
@@ -142,7 +142,6 @@ pub fn update(world: &mut World) -> Result<()> {
         "Backwards",
         "Forwards",
     );
-
     let camera = world.get_object_with_tag_mut::<GameCamera>()?;
     let rotation = {
         let transform = camera.get_component::<Transform>()?;
@@ -150,25 +149,26 @@ pub fn update(world: &mut World) -> Result<()> {
         transform.global_rotation
     };
 
-    let velocity = camera.get_component_mut::<Velocity>()?;
+    {
+        let transform = camera.get_component_mut::<Transform>()?;
+        transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
+        transform.local_euler_angles.x = clamp(
+            transform.local_euler_angles.x - mouse_delta.1 as f32 * 4.0,
+            -90.0,
+            90.0,
+        );
 
+        transform.local_euler_angles.y -= look_keyboard.x as f32;
+        transform.local_euler_angles.x = clamp(
+            transform.local_euler_angles.x - look_keyboard.y as f32,
+            -90.0,
+            90.0,
+        );
+    }
+
+    let player = world.get_object_with_tag_mut::<Player>()?;
+    let velocity = player.get_component_mut::<Velocity>()?;
     velocity.linear_velocity = rotation * direction * delta * 5.0;
-
-    let transform = camera.get_component_mut::<Transform>()?;
-    transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
-    transform.local_euler_angles.x = clamp(
-        transform.local_euler_angles.x - mouse_delta.1 as f32 * 4.0,
-        -90.0,
-        90.0,
-    );
-
-    transform.local_euler_angles.y -= look_keyboard.x as f32;
-    transform.local_euler_angles.x = clamp(
-        transform.local_euler_angles.x - look_keyboard.y as f32,
-        -90.0,
-        90.0,
-    );
-
     if to_break {
         voxel_raycast_system(world, Some(0))?;
     }

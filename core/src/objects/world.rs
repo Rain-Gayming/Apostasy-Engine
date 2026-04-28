@@ -125,8 +125,8 @@ impl World {
     }
 
     /// Adds an Object to the world
-    pub fn add_object(&mut self, object: Object) {
-        self.scene.add_object(object);
+    pub fn add_object(&mut self, object: Object) -> ObjectId {
+        self.scene.add_object(object)
     }
 
     /// Removes an Object from the world
