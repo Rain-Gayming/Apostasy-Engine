@@ -33,6 +33,7 @@ pub struct Object {
     pub parent: Option<ObjectId>,
     pub children: Vec<ObjectId>,
 }
+
 impl Default for Object {
     fn default() -> Self {
         Object::new()
@@ -50,79 +51,65 @@ impl Object {
             components: Vec::new(),
         }
     }
-    /// Adds a child to the node
-    pub fn add_child(&mut self, mut child: Object) -> &mut Self {
-        child.parent = Some(self.id.clone());
-        self.children.push(child.id);
-        self
-    }
 
     pub fn set_name(&mut self, name: String) -> Self {
         self.name = name;
-
         self.clone()
     }
 
     // ========== ========== Tags ========== ==========
 
-    /// Checks if the node has a tag of type T
     pub fn has_tag<T: Tag + 'static>(&self) -> bool {
         self.tags
             .iter()
             .any(|tag| tag.as_any().downcast_ref::<T>().is_some())
     }
 
-    /// Gets a tag of type T from the node
-    pub(crate) fn get_tag<T: Tag + 'static>(&self) -> Result<&T> {
+    pub fn get_tag<T: Tag + 'static>(&self) -> Result<&T> {
         self.tags
             .iter()
             .find(|c| c.as_any().type_id() == TypeId::of::<T>())
             .and_then(|c| c.as_any().downcast_ref())
-            .ok_or(Error::msg("No Component of type"))
+            .ok_or(Error::msg("No tag of type"))
     }
 
-    /// Adds a tag of type T to the node
     pub fn add_tag<T: Tag + 'static>(&mut self, tag: T) -> Self {
         if self.get_tag::<T>().is_ok() {
             log_warn!("You can only have one of any tag on an entity");
             return self.clone();
-        } else {
-            self.tags.push(Box::new(tag));
-            return self.clone();
         }
+        self.tags.push(Box::new(tag));
+        self.clone()
     }
 
-    /// Gets a tag of type T from the node
-    pub(crate) fn remove_tag<T: Tag + 'static>(&mut self) {
-        let index = self
+    pub fn remove_tag<T: Tag + 'static>(&mut self) {
+        if let Some(i) = self
             .tags
             .iter()
-            .position(|c| c.as_any().type_id() == TypeId::of::<T>());
-
-        if let Some(i) = index {
+            .position(|c| c.as_any().type_id() == TypeId::of::<T>())
+        {
             self.tags.remove(i);
         }
     }
 
     // ========== ========== Components ========== ==========
 
-    /// Checks if the node has a component of type T
     pub fn has_component<T: Component + 'static>(&self) -> bool {
         self.components
             .iter()
             .any(|component| component.as_any().downcast_ref::<T>().is_some())
     }
+
     pub fn remove_component<T: Component + 'static>(&mut self) {
-        let index = self
+        if let Some(i) = self
             .components
             .iter()
-            .position(|c| c.as_any().type_id() == TypeId::of::<T>());
-
-        if let Some(i) = index {
+            .position(|c| c.as_any().type_id() == TypeId::of::<T>())
+        {
             self.components.remove(i);
         }
     }
-    /// Gets a component of type T from the node
+
     pub fn get_component<T: Component + 'static>(&self) -> Result<&T> {
         let msg = format!("No Component of type: {}", T::name());
         self.components
@@ -141,19 +128,15 @@ impl Object {
             .ok_or(Error::msg(msg))
     }
 
-    /// Adds a component of type T to the node
     pub fn add_component<T: Component + 'static>(&mut self, component: T) -> Self {
         if self.get_component::<T>().is_ok() {
             log_warn!("You can only have one of any component on an entity");
             return self.clone();
-        } else {
-            self.components.push(Box::new(component));
-            return self.clone();
         }
+        self.components.push(Box::new(component));
+        self.clone()
     }
 
-    /// Adds a component of type T to the node
-    /// Note: capitalization is ignored
     pub fn add_component_by_name(&mut self, component_name: &str) -> Result<()> {
         let mut component_name = component_name.to_string();
         component_name = component_name.replace(" ", "");
@@ -168,7 +151,6 @@ impl Object {
                 )
             })?;
 
-        // Check for duplicate using type_name since we don't have T here
         let component = (registration.create)();
         let new_type_name = component.type_name();
 

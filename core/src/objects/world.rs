@@ -179,6 +179,50 @@ impl World {
         self.scene.get_objects_with_tag_with_ids::<T>()
     }
 
+    // ========== ========== Hierarchy ========== ==========
+
+    /// Reparents an object. Pass `None` to make it a root object.
+    pub fn set_parent(&mut self, child_id: ObjectId, parent_id: Option<ObjectId>) -> Result<()> {
+        self.scene.set_parent(child_id, parent_id)
+    }
+
+    /// Detaches an object from its parent, making it a root object
+    pub fn detach(&mut self, id: ObjectId) -> Result<()> {
+        self.scene.detach_from_parent(id)
+    }
+
+    pub fn get_parent(&self, id: ObjectId) -> Option<&Object> {
+        self.scene.get_parent(id)
+    }
+
+    pub fn get_parent_id(&self, id: ObjectId) -> Option<ObjectId> {
+        self.scene.get_parent_id(id)
+    }
+
+    pub fn get_children(&self, id: ObjectId) -> Vec<&Object> {
+        self.scene.get_children(id)
+    }
+
+    pub fn get_children_ids(&self, id: ObjectId) -> &[ObjectId] {
+        self.scene.get_children_ids(id)
+    }
+
+    pub fn get_ancestors(&self, id: ObjectId) -> Vec<ObjectId> {
+        self.scene.get_ancestors(id)
+    }
+
+    pub fn get_descendants(&self, id: ObjectId) -> Vec<ObjectId> {
+        self.scene.get_descendants(id)
+    }
+
+    pub fn is_ancestor_of(&self, ancestor_id: ObjectId, descendant_id: ObjectId) -> bool {
+        self.scene.is_ancestor_of(ancestor_id, descendant_id)
+    }
+
+    pub fn get_root_objects(&self) -> Vec<(ObjectId, &Object)> {
+        self.scene.get_root_objects()
+    }
+
     // ========== ========== Resources ========== ==========
 
     /// Insert a new resource into the map

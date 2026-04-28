@@ -1,6 +1,7 @@
 use apostasy_core::{
     anyhow::Result,
-    cgmath::num_traits::clamp,
+    cgmath::{Vector3, num_traits::clamp},
+    log,
     objects::{
         Object,
         components::transform::Transform,
@@ -16,24 +17,32 @@ use apostasy_core::{
     physics::velocity::Velocity,
     rendering::components::camera::{ActiveCamera, Camera, GameCamera},
     start, update,
-    voxels::voxel_raycast::voxel_raycast_system,
+    voxels::voxel_raycast::{Direction, voxel_raycast, voxel_raycast_system},
     winit::{
         event::MouseButton,
         keyboard::{KeyCode, PhysicalKey},
     },
 };
+use apostasy_macros::Tag;
 
 #[start]
 pub fn player_init(world: &mut World) -> Result<()> {
-    let player = Object::new()
-        .add_component(Transform::default())
-        .add_component(Velocity::default())
+    let transform = Transform::default();
+
+    let camera = Object::new()
+        .add_component(transform.clone())
         .add_component(Camera::default())
-        .add_tag(Player)
         .add_tag(ActiveCamera)
         .add_tag(GameCamera);
+    let player = Object::new()
+        .add_component(transform)
+        .add_component(Velocity::default())
+        .add_tag(Player)
+        .add_tag(NeedsSpawnPoint);
 
-    world.add_object(player);
+    world.set_parent(camera.id, Some(player.id))?;
+
+    world.add_object(player.clone());
     Ok(())
 }
 
@@ -165,6 +174,41 @@ pub fn update(world: &mut World) -> Result<()> {
     }
     if to_place {
         voxel_raycast_system(world, Some(2))?;
+    }
+
+    Ok(())
+}
+
+#[derive(Tag, Clone)]
+pub struct NeedsSpawnPoint;
+
+#[update]
+pub fn find_spawn_point(world: &mut World) -> Result<()> {
+    // Only run if player still needs a spawn point
+    let player = world.get_object_with_tag::<Player>()?;
+    if player.get_tag::<NeedsSpawnPoint>().is_err() {
+        return Ok(());
+    }
+
+    let transform = Transform {
+        local_position: Vector3::new(0.0, 256.0, 0.0),
+        global_position: Vector3::new(0.0, 256.0, 0.0),
+        ..Default::default()
+    };
+
+    if let Ok(hit) = voxel_raycast(world, &transform, 1000, Direction::Down) {
+        let spawn = Vector3::new(
+            hit.voxel_pos.x as f32,
+            hit.voxel_pos.y as f32 + 3.0,
+            hit.voxel_pos.z as f32,
+        );
+        log!("Found spawn point at {:?}", spawn);
+
+        let player = world.get_object_with_tag_mut::<Player>()?;
+        let t = player.get_component_mut::<Transform>()?;
+        t.local_position = spawn;
+        t.global_position = spawn;
+        player.remove_tag::<NeedsSpawnPoint>();
     }
 
     Ok(())

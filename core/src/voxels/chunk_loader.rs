@@ -1,6 +1,6 @@
 use anyhow::Result;
 use apostasy_core::log;
-use apostasy_macros::{Resource, update};
+use apostasy_macros::{Resource, start, update};
 use cgmath::Vector3;
 use hashbrown::{HashMap, HashSet};
 
@@ -31,6 +31,11 @@ impl Default for ChunkLoader {
             chunk_lod_distances: vec![5, 8, 10, 14],
         }
     }
+}
+
+#[start]
+pub fn update_chunks_init(world: &mut World) -> Result<()> {
+    update_chunks(world)
 }
 
 #[update]

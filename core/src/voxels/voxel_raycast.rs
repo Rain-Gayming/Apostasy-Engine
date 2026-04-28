@@ -1,3 +1,4 @@
+use crate::log;
 use crate::objects::world::World;
 use crate::rendering::components::camera::Camera;
 use crate::utils::flatten::flatten;
@@ -170,8 +171,25 @@ fn sample_world(voxel: Vector3<i32>, chunks: &[(Vector3<i32>, &Chunk)]) -> Optio
     if id != 0 { Some(0) } else { None }
 }
 
-pub fn get_camera_ray(transform: &Transform) -> Ray {
-    Ray::new(transform.global_position, transform.calculate_forward())
+#[derive(PartialEq, Eq, Clone)]
+pub enum Direction {
+    Forward,
+    Backwards,
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+pub fn get_camera_ray(transform: &Transform, direction: Direction) -> Ray {
+    match direction {
+        Direction::Forward => Ray::new(transform.global_position, transform.calculate_forward()),
+        Direction::Backwards => Ray::new(transform.global_position, -transform.calculate_forward()),
+        Direction::Left => Ray::new(transform.global_position, transform.calculate_right()),
+        Direction::Right => Ray::new(transform.global_position, -transform.calculate_right()),
+        Direction::Up => Ray::new(transform.global_position, transform.calculate_up()),
+        Direction::Down => Ray::new(transform.global_position, -transform.calculate_up()),
+    }
 }
 
 /// Creates a raycast hit then submits it to the world for usage
@@ -183,7 +201,7 @@ pub fn voxel_raycast_system(world: &mut World, set_to: Option<VoxelId>) -> Resul
         .ok_or_else(|| anyhow::anyhow!("No camera"))?;
 
     let transform = camera_obj.get_component::<Transform>()?.clone();
-    let ray = get_camera_ray(&transform);
+    let ray = get_camera_ray(&transform, Direction::Forward);
 
     // collect chunks for sampling
     let chunks: Vec<(Vector3<i32>, Chunk)> = world
@@ -206,8 +224,39 @@ pub fn voxel_raycast_system(world: &mut World, set_to: Option<VoxelId>) -> Resul
     Ok(())
 }
 
-/// Creates a raycast hit then returns it
-pub fn voxel_raycast(world: &mut World, set_to: Option<VoxelId>) -> Result<RaycastHit> {
+/// Creates a raycast hit from the transform then returns it
+pub fn voxel_raycast(
+    world: &mut World,
+    transform: &Transform,
+    distance: i32,
+    direction: Direction,
+) -> Result<RaycastHit> {
+    let ray = get_camera_ray(&transform, direction);
+
+    // collect chunks for sampling
+    let chunks: Vec<(Vector3<i32>, Chunk)> = world
+        .get_objects_with_component::<Chunk>()
+        .iter()
+        .filter_map(|o| {
+            let pos = o.get_component::<VoxelTransform>().ok()?.position;
+            let chunk = o.get_component::<Chunk>().ok()?.clone();
+            Some((pos, chunk))
+        })
+        .collect();
+
+    let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
+        chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
+    log!("Ray origin: {:?}", ray.origin);
+    log!("Ray direction: {:?}", ray.direction);
+    log!("Chunks found: {}", chunks.len());
+    let hit = raycast(&ray, distance as f32, &chunk_refs, None);
+
+    log!("{:?}", hit);
+    return hit.ok_or(Error::msg("Hit nothing"));
+}
+
+/// Creates a raycast hit from the camera then returns it
+pub fn voxel_raycast_camera(world: &mut World) -> Result<RaycastHit> {
     let camera_obj = world
         .get_objects_with_component::<Camera>()
         .first()
@@ -215,7 +264,7 @@ pub fn voxel_raycast(world: &mut World, set_to: Option<VoxelId>) -> Result<Rayca
         .ok_or_else(|| anyhow::anyhow!("No camera"))?;
 
     let transform = camera_obj.get_component::<Transform>()?.clone();
-    let ray = get_camera_ray(&transform);
+    let ray = get_camera_ray(&transform, Direction::Forward);
 
     // collect chunks for sampling
     let chunks: Vec<(Vector3<i32>, Chunk)> = world
@@ -231,7 +280,7 @@ pub fn voxel_raycast(world: &mut World, set_to: Option<VoxelId>) -> Result<Rayca
     let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
         chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
 
-    let hit = raycast(&ray, 10.0, &chunk_refs, set_to);
+    let hit = raycast(&ray, 10.0, &chunk_refs, None);
 
     return hit.ok_or(Error::msg("Hit nothing"));
 }
