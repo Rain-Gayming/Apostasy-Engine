@@ -10,7 +10,6 @@ use apostasy_core::{
             input_manager::{InputManager, KeyAction, KeyBind, MouseBind},
             window_manager::WindowManager,
         },
-        systems::DeltaTime,
         tags::Player,
         world::World,
     },
@@ -31,7 +30,6 @@ pub fn player_init(world: &mut World) -> Result<()> {
 
     let camera = Object::new()
         .add_component(Transform {
-            local_position: Vector3::new(0.0, 2.0, 0.0),
             ..Default::default()
         })
         .add_component(Camera::default())
@@ -110,9 +108,9 @@ pub fn player_inputs(world: &mut World) -> Result<()> {
 
     Ok(())
 }
+
 #[update]
 pub fn update(world: &mut World) -> Result<()> {
-    let delta = world.get_resource::<DeltaTime>()?.0;
     let inputs = world.get_resource::<InputManager>()?;
 
     let mouse_delta = inputs.mouse_delta;
@@ -130,17 +128,18 @@ pub fn update(world: &mut World) -> Result<()> {
     let player = world.get_object_with_tag_mut::<Player>()?;
 
     let player_transform = player.get_component_mut::<Transform>()?;
-
     player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
 
     let velocity = player.get_component_mut::<Velocity>()?;
 
     let wish_dir = rotation * Vector3::new(direction.x, 0.0, direction.y);
-    velocity.linear_velocity.x = wish_dir.x * delta * 5.0;
-    velocity.linear_velocity.z = wish_dir.z * delta * 5.0;
+
+    velocity.linear_velocity.x = wish_dir.x * 5.0;
+    velocity.linear_velocity.z = wish_dir.z * 5.0;
 
     if should_jump && velocity.is_grounded {
-        velocity.linear_velocity.y = delta * 8.0;
+        velocity.linear_velocity.y = 8.0;
+        velocity.is_grounded = false;
     }
 
     if to_break {

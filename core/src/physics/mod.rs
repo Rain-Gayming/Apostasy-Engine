@@ -30,9 +30,10 @@ pub fn apply_gravity(world: &mut World, delta: f32) -> Result<()> {
 
     for object in objects {
         let velocity = object.get_component_mut::<Velocity>()?;
-        if !velocity.is_grounded {
+        if velocity.is_grounded {
+            velocity.linear_velocity.y = 0.0;
+        } else {
             velocity.linear_velocity.y -= 9.8 * delta;
-
             if velocity.linear_velocity.y < -50.0 {
                 velocity.linear_velocity.y = -50.0;
             }

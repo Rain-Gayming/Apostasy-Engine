@@ -1,9 +1,9 @@
 use anyhow::Result;
-use apostasy_macros::fixed_update;
+use apostasy_macros::update;
 use cgmath::Vector3;
 
 use crate::{
-    objects::{components::transform::Transform, tags::Player, world::World},
+    objects::{components::transform::Transform, systems::DeltaTime, world::World},
     physics::{collider::Collider, velocity::Velocity},
     voxels::{VoxelTransform, chunk::Chunk, voxel_raycast::sample_world},
 };
@@ -12,7 +12,6 @@ fn get_overlapping_voxels(
     aabb_max: Vector3<f32>,
     chunks: &[(Vector3<i32>, &Chunk)],
 ) -> Vec<Vector3<i32>> {
-    // shrink slightly to avoid detecting voxels we're just touching on the edge
     let epsilon = 0.001;
     let min = Vector3::new(
         (aabb_min.x + epsilon).floor() as i32,
@@ -47,7 +46,6 @@ pub fn resolve_collisions(
 ) -> CollisionFlags {
     let mut flags = CollisionFlags::default();
 
-    // Y first so grounded works, then XZ
     let axes: [usize; 3] = [1, 0, 2];
 
     for axis in axes {
@@ -57,7 +55,6 @@ pub fn resolve_collisions(
             _ => delta.z,
         };
 
-        // only process this axis if we're actually moving on it
         if axis_vel.abs() < 1e-6 {
             continue;
         }
@@ -79,14 +76,12 @@ pub fn resolve_collisions(
             continue;
         }
 
-        // find the shallowest penetration
-        let mut best_overlap = f32::MAX;
+        let mut best_overlap = 0.0f32;
 
         for voxel in &solids {
             let vmin = Vector3::new(voxel.x as f32, voxel.y as f32, voxel.z as f32);
             let vmax = vmin + Vector3::new(1.0, 1.0, 1.0);
 
-            // compute overlap on just this axis
             let (a_min, a_max, v_min, v_max) = match axis {
                 0 => (aabb_min.x, aabb_max.x, vmin.x, vmax.x),
                 1 => (aabb_min.y, aabb_max.y, vmin.y, vmax.y),
@@ -94,36 +89,54 @@ pub fn resolve_collisions(
             };
 
             let overlap = if axis_vel > 0.0 {
-                v_min - a_max // how far we've gone past the voxel's near face
+                v_min - a_max
             } else {
-                v_max - a_min // how far the voxel's far face is into our min
+                v_max - a_min
             };
 
-            if overlap.abs() < best_overlap.abs() {
+            let is_penetrating =
+                (axis_vel > 0.0 && overlap < 0.0) || (axis_vel < 0.0 && overlap > 0.0);
+
+            if !is_penetrating {
+                continue;
+            }
+
+            // keep the largest penetration
+            if overlap.abs() > best_overlap.abs() {
                 best_overlap = overlap;
             }
         }
-        if (axis_vel > 0.0 && best_overlap < 0.0) || (axis_vel < 0.0 && best_overlap > 0.0) {
-            match axis {
-                0 => {
-                    position.x += best_overlap;
-                    delta.x = 0.0;
-                    flags.hit_wall = true;
+
+        if best_overlap.abs() < 1e-6 {
+            *position += axis_delta;
+            continue;
+        }
+
+        let correction = if axis_vel > 0.0 {
+            best_overlap.max(-axis_vel.abs())
+        } else {
+            best_overlap.min(axis_vel.abs())
+        };
+
+        match axis {
+            0 => {
+                position.x += axis_delta.x + correction;
+                delta.x = 0.0;
+                flags.hit_wall = true;
+            }
+            1 => {
+                position.y += axis_delta.y + correction;
+                delta.y = 0.0;
+                if axis_vel < 0.0 {
+                    flags.grounded = true;
+                } else {
+                    flags.hit_ceil = true;
                 }
-                1 => {
-                    position.y += best_overlap;
-                    delta.y = 0.0;
-                    if axis_vel < 0.0 {
-                        flags.grounded = true;
-                    } else {
-                        flags.hit_ceil = true;
-                    }
-                }
-                _ => {
-                    position.z += best_overlap;
-                    delta.z = 0.0;
-                    flags.hit_wall = true;
-                }
+            }
+            _ => {
+                position.z += axis_delta.z + correction;
+                delta.z = 0.0;
+                flags.hit_wall = true;
             }
         }
     }
@@ -131,8 +144,9 @@ pub fn resolve_collisions(
     flags
 }
 
-#[fixed_update(priority = 5)]
-pub fn resolve_collisions_system(world: &mut World, delta: f32) -> Result<()> {
+#[update(priority = 5)]
+pub fn resolve_collisions_system(world: &mut World) -> Result<()> {
+    let delta = world.get_resource::<DeltaTime>()?.0;
     let chunks: Vec<(Vector3<i32>, Chunk)> = world
         .get_objects_with_component::<Chunk>()
         .iter()
@@ -159,7 +173,11 @@ pub fn resolve_collisions_system(world: &mut World, delta: f32) -> Result<()> {
         };
 
         let mut position = transform.global_position;
-        let mut frame_delta = velocity.linear_velocity * delta;
+        let mut frame_delta = Vector3::new(
+            velocity.linear_velocity.x * delta,
+            velocity.linear_velocity.y * delta,
+            velocity.linear_velocity.z * delta,
+        );
 
         let flags = resolve_collisions(
             &mut position,
@@ -171,11 +189,12 @@ pub fn resolve_collisions_system(world: &mut World, delta: f32) -> Result<()> {
         object.get_component_mut::<Transform>()?.global_position = position;
         object.get_component_mut::<Transform>()?.local_position = position;
 
-        let vel = object.get_component_mut::<Velocity>()?;
-        if flags.grounded || flags.hit_ceil {
-            vel.linear_velocity.y = 0.0;
+        let velocity = object.get_component_mut::<Velocity>()?;
+        if flags.hit_ceil {
+            velocity.linear_velocity.y = 0.0;
         }
-        vel.is_grounded = flags.grounded;
+
+        velocity.is_grounded = flags.grounded;
     }
 
     Ok(())
