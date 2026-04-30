@@ -119,21 +119,22 @@ pub fn update(world: &mut World) -> Result<()> {
     let direction = inputs.input_vector_2d("Right", "Left", "Backwards", "Forwards");
     let should_jump = inputs.is_keybind_active("Jump");
 
-    let camera = world.get_object_with_tag::<GameCamera>()?;
-    let rotation = {
-        let transform = camera.get_component::<Transform>()?;
-        transform.global_rotation
-    };
+    let player = world.get_object_with_tag_mut::<Player>()?;
+    let player_transform = player.get_component_mut::<Transform>()?;
+    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 0.1;
+
+    let camera = world.get_object_with_tag_mut::<GameCamera>()?;
+    let cam_transform = camera.get_component_mut::<Transform>()?;
+    cam_transform.local_euler_angles.x -= mouse_delta.1 as f32 * 0.1;
+    cam_transform.local_euler_angles.x = cam_transform.local_euler_angles.x.clamp(-89.0, 89.0);
+
+    let player = world.get_object_with_tag::<Player>()?;
+    let rotation = player.get_component::<Transform>()?.global_rotation;
 
     let player = world.get_object_with_tag_mut::<Player>()?;
-
-    let player_transform = player.get_component_mut::<Transform>()?;
-    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
-
     let velocity = player.get_component_mut::<Velocity>()?;
 
     let wish_dir = rotation * Vector3::new(direction.x, 0.0, direction.y);
-
     velocity.linear_velocity.x = wish_dir.x * 5.0;
     velocity.linear_velocity.z = wish_dir.z * 5.0;
 
@@ -151,7 +152,6 @@ pub fn update(world: &mut World) -> Result<()> {
 
     Ok(())
 }
-
 #[derive(Tag, Clone)]
 pub struct NeedsSpawnPoint;
 

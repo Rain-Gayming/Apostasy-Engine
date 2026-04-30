@@ -28,16 +28,29 @@ pub fn hud(world: &mut World) -> Result<()> {
             if let Ok(dt) = world.get_resource::<DeltaTime>() {
                 ui.label(format!("FPS: {:.0}", 1.0 / dt.0));
             }
+            ui.separator();
             ui.label(format!(
                 "Chunks: {}",
                 world.get_objects_with_component::<Chunk>().len()
             ));
 
+            ui.separator();
             if let Ok(player) = world.get_object_with_tag::<Player>() {
                 let transform = player.get_component::<Transform>().unwrap();
                 ui.label(format!("Position: {:?}", transform.local_position));
                 ui.label(format!("Global Position: {:?}", transform.global_position));
+
+                ui.separator();
+
+                ui.label(format!("Rotation: {:?}", transform.local_rotation));
+                ui.label(format!("Euler: {:?}", transform.local_euler_angles));
+                ui.label(format!("Global Rotation: {:?}", transform.global_rotation));
+                ui.label(format!(
+                    "Global Euler : {:?}",
+                    transform.global_euler_angles
+                ));
             }
+            ui.separator();
 
             if let Ok(camera) = world.get_object_with_tag::<ActiveCamera>() {
                 let transform = camera.get_component::<Transform>().unwrap();
@@ -45,6 +58,17 @@ pub fn hud(world: &mut World) -> Result<()> {
                 ui.label(format!(
                     "Cam Global Position: {:?}",
                     transform.global_position
+                ));
+                ui.separator();
+                ui.label(format!("Cam Rotation: {:?}", transform.local_rotation));
+                ui.label(format!("Cam Euler: {:?}", transform.local_euler_angles));
+                ui.label(format!(
+                    "Cam Global Rotation: {:?}",
+                    transform.global_rotation
+                ));
+                ui.label(format!(
+                    "Cam Global Euler : {:?}",
+                    transform.global_euler_angles
                 ));
             }
         });
