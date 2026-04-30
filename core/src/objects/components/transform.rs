@@ -131,13 +131,27 @@ pub fn transform_update(world: &mut World) -> Result<()> {
         };
 
         transform.global_position = parent_pos + parent_rot.rotate_vector(transform.local_position);
-        transform.global_rotation = parent_rot * transform.local_rotation;
+
+        transform.global_euler_angles = parent_euler + transform.local_euler_angles;
+        transform.global_rotation = Quaternion::from(Euler {
+            x: Deg(0.0),
+            y: Deg(transform.global_euler_angles.y),
+            z: Deg(0.0),
+        }) * Quaternion::from(Euler {
+            x: Deg(transform.global_euler_angles.x),
+            y: Deg(0.0),
+            z: Deg(0.0),
+        }) * Quaternion::from(Euler {
+            x: Deg(0.0),
+            y: Deg(0.0),
+            z: Deg(transform.global_euler_angles.z),
+        });
+
         transform.global_scale = Vector3::new(
             parent_scale.x * transform.local_scale.x,
             parent_scale.y * transform.local_scale.y,
             parent_scale.z * transform.local_scale.z,
         );
-        transform.global_euler_angles = parent_euler + transform.local_euler_angles;
     }
 
     Ok(())

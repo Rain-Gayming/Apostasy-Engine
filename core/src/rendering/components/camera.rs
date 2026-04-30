@@ -57,7 +57,7 @@ pub fn get_view_matrix(transform: &Transform) -> Matrix4<f32> {
         transform.global_position.z + forward.z,
     );
 
-    let up = transform.calculate_up();
+    let up = transform.calculate_global_up();
 
     Matrix4::look_at_rh(eye, look, up)
 }

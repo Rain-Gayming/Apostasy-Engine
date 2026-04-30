@@ -30,6 +30,11 @@ pub fn player_init(world: &mut World) -> Result<()> {
 
     let camera = Object::new()
         .add_component(Transform {
+            local_position: Vector3 {
+                x: 0.0,
+                y: 0.8,
+                z: 0.0,
+            },
             ..Default::default()
         })
         .add_component(Camera::default())

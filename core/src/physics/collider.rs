@@ -21,7 +21,7 @@ impl Collider {
 
     pub fn player() -> Self {
         Self {
-            half_extents: Vector3::new(0.4, 2.0, 0.4),
+            half_extents: Vector3::new(0.2, 1.0, 0.2),
         }
     }
 }
