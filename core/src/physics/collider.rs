@@ -1,4 +1,4 @@
-use apostasy_macros::{Component, Resource};
+use apostasy_macros::Component;
 use cgmath::Vector3;
 
 #[derive(Component, Debug, Clone)]
@@ -25,6 +25,3 @@ impl Collider {
         }
     }
 }
-
-#[derive(Resource, Default, Clone)]
-pub struct IsGrounded(pub bool);

@@ -1,7 +1,7 @@
 use apostasy_core::{
     anyhow::Result,
     cgmath::Vector3,
-    fixed_update, log,
+    log,
     objects::{
         Object,
         components::transform::Transform,
@@ -14,11 +14,7 @@ use apostasy_core::{
         tags::Player,
         world::World,
     },
-    physics::{
-        Gravity,
-        collider::{Collider, IsGrounded},
-        velocity::Velocity,
-    },
+    physics::{Gravity, collider::Collider, velocity::Velocity},
     rendering::components::camera::{ActiveCamera, Camera, GameCamera},
     start, update,
     voxels::voxel_raycast::{Direction, voxel_raycast, voxel_raycast_system},
@@ -118,10 +114,6 @@ pub fn player_inputs(world: &mut World) -> Result<()> {
 pub fn update(world: &mut World) -> Result<()> {
     let delta = world.get_resource::<DeltaTime>()?.0;
     let inputs = world.get_resource::<InputManager>()?;
-    let grounded = world
-        .get_resource::<IsGrounded>()
-        .map(|g| g.0)
-        .unwrap_or(false);
 
     let mouse_delta = inputs.mouse_delta;
     let to_break = inputs.is_mousebind_active("Break");
@@ -138,6 +130,7 @@ pub fn update(world: &mut World) -> Result<()> {
     let player = world.get_object_with_tag_mut::<Player>()?;
 
     let player_transform = player.get_component_mut::<Transform>()?;
+
     player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
 
     let velocity = player.get_component_mut::<Velocity>()?;
@@ -146,7 +139,7 @@ pub fn update(world: &mut World) -> Result<()> {
     velocity.linear_velocity.x = wish_dir.x * delta * 5.0;
     velocity.linear_velocity.z = wish_dir.z * delta * 5.0;
 
-    if should_jump && grounded {
+    if should_jump && velocity.is_grounded {
         velocity.linear_velocity.y = delta * 8.0;
     }
 
@@ -190,17 +183,6 @@ pub fn find_spawn_point(world: &mut World) -> Result<()> {
         t.global_position = spawn;
         player.remove_tag::<NeedsSpawnPoint>();
     }
-
-    Ok(())
-}
-
-#[fixed_update(priority = 10)]
-pub fn apply_gravity(world: &mut World, delta: f32) -> Result<()> {
-    let player = world.get_object_with_tag_mut::<Player>()?;
-    let gravity = player.get_component::<Gravity>()?.clone();
-    let velocity = player.get_component_mut::<Velocity>()?;
-
-    velocity.linear_velocity.y -= gravity.strength * delta;
 
     Ok(())
 }

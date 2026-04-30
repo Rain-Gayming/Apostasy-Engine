@@ -4,10 +4,7 @@ use cgmath::Vector3;
 
 use crate::{
     objects::{components::transform::Transform, tags::Player, world::World},
-    physics::{
-        collider::{Collider, IsGrounded},
-        velocity::Velocity,
-    },
+    physics::{collider::Collider, velocity::Velocity},
     voxels::{VoxelTransform, chunk::Chunk, voxel_raycast::sample_world},
 };
 fn get_overlapping_voxels(
@@ -136,8 +133,6 @@ pub fn resolve_collisions(
 
 #[fixed_update(priority = 5)]
 pub fn resolve_collisions_system(world: &mut World, delta: f32) -> Result<()> {
-    world.insert_resource(IsGrounded(false));
-
     let chunks: Vec<(Vector3<i32>, Chunk)> = world
         .get_objects_with_component::<Chunk>()
         .iter()
@@ -150,31 +145,38 @@ pub fn resolve_collisions_system(world: &mut World, delta: f32) -> Result<()> {
     let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
         chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
 
-    let player = world.get_object_with_tag::<Player>()?;
-    let collider = player.get_component::<Collider>()?.clone();
-    let velocity = player.get_component::<Velocity>()?.clone();
-    let transform = player.get_component::<Transform>()?.clone();
+    let objects = world.get_objects_with_component_mut::<Collider>();
+    for object in objects {
+        let Ok(collider) = object.get_component::<Collider>() else {
+            continue;
+        };
+        let collider = collider.clone();
+        let Ok(transform) = object.get_component::<Transform>() else {
+            continue;
+        };
+        let Ok(velocity) = object.get_component::<Velocity>() else {
+            continue;
+        };
 
-    let mut position = transform.global_position;
-    let mut frame_delta = velocity.linear_velocity * delta;
+        let mut position = transform.global_position;
+        let mut frame_delta = velocity.linear_velocity * delta;
 
-    let flags = resolve_collisions(
-        &mut position,
-        &mut frame_delta,
-        collider.half_extents,
-        &chunk_refs,
-    );
+        let flags = resolve_collisions(
+            &mut position,
+            &mut frame_delta,
+            collider.half_extents,
+            &chunk_refs,
+        );
 
-    let player = world.get_object_with_tag_mut::<Player>()?;
-    player.get_component_mut::<Transform>()?.global_position = position;
-    player.get_component_mut::<Transform>()?.local_position = position;
+        object.get_component_mut::<Transform>()?.global_position = position;
+        object.get_component_mut::<Transform>()?.local_position = position;
 
-    let vel = player.get_component_mut::<Velocity>()?;
-    if flags.grounded || flags.hit_ceil {
-        vel.linear_velocity.y = 0.0;
+        let vel = object.get_component_mut::<Velocity>()?;
+        if flags.grounded || flags.hit_ceil {
+            vel.linear_velocity.y = 0.0;
+        }
+        vel.is_grounded = flags.grounded;
     }
-
-    world.insert_resource(IsGrounded(flags.grounded));
 
     Ok(())
 }
