@@ -27,6 +27,7 @@ use crate::objects::resources::input_manager::InputManager;
 use crate::objects::resources::window_manager::WindowManager;
 use crate::packages::Packages;
 use crate::packages::add_package;
+use crate::physics::collider::IsGrounded;
 use crate::rendering::components::camera::ActiveCamera;
 use crate::ui::ui_context::EguiContext;
 use crate::voxels::VoxelTransform;
@@ -65,6 +66,7 @@ impl Core {
         world.insert_resource(InputManager::default());
         world.insert_resource(CursorManager::default());
         world.insert_resource(WindowManager::default());
+        world.insert_resource(IsGrounded::default());
 
         for package in packages {
             add_package(&mut world, package);

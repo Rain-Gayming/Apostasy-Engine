@@ -1,7 +1,7 @@
 use apostasy_core::{
     anyhow::Result,
-    cgmath::{Vector3, num_traits::clamp},
-    log,
+    cgmath::Vector3,
+    fixed_update, log,
     objects::{
         Object,
         components::transform::Transform,
@@ -14,7 +14,11 @@ use apostasy_core::{
         tags::Player,
         world::World,
     },
-    physics::velocity::Velocity,
+    physics::{
+        Gravity,
+        collider::{Collider, IsGrounded},
+        velocity::Velocity,
+    },
     rendering::components::camera::{ActiveCamera, Camera, GameCamera},
     start, update,
     voxels::voxel_raycast::{Direction, voxel_raycast, voxel_raycast_system},
@@ -30,13 +34,18 @@ pub fn player_init(world: &mut World) -> Result<()> {
     let transform = Transform::default();
 
     let camera = Object::new()
-        .add_component(Transform::default())
+        .add_component(Transform {
+            local_position: Vector3::new(0.0, 2.0, 0.0),
+            ..Default::default()
+        })
         .add_component(Camera::default())
         .add_tag(ActiveCamera)
         .add_tag(GameCamera);
     let player = Object::new()
         .add_component(transform)
         .add_component(Velocity::default())
+        .add_component(Gravity::default())
+        .add_component(Collider::player())
         .add_tag(Player)
         .add_tag(NeedsSpawnPoint);
 
@@ -51,7 +60,9 @@ pub fn player_start(world: &mut World) -> Result<()> {
     {
         let cursor_manager = world.get_resource_mut::<CursorManager>()?;
 
-        cursor_manager.switch_mode();
+        cursor_manager.set_mode(
+            apostasy_core::objects::resources::cursor_manager::CursorLockMode::LockedHidden,
+        );
     }
 
     {
@@ -88,9 +99,9 @@ pub fn player_inputs(world: &mut World) -> Result<()> {
         "Backwards",
     ));
     inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::KeyE),
-        KeyAction::Hold,
-        "Upwards",
+        PhysicalKey::Code(KeyCode::Space),
+        KeyAction::Press,
+        "Jump",
     ));
     inputs.register_keybind(KeyBind::new(
         PhysicalKey::Code(KeyCode::KeyQ),
@@ -98,77 +109,47 @@ pub fn player_inputs(world: &mut World) -> Result<()> {
         "Downwards",
     ));
 
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::ArrowLeft),
-        KeyAction::Hold,
-        "LookLeft",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::ArrowRight),
-        KeyAction::Hold,
-        "LookRight",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::ArrowUp),
-        KeyAction::Hold,
-        "LookUp",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::ArrowDown),
-        KeyAction::Hold,
-        "LookDown",
-    ));
-
     inputs.register_mousebind(MouseBind::new(MouseButton::Left, KeyAction::Hold, "Break"));
     inputs.register_mousebind(MouseBind::new(MouseButton::Right, KeyAction::Hold, "Place"));
 
     Ok(())
 }
-
 #[update]
 pub fn update(world: &mut World) -> Result<()> {
     let delta = world.get_resource::<DeltaTime>()?.0;
-    let inputs = world.get_resource_mut::<InputManager>()?;
+    let inputs = world.get_resource::<InputManager>()?;
+    let grounded = world
+        .get_resource::<IsGrounded>()
+        .map(|g| g.0)
+        .unwrap_or(false);
 
     let mouse_delta = inputs.mouse_delta;
-    let look_keyboard = inputs.input_vector_2d("LookRight", "LookLeft", "LookUp", "LookDown") * 5.0;
     let to_break = inputs.is_mousebind_active("Break");
     let to_place = inputs.is_mousebind_active("Place");
-    let direction = inputs.input_vector_3d(
-        "Right",
-        "Left",
-        "Upwards",
-        "Downwards",
-        "Backwards",
-        "Forwards",
-    );
-    let camera = world.get_object_with_tag_mut::<GameCamera>()?;
+    let direction = inputs.input_vector_2d("Right", "Left", "Backwards", "Forwards");
+    let should_jump = inputs.is_keybind_active("Jump");
+
+    let camera = world.get_object_with_tag::<GameCamera>()?;
     let rotation = {
         let transform = camera.get_component::<Transform>()?;
-
         transform.global_rotation
     };
 
-    {
-        let transform = camera.get_component_mut::<Transform>()?;
-        transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
-        transform.local_euler_angles.x = clamp(
-            transform.local_euler_angles.x - mouse_delta.1 as f32 * 4.0,
-            -90.0,
-            90.0,
-        );
+    let player = world.get_object_with_tag_mut::<Player>()?;
 
-        transform.local_euler_angles.y -= look_keyboard.x as f32;
-        transform.local_euler_angles.x = clamp(
-            transform.local_euler_angles.x - look_keyboard.y as f32,
-            -90.0,
-            90.0,
-        );
+    let player_transform = player.get_component_mut::<Transform>()?;
+    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 4.0;
+
+    let velocity = player.get_component_mut::<Velocity>()?;
+
+    let wish_dir = rotation * Vector3::new(direction.x, 0.0, direction.y);
+    velocity.linear_velocity.x = wish_dir.x * delta * 5.0;
+    velocity.linear_velocity.z = wish_dir.z * delta * 5.0;
+
+    if should_jump && grounded {
+        velocity.linear_velocity.y = delta * 8.0;
     }
 
-    let player = world.get_object_with_tag_mut::<Player>()?;
-    let velocity = player.get_component_mut::<Velocity>()?;
-    velocity.linear_velocity = rotation * direction * delta * 5.0;
     if to_break {
         voxel_raycast_system(world, Some(0))?;
     }
@@ -184,7 +165,6 @@ pub struct NeedsSpawnPoint;
 
 #[update]
 pub fn find_spawn_point(world: &mut World) -> Result<()> {
-    // Only run if player still needs a spawn point
     let player = world.get_object_with_tag::<Player>()?;
     if player.get_tag::<NeedsSpawnPoint>().is_err() {
         return Ok(());
@@ -199,7 +179,7 @@ pub fn find_spawn_point(world: &mut World) -> Result<()> {
     if let Ok(hit) = voxel_raycast(world, &transform, 1000, Direction::Down) {
         let spawn = Vector3::new(
             hit.voxel_pos.x as f32,
-            hit.voxel_pos.y as f32 + 3.0,
+            hit.voxel_pos.y as f32 + 5.0,
             hit.voxel_pos.z as f32,
         );
         log!("Found spawn point at {:?}", spawn);
@@ -210,6 +190,17 @@ pub fn find_spawn_point(world: &mut World) -> Result<()> {
         t.global_position = spawn;
         player.remove_tag::<NeedsSpawnPoint>();
     }
+
+    Ok(())
+}
+
+#[fixed_update(priority = 10)]
+pub fn apply_gravity(world: &mut World, delta: f32) -> Result<()> {
+    let player = world.get_object_with_tag_mut::<Player>()?;
+    let gravity = player.get_component::<Gravity>()?.clone();
+    let velocity = player.get_component_mut::<Velocity>()?;
+
+    velocity.linear_velocity.y -= gravity.strength * delta;
 
     Ok(())
 }

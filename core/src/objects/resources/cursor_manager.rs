@@ -61,6 +61,11 @@ impl CursorManager {
     }
 
     /// If the current mode is unlocked, then lock it, otherwise unlock it
+    pub fn set_mode(&mut self, mode: CursorLockMode) {
+        self.cursor_lock_mode = mode;
+    }
+
+    /// If the current mode is unlocked, then lock it, otherwise unlock it
     pub fn switch_mode(&mut self) {
         match self.cursor_lock_mode {
             CursorLockMode::NoneVisible => self.cursor_lock_mode = CursorLockMode::LockedHidden,

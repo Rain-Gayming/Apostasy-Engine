@@ -148,7 +148,7 @@ pub fn raycast(
     None
 }
 
-fn sample_world(voxel: Vector3<i32>, chunks: &[(Vector3<i32>, &Chunk)]) -> Option<u8> {
+pub fn sample_world(voxel: Vector3<i32>, chunks: &[(Vector3<i32>, &Chunk)]) -> Option<u8> {
     // find which chunk this voxel is in
     let chunk_pos = Vector3::new(
         voxel.x.div_euclid(32),

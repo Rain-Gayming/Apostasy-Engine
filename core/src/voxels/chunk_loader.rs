@@ -1,15 +1,19 @@
 use anyhow::Result;
 use apostasy_core::log;
-use apostasy_macros::{Resource, start, update};
+use apostasy_macros::{Resource, fixed_update, start, update};
 use cgmath::Vector3;
 use hashbrown::{HashMap, HashSet};
 
 use crate::{
-    objects::{components::transform::Transform, scene::ObjectId, tags::Player, world::World},
+    objects::{
+        components::transform::Transform, scene::ObjectId, systems::DeltaTime, tags::Player,
+        world::World,
+    },
+    physics::velocity::Velocity,
     voxels::{
         VoxelTransform,
         biome::BiomeRegistry,
-        chunk::{Chunk, generate_chunk},
+        chunk::{self, Chunk, generate_chunk},
         meshes::NeedsRemeshing,
         voxel::VoxelRegistry,
     },
@@ -21,6 +25,8 @@ pub struct ChunkLoader {
     pub load_radius: i32,
 
     pub chunk_lod_distances: Vec<u32>,
+    pub min_ticks: u32,
+    pub current_ticks: u32,
 }
 
 impl Default for ChunkLoader {
@@ -29,19 +35,37 @@ impl Default for ChunkLoader {
             last_chunk_position: Vector3::new(-1, 0, 0),
             load_radius: 4,
             chunk_lod_distances: vec![5, 8, 10, 14],
+            min_ticks: 30,
+            current_ticks: 0,
         }
     }
 }
 
 #[start]
 pub fn update_chunks_init(world: &mut World) -> Result<()> {
-    update_chunks(world)
+    update_chunks(world, 0.0)
 }
 
-#[update]
-pub fn update_chunks(world: &mut World) -> Result<()> {
+#[fixed_update]
+pub fn update_chunks(world: &mut World, _delta: f32) -> Result<()> {
+    // let chunk_loader = world.get_resource_mut::<ChunkLoader>()?;
+    //
+    // chunk_loader.current_ticks += 1;
+    //
+    //
+    // if chunk_loader.current_ticks != chunk_loader.min_ticks{
+    //     return Ok(())
+    // }
+    //
+    // chunk_loader.current_ticks = 0;
+
+    let load_radius = world.get_resource::<ChunkLoader>()?.load_radius;
+    let registry = world.get_resource::<VoxelRegistry>()?.clone();
+    let biome_registry = world.get_resource::<BiomeRegistry>()?.clone();
+
     let player = world.get_object_with_tag::<Player>()?;
     let player_transform = player.get_component::<Transform>()?;
+    let player_velocity = player.get_component::<Velocity>()?;
 
     let player_chunk_position = Vector3::new(
         (player_transform.global_position.x / 32.0).floor() as i32,
@@ -55,13 +79,21 @@ pub fn update_chunks(world: &mut World) -> Result<()> {
         return Ok(());
     }
 
+    // only accept the new chunk position if the player is moving toward it,
+    // not being pushed back across the boundary by collision resolution
+    let delta = player_chunk_position - last_chunk_position;
+    let vel = player_velocity.linear_velocity;
+    let moving_toward = (delta.x != 0 && delta.x.signum() == vel.x.signum() as i32)
+        || (delta.y != 0 && delta.y.signum() == vel.y.signum() as i32)
+        || (delta.z != 0 && delta.z.signum() == vel.z.signum() as i32);
+
+    if !moving_toward {
+        return Ok(());
+    }
+
     log!("Entered new chunk at {:?}", player_chunk_position);
 
     world.get_resource_mut::<ChunkLoader>()?.last_chunk_position = player_chunk_position;
-
-    let load_radius = world.get_resource::<ChunkLoader>()?.load_radius;
-    let registry = world.get_resource::<VoxelRegistry>()?.clone();
-    let biome_registry = world.get_resource::<BiomeRegistry>()?.clone();
 
     // collect ids of chunks too far away to unload
     let unload_ids: Vec<ObjectId> = world
