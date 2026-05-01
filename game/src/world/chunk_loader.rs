@@ -1,105 +1,160 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 use apostasy_core::{
     anyhow::Result,
     cgmath::Vector3,
-    log,
+    crossbeam_channel::{Receiver, Sender, unbounded},
+    log, num_cpus,
     objects::{components::transform::Transform, scene::ObjectId, tags::Player, world::World},
     physics::velocity::Velocity,
+    rayon::ThreadPool,
     voxels::{
-        VoxelTransform, biome::BiomeRegistry, chunk::Chunk, meshes::NeedsRemeshing,
-        voxel::VoxelRegistry,
+        VoxelTransform,
+        biome::BiomeRegistry,
+        chunk::Chunk,
+        meshes::NeedsRemeshing,
+        voxel::{VoxelId, VoxelRegistry},
     },
 };
 use apostasy_macros::{Resource, fixed_update, start};
 
-use crate::world::generation::generate_chunk;
+use crate::world::generation::generate_chunk_data;
+
+pub struct GeneratedChunkData {
+    pub position: Vector3<i32>,
+    pub voxels: Box<[VoxelId; 32 * 32 * 32]>,
+    pub lod: u8,
+    pub biome: u16,
+}
 
 #[derive(Resource, Clone)]
 pub struct ChunkLoader {
     pub last_chunk_position: Vector3<i32>,
     pub load_radius: i32,
-
     pub chunk_lod_distances: Vec<u32>,
-    pub min_ticks: u32,
-    pub current_ticks: u32,
 }
 
 impl Default for ChunkLoader {
     fn default() -> Self {
         Self {
-            last_chunk_position: Vector3::new(-1, 0, 0),
+            last_chunk_position: Vector3::new(i32::MAX, i32::MAX, i32::MAX),
             load_radius: 4,
-            chunk_lod_distances: vec![5, 8, 10, 14],
-            min_ticks: 30,
-            current_ticks: 0,
+            chunk_lod_distances: vec![2, 4, 6, 8],
         }
     }
 }
 
+#[derive(Resource, Clone)]
+pub struct ChunkGenQueue {
+    pub sender: Sender<GeneratedChunkData>,
+    pub receiver: Receiver<GeneratedChunkData>,
+    pub pool: Arc<Mutex<ThreadPool>>,
+    pub in_flight: HashSet<Vector3<i32>>,
+}
+
+impl Default for ChunkGenQueue {
+    fn default() -> Self {
+        let (sender, receiver) = unbounded();
+        let pool = apostasy_core::rayon::ThreadPoolBuilder::new()
+            .num_threads(num_cpus::get().saturating_sub(3).max(1))
+            .build()
+            .unwrap();
+        Self {
+            sender,
+            receiver,
+            pool: Arc::new(Mutex::new(pool)),
+            in_flight: HashSet::new(),
+        }
+    }
+}
+
+fn build_chunk_maps(
+    world: &World,
+) -> (
+    HashMap<Vector3<i32>, ObjectId>,
+    HashMap<Vector3<i32>, u8>, // position , current lod
+) {
+    let objects = world.get_objects_with_component_with_ids::<VoxelTransform>();
+    let mut position_to_id = HashMap::with_capacity(objects.len());
+    let mut position_to_lod = HashMap::with_capacity(objects.len());
+
+    for (id, obj) in objects {
+        let Ok(t) = obj.get_component::<VoxelTransform>() else {
+            continue;
+        };
+        position_to_id.insert(t.position, id);
+        if let Ok(chunk) = obj.get_component::<Chunk>() {
+            position_to_lod.insert(t.position, chunk.lod);
+        }
+    }
+
+    (position_to_id, position_to_lod)
+}
+
+const NEIGHBOUR_OFFSETS: [Vector3<i32>; 6] = [
+    Vector3::new(1, 0, 0),
+    Vector3::new(-1, 0, 0),
+    Vector3::new(0, 1, 0),
+    Vector3::new(0, -1, 0),
+    Vector3::new(0, 0, 1),
+    Vector3::new(0, 0, -1),
+];
+
 #[start]
 pub fn update_chunks_init(world: &mut World) -> Result<()> {
-    update_chunks(world, 0.0)
+    dispatch_chunk_jobs(world, 0.0)?;
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    receive_chunks(world, 0.0)
 }
 
 #[fixed_update]
-pub fn update_chunks(world: &mut World, _delta: f32) -> Result<()> {
-    // let chunk_loader = world.get_resource_mut::<ChunkLoader>()?;
-    //
-    // chunk_loader.current_ticks += 1;
-    //
-    //
-    // if chunk_loader.current_ticks != chunk_loader.min_ticks{
-    //     return Ok(())
-    // }
-    //
-    // chunk_loader.current_ticks = 0;
-
-    let load_radius = world.get_resource::<ChunkLoader>()?.load_radius;
-    let registry = world.get_resource::<VoxelRegistry>()?.clone();
-    let biome_registry = world.get_resource::<BiomeRegistry>()?.clone();
-
+pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
     let player = world.get_object_with_tag::<Player>()?;
     let player_transform = player.get_component::<Transform>()?;
     let player_velocity = player.get_component::<Velocity>()?;
 
-    let player_chunk_position = Vector3::new(
+    let player_chunk_pos = Vector3::new(
         (player_transform.global_position.x / 32.0).floor() as i32,
         (player_transform.global_position.y / 32.0).floor() as i32,
         (player_transform.global_position.z / 32.0).floor() as i32,
     );
 
-    let last_chunk_position = world.get_resource::<ChunkLoader>()?.last_chunk_position;
+    let (last_chunk_pos, load_radius, lod_distances) = {
+        let loader = world.get_resource::<ChunkLoader>()?;
+        (
+            loader.last_chunk_position,
+            loader.load_radius,
+            loader.chunk_lod_distances.clone(),
+        )
+    };
 
-    if last_chunk_position == player_chunk_position {
+    if last_chunk_pos == player_chunk_pos {
         return Ok(());
     }
 
-    // only accept the new chunk position if the player is moving toward it,
-    // not being pushed back across the boundary by collision resolution
-    let delta = player_chunk_position - last_chunk_position;
+    let delta = player_chunk_pos - last_chunk_pos;
     let vel = player_velocity.linear_velocity;
-    let moving_toward = (delta.x != 0 && delta.x.signum() == vel.x.signum() as i32)
-        || (delta.y != 0 && delta.y.signum() == vel.y.signum() as i32)
-        || (delta.z != 0 && delta.z.signum() == vel.z.signum() as i32);
+    let vx = vel.x.signum() as i32;
+    let vz = vel.z.signum() as i32;
+    let moving_toward =
+        (delta.x != 0 && delta.x.signum() == vx) || (delta.z != 0 && delta.z.signum() == vz);
 
-    if !moving_toward {
+    if !moving_toward && last_chunk_pos != Vector3::new(i32::MAX, i32::MAX, i32::MAX) {
         return Ok(());
     }
 
-    log!("Entered new chunk at {:?}", player_chunk_position);
+    log!("Entered new chunk at {:?}", player_chunk_pos);
+    world.get_resource_mut::<ChunkLoader>()?.last_chunk_position = player_chunk_pos;
 
-    world.get_resource_mut::<ChunkLoader>()?.last_chunk_position = player_chunk_position;
+    let (position_to_id, position_to_lod) = build_chunk_maps(world);
 
-    // collect ids of chunks too far away to unload
-    let unload_ids: Vec<ObjectId> = world
-        .get_objects_with_component_with_ids::<Chunk>()
-        .into_iter()
-        .filter_map(|(id, o)| {
-            let pos = o.get_component::<VoxelTransform>().ok()?.position;
-            let dx = (pos.x - player_chunk_position.x).abs();
-            let dy = (pos.y - player_chunk_position.y).abs();
-            let dz = (pos.z - player_chunk_position.z).abs();
+    let unload_ids: Vec<ObjectId> = position_to_id
+        .iter()
+        .filter_map(|(pos, &id)| {
+            let dx = (pos.x - player_chunk_pos.x).abs();
+            let dy = (pos.y - player_chunk_pos.y).abs();
+            let dz = (pos.z - player_chunk_pos.z).abs();
             if dx > load_radius || dy > load_radius || dz > load_radius {
                 Some(id)
             } else {
@@ -108,111 +163,169 @@ pub fn update_chunks(world: &mut World, _delta: f32) -> Result<()> {
         })
         .collect();
 
-    // unload distant chunks
     for id in unload_ids {
         world.remove_object(id);
     }
 
-    // collect existing chunk positions so we dont spawn duplicates
-    let existing_positions: Vec<Vector3<i32>> = world
-        .get_objects_with_component::<VoxelTransform>()
-        .iter()
-        .filter_map(|o| o.get_component::<VoxelTransform>().ok())
-        .map(|t| t.position)
-        .collect();
-    let existing_position_ids: Vec<ObjectId> = world
-        .get_objects_with_component_with_ids::<VoxelTransform>()
-        .iter()
-        .map(|o| o.0)
-        .collect();
+    world
+        .get_resource_mut::<ChunkGenQueue>()?
+        .in_flight
+        .retain(|pos| {
+            let dx = (pos.x - player_chunk_pos.x).abs();
+            let dy = (pos.y - player_chunk_pos.y).abs();
+            let dz = (pos.z - player_chunk_pos.z).abs();
+            dx <= load_radius && dy <= load_radius && dz <= load_radius
+        });
 
-    // generate new chunks and track their positions
-    let mut new_positions = Vec::new();
+    // build sorted candidate list
+    let mut candidates: Vec<(Vector3<i32>, usize)> = Vec::new();
 
-    for x in (player_chunk_position.x - load_radius)..=(player_chunk_position.x + load_radius) {
-        for y in (player_chunk_position.y - load_radius)..=(player_chunk_position.y + load_radius) {
-            for z in
-                (player_chunk_position.z - load_radius)..=(player_chunk_position.z + load_radius)
-            {
+    for x in (player_chunk_pos.x - load_radius)..=(player_chunk_pos.x + load_radius) {
+        for y in (player_chunk_pos.y - load_radius)..=(player_chunk_pos.y + load_radius) {
+            for z in (player_chunk_pos.z - load_radius)..=(player_chunk_pos.z + load_radius) {
                 let pos = Vector3::new(x, y, z);
+                let dx = (x - player_chunk_pos.x) as f32;
+                let dy = (y - player_chunk_pos.y) as f32;
+                let dz = (z - player_chunk_pos.z) as f32;
+                let dist = (dx * dx + dy * dy + dz * dz).sqrt();
 
-                let chunk_loader = world.get_resource::<ChunkLoader>()?;
+                let target_lod = lod_distances.iter().position(|&d| dist < d as f32);
 
-                // check if lod has changed then skip
-                if existing_positions.contains(&pos) {
-                    for lod in chunk_loader.clone().chunk_lod_distances {
-                        let dx = (pos.x - player_chunk_position.x) as f32;
-                        let dy = (pos.y - player_chunk_position.y) as f32;
-                        let dz = (pos.z - player_chunk_position.z) as f32;
-
-                        let distance = (dx * dx + dy * dy + dz * dz).sqrt().floor();
-                        if distance < lod as f32 {
-                            new_positions.push(pos);
-
-                            let lod = chunk_loader
-                                .chunk_lod_distances
-                                .iter()
-                                .position(|&r| r == lod)
-                                .unwrap();
-
-                            let obj_index =
-                                existing_positions.iter().position(|&r| r == pos).unwrap();
-
-                            let object = world
-                                .get_object_mut(
-                                    existing_position_ids.get(obj_index).unwrap().clone(),
-                                )
-                                .unwrap();
-
-                            let chunk = object.get_component_mut::<Chunk>().unwrap();
-                            if lod as u8 != chunk.lod {
-                                object.get_component_mut::<Chunk>().unwrap().lod = lod as u8 + 1;
-                                object.add_tag(NeedsRemeshing);
-                            }
-
-                            break;
-                        }
-                    }
-                    continue;
-                }
-
-                for lod in chunk_loader.clone().chunk_lod_distances {
-                    let dx = (pos.x - player_chunk_position.x) as f32;
-                    let dy = (pos.y - player_chunk_position.y) as f32;
-                    let dz = (pos.z - player_chunk_position.z) as f32;
-
-                    let distance = (dx * dx + dy * dy + dz * dz).sqrt().floor();
-                    if distance < lod as f32 {
-                        new_positions.push(pos);
-
-                        let lod = chunk_loader
-                            .chunk_lod_distances
-                            .iter()
-                            .position(|&r| r == lod)
-                            .unwrap();
-
-                        world.add_object(generate_chunk(
-                            pos,
-                            &registry,
-                            &biome_registry,
-                            12311231 as u32,
-                            lod as u8 + 1,
-                        ));
-                        break;
-                    }
+                if let Some(lod) = target_lod {
+                    candidates.push((pos, lod));
                 }
             }
         }
     }
 
-    let neighbour_offsets = [
-        Vector3::new(1, 0, 0),
-        Vector3::new(-1, 0, 0),
-        Vector3::new(0, 1, 0),
-        Vector3::new(0, -1, 0),
-        Vector3::new(0, 0, 1),
-        Vector3::new(0, 0, -1),
-    ];
+    candidates.sort_unstable_by(|a, b| {
+        let da = {
+            let d = a.0 - player_chunk_pos;
+            d.x * d.x + d.y * d.y + d.z * d.z
+        };
+        let db = {
+            let d = b.0 - player_chunk_pos;
+            d.x * d.x + d.y * d.y + d.z * d.z
+        };
+        da.cmp(&db)
+    });
+
+    let registry = Arc::new(world.get_resource::<VoxelRegistry>()?.clone());
+    let biome_registry = Arc::new(world.get_resource::<BiomeRegistry>()?.clone());
+
+    let pool_arc = world.get_resource::<ChunkGenQueue>()?.pool.clone();
+    let pool = pool_arc.lock().unwrap();
+    let sender = world.get_resource::<ChunkGenQueue>()?.sender.clone();
+
+    let mut new_positions: Vec<Vector3<i32>> = Vec::new();
+    let in_flight = &world.get_resource::<ChunkGenQueue>()?.in_flight.clone();
+
+    for (pos, target_lod) in candidates {
+        let lod = (target_lod + 1) as u8;
+
+        if let Some(&current_lod) = position_to_lod.get(&pos) {
+            if current_lod != lod {
+                if let Some(&id) = position_to_id.get(&pos) {
+                    if let Some(obj) = world.get_object_mut(id) {
+                        if let Ok(chunk) = obj.get_component_mut::<Chunk>() {
+                            chunk.lod = lod;
+                        }
+                        obj.add_tag(NeedsRemeshing);
+                    }
+                }
+            }
+            new_positions.push(pos);
+            continue;
+        }
+
+        if in_flight.contains(&pos) {
+            continue;
+        }
+
+        // spawn generation job
+        let sender = sender.clone();
+        let reg = Arc::clone(&registry);
+        let biome_reg = Arc::clone(&biome_registry);
+
+        world
+            .get_resource_mut::<ChunkGenQueue>()?
+            .in_flight
+            .insert(pos);
+
+        pool.spawn(move || {
+            let data = generate_chunk_data(pos, &reg, &biome_reg, 12311231u32, lod);
+            let _ = sender.send(data);
+        });
+
+        new_positions.push(pos);
+    }
+
+    drop(pool);
+
+    let new_pos_set: HashSet<Vector3<i32>> = new_positions.iter().cloned().collect();
+    let mut remesh_ids: Vec<ObjectId> = Vec::new();
+
+    for pos in &new_pos_set {
+        for offset in &NEIGHBOUR_OFFSETS {
+            let neighbour = pos + offset;
+            if !new_pos_set.contains(&neighbour) {
+                if let Some(&id) = position_to_id.get(&neighbour) {
+                    remesh_ids.push(id);
+                }
+            }
+        }
+    }
+
+    remesh_ids.dedup();
+    for id in remesh_ids {
+        if let Some(obj) = world.get_object_mut(id) {
+            obj.add_tag(NeedsRemeshing);
+        }
+    }
+
+    Ok(())
+}
+
+const MAX_CHUNKS_PER_FRAME: usize = 4;
+
+#[fixed_update]
+pub fn receive_chunks(world: &mut World, _delta: f32) -> Result<()> {
+    let completed: Vec<GeneratedChunkData> = {
+        let queue = world.get_resource::<ChunkGenQueue>()?;
+        queue
+            .receiver
+            .try_iter()
+            .take(MAX_CHUNKS_PER_FRAME)
+            .collect()
+    };
+
+    if completed.is_empty() {
+        return Ok(());
+    }
+
+    let mut added_positions: Vec<Vector3<i32>> = Vec::with_capacity(completed.len());
+
+    for data in completed {
+        world
+            .get_resource_mut::<ChunkGenQueue>()?
+            .in_flight
+            .remove(&data.position);
+
+        let mut object = apostasy_core::objects::Object::new();
+        object.set_name("Chunk".to_string());
+        object.add_component(VoxelTransform {
+            position: data.position,
+        });
+        object.add_component(Chunk {
+            voxels: data.voxels,
+            lod: data.lod,
+            biome: data.biome,
+        });
+        object.add_tag(NeedsRemeshing);
+        world.add_object(object);
+
+        added_positions.push(data.position);
+    }
 
     let position_to_id: HashMap<Vector3<i32>, ObjectId> = world
         .get_objects_with_component_with_ids::<VoxelTransform>()
@@ -223,23 +336,28 @@ pub fn update_chunks(world: &mut World, _delta: f32) -> Result<()> {
         })
         .collect();
 
-    let new_positions_set: HashSet<Vector3<i32>> = new_positions.iter().cloned().collect();
-    let mut neighbour_ids_to_remesh: Vec<ObjectId> = Vec::new();
-    for new_pos in &new_positions_set {
-        for offset in &neighbour_offsets {
-            let neighbour_pos = new_pos + offset;
-            if !new_positions.contains(&neighbour_pos) {
-                if let Some(&id) = position_to_id.get(&neighbour_pos) {
-                    neighbour_ids_to_remesh.push(id);
+    let mut remesh_ids: Vec<ObjectId> = Vec::new();
+    let added_set: HashSet<Vector3<i32>> = added_positions.iter().cloned().collect();
+
+    for pos in &added_positions {
+        for offset in &NEIGHBOUR_OFFSETS {
+            let neighbour = pos + offset;
+            if !added_set.contains(&neighbour) {
+                if let Some(&id) = position_to_id.get(&neighbour) {
+                    remesh_ids.push(id);
                 }
             }
         }
     }
 
-    // mark neighbours for remeshing
-    for id in neighbour_ids_to_remesh {
-        let chunk = world.get_object_mut(id).unwrap();
-        chunk.add_tag(NeedsRemeshing);
+    remesh_ids.sort_unstable();
+    remesh_ids.dedup();
+
+    for id in remesh_ids {
+        if let Some(obj) = world.get_object_mut(id) {
+            obj.add_tag(NeedsRemeshing);
+        }
     }
+
     Ok(())
 }

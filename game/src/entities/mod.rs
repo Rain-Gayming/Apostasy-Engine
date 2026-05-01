@@ -111,7 +111,7 @@ pub fn entity_init(world: &mut World) -> Result<()> {
         .add_component(Gravity::default())
         .add_component(Collider::default())
         .add_component(Velocity::default())
-        .add_component(ModelRenderer::from_path("model.glb"))
+        // .add_component(ModelRenderer::from_path("model.glb"))
         .add_tag(NeedsSpawnPoint);
 
     world.add_object(sheep);

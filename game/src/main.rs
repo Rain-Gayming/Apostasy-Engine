@@ -14,7 +14,7 @@ use apostasy_core::{
     },
 };
 
-use crate::world::chunk_loader::ChunkLoader;
+use crate::world::chunk_loader::{ChunkGenQueue, ChunkLoader};
 pub mod entities;
 pub mod world;
 
@@ -29,6 +29,7 @@ fn main() {
 #[start]
 pub fn start(world: &mut World) -> Result<()> {
     world.insert_resource(ChunkLoader::default());
+    world.insert_resource(ChunkGenQueue::default());
 
     Ok(())
 }

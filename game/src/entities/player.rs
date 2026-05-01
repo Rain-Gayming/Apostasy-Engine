@@ -9,6 +9,7 @@ use apostasy_core::{
             cursor_manager::CursorManager, input_manager::InputManager,
             window_manager::WindowManager,
         },
+        systems::DeltaTime,
         tags::Player,
         world::World,
     },
@@ -72,6 +73,7 @@ pub fn player_start(world: &mut World) -> Result<()> {
 #[update]
 pub fn update(world: &mut World) -> Result<()> {
     let inputs = world.get_resource::<InputManager>()?;
+    let delta = world.get_resource::<DeltaTime>()?.0;
 
     let mouse_delta = inputs.mouse_delta;
     let direction = inputs.input_vector_2d("Right", "Left", "Backwards", "Forwards");
@@ -79,11 +81,11 @@ pub fn update(world: &mut World) -> Result<()> {
 
     let player = world.get_object_with_tag_mut::<Player>()?;
     let player_transform = player.get_component_mut::<Transform>()?;
-    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 0.5;
+    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * delta * 50.0;
 
     let camera = world.get_object_with_tag_mut::<GameCamera>()?;
     let cam_transform = camera.get_component_mut::<Transform>()?;
-    cam_transform.local_euler_angles.x -= mouse_delta.1 as f32 * 0.5;
+    cam_transform.local_euler_angles.x -= mouse_delta.1 as f32 * delta * 50.0;
     cam_transform.local_euler_angles.x = cam_transform.local_euler_angles.x.clamp(-89.0, 89.0);
 
     let player = world.get_object_with_tag::<Player>()?;
@@ -93,11 +95,11 @@ pub fn update(world: &mut World) -> Result<()> {
     let velocity = player.get_component_mut::<Velocity>()?;
 
     let wish_dir = rotation * Vector3::new(direction.x, 0.0, direction.y);
-    velocity.linear_velocity.x = wish_dir.x * 5.0;
-    velocity.linear_velocity.z = wish_dir.z * 5.0;
+    velocity.linear_velocity.x = wish_dir.x * delta * 250.0;
+    velocity.linear_velocity.z = wish_dir.z * delta * 250.0;
 
     if should_jump && velocity.is_grounded {
-        velocity.linear_velocity.y = 5.0;
+        velocity.linear_velocity.y = 8.0;
     }
 
     Ok(())

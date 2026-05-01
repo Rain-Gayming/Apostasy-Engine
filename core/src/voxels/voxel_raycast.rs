@@ -258,12 +258,8 @@ pub fn voxel_raycast(
 
     let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
         chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
-    log!("Ray origin: {:?}", ray.origin);
-    log!("Ray direction: {:?}", ray.direction);
-    log!("Chunks found: {}", chunks.len());
     let hit = raycast(&ray, distance as f32, &chunk_refs, None);
 
-    log!("{:?}", hit);
     return hit.ok_or(Error::msg("Hit nothing"));
 }
 

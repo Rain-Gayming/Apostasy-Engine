@@ -30,3 +30,6 @@ eframe = "0.33.3"
 egui-winit = "0.33.3"
 epaint = "0.33.3"
 egui-ash-renderer = {version = "0.11", features = ["dynamic-rendering"]}
+rayon = "1.10"
+crossbeam-channel = "0.5"
+num_cpus = "1.16"

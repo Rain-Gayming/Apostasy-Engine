@@ -75,7 +75,6 @@ impl Object {
 
     pub fn add_tag<T: Tag + 'static>(&mut self, tag: T) -> Self {
         if self.get_tag::<T>().is_ok() {
-            log_warn!("You can only have one of any tag on an entity");
             return self.clone();
         }
         self.tags.push(Box::new(tag));
