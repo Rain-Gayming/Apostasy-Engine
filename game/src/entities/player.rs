@@ -56,6 +56,7 @@ pub fn player_init(world: &mut World) -> Result<()> {
     let obj = Object::new()
         .add_component(Transform {
             local_position: Vector3::new(0.0, 50.0, 0.0),
+            local_euler_angles: Vector3::new(0.0, 0.0, 45.0),
             ..Default::default()
         })
         .add_component(ModelRenderer::from_path("model.glb".to_string()));

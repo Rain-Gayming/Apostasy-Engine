@@ -186,11 +186,12 @@ impl Core {
                             .clone()
                             .unwrap();
 
-                        let world_position =
-                            object.get_component::<Transform>().unwrap().global_position;
+                        let transform = object.get_component::<Transform>().unwrap();
 
                         let mut frame_model_push = model_push.clone();
-                        frame_model_push.world_position = world_position;
+                        frame_model_push.world_position = transform.global_position;
+                        frame_model_push.world_scale = transform.global_scale;
+                        frame_model_push.world_rotation = transform.global_rotation;
 
                         for mesh in &model.meshes {
                             renderer

@@ -104,7 +104,7 @@ impl RenderingAPI for VulkanRenderer {
                     vk::PushConstantRange::default()
                         .stage_flags(vk::ShaderStageFlags::VERTEX)
                         .offset(0)
-                        .size(144),
+                        .size(176),
                 ]),
                 None,
             )?;

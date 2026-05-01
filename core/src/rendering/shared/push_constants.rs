@@ -1,6 +1,6 @@
 use std::mem::transmute;
 
-use cgmath::{Matrix4, SquareMatrix, Vector3, Zero};
+use cgmath::{Matrix4, Quaternion, SquareMatrix, Vector3, Zero};
 
 use crate::{
     objects::{Object, components::transform::Transform},
@@ -49,12 +49,16 @@ impl PushConstants {
 #[derive(Clone, Debug)]
 pub struct ModelPushConstants {
     pub world_position: Vector3<f32>,
+    pub world_scale: Vector3<f32>,
+    pub world_rotation: Quaternion<f32>,
 }
 
 impl Default for ModelPushConstants {
     fn default() -> Self {
         Self {
             world_position: Vector3::zero(),
+            world_scale: Vector3::new(1.0, 1.0, 1.0),
+            world_rotation: Quaternion::new(1.0, 0.0, 0.0, 0.0),
         }
     }
 }
@@ -65,7 +69,14 @@ impl ModelPushConstants {
         unsafe {
             let mut data = Vec::with_capacity(128);
             let position: [u8; 12] = transmute(self.world_position);
+            let scale: [u8; 12] = transmute(self.world_scale);
+            let rotation: [u8; 16] = transmute(self.world_rotation);
+            let pad: [u8; 4] = [0u8; 4];
             data.extend_from_slice(&position);
+            data.extend_from_slice(&pad);
+            data.extend_from_slice(&scale);
+            data.extend_from_slice(&pad);
+            data.extend_from_slice(&rotation);
             data
         }
     }
