@@ -138,6 +138,10 @@ impl World {
         self.scene.debug_objects();
     }
 
+    pub fn object_count(&self) -> usize {
+        self.scene.objects.len()
+    }
+
     pub fn get_object(&self, id: ObjectId) -> Option<&Object> {
         self.scene.get_object(id)
     }
