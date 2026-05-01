@@ -28,12 +28,6 @@ impl GpuMesh for Mesh {
     }
 }
 
-#[derive(Clone)]
-pub struct ModelRenderer {
-    pub loaded_model: String,
-    // pub material_path: String,
-}
-
 pub trait GpuMesh {
     fn get_vertex_buffer(&self) -> Buffer;
     fn get_index_buffer(&self) -> Buffer;

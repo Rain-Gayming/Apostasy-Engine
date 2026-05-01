@@ -1,3 +1,5 @@
+use std::default;
+
 use apostasy_core::{
     anyhow::Result,
     cgmath::Vector3,
@@ -14,7 +16,10 @@ use apostasy_core::{
         world::World,
     },
     physics::{Gravity, collider::Collider, velocity::Velocity},
-    rendering::components::camera::{ActiveCamera, Camera, GameCamera},
+    rendering::components::{
+        camera::{ActiveCamera, Camera, GameCamera},
+        model_renderer::ModelRenderer,
+    },
     start, update,
     voxels::voxel_raycast::{Direction, voxel_raycast, voxel_raycast_system},
     winit::{
@@ -48,9 +53,17 @@ pub fn player_init(world: &mut World) -> Result<()> {
         .add_tag(Player)
         .add_tag(NeedsSpawnPoint);
 
+    let obj = Object::new()
+        .add_component(Transform {
+            local_position: Vector3::new(0.0, 50.0, 0.0),
+            ..Default::default()
+        })
+        .add_component(ModelRenderer::from_path("model.glb".to_string()));
+
     let player_id = world.add_object(player.clone());
     let cam_id = world.add_object(camera.clone());
     world.set_parent(cam_id, Some(player_id))?;
+    world.add_object(obj);
     Ok(())
 }
 
@@ -126,11 +139,11 @@ pub fn update(world: &mut World) -> Result<()> {
 
     let player = world.get_object_with_tag_mut::<Player>()?;
     let player_transform = player.get_component_mut::<Transform>()?;
-    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 0.1;
+    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 0.5;
 
     let camera = world.get_object_with_tag_mut::<GameCamera>()?;
     let cam_transform = camera.get_component_mut::<Transform>()?;
-    cam_transform.local_euler_angles.x -= mouse_delta.1 as f32 * 0.1;
+    cam_transform.local_euler_angles.x -= mouse_delta.1 as f32 * 0.5;
     cam_transform.local_euler_angles.x = cam_transform.local_euler_angles.x.clamp(-89.0, 89.0);
 
     let player = world.get_object_with_tag::<Player>()?;

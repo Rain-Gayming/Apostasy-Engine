@@ -12,6 +12,7 @@ pub use winit;
 use winit::event::DeviceEvent;
 use winit::event::DeviceId;
 
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
@@ -22,12 +23,15 @@ use winit::{
 };
 
 use crate::assets::asset_manager::AssetManager;
+use crate::assets::gltf::load_model;
+use crate::objects::components::transform::Transform;
 use crate::objects::resources::cursor_manager::CursorManager;
 use crate::objects::resources::input_manager::InputManager;
 use crate::objects::resources::window_manager::WindowManager;
 use crate::packages::Packages;
 use crate::packages::add_package;
 use crate::rendering::components::camera::ActiveCamera;
+use crate::rendering::components::model_renderer::ModelRenderer;
 use crate::ui::ui_context::EguiContext;
 use crate::voxels::VoxelTransform;
 use crate::voxels::meshes::NeedsRemeshing;
@@ -109,10 +113,12 @@ impl Core {
                     let mut world = self.world.lock().unwrap();
 
                     let context = Arc::new(rendering_info.context.clone());
-                    let mut push_constants = rendering_info.push_constants.clone();
+                    let push_constants = rendering_info.push_constants.clone();
+                    let mut voxel_push_constants = rendering_info.voxel_push_constants.clone();
+                    let model_push = rendering_info.model_push_constants.clone();
 
                     if let Some(atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
-                        push_constants.set_atlas_tiles(atlas.atlas_size);
+                        voxel_push_constants.set_atlas_tiles(atlas.atlas_size);
                     }
 
                     let Some(renderer) = &mut rendering_info.renderer else {
@@ -140,15 +146,72 @@ impl Core {
                     renderer.begin_ui();
                     world.update();
                     world.fixed_update();
+                    let object_ids: Vec<_> = world
+                        .get_objects_with_component_with_ids::<ModelRenderer>()
+                        .iter()
+                        .map(|o| o.0)
+                        .collect();
+
+                    for id in object_ids {
+                        let object = world.get_object_mut(id).unwrap();
+
+                        if object
+                            .get_component::<ModelRenderer>()
+                            .unwrap()
+                            .model
+                            .is_none()
+                        {
+                            let model_path = object
+                                .get_component::<ModelRenderer>()
+                                .unwrap()
+                                .model_path
+                                .clone();
+
+                            let Some(command_pool) = renderer.get_command_pool().ok() else {
+                                continue;
+                            };
+
+                            let model =
+                                load_model(Path::new(&model_path), context.clone(), command_pool)
+                                    .unwrap();
+
+                            object.get_component_mut::<ModelRenderer>().unwrap().model =
+                                Some(Box::new(model));
+                        }
+
+                        let model = object
+                            .get_component::<ModelRenderer>()
+                            .unwrap()
+                            .model
+                            .clone()
+                            .unwrap();
+
+                        let world_position =
+                            object.get_component::<Transform>().unwrap().global_position;
+
+                        let mut frame_model_push = model_push.clone();
+                        frame_model_push.world_position = world_position;
+
+                        for mesh in &model.meshes {
+                            renderer
+                                .render(
+                                    Box::new(mesh.clone()),
+                                    push_constants.clone(),
+                                    &frame_model_push,
+                                )
+                                .unwrap();
+                        }
+                    }
 
                     if let Some(texture_atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
                         for object in world.get_objects_with_component::<VoxelChunkMesh>() {
                             let transform = object.get_component::<VoxelTransform>().unwrap();
                             let voxel_mesh = object.get_component::<VoxelChunkMesh>().unwrap();
 
-                            let mut chunk_push = push_constants.clone();
+                            let chunk_push = push_constants.clone();
+                            let mut voxel_chunk_push = voxel_push_constants.clone();
 
-                            chunk_push.set_position(Vector3::new(
+                            voxel_chunk_push.set_position(Vector3::new(
                                 transform.position.x * 32,
                                 transform.position.y * 32,
                                 transform.position.z * 32,
@@ -159,6 +222,7 @@ impl Core {
                                     Box::new(voxel_mesh.clone()),
                                     &texture_atlas,
                                     &chunk_push,
+                                    &voxel_chunk_push,
                                 )
                                 .unwrap();
                         }

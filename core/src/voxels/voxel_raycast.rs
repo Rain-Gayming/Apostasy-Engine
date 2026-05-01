@@ -183,12 +183,24 @@ pub enum Direction {
 
 pub fn get_camera_ray(transform: &Transform, direction: Direction) -> Ray {
     match direction {
-        Direction::Forward => Ray::new(transform.global_position, transform.calculate_forward()),
-        Direction::Backwards => Ray::new(transform.global_position, -transform.calculate_forward()),
-        Direction::Left => Ray::new(transform.global_position, transform.calculate_right()),
-        Direction::Right => Ray::new(transform.global_position, -transform.calculate_right()),
-        Direction::Up => Ray::new(transform.global_position, transform.calculate_up()),
-        Direction::Down => Ray::new(transform.global_position, -transform.calculate_up()),
+        Direction::Forward => Ray::new(
+            transform.global_position,
+            transform.calculate_global_forward(),
+        ),
+        Direction::Backwards => Ray::new(
+            transform.global_position,
+            -transform.calculate_global_forward(),
+        ),
+        Direction::Left => Ray::new(
+            transform.global_position,
+            transform.calculate_global_right(),
+        ),
+        Direction::Right => Ray::new(
+            transform.global_position,
+            -transform.calculate_global_right(),
+        ),
+        Direction::Up => Ray::new(transform.global_position, transform.calculate_global_up()),
+        Direction::Down => Ray::new(transform.global_position, -transform.calculate_global_up()),
     }
 }
 

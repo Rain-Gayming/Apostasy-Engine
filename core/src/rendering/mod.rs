@@ -7,7 +7,9 @@ use winit::event::WindowEvent;
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
 use crate::rendering::shared::model::GpuMesh;
-use crate::rendering::shared::push_constants::PushConstants;
+use crate::rendering::shared::push_constants::{
+    ModelPushConstants, PushConstants, VoxelPushConstants,
+};
 use crate::rendering::{
     shared::rendering_settings::RenderingSettings,
     vulkan::{
@@ -36,20 +38,28 @@ pub struct RenderingInfo {
     pub settings: RenderingSettings,
     pub renderer: Option<Box<dyn RenderingAPI>>,
     pub push_constants: PushConstants,
+    pub model_push_constants: ModelPushConstants,
+    pub voxel_push_constants: VoxelPushConstants,
 }
 
 /// A trait assigned to any Rendering API
 /// Used for Vulkan and Opengl
 pub trait RenderingAPI {
-    fn render(&mut self, mesh: Box<dyn GpuMesh>, push_constants: PushConstants) -> Result<()>;
     fn begin_frame(&mut self, push_constants: PushConstants) -> Result<()>;
     fn end_frame(&mut self) -> Result<()>;
 
+    fn render(
+        &mut self,
+        mesh: Box<dyn GpuMesh>,
+        push_constants: PushConstants,
+        model_push_constants: &ModelPushConstants,
+    ) -> Result<()>;
     fn voxel_render(
         &mut self,
         mesh: Box<dyn GpuMesh>,
         atlas: &VoxelTextureAtlas,
         push_constants: &PushConstants,
+        voxel_push_constants: &VoxelPushConstants,
     ) -> Result<()>;
 
     fn begin_ui(&mut self);
@@ -85,6 +95,8 @@ impl RenderingInfo {
             settings: RenderingSettings::default(),
             renderer: None,
             push_constants: PushConstants::default(),
+            voxel_push_constants: VoxelPushConstants::default(),
+            model_push_constants: ModelPushConstants::default(),
         }));
 
         match rendering_api {
