@@ -55,18 +55,19 @@ pub fn player_init(world: &mut World) -> Result<()> {
 
     let obj = Object::new()
         .add_component(Transform {
-            local_position: Vector3::new(0.05, -0.05, -0.05),
+            local_position: Vector3::new(0.05, 15.0, 15.0),
             local_euler_angles: Vector3::new(0.0, 45.0, 0.0),
-            local_scale: Vector3::new(0.025, 0.025, 0.025),
+            local_scale: Vector3::new(1.0, 1.0, 1.0),
             ..Default::default()
         })
+        .add_component(Collider::default())
         .add_component(ModelRenderer::from_path("model.glb".to_string()));
 
     let player_id = world.add_object(player.clone());
     let cam_id = world.add_object(camera.clone());
     let obj_id = world.add_object(obj);
     world.set_parent(cam_id, Some(player_id))?;
-    world.set_parent(obj_id, Some(cam_id))?;
+    // world.set_parent(obj_id, Some(cam_id))?;
     Ok(())
 }
 
