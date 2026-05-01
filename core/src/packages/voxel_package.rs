@@ -13,7 +13,6 @@ use crate::{
     voxels::{
         biome::BiomeRegistry,
         chunk::VoxelBreakProgress,
-        chunk_loader::ChunkLoader,
         texture_atlas::{AtlasBuilder, PendingAtlas},
         voxel::VoxelRegistry,
     },
@@ -71,6 +70,4 @@ pub(crate) fn add_voxel_package(world: &mut World) {
         image: atlas_image,
         tiles: atlas_tiles,
     });
-
-    world.insert_resource(ChunkLoader::default());
 }

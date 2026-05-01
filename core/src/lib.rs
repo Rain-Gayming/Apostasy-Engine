@@ -5,10 +5,6 @@ pub use apostasy_macros::late_update;
 pub use apostasy_macros::start;
 pub use apostasy_macros::update;
 
-pub use anyhow;
-pub use cgmath;
-use cgmath::Vector3;
-pub use winit;
 use winit::event::DeviceEvent;
 use winit::event::DeviceId;
 
@@ -55,6 +51,15 @@ pub mod rendering;
 pub mod ui;
 pub mod utils;
 pub mod voxels;
+
+pub use anyhow;
+pub use cgmath;
+use cgmath::Vector3;
+pub use noise;
+pub use rand;
+pub use serde;
+pub use serde_yaml;
+pub use winit;
 
 pub struct Core {
     pub rendering_api: RenderingBackend,

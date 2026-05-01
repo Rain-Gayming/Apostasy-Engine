@@ -12,8 +12,8 @@ impl ModelRenderer {
     pub fn deserialize(&mut self, _value: &serde_yaml::Value) -> anyhow::Result<()> {
         Ok(())
     }
-    pub fn from_path(path: String) -> Self {
-        let path = format!("{}{}", "res/", path);
+    pub fn from_path(path: &str) -> Self {
+        let path = format!("{}{}", "res/", path.to_string());
 
         Self {
             model: None,

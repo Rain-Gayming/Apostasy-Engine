@@ -1,33 +1,24 @@
-use std::default;
-
 use apostasy_core::{
     anyhow::Result,
     cgmath::Vector3,
-    fixed_update, log,
+    fixed_update,
     objects::{
         Object,
         components::transform::Transform,
         resources::{
-            cursor_manager::CursorManager,
-            input_manager::{InputManager, KeyAction, KeyBind, MouseBind},
+            cursor_manager::CursorManager, input_manager::InputManager,
             window_manager::WindowManager,
         },
         tags::Player,
         world::World,
     },
     physics::{Gravity, collider::Collider, velocity::Velocity},
-    rendering::components::{
-        camera::{ActiveCamera, Camera, GameCamera},
-        model_renderer::ModelRenderer,
-    },
+    rendering::components::camera::{ActiveCamera, Camera, GameCamera},
     start, update,
-    voxels::voxel_raycast::{Direction, voxel_raycast, voxel_raycast_system},
-    winit::{
-        event::MouseButton,
-        keyboard::{KeyCode, PhysicalKey},
-    },
+    voxels::voxel_raycast::voxel_raycast_system,
 };
-use apostasy_macros::Tag;
+
+use crate::entities::spawn_point::NeedsSpawnPoint;
 
 #[start]
 pub fn player_init(world: &mut World) -> Result<()> {
@@ -53,21 +44,9 @@ pub fn player_init(world: &mut World) -> Result<()> {
         .add_tag(Player)
         .add_tag(NeedsSpawnPoint);
 
-    let obj = Object::new()
-        .add_component(Transform {
-            local_position: Vector3::new(0.05, 15.0, 15.0),
-            local_euler_angles: Vector3::new(0.0, 45.0, 0.0),
-            local_scale: Vector3::new(1.0, 1.0, 1.0),
-            ..Default::default()
-        })
-        .add_component(Collider::default())
-        .add_component(ModelRenderer::from_path("model.glb".to_string()));
-
     let player_id = world.add_object(player.clone());
     let cam_id = world.add_object(camera.clone());
-    let obj_id = world.add_object(obj);
     world.set_parent(cam_id, Some(player_id))?;
-    // world.set_parent(obj_id, Some(cam_id))?;
     Ok(())
 }
 
@@ -86,47 +65,6 @@ pub fn player_start(world: &mut World) -> Result<()> {
         let window_manager = world.get_resource_mut::<WindowManager>()?;
         cursor_manager.update_cursor(window_manager);
     }
-
-    Ok(())
-}
-
-#[start]
-pub fn player_inputs(world: &mut World) -> Result<()> {
-    let inputs = world.get_resource_mut::<InputManager>()?;
-
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::KeyA),
-        KeyAction::Hold,
-        "Left",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::KeyD),
-        KeyAction::Hold,
-        "Right",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::KeyW),
-        KeyAction::Hold,
-        "Forwards",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::KeyS),
-        KeyAction::Hold,
-        "Backwards",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::Space),
-        KeyAction::Press,
-        "Jump",
-    ));
-    inputs.register_keybind(KeyBind::new(
-        PhysicalKey::Code(KeyCode::KeyQ),
-        KeyAction::Hold,
-        "Downwards",
-    ));
-
-    inputs.register_mousebind(MouseBind::new(MouseButton::Left, KeyAction::Hold, "Break"));
-    inputs.register_mousebind(MouseBind::new(MouseButton::Right, KeyAction::Hold, "Place"));
 
     Ok(())
 }
@@ -159,7 +97,7 @@ pub fn update(world: &mut World) -> Result<()> {
     velocity.linear_velocity.z = wish_dir.z * 5.0;
 
     if should_jump && velocity.is_grounded {
-        velocity.linear_velocity.y = 8.0;
+        velocity.linear_velocity.y = 5.0;
     }
 
     Ok(())
@@ -176,40 +114,6 @@ pub fn block_updates(world: &mut World, _elta: f32) -> Result<()> {
     }
     if to_place {
         voxel_raycast_system(world, Some(2))?;
-    }
-
-    Ok(())
-}
-
-#[derive(Tag, Clone)]
-pub struct NeedsSpawnPoint;
-
-#[update]
-pub fn find_spawn_point(world: &mut World) -> Result<()> {
-    let player = world.get_object_with_tag::<Player>()?;
-    if player.get_tag::<NeedsSpawnPoint>().is_err() {
-        return Ok(());
-    }
-
-    let transform = Transform {
-        local_position: Vector3::new(0.0, 256.0, 0.0),
-        global_position: Vector3::new(0.0, 256.0, 0.0),
-        ..Default::default()
-    };
-
-    if let Ok(hit) = voxel_raycast(world, &transform, 1000, Direction::Down) {
-        let spawn = Vector3::new(
-            hit.voxel_pos.x as f32,
-            hit.voxel_pos.y as f32 + 5.0,
-            hit.voxel_pos.z as f32,
-        );
-        log!("Found spawn point at {:?}", spawn);
-
-        let player = world.get_object_with_tag_mut::<Player>()?;
-        let t = player.get_component_mut::<Transform>()?;
-        t.local_position = spawn;
-        t.global_position = spawn;
-        player.remove_tag::<NeedsSpawnPoint>();
     }
 
     Ok(())

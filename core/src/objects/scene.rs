@@ -24,13 +24,7 @@ impl Default for Scene {
 }
 
 impl Scene {
-    pub(crate) fn add_default_objects(&mut self) {
-        let test_model = Object::new()
-            .add_component(Transform::default())
-            .add_component(ModelRenderer::from_path("model.glb".to_string()))
-            .set_name("Test Model".to_string());
-        self.add_object(test_model);
-    }
+    pub(crate) fn add_default_objects(&mut self) {}
 
     // ========== ========== Object Management ========== ==========
 

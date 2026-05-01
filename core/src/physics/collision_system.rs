@@ -1,7 +1,6 @@
 use anyhow::Result;
 use apostasy_macros::update;
 use cgmath::Vector3;
-use slotmap::DefaultKey;
 
 use crate::{
     objects::{
@@ -131,7 +130,6 @@ pub fn resolve_chunk_collisions(
         match axis {
             0 => {
                 position.x += axis_delta.x + correction;
-                delta.x = 0.0;
                 flags.hit_wall = true;
             }
             1 => {
@@ -145,13 +143,68 @@ pub fn resolve_chunk_collisions(
             }
             _ => {
                 position.z += axis_delta.z + correction;
-                delta.z = 0.0;
                 flags.hit_wall = true;
             }
         }
     }
 
     flags
+}
+
+#[update(priority = 1)]
+pub fn resolve_chunk_collisions_system(world: &mut World) -> Result<()> {
+    let delta = world.get_resource::<DeltaTime>()?.0;
+    let chunks: Vec<(Vector3<i32>, Chunk)> = world
+        .get_objects_with_component::<Chunk>()
+        .iter()
+        .filter_map(|o| {
+            let pos = o.get_component::<VoxelTransform>().ok()?.position;
+            let chunk = o.get_component::<Chunk>().ok()?.clone();
+            Some((pos, chunk))
+        })
+        .collect();
+    let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
+        chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
+
+    let objects = world.get_objects_with_component_mut::<Collider>();
+    for object in objects {
+        let Ok(collider) = object.get_component::<Collider>() else {
+            continue;
+        };
+        let collider = collider.clone();
+        let Ok(transform) = object.get_component::<Transform>() else {
+            continue;
+        };
+        let Ok(velocity) = object.get_component::<Velocity>() else {
+            continue;
+        };
+
+        let mut position = transform.global_position;
+        let mut frame_delta = Vector3::new(
+            velocity.linear_velocity.x * delta,
+            velocity.linear_velocity.y * delta,
+            velocity.linear_velocity.z * delta,
+        );
+
+        let flags = resolve_chunk_collisions(
+            &mut position,
+            &mut frame_delta,
+            collider.half_extents,
+            &chunk_refs,
+        );
+
+        object.get_component_mut::<Transform>()?.global_position = position;
+        object.get_component_mut::<Transform>()?.local_position = position;
+
+        let velocity = object.get_component_mut::<Velocity>()?;
+        if flags.hit_ceil {
+            velocity.linear_velocity.y = 0.0;
+        }
+
+        velocity.is_grounded = flags.grounded;
+    }
+
+    Ok(())
 }
 
 #[derive(Default)]
@@ -165,8 +218,8 @@ pub fn resolve_object_collisions(
     position: &mut Vector3<f32>,
     delta: &mut Vector3<f32>,
     half_extents: Vector3<f32>,
-    self_id: ObjectId,                                          // to skip self
-    other_colliders: &[(ObjectId, Vector3<f32>, Vector3<f32>)], // (id, world_pos, half_extents)
+    self_id: ObjectId,
+    other_colliders: &[(ObjectId, Vector3<f32>, Vector3<f32>)],
 ) -> CollisionFlags {
     let mut flags = CollisionFlags::default();
 
@@ -203,7 +256,6 @@ pub fn resolve_object_collisions(
             let b_min = other_pos - other_half;
             let b_max = other_pos + other_half;
 
-            // check overlap on all 3 axes to confirm actual AABB intersection
             let overlap_x = a_min.x < b_max.x && a_max.x > b_min.x;
             let overlap_y = a_min.y < b_max.y && a_max.y > b_min.y;
             let overlap_z = a_min.z < b_max.z && a_max.z > b_min.z;
@@ -250,7 +302,6 @@ pub fn resolve_object_collisions(
         match axis {
             0 => {
                 position.x += axis_delta.x + correction;
-                delta.x = 0.0;
                 flags.hit_wall = true;
             }
             1 => {
@@ -264,7 +315,6 @@ pub fn resolve_object_collisions(
             }
             _ => {
                 position.z += axis_delta.z + correction;
-                delta.z = 0.0;
                 flags.hit_wall = true;
             }
         }
@@ -272,37 +322,22 @@ pub fn resolve_object_collisions(
 
     flags
 }
+
 #[update]
-pub fn resolve_collisions_system(world: &mut World) -> Result<()> {
+pub fn resolve_object_collisions_system(world: &mut World) -> Result<()> {
     let delta = world.get_resource::<DeltaTime>()?.0;
 
-    let chunks: Vec<(Vector3<i32>, Chunk)> = world
-        .get_objects_with_component::<Chunk>()
-        .iter()
-        .filter_map(|o| {
-            let pos = o.get_component::<VoxelTransform>().ok()?.position;
-            let chunk = o.get_component::<Chunk>().ok()?.clone();
-            Some((pos, chunk))
-        })
-        .collect();
-    let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
-        chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
-
-    // snapshot all collider world positions and scaled half extents before mutation
     let collider_snapshot: Vec<(ObjectId, Vector3<f32>, Vector3<f32>)> = world
         .get_objects_with_component_with_ids::<Collider>()
         .iter()
         .filter_map(|(id, obj)| {
             let transform = obj.get_component::<Transform>().ok()?;
             let collider = obj.get_component::<Collider>().ok()?;
-
-            // scale half extents by global scale
             let scaled = Vector3::new(
                 collider.half_extents.x * transform.global_scale.x,
                 collider.half_extents.y * transform.global_scale.y,
                 collider.half_extents.z * transform.global_scale.z,
             );
-
             Some((id.clone(), transform.global_position, scaled))
         })
         .collect();
@@ -329,12 +364,7 @@ pub fn resolve_collisions_system(world: &mut World) -> Result<()> {
         let mut position = transform.global_position;
         let mut frame_delta = velocity.linear_velocity * delta;
 
-        // chunk collision first
-        let mut flags =
-            resolve_chunk_collisions(&mut position, &mut frame_delta, scaled_half, &chunk_refs);
-
-        // then object vs object
-        let obj_flags = resolve_object_collisions(
+        let flags = resolve_object_collisions(
             &mut position,
             &mut frame_delta,
             scaled_half,
@@ -342,19 +372,15 @@ pub fn resolve_collisions_system(world: &mut World) -> Result<()> {
             &collider_snapshot,
         );
 
-        // merge flags
-        flags.grounded |= obj_flags.grounded;
-        flags.hit_ceil |= obj_flags.hit_ceil;
-        flags.hit_wall |= obj_flags.hit_wall;
-
-        object.get_component_mut::<Transform>()?.global_position = position;
-        object.get_component_mut::<Transform>()?.local_position = position;
+        if flags.hit_wall || flags.grounded || flags.hit_ceil {
+            object.get_component_mut::<Transform>()?.global_position = position;
+            object.get_component_mut::<Transform>()?.local_position = position;
+        }
 
         let vel = object.get_component_mut::<Velocity>()?;
-        if flags.hit_ceil {
-            vel.linear_velocity.y = 0.0;
+        if flags.grounded {
+            vel.is_grounded = true;
         }
-        vel.is_grounded = flags.grounded;
     }
 
     Ok(())

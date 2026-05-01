@@ -1,23 +1,19 @@
-use anyhow::Result;
-use apostasy_core::log;
-use apostasy_macros::{Resource, fixed_update, start, update};
-use cgmath::Vector3;
-use hashbrown::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
-use crate::{
-    objects::{
-        components::transform::Transform, scene::ObjectId, systems::DeltaTime, tags::Player,
-        world::World,
-    },
+use apostasy_core::{
+    anyhow::Result,
+    cgmath::Vector3,
+    log,
+    objects::{components::transform::Transform, scene::ObjectId, tags::Player, world::World},
     physics::velocity::Velocity,
     voxels::{
-        VoxelTransform,
-        biome::BiomeRegistry,
-        chunk::{self, Chunk, generate_chunk},
-        meshes::NeedsRemeshing,
+        VoxelTransform, biome::BiomeRegistry, chunk::Chunk, meshes::NeedsRemeshing,
         voxel::VoxelRegistry,
     },
 };
+use apostasy_macros::{Resource, fixed_update, start};
+
+use crate::world::generation::generate_chunk;
 
 #[derive(Resource, Clone)]
 pub struct ChunkLoader {
