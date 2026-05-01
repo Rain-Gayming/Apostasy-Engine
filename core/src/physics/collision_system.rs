@@ -46,6 +46,13 @@ pub fn resolve_collisions(
 ) -> CollisionFlags {
     let mut flags = CollisionFlags::default();
 
+    let ground_probe = 0.05f32;
+    let probe_min = (*position - half_extents) - Vector3::new(0.0, ground_probe, 0.0);
+    let probe_max = *position + half_extents;
+    if !get_overlapping_voxels(probe_min, probe_max, chunks).is_empty() {
+        flags.grounded = true;
+    }
+
     let axes: [usize; 3] = [1, 0, 2];
 
     for axis in axes {
@@ -144,7 +151,7 @@ pub fn resolve_collisions(
     flags
 }
 
-#[update(priority = 5)]
+#[update]
 pub fn resolve_collisions_system(world: &mut World) -> Result<()> {
     let delta = world.get_resource::<DeltaTime>()?.0;
     let chunks: Vec<(Vector3<i32>, Chunk)> = world

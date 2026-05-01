@@ -3,7 +3,7 @@ use std::default;
 use apostasy_core::{
     anyhow::Result,
     cgmath::Vector3,
-    log,
+    fixed_update, log,
     objects::{
         Object,
         components::transform::Transform,
@@ -55,16 +55,18 @@ pub fn player_init(world: &mut World) -> Result<()> {
 
     let obj = Object::new()
         .add_component(Transform {
-            local_position: Vector3::new(0.0, 50.0, 0.0),
-            local_euler_angles: Vector3::new(0.0, 0.0, 45.0),
+            local_position: Vector3::new(0.05, -0.05, -0.05),
+            local_euler_angles: Vector3::new(0.0, 45.0, 0.0),
+            local_scale: Vector3::new(0.025, 0.025, 0.025),
             ..Default::default()
         })
         .add_component(ModelRenderer::from_path("model.glb".to_string()));
 
     let player_id = world.add_object(player.clone());
     let cam_id = world.add_object(camera.clone());
+    let obj_id = world.add_object(obj);
     world.set_parent(cam_id, Some(player_id))?;
-    world.add_object(obj);
+    world.set_parent(obj_id, Some(cam_id))?;
     Ok(())
 }
 
@@ -133,8 +135,6 @@ pub fn update(world: &mut World) -> Result<()> {
     let inputs = world.get_resource::<InputManager>()?;
 
     let mouse_delta = inputs.mouse_delta;
-    let to_break = inputs.is_mousebind_active("Break");
-    let to_place = inputs.is_mousebind_active("Place");
     let direction = inputs.input_vector_2d("Right", "Left", "Backwards", "Forwards");
     let should_jump = inputs.is_keybind_active("Jump");
 
@@ -159,8 +159,16 @@ pub fn update(world: &mut World) -> Result<()> {
 
     if should_jump && velocity.is_grounded {
         velocity.linear_velocity.y = 8.0;
-        velocity.is_grounded = false;
     }
+
+    Ok(())
+}
+
+#[fixed_update]
+pub fn block_updates(world: &mut World, _elta: f32) -> Result<()> {
+    let inputs = world.get_resource::<InputManager>()?;
+    let to_break = inputs.is_mousebind_active("Break");
+    let to_place = inputs.is_mousebind_active("Place");
 
     if to_break {
         voxel_raycast_system(world, Some(0))?;
@@ -171,6 +179,7 @@ pub fn update(world: &mut World) -> Result<()> {
 
     Ok(())
 }
+
 #[derive(Tag, Clone)]
 pub struct NeedsSpawnPoint;
 
