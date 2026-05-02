@@ -164,6 +164,7 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
         .collect();
 
     for id in unload_ids {
+        world.unregister_chunk(id);
         world.remove_object(id);
     }
 
@@ -177,7 +178,6 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
             dx <= load_radius && dy <= load_radius && dz <= load_radius
         });
 
-    // build sorted candidate list
     let mut candidates: Vec<(Vector3<i32>, usize)> = Vec::new();
 
     for x in (player_chunk_pos.x - load_radius)..=(player_chunk_pos.x + load_radius) {
@@ -322,8 +322,9 @@ pub fn receive_chunks(world: &mut World, _delta: f32) -> Result<()> {
             biome: data.biome,
         });
         object.add_tag(NeedsRemeshing);
-        world.add_object(object);
+        let id = world.add_object(object);
 
+        world.register_chunk(id);
         added_positions.push(data.position);
     }
 

@@ -3,8 +3,7 @@ use slotmap::{DefaultKey, SlotMap};
 
 use crate::{
     log_error,
-    objects::{Object, component::Component, components::transform::Transform, tag::Tag},
-    rendering::components::model_renderer::ModelRenderer,
+    objects::{Object, component::Component, tag::Tag},
 };
 
 pub type ObjectId = DefaultKey;

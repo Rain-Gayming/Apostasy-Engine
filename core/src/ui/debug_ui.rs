@@ -36,6 +36,17 @@ pub fn hud(world: &mut World) -> Result<()> {
                 "Chunks: {}",
                 world.get_objects_with_component::<Chunk>().len()
             ));
+
+            ui.separator();
+            ui.label(format!(
+                "Player position: {:?}",
+                world
+                    .get_object_with_tag::<Player>()
+                    .unwrap()
+                    .get_component::<Transform>()
+                    .unwrap()
+                    .global_position
+            ));
         });
 
     Ok(())

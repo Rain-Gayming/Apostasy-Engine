@@ -137,4 +137,8 @@ impl VoxelRegistry {
             id_to_name,
         }
     }
+    pub fn get_def(&self, id: VoxelId) -> Result<&VoxelDefinition> {
+        let msg = format!("Voxel {} not found", id);
+        self.defs.get(id as usize).ok_or(Error::msg(msg))
+    }
 }

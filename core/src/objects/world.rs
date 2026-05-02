@@ -1,21 +1,27 @@
 use anyhow::Result;
+use hashbrown::HashMap;
 
-use crate::objects::{
-    Object,
-    component::Component,
-    resource::{Resource, ResourceMap},
-    scene::{ObjectId, Scene},
-    systems::{
-        DeltaTime, FixedUpdateSystem, FixedUpdateTimer, HasPriority, LateUpdateSystem, StartSystem,
-        UpdateSystem,
+use crate::{
+    objects::{
+        Object,
+        component::Component,
+        resource::{Resource, ResourceMap},
+        scene::{ObjectId, Scene},
+        systems::{
+            DeltaTime, FixedUpdateSystem, FixedUpdateTimer, HasPriority, LateUpdateSystem,
+            StartSystem, UpdateSystem,
+        },
+        tag::Tag,
     },
-    tag::Tag,
+    utils::flatten::flatten,
+    voxels::{VoxelTransform, chunk::Chunk, meshes::NeedsRemeshing, voxel::VoxelId},
 };
 
 #[derive(Default)]
 pub struct World {
     pub(crate) scene: Scene,
     pub(crate) resources: ResourceMap,
+    pub(crate) chunk_position_index: HashMap<(i32, i32, i32), ObjectId>,
 
     update_systems: Vec<&'static UpdateSystem>,
     fixed_update_systems: Vec<&'static FixedUpdateSystem>,
@@ -249,5 +255,77 @@ impl World {
     pub fn remove_resource<T: Resource + 'static>(&mut self) -> &mut Self {
         self.resources.remove::<T>();
         self
+    }
+
+    // ========== ========== Voxel Specific ========== ==========
+
+    pub fn register_chunk(&mut self, id: ObjectId) {
+        if let Some(obj) = self.scene.objects.get(id) {
+            if let Ok(t) = obj.get_component::<VoxelTransform>() {
+                self.chunk_position_index
+                    .insert((t.position.x, t.position.y, t.position.z), id);
+            }
+        }
+    }
+
+    pub fn unregister_chunk(&mut self, id: ObjectId) {
+        self.chunk_position_index.retain(|_, &mut oid| oid != id);
+    }
+    #[inline]
+    pub fn get_voxel(&self, wx: i32, wy: i32, wz: i32) -> Option<VoxelId> {
+        let key = (wx.div_euclid(32), wy.div_euclid(32), wz.div_euclid(32));
+        let id = self.chunk_position_index.get(&key)?;
+        let obj = self.scene.objects.get(*id)?;
+        let chunk = obj.get_component::<Chunk>().ok()?;
+        let lx = wx.rem_euclid(32) as u32;
+        let ly = wy.rem_euclid(32) as u32;
+        let lz = wz.rem_euclid(32) as u32;
+        Some(chunk.voxels[flatten(lx, ly, lz, 32)])
+    }
+    #[inline]
+    pub fn set_voxel(&mut self, wx: i32, wy: i32, wz: i32, id: VoxelId) -> bool {
+        let key = (wx.div_euclid(32), wy.div_euclid(32), wz.div_euclid(32));
+        let Some(&oid) = self.chunk_position_index.get(&key) else {
+            return false;
+        };
+        let lx = wx.rem_euclid(32) as u32;
+        let ly = wy.rem_euclid(32) as u32;
+        let lz = wz.rem_euclid(32) as u32;
+        let obj = self.scene.objects.get_mut(oid).unwrap();
+        if let Ok(chunk) = obj.get_component_mut::<Chunk>() {
+            chunk.voxels[flatten(lx, ly, lz, 32)] = id;
+        }
+        obj.add_tag(NeedsRemeshing);
+        true
+    }
+
+    pub fn build_raw_chunk_lookup(
+        &self,
+    ) -> HashMap<(i32, i32, i32), *const [VoxelId; 32 * 32 * 32]> {
+        self.chunk_position_index
+            .iter()
+            .filter_map(|(&pos, &id)| {
+                let obj = self.scene.objects.get(id)?;
+                let chunk = obj.get_component::<Chunk>().ok()?;
+                Some((pos, chunk.voxels.as_ref() as *const _))
+            })
+            .collect()
+    }
+
+    /// SAFETY: chunk must still be alive (no add/remove between build and query)
+    #[inline(always)]
+    pub unsafe fn get_voxel_raw(
+        map: &HashMap<(i32, i32, i32), *const [VoxelId; 32 * 32 * 32]>,
+        wx: i32,
+        wy: i32,
+        wz: i32,
+    ) -> VoxelId {
+        let key = (wx >> 5, wy >> 5, wz >> 5);
+        match map.get(&key) {
+            Some(&ptr) => {
+                *(*ptr).get_unchecked(((wx & 31) + (wy & 31) * 32 + (wz & 31) * 1024) as usize)
+            }
+            None => 0,
+        }
     }
 }

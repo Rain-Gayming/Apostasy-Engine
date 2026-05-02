@@ -1,3 +1,5 @@
+use std::default;
+
 use apostasy_core::{
     anyhow::Result,
     cgmath::Vector3,
@@ -23,7 +25,10 @@ use crate::entities::spawn_point::NeedsSpawnPoint;
 
 #[start]
 pub fn player_init(world: &mut World) -> Result<()> {
-    let transform = Transform::default();
+    let transform = Transform {
+        local_position: Vector3::new(0.0, 50.0, 0.0),
+        ..Default::default()
+    };
 
     let camera = Object::new()
         .add_component(Transform {
@@ -95,8 +100,8 @@ pub fn update(world: &mut World) -> Result<()> {
     let velocity = player.get_component_mut::<Velocity>()?;
 
     let wish_dir = rotation * Vector3::new(direction.x, 0.0, direction.y);
-    velocity.linear_velocity.x = wish_dir.x * delta * 250.0;
-    velocity.linear_velocity.z = wish_dir.z * delta * 250.0;
+    velocity.linear_velocity.x = wish_dir.x * 2.0;
+    velocity.linear_velocity.z = wish_dir.z * 2.0;
 
     if should_jump && velocity.is_grounded {
         velocity.linear_velocity.y = 8.0;

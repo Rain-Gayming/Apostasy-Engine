@@ -23,22 +23,18 @@ impl Gravity {
         Ok(())
     }
 }
-
 #[fixed_update(priority = 10)]
 pub fn apply_gravity(world: &mut World, delta: f32) -> Result<()> {
-    let objects = world.get_objects_with_component_mut::<Velocity>();
-
-    for object in objects {
+    for object in world.get_objects_with_component_mut::<Velocity>() {
         let velocity = object.get_component_mut::<Velocity>()?;
         if velocity.is_grounded {
-            velocity.linear_velocity.y = 0.0;
+            if velocity.linear_velocity.y < 0.0 {
+                velocity.linear_velocity.y = 0.0;
+            }
         } else {
             velocity.linear_velocity.y -= 9.8 * delta;
-            if velocity.linear_velocity.y < -50.0 {
-                velocity.linear_velocity.y = -50.0;
-            }
+            velocity.linear_velocity.y = velocity.linear_velocity.y.max(-50.0);
         }
     }
-
     Ok(())
 }
