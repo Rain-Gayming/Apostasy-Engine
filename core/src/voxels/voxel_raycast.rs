@@ -205,7 +205,7 @@ pub fn get_camera_ray(transform: &Transform, direction: Direction) -> Ray {
 }
 
 /// Creates a raycast hit then submits it to the world for usage
-pub fn voxel_raycast_system(world: &mut World, set_to: Option<VoxelId>) -> Result<()> {
+pub fn voxel_raycast_system(world: &mut World, set_to: Option<VoxelId>, range: f32) -> Result<()> {
     let camera_obj = world
         .get_objects_with_component::<Camera>()
         .first()
@@ -229,7 +229,7 @@ pub fn voxel_raycast_system(world: &mut World, set_to: Option<VoxelId>) -> Resul
     let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
         chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
 
-    if let Some(hit) = raycast(&ray, 10.0, &chunk_refs, set_to) {
+    if let Some(hit) = raycast(&ray, range, &chunk_refs, set_to) {
         world.insert_resource(hit);
     }
 
@@ -264,7 +264,7 @@ pub fn voxel_raycast(
 }
 
 /// Creates a raycast hit from the camera then returns it
-pub fn voxel_raycast_camera(world: &mut World) -> Result<RaycastHit> {
+pub fn voxel_raycast_camera(world: &mut World, range: f32) -> Result<RaycastHit> {
     let camera_obj = world
         .get_objects_with_component::<Camera>()
         .first()
@@ -288,7 +288,7 @@ pub fn voxel_raycast_camera(world: &mut World) -> Result<RaycastHit> {
     let chunk_refs: Vec<(Vector3<i32>, &Chunk)> =
         chunks.iter().map(|(pos, chunk)| (*pos, chunk)).collect();
 
-    let hit = raycast(&ray, 10.0, &chunk_refs, None);
+    let hit = raycast(&ray, range, &chunk_refs, None);
 
     return hit.ok_or(Error::msg("Hit nothing"));
 }

@@ -53,14 +53,15 @@ pub struct VulkanRenderer {
 
     pub pipeline: Pipeline,
     pub pipeline_layout: PipelineLayout,
-
-    pub ui_renderer: UIRenderer,
+    pub wireframe_pipeline: Pipeline,
 
     pub voxel_pipeline: Pipeline,
     pub voxel_wireframe_pipeline: Pipeline,
     pub voxel_pipeline_layout: PipelineLayout,
     pub voxel_descriptor_pool: vk::DescriptorPool,
     pub voxel_descriptor_set_layout: vk::DescriptorSetLayout,
+
+    pub ui_renderer: UIRenderer,
 
     pub push_constants: PushConstants,
 
@@ -131,6 +132,15 @@ impl RenderingAPI for VulkanRenderer {
             )?;
 
             let pipeline = context.create_graphics_pipeline(
+                vertex_shader,
+                fragment_shader,
+                swapchain.extent,
+                swapchain.format,
+                swapchain.depth_format,
+                pipeline_layout,
+                Default::default(),
+            )?;
+            let wireframe_pipeline = context.create_wireframe_pipeline(
                 vertex_shader,
                 fragment_shader,
                 swapchain.extent,
@@ -236,7 +246,9 @@ impl RenderingAPI for VulkanRenderer {
                 frames,
                 command_pool,
                 image_layouts: ImageLayouts::default(),
+
                 pipeline,
+                wireframe_pipeline,
                 pipeline_layout,
                 voxel_pipeline_layout,
 
@@ -378,6 +390,56 @@ impl RenderingAPI for VulkanRenderer {
 
             let mut data = push_constants.return_renderable();
             data.extend(model_push_constants.return_renderable());
+            self.context.device.cmd_push_constants(
+                frame.command_buffer,
+                self.pipeline_layout,
+                vk::ShaderStageFlags::VERTEX,
+                0,
+                &data,
+            );
+
+            self.context.device.cmd_bind_vertex_buffers(
+                frame.command_buffer,
+                0,
+                &[mesh.get_vertex_buffer()],
+                &[0],
+            );
+            self.context.device.cmd_bind_index_buffer(
+                frame.command_buffer,
+                mesh.get_index_buffer(),
+                0,
+                vk::IndexType::UINT32,
+            );
+            self.context.device.cmd_draw_indexed(
+                frame.command_buffer,
+                mesh.get_index_count(),
+                1,
+                0,
+                0,
+                0,
+            );
+        }
+
+        Ok(())
+    }
+    fn wireframe_render(
+        &mut self,
+        mesh: Box<dyn GpuMesh>,
+        push_constants: PushConstants,
+        model_push_constants: &ModelPushConstants,
+    ) -> anyhow::Result<()> {
+        let frame = &self.frames[self.current_frame];
+
+        let mut data = push_constants.return_renderable();
+        data.extend(model_push_constants.return_renderable());
+
+        unsafe {
+            self.context.device.cmd_bind_pipeline(
+                frame.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.wireframe_pipeline,
+            );
+
             self.context.device.cmd_push_constants(
                 frame.command_buffer,
                 self.pipeline_layout,

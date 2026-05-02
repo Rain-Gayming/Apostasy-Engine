@@ -6,6 +6,7 @@ use crate::rendering::shared::model::GpuModel;
 pub struct ModelRenderer {
     pub model: Option<Box<GpuModel>>,
     pub model_path: String,
+    pub is_wireframe: bool,
 }
 
 impl ModelRenderer {
@@ -18,6 +19,7 @@ impl ModelRenderer {
         Self {
             model: None,
             model_path: path,
+            is_wireframe: false,
         }
     }
 }

@@ -187,6 +187,7 @@ impl Core {
                                 Some(Box::new(model));
                         }
 
+                        let model_renderer = object.get_component::<ModelRenderer>().unwrap();
                         let model = object
                             .get_component::<ModelRenderer>()
                             .unwrap()
@@ -202,13 +203,23 @@ impl Core {
                         frame_model_push.world_rotation = transform.global_rotation;
 
                         for mesh in &model.meshes {
-                            renderer
-                                .render(
-                                    Box::new(mesh.clone()),
-                                    push_constants.clone(),
-                                    &frame_model_push,
-                                )
-                                .unwrap();
+                            if model_renderer.is_wireframe {
+                                renderer
+                                    .wireframe_render(
+                                        Box::new(mesh.clone()),
+                                        push_constants.clone(),
+                                        &frame_model_push,
+                                    )
+                                    .unwrap();
+                            } else {
+                                renderer
+                                    .render(
+                                        Box::new(mesh.clone()),
+                                        push_constants.clone(),
+                                        &frame_model_push,
+                                    )
+                                    .unwrap();
+                            }
                         }
                     }
 

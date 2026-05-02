@@ -40,7 +40,7 @@ impl Default for ChunkLoader {
         Self {
             last_chunk_position: Vector3::new(i32::MAX, i32::MAX, i32::MAX),
             load_radius: 4,
-            chunk_lod_distances: vec![2, 4, 6, 8],
+            chunk_lod_distances: vec![8, 12, 14, 16],
         }
     }
 }

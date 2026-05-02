@@ -54,6 +54,13 @@ pub trait RenderingAPI {
         push_constants: PushConstants,
         model_push_constants: &ModelPushConstants,
     ) -> Result<()>;
+    fn wireframe_render(
+        &mut self,
+        mesh: Box<dyn GpuMesh>,
+        push_constants: PushConstants,
+        model_push_constants: &ModelPushConstants,
+    ) -> Result<()>;
+
     fn voxel_render(
         &mut self,
         mesh: Box<dyn GpuMesh>,
