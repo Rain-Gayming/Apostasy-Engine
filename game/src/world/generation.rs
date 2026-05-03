@@ -3,7 +3,10 @@ use apostasy_core::{
     noise::{NoiseFn, Perlin},
     utils::flatten::flatten,
     voxels::{
-        biome::{BiomeRegistry, NOISE, sample_biome_weights},
+        biome::{
+            BiomeRegistry, ClimateCache, NOISE, sample_biome_weights,
+            sample_biome_weights_at_climate,
+        },
         chunk::GeneratedChunkData,
         voxel::{VoxelId, VoxelRegistry},
     },
@@ -63,6 +66,8 @@ pub fn generate_chunk_data(
 
     let base_height = 64.0_f64;
 
+    let climate = ClimateCache::new(world_x, world_z, seed);
+
     let mut heightmap = [0i32; 32 * 32];
     let mut column_biome = [0u16; 32 * 32];
 
@@ -71,9 +76,9 @@ pub fn generate_chunk_data(
             let wx = world_x + x as f64;
             let wz = world_z + z as f64;
 
-            let weights = sample_biome_weights(wx, wz, biome_registry, seed, 0.05);
+            let (temp, humid) = climate.sample(x as f64, z as f64);
+            let weights = sample_biome_weights_at_climate(temp, humid, biome_registry, 0.05);
 
-            // Smooth and renormalize weights
             let smoothed: Vec<(u16, f64)> = weights
                 .iter()
                 .map(|(id, w)| (*id, smooth_weight(*w)))
@@ -85,7 +90,7 @@ pub fn generate_chunk_data(
             let mut dominant_weight = 0.0f64;
 
             for (biome_id, raw_weight) in &smoothed {
-                let weight = raw_weight / weight_sum; // renormalize
+                let weight = raw_weight / weight_sum;
                 let biome = &biome_registry.defs[*biome_id as usize];
 
                 let nx = wx * biome.frequency;
