@@ -88,7 +88,7 @@ pub fn entity_process(world: &mut World) -> Result<()> {
                 }
             };
 
-            if let Ok(hit) = voxel_raycast(world, &location_transform, 1000, Direction::Down) {
+            if let Ok(hit) = voxel_raycast(world, &location_transform, 1000.0, Direction::Down) {
                 let object = world.get_object_mut(id).unwrap();
                 let passive_ai = object.get_component_mut::<PassiveAI>()?;
                 passive_ai.has_location = true;

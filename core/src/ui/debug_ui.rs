@@ -3,7 +3,6 @@ use apostasy_macros::update;
 
 use crate::{
     objects::{components::transform::Transform, systems::DeltaTime, tags::Player, world::World},
-    rendering::components::camera::ActiveCamera,
     ui::ui_context::EguiContext,
     voxels::chunk::Chunk,
 };

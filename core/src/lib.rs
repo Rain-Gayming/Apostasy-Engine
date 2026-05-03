@@ -56,6 +56,8 @@ pub use anyhow;
 pub use cgmath;
 use cgmath::Vector3;
 pub use crossbeam_channel;
+pub use egui;
+pub use epaint;
 pub use noise;
 pub use num_cpus;
 pub use rand;

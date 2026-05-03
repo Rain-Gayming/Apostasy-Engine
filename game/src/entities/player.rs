@@ -2,7 +2,8 @@ use apostasy_core::{
     Component,
     anyhow::Result,
     cgmath::{Vector3, Zero},
-    fixed_update,
+    egui, fixed_update,
+    items::container::Container,
     objects::{
         Object,
         components::transform::Transform,
@@ -19,7 +20,9 @@ use apostasy_core::{
         camera::{ActiveCamera, Camera, GameCamera},
         model_renderer::ModelRenderer,
     },
-    serde_yaml, start, update,
+    serde_yaml, start,
+    ui::ui_context::EguiContext,
+    update,
     voxels::voxel_raycast::{voxel_raycast_camera, voxel_raycast_system},
 };
 
@@ -68,6 +71,7 @@ pub fn player_init(world: &mut World) -> Result<()> {
     let player = Object::new()
         .add_component(transform)
         .add_component(Velocity::default())
+        .add_component(Container::default())
         .add_component(Gravity::default())
         .add_component(Collider::player())
         .add_component(PlayerData::default())
@@ -194,6 +198,25 @@ pub fn block_updates(world: &mut World, _elta: f32) -> Result<()> {
 
     if to_place && can_build {
         voxel_raycast_system(world, Some(2), 4.0)?;
+    }
+
+    Ok(())
+}
+
+#[update]
+pub fn hud(world: &mut World) -> Result<()> {
+    let ctx = world.get_resource::<EguiContext>()?.0.clone();
+    if let Some(player) = world.get_objects_with_tag_with_ids::<Player>().first() {
+        let player = player.1;
+        let inventory = player.get_component::<Container>()?.clone();
+
+        egui::Window::new("Inventory")
+            .anchor(egui::Align2::CENTER_TOP, [10.0, 10.0])
+            .show(&ctx, |ui| {
+                for item in inventory.items {
+                    ui.label(format!("{} ({})", item.item, item.amount));
+                }
+            });
     }
 
     Ok(())
