@@ -1,5 +1,13 @@
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+};
+
 use apostasy_macros::{Component, Resource};
+use cgmath::Vector3;
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use hashbrown::HashMap;
+use rayon::ThreadPool;
 
 use crate::{
     utils::flatten::flatten,
@@ -58,5 +66,47 @@ impl Chunk {
 
     pub fn set_lod(&mut self, lod: u8) {
         self.lod = lod;
+    }
+}
+
+pub struct GeneratedChunkData {
+    pub position: Vector3<i32>,
+    pub voxels: Box<[VoxelId; 32 * 32 * 32]>,
+    pub lod: u8,
+    pub biome: u16,
+}
+
+#[derive(Resource, Clone)]
+pub struct ChunkGenQueue {
+    pub sender: Sender<GeneratedChunkData>,
+    pub receiver: Receiver<GeneratedChunkData>,
+    pub pool: Arc<Mutex<ThreadPool>>,
+    pub mesh_pool: Arc<Mutex<ThreadPool>>,
+    pub in_flight: HashSet<Vector3<i32>>,
+}
+
+impl Default for ChunkGenQueue {
+    fn default() -> Self {
+        let (sender, receiver) = unbounded();
+        let total = num_cpus::get();
+        let gen_threads = (total / 2).max(1);
+        let mesh_threads = (total - gen_threads).max(1);
+        Self {
+            sender,
+            receiver,
+            pool: Arc::new(Mutex::new(
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(gen_threads)
+                    .build()
+                    .unwrap(),
+            )),
+            mesh_pool: Arc::new(Mutex::new(
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(mesh_threads)
+                    .build()
+                    .unwrap(),
+            )),
+            in_flight: HashSet::new(),
+        }
     }
 }

@@ -1,33 +1,22 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::Arc;
 
-use apostasy_core::noise::Perlin;
+use apostasy_core::objects::components::transform::FORWARD;
+use apostasy_core::voxels::chunk::{ChunkGenQueue, GeneratedChunkData};
 use apostasy_core::{
     anyhow::Result,
     cgmath::Vector3,
-    crossbeam_channel::{Receiver, Sender, unbounded},
-    log, num_cpus,
+    log,
     objects::{components::transform::Transform, scene::ObjectId, tags::Player, world::World},
     physics::velocity::Velocity,
-    rayon::ThreadPool,
     voxels::{
-        VoxelTransform,
-        biome::BiomeRegistry,
-        chunk::Chunk,
-        meshes::NeedsRemeshing,
-        voxel::{VoxelId, VoxelRegistry},
+        VoxelTransform, biome::BiomeRegistry, chunk::Chunk, meshes::NeedsRemeshing,
+        voxel::VoxelRegistry,
     },
 };
 use apostasy_macros::{Resource, fixed_update, start};
 
 use crate::world::generation::generate_chunk_data;
-
-pub struct GeneratedChunkData {
-    pub position: Vector3<i32>,
-    pub voxels: Box<[VoxelId; 32 * 32 * 32]>,
-    pub lod: u8,
-    pub biome: u16,
-}
 
 #[derive(Resource, Clone)]
 pub struct ChunkLoader {
@@ -42,30 +31,6 @@ impl Default for ChunkLoader {
             last_chunk_position: Vector3::new(i32::MAX, i32::MAX, i32::MAX),
             load_radius: 8,
             chunk_lod_distances: vec![8, 12, 14, 16],
-        }
-    }
-}
-pub static NOISE: OnceLock<Perlin> = OnceLock::new();
-#[derive(Resource, Clone)]
-pub struct ChunkGenQueue {
-    pub sender: Sender<GeneratedChunkData>,
-    pub receiver: Receiver<GeneratedChunkData>,
-    pub pool: Arc<Mutex<ThreadPool>>,
-    pub in_flight: HashSet<Vector3<i32>>,
-}
-
-impl Default for ChunkGenQueue {
-    fn default() -> Self {
-        let (sender, receiver) = unbounded();
-        let pool = apostasy_core::rayon::ThreadPoolBuilder::new()
-            .num_threads(num_cpus::get().saturating_sub(3).max(1))
-            .build()
-            .unwrap();
-        Self {
-            sender,
-            receiver,
-            pool: Arc::new(Mutex::new(pool)),
-            in_flight: HashSet::new(),
         }
     }
 }
@@ -120,6 +85,8 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
         (player_transform.global_position.y / 32.0).floor() as i32,
         (player_transform.global_position.z / 32.0).floor() as i32,
     );
+
+    let player_forward_chunk = player_transform.global_rotation * FORWARD;
 
     let (last_chunk_pos, load_radius, lod_distances) = {
         let loader = world.get_resource::<ChunkLoader>()?;
@@ -200,15 +167,16 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
     }
 
     candidates.sort_unstable_by(|a, b| {
-        let da = {
-            let d = a.0 - player_chunk_pos;
-            d.x * d.x + d.y * d.y + d.z * d.z
+        let score = |pos: Vector3<i32>| -> i32 {
+            let d = pos - player_chunk_pos;
+            let dist_sq = d.x * d.x + d.y * d.y + d.z * d.z;
+
+            let forward = player_forward_chunk;
+            let dot = (d.x as f32 * forward.x + d.z as f32 * forward.z).max(0.0) as i32;
+
+            dist_sq - dot * 4
         };
-        let db = {
-            let d = b.0 - player_chunk_pos;
-            d.x * d.x + d.y * d.y + d.z * d.z
-        };
-        da.cmp(&db)
+        score(a.0).cmp(&score(b.0))
     });
 
     let registry = Arc::new(world.get_resource::<VoxelRegistry>()?.clone());

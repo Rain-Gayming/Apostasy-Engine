@@ -3,6 +3,7 @@ use apostasy_macros::update;
 
 use crate::{
     objects::{components::transform::Transform, systems::DeltaTime, tags::Player, world::World},
+    rendering::shared::frustrum::ObjectsDrawing,
     ui::ui_context::EguiContext,
     voxels::chunk::Chunk,
 };
@@ -28,6 +29,10 @@ pub fn hud(world: &mut World) -> Result<()> {
                 ui.label(format!("FPS: {:.0}", 1.0 / dt.0));
             }
             ui.label(format!("Objects: {}", world.object_count()));
+            ui.label(format!(
+                "Objects  Drawing: {}",
+                world.get_resource::<ObjectsDrawing>().unwrap().0
+            ));
 
             ui.separator();
 

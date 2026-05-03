@@ -27,7 +27,12 @@ use crate::objects::resources::window_manager::WindowManager;
 use crate::packages::Packages;
 use crate::packages::add_package;
 use crate::rendering::components::camera::ActiveCamera;
+use crate::rendering::components::camera::Camera;
+use crate::rendering::components::camera::get_perspective_projection;
+use crate::rendering::components::camera::get_view_matrix;
 use crate::rendering::components::model_renderer::ModelRenderer;
+use crate::rendering::shared::frustrum::Frustum;
+use crate::rendering::shared::frustrum::ObjectsDrawing;
 use crate::ui::ui_context::EguiContext;
 use crate::voxels::VoxelTransform;
 use crate::voxels::meshes::NeedsRemeshing;
@@ -79,6 +84,7 @@ impl Core {
         world.insert_resource(InputManager::default());
         world.insert_resource(CursorManager::default());
         world.insert_resource(WindowManager::default());
+        world.insert_resource(ObjectsDrawing(0));
 
         for package in packages {
             add_package(&mut world, package);
@@ -120,6 +126,7 @@ impl Core {
                     }
                 }
                 WindowEvent::RedrawRequested => {
+                    let mut objects_dawn = 0;
                     let mut world = self.world.lock().unwrap();
 
                     let context = Arc::new(rendering_info.context.clone());
@@ -137,7 +144,15 @@ impl Core {
                     };
 
                     let camera = world.get_object_with_tag::<ActiveCamera>().unwrap();
+                    let view = get_view_matrix(camera.get_component::<Transform>().unwrap());
+
                     let aspect = renderer.get_aspect();
+                    let proj = get_perspective_projection(
+                        camera.get_component::<Camera>().unwrap(),
+                        aspect,
+                    );
+
+                    let view_proj = proj * view;
 
                     let mut push_constants = push_constants;
                     push_constants.set_camera_constants(camera.to_owned(), aspect);
@@ -226,8 +241,23 @@ impl Core {
                     }
 
                     if let Some(texture_atlas) = world.get_resource::<VoxelTextureAtlas>().ok() {
+                        let frustum = Frustum::from_view_proj(&view_proj);
+
                         for object in world.get_objects_with_component::<VoxelChunkMesh>() {
                             let transform = object.get_component::<VoxelTransform>().unwrap();
+                            let world_pos = Vector3::new(
+                                transform.position.x as f32 * 32.0,
+                                transform.position.y as f32 * 32.0,
+                                transform.position.z as f32 * 32.0,
+                            );
+
+                            if !frustum.contains_aabb(
+                                world_pos,
+                                world_pos + Vector3::new(32.0, 32.0, 32.0),
+                            ) {
+                                continue;
+                            }
+                            objects_dawn += 1;
                             let voxel_mesh = object.get_component::<VoxelChunkMesh>().unwrap();
 
                             let chunk_push = push_constants.clone();
@@ -250,6 +280,7 @@ impl Core {
                         }
                     }
 
+                    world.get_resource_mut::<ObjectsDrawing>().unwrap().0 = objects_dawn;
                     renderer.end_ui().unwrap();
                     renderer.end_frame().unwrap();
                     world.late_update();

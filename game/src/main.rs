@@ -8,13 +8,14 @@ use apostasy_core::{
     packages::Packages,
     rendering::RenderingBackend,
     start,
+    voxels::chunk::ChunkGenQueue,
     winit::{
         event::MouseButton,
         keyboard::{KeyCode, PhysicalKey},
     },
 };
 
-use crate::world::chunk_loader::{ChunkGenQueue, ChunkLoader};
+use crate::world::chunk_loader::ChunkLoader;
 pub mod entities;
 pub mod world;
 

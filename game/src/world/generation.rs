@@ -3,12 +3,11 @@ use apostasy_core::{
     noise::{NoiseFn, Perlin},
     utils::flatten::flatten,
     voxels::{
-        biome::{BiomeRegistry, sample_biome_weights},
+        biome::{BiomeRegistry, NOISE, sample_biome_weights},
+        chunk::GeneratedChunkData,
         voxel::{VoxelId, VoxelRegistry},
     },
 };
-
-use crate::world::chunk_loader::{GeneratedChunkData, NOISE};
 
 fn fractal_brownian_motion(
     noise: &Perlin,

@@ -4,9 +4,9 @@ use cgmath::{Deg, Euler, Quaternion, Rotation, Vector3};
 
 use crate::objects::{scene::ObjectId, world::World};
 
-const UP: Vector3<f32> = Vector3::new(0.0, 1.0, 0.0);
-const RIGHT: Vector3<f32> = Vector3::new(1.0, 0.0, 0.0);
-const FORWARD: Vector3<f32> = Vector3::new(0.0, 0.0, -1.0);
+pub const UP: Vector3<f32> = Vector3::new(0.0, 1.0, 0.0);
+pub const RIGHT: Vector3<f32> = Vector3::new(1.0, 0.0, 0.0);
+pub const FORWARD: Vector3<f32> = Vector3::new(0.0, 0.0, -1.0);
 
 #[derive(Component, Clone, Debug)]
 pub struct Transform {

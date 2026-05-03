@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use apostasy_macros::Resource;
 use hashbrown::HashMap;
 use noise::{NoiseFn, Perlin};
@@ -9,6 +11,10 @@ pub struct BiomeRegistry {
     pub name_to_id: HashMap<String, BiomeId>,
     pub id_to_name: HashMap<BiomeId, String>,
 }
+
+pub static NOISE: OnceLock<Perlin> = OnceLock::new();
+pub static TEMPERATURE_NOISE: OnceLock<Perlin> = OnceLock::new();
+pub static HUMIDITY_NOISE: OnceLock<Perlin> = OnceLock::new();
 
 #[derive(Clone, Debug)]
 pub struct BiomeDefinition {
@@ -26,6 +32,20 @@ pub struct BiomeDefinition {
 
     pub temperature: f64,
     pub humidity: f64,
+}
+
+fn bilinear_interpolation(cache: &[[f64; 5]; 5], cx: f64, cz: f64, scale: usize) -> f64 {
+    let gx = cx / scale as f64;
+    let gz = cz / scale as f64;
+    let x0 = gx.floor() as usize;
+    let z0 = gz.floor() as usize;
+    let x1 = (x0 + 1).min(4);
+    let z1 = (z0 + 1).min(4);
+    let tx = gx.fract();
+    let tz = gz.fract();
+    let top = cache[z0][x0] * (1.0 - tx) + cache[z0][x1] * tx;
+    let bot = cache[z1][x0] * (1.0 - tx) + cache[z1][x1] * tx;
+    top * (1.0 - tz) + bot * tz
 }
 
 pub fn select_biome(world_x: f64, world_z: f64, registry: &BiomeRegistry, seed: u32) -> BiomeId {
@@ -54,8 +74,8 @@ pub fn sample_biome_weights(
     seed: u32,
     blend_distance: f64,
 ) -> Vec<(BiomeId, f64)> {
-    let temp_noise = Perlin::new(seed);
-    let humid_noise = Perlin::new(seed.wrapping_add(1));
+    let temp_noise = TEMPERATURE_NOISE.get_or_init(|| Perlin::new(seed));
+    let humid_noise = HUMIDITY_NOISE.get_or_init(|| Perlin::new(seed.wrapping_add(1)));
 
     let temperature = (temp_noise.get([world_x * 0.001, world_z * 0.001]) + 1.0) * 0.5;
     let humidity = (humid_noise.get([world_x * 0.001, world_z * 0.001]) + 1.0) * 0.5;
