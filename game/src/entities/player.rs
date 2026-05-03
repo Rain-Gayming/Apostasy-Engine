@@ -11,7 +11,6 @@ use apostasy_core::{
             cursor_manager::CursorManager, input_manager::InputManager,
             window_manager::WindowManager,
         },
-        systems::DeltaTime,
         tags::Player,
         world::World,
     },
@@ -23,7 +22,10 @@ use apostasy_core::{
     serde_yaml, start,
     ui::ui_context::EguiContext,
     update,
-    voxels::voxel_raycast::{voxel_raycast_camera, voxel_raycast_system},
+    voxels::{
+        voxel::VoxelRegistry,
+        voxel_raycast::{voxel_raycast_camera, voxel_raycast_system},
+    },
 };
 
 use crate::{entities::spawn_point::NeedsSpawnPoint, world::VoxelOutline};
@@ -115,7 +117,6 @@ pub fn player_start(world: &mut World) -> Result<()> {
 #[update]
 pub fn update(world: &mut World) -> Result<()> {
     let inputs = world.get_resource::<InputManager>()?;
-    let delta = world.get_resource::<DeltaTime>()?.0;
 
     let mouse_delta = inputs.mouse_delta;
     let direction = inputs.input_vector_2d("Right", "Left", "Backwards", "Forwards");
@@ -146,12 +147,13 @@ pub fn update(world: &mut World) -> Result<()> {
 
     Ok(())
 }
-
 #[fixed_update]
-pub fn block_updates(world: &mut World, _elta: f32) -> Result<()> {
+pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
     let inputs = world.get_resource::<InputManager>()?;
+    let voxel_registry = world.get_resource::<VoxelRegistry>()?.clone();
     let to_break = inputs.is_mousebind_active("Break");
     let to_place = inputs.is_mousebind_active("Place");
+    let can_build;
 
     let outline = world
         .get_objects_with_tag_with_ids::<VoxelOutline>()
@@ -176,28 +178,73 @@ pub fn block_updates(world: &mut World, _elta: f32) -> Result<()> {
     outline_transform.local_position = new_pos;
     outline_transform.global_position = new_pos;
 
-    let player_id = world
-        .get_objects_with_tag_with_ids::<Player>()
-        .first()
-        .unwrap()
-        .clone();
+    {
+        let player_id = world
+            .get_objects_with_tag_with_ids::<Player>()
+            .first()
+            .unwrap()
+            .0
+            .clone();
 
-    let player = world.get_object_mut(player_id.0).unwrap();
-    let player_data = player.get_component_mut::<PlayerData>()?;
-    player_data.current_build_ticks += 1;
+        let player = world.get_object_mut(player_id).unwrap();
+        let player_data = player.get_component_mut::<PlayerData>()?;
+        player_data.current_build_ticks += 1;
 
-    let can_build = player_data.current_build_ticks >= player_data.build_delay;
+        can_build = player_data.current_build_ticks >= player_data.build_delay;
 
-    if player_data.current_build_ticks >= player_data.build_delay {
-        player_data.current_build_ticks = 0;
+        if player_data.current_build_ticks >= player_data.build_delay {
+            player_data.current_build_ticks = 0;
+        }
     }
 
     if to_break {
         voxel_raycast_system(world, Some(0), 4.0)?;
     }
 
-    if to_place && can_build {
-        voxel_raycast_system(world, Some(2), 4.0)?;
+    let player_id = world
+        .get_objects_with_tag_with_ids::<Player>()
+        .first()
+        .unwrap()
+        .0
+        .clone();
+
+    let place_action: Option<(u64, u64)> = if to_place && can_build {
+        let player = world.get_object_mut(player_id).unwrap();
+        let inventory = player.get_component_mut::<Container>()?;
+
+        if let Some(item) = inventory.items.get(inventory.selected_item as usize) {
+            if item.amount > 0 {
+                let voxel = item.item.split(":").collect::<Vec<_>>();
+                let voxel_key = format!("{}:Voxel:{}", voxel[0], voxel[2]);
+
+                if let Some(voxel_id) = voxel_registry.name_to_id.get(&voxel_key) {
+                    Some((inventory.selected_item as u64, voxel_id.clone() as u64))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    if let Some((selected_index, voxel_id)) = place_action {
+        voxel_raycast_system(world, Some(voxel_id as u16), 4.0)?;
+
+        let player_id = world
+            .get_objects_with_tag_with_ids::<Player>()
+            .first()
+            .unwrap()
+            .0
+            .clone();
+
+        let player = world.get_object_mut(player_id).unwrap();
+        let inventory = player.get_component_mut::<Container>()?;
+        inventory.remove_item_index(selected_index as usize);
     }
 
     Ok(())
@@ -213,8 +260,14 @@ pub fn hud(world: &mut World) -> Result<()> {
         egui::Window::new("Inventory")
             .anchor(egui::Align2::CENTER_TOP, [10.0, 10.0])
             .show(&ctx, |ui| {
-                for item in inventory.items {
-                    ui.label(format!("{} ({})", item.item, item.amount));
+                for index in 0..inventory.items.len() {
+                    if let Some(item) = inventory.items.get(index) {
+                        if inventory.selected_item == index as u32 {
+                            ui.label(format!("*{} ({})", item.item, item.amount));
+                        } else {
+                            ui.label(format!("{} ({})", item.item, item.amount));
+                        }
+                    }
                 }
             });
     }

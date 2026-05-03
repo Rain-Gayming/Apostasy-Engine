@@ -45,6 +45,6 @@ ambient_graphics:
     rgb: [255, 255, 255]
 voxel:
   surface:
-    - "Apostasy:Voxels:Grass"
+    - "Apostasy:Voxel:Grass"
   subsurface:
-    - "Apostasy:Voxels:Dirt"
+    - "Apostasy:Voxel:Dirt"
