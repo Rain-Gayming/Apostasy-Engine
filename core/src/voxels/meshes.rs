@@ -120,39 +120,6 @@ impl<'a> ChunkNeighbours<'a> {
         }
     }
 }
-fn sample_neighbour(
-    neighbours: &ChunkNeighbours,
-    face: usize,
-    u: usize,
-    v: usize,
-    lod: usize,
-) -> u16 {
-    let neighbour = match face {
-        0 => neighbours.px,
-        1 => neighbours.nx,
-        2 => neighbours.py,
-        3 => neighbours.ny,
-        4 => neighbours.pz,
-        5 => neighbours.nz,
-        _ => None,
-    };
-
-    let Some(neighbour) = neighbour else {
-        return 0;
-    };
-
-    let (x, y, z) = match face {
-        0 => (0usize, u, v), // entering +X neighbour at x=0
-        1 => (31, u, v),     // entering -X neighbour at x=31
-        2 => (u, 0, v),      // entering +Y neighbour at y=0
-        3 => (u, 31, v),     // entering -Y neighbour at y=31
-        4 => (u, v, 0),      // entering +Z neighbour at z=0
-        5 => (u, v, 31),     // entering -Z neighbour at z=31
-        _ => (0, 0, 0),
-    };
-
-    get_representative_voxel(neighbour, x, y, z, lod)
-}
 
 pub fn remesh_chunks(
     world: &mut World,
@@ -257,76 +224,237 @@ pub fn generate_mesh(
     registry: &VoxelRegistry,
     neighbours: &ChunkNeighbours,
 ) -> (Vec<VoxelVertex>, Vec<u32>) {
-    let mut vertices = Vec::new();
-    let mut indices = Vec::new();
     let lod = chunk.lod as usize;
+    let grid_size = 32 / lod;
 
-    const FACE_NORMALS: [[i32; 3]; 6] = [
-        [1, 0, 0],
-        [-1, 0, 0],
-        [0, 1, 0],
-        [0, -1, 0],
-        [0, 0, 1],
-        [0, 0, -1],
-    ];
+    // compute voxels into easily accessable grid
+    let mut grid = [0u16; 32 * 32 * 32];
+    for gz in 0..grid_size {
+        for gy in 0..grid_size {
+            for gx in 0..grid_size {
+                grid[gz * grid_size * grid_size + gy * grid_size + gx] =
+                    get_representative_voxel(chunk, gx * lod, gy * lod, gz * lod, lod);
+            }
+        }
+    }
 
-    for z in (0..32).step_by(lod) {
-        for y in (0..32).step_by(lod) {
-            for x in (0..32).step_by(lod) {
-                let id = get_representative_voxel(chunk, x, y, z, lod);
+    // get neighbours voxels on their neighbouring plain
+    let mut border_px = [0u16; 32 * 32]; // [y * 32 + z]
+    let mut border_nx = [0u16; 32 * 32];
+    let mut border_py = [0u16; 32 * 32];
+    let mut border_ny = [0u16; 32 * 32];
+    let mut border_pz = [0u16; 32 * 32];
+    let mut border_nz = [0u16; 32 * 32];
+
+    // calculate the voxels on the neighbours
+    if let Some(n) = neighbours.px {
+        for v in 0..grid_size {
+            for u in 0..grid_size {
+                border_px[v * grid_size + u] =
+                    get_representative_voxel(n, 0, u * lod, v * lod, lod);
+            }
+        }
+    }
+    if let Some(n) = neighbours.nx {
+        for v in 0..grid_size {
+            for u in 0..grid_size {
+                border_nx[v * grid_size + u] =
+                    get_representative_voxel(n, 31 - (lod - 1), u * lod, v * lod, lod);
+            }
+        }
+    }
+    if let Some(n) = neighbours.py {
+        for v in 0..grid_size {
+            for u in 0..grid_size {
+                border_py[v * grid_size + u] =
+                    get_representative_voxel(n, u * lod, 0, v * lod, lod);
+            }
+        }
+    }
+    if let Some(n) = neighbours.ny {
+        for v in 0..grid_size {
+            for u in 0..grid_size {
+                border_ny[v * grid_size + u] =
+                    get_representative_voxel(n, u * lod, 31 - (lod - 1), v * lod, lod);
+            }
+        }
+    }
+    if let Some(n) = neighbours.pz {
+        for v in 0..grid_size {
+            for u in 0..grid_size {
+                border_pz[v * grid_size + u] =
+                    get_representative_voxel(n, u * lod, v * lod, 0, lod);
+            }
+        }
+    }
+    if let Some(n) = neighbours.nz {
+        for v in 0..grid_size {
+            for u in 0..grid_size {
+                border_nz[v * grid_size + u] =
+                    get_representative_voxel(n, u * lod, v * lod, 31 - (lod - 1), lod);
+            }
+        }
+    }
+
+    let max_faces = grid_size * grid_size * grid_size * 6;
+    let mut vertices: Vec<VoxelVertex> = Vec::with_capacity(max_faces * 4);
+    let mut indices: Vec<u32> = Vec::with_capacity(max_faces * 6);
+
+    // get if the neighbour of the current voxel is solid
+    let neighbour_solid = |face: usize, gx: usize, gy: usize, gz: usize| -> bool {
+        match face {
+            0 => {
+                // +X
+                if gx + 1 < grid_size {
+                    grid[gz * grid_size * grid_size + gy * grid_size + gx + 1] != 0
+                } else {
+                    border_px[gz * grid_size + gy] != 0
+                }
+            }
+            1 => {
+                // -X
+                if gx > 0 {
+                    grid[gz * grid_size * grid_size + gy * grid_size + gx - 1] != 0
+                } else {
+                    border_nx[gz * grid_size + gy] != 0
+                }
+            }
+            2 => {
+                // +Y
+                if gy + 1 < grid_size {
+                    grid[gz * grid_size * grid_size + (gy + 1) * grid_size + gx] != 0
+                } else {
+                    border_py[gz * grid_size + gx] != 0
+                }
+            }
+            3 => {
+                // -Y
+                if gy > 0 {
+                    grid[gz * grid_size * grid_size + (gy - 1) * grid_size + gx] != 0
+                } else {
+                    border_ny[gz * grid_size + gx] != 0
+                }
+            }
+            4 => {
+                // +Z
+                if gz + 1 < grid_size {
+                    grid[(gz + 1) * grid_size * grid_size + gy * grid_size + gx] != 0
+                } else {
+                    border_pz[gy * grid_size + gx] != 0
+                }
+            }
+            _ => {
+                // -Z
+                if gz > 0 {
+                    grid[(gz - 1) * grid_size * grid_size + gy * grid_size + gx] != 0
+                } else {
+                    border_nz[gy * grid_size + gx] != 0
+                }
+            }
+        }
+    };
+
+    // for each voxel
+    for gz in 0..grid_size {
+        for gy in 0..grid_size {
+            let row_base = gz * grid_size * grid_size + gy * grid_size;
+            for gx in 0..grid_size {
+                let id = grid[row_base + gx];
                 if id == 0 {
-                    continue;
+                    continue; // skip air immediately
                 }
 
+                let vx = (gx * lod) as u32;
+                let vy = (gy * lod) as u32;
+                let vz = (gz * lod) as u32;
+
+                let voxel_def = &registry.defs[id as usize];
+
+                // render each face
                 for face in 0..6usize {
-                    let normal = FACE_NORMALS[face];
-                    let nx = x as i32 + normal[0] * lod as i32;
-                    let ny = y as i32 + normal[1] * lod as i32;
-                    let nz = z as i32 + normal[2] * lod as i32;
-
-                    let neighbour_solid = if nx >= 0
-                        && nx < 32
-                        && ny >= 0
-                        && ny < 32
-                        && nz >= 0
-                        && nz < 32
-                    {
-                        get_representative_voxel(chunk, nx as usize, ny as usize, nz as usize, lod)
-                            != 0
-                    } else {
-                        let (u, v) = match face {
-                            0 | 1 => (y, z), // X face, u=y v=z
-                            2 | 3 => (x, z), // Y face, u=x v=z
-                            4 | 5 => (x, y), // Z face, u=x v=y
-                            _ => (0, 0),
-                        };
-                        sample_neighbour(neighbours, face, u, v, lod) != 0
-                    };
-
-                    if neighbour_solid {
+                    // if the neighbouring face is solid skip
+                    if neighbour_solid(face, gx, gy, gz) {
                         continue;
                     }
 
-                    let texture_id = registry.defs[id as usize]
-                        .textures
-                        .get_for_face(face as u8, x as u32, y as u32, z as u32);
+                    let texture_id = voxel_def.textures.get_for_face(face as u8, vx, vy, vz);
+
+                    let x = vx as u8;
+                    let y = vy as u8;
+                    let z = vz as u8;
+                    let l = lod as u8;
+
+                    let corners: [[u8; 3]; 4] = match face {
+                        0 => [
+                            [x + l, y, z],
+                            [x + l, y + l, z],
+                            [x + l, y + l, z + l],
+                            [x + l, y, z + l],
+                        ],
+                        1 => [[x, y, z + l], [x, y + l, z + l], [x, y + l, z], [x, y, z]],
+                        2 => [
+                            [x, y + l, z + l],
+                            [x + l, y + l, z + l],
+                            [x + l, y + l, z],
+                            [x, y + l, z],
+                        ],
+                        3 => [[x, y, z], [x + l, y, z], [x + l, y, z + l], [x, y, z + l]],
+                        4 => [
+                            [x + l, y, z + l],
+                            [x + l, y + l, z + l],
+                            [x, y + l, z + l],
+                            [x, y, z + l],
+                        ],
+                        _ => [[x, y, z], [x, y + l, z], [x + l, y + l, z], [x + l, y, z]],
+                    };
 
                     let base = vertices.len() as u32;
-                    let corners = face_corners(x, y, z, face, lod);
 
-                    for (i, &(u, v)) in [(0u8, 0u8), (1, 0), (1, 1), (0, 1)].iter().enumerate() {
-                        vertices.push(VoxelVertex::pack(
-                            corners[i][0],
-                            corners[i][1],
-                            corners[i][2],
-                            face as u8,
-                            u,
-                            v,
-                            texture_id as u16,
-                            1,
-                            1,
-                        ));
-                    }
+                    // push to the buffers
+                    vertices.push(VoxelVertex::pack(
+                        corners[0][0],
+                        corners[0][1],
+                        corners[0][2],
+                        face as u8,
+                        0,
+                        0,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
+                    vertices.push(VoxelVertex::pack(
+                        corners[1][0],
+                        corners[1][1],
+                        corners[1][2],
+                        face as u8,
+                        1,
+                        0,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
+                    vertices.push(VoxelVertex::pack(
+                        corners[2][0],
+                        corners[2][1],
+                        corners[2][2],
+                        face as u8,
+                        1,
+                        1,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
+                    vertices.push(VoxelVertex::pack(
+                        corners[3][0],
+                        corners[3][1],
+                        corners[3][2],
+                        face as u8,
+                        0,
+                        1,
+                        texture_id as u16,
+                        1,
+                        1,
+                    ));
 
                     indices.extend_from_slice(&[
                         base,
@@ -363,55 +491,4 @@ fn get_representative_voxel(chunk: &Chunk, x: usize, y: usize, z: usize, lod: us
         }
     }
     0
-}
-fn face_corners(x: usize, y: usize, z: usize, face: usize, lod: usize) -> [[u8; 3]; 4] {
-    let x = x as u8;
-    let y = y as u8;
-    let z = z as u8;
-    let l = lod as u8;
-
-    match face {
-        0 => [
-            // +X
-            [x + l, y, z],
-            [x + l, y + l, z],
-            [x + l, y + l, z + l],
-            [x + l, y, z + l],
-        ],
-        1 => [
-            // -X
-            [x, y, z + l],
-            [x, y + l, z + l],
-            [x, y + l, z],
-            [x, y, z],
-        ],
-        2 => [
-            // +Y
-            [x, y + l, z + l],
-            [x + l, y + l, z + l],
-            [x + l, y + l, z],
-            [x, y + l, z],
-        ],
-        3 => [
-            // -Y
-            [x, y, z],
-            [x + l, y, z],
-            [x + l, y, z + l],
-            [x, y, z + l],
-        ],
-        4 => [
-            // +Z
-            [x + l, y, z + l],
-            [x + l, y + l, z + l],
-            [x, y + l, z + l],
-            [x, y, z + l],
-        ],
-        _ => [
-            // -Z
-            [x, y, z],
-            [x, y + l, z],
-            [x + l, y + l, z],
-            [x + l, y, z],
-        ],
-    }
 }

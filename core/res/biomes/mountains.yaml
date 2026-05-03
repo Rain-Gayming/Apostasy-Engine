@@ -1,14 +1,14 @@
 # Class
-name: Plains
+name: Mountains
 namespace: Apostasy
 class: Biome
 #Generation
-amplitude: 8.0
-frequency: 0.001
-octaves: 4
+amplitude: 80.0
+frequency: 0.005
+octaves: 6
 #Generation Location
 humidity: 0.6
-temperature: 0.4
+temperature: 0.3
 # Voxels
 voxel:
   surface:

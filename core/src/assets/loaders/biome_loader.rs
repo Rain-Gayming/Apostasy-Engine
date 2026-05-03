@@ -56,9 +56,20 @@ impl AssetLoader for BiomeLoader {
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect::<Vec<_>>();
 
+        let underground_voxels = raw["voxel"]["underground"]
+            .as_sequence()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'voxel.underground'"))?
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect::<Vec<_>>();
+
         let amplitude = raw["amplitude"]
             .as_f64()
             .ok_or_else(|| anyhow::anyhow!("Missing 'amplitude'"))?;
+
+        let octaves = raw["octaves"]
+            .as_u64()
+            .ok_or_else(|| anyhow::anyhow!("Missing 'octaves'"))? as u32;
 
         let frequency = raw["frequency"]
             .as_f64()
@@ -78,9 +89,11 @@ impl AssetLoader for BiomeLoader {
 
             surface_voxels,
             subsurface_voxels,
+            underground_voxels,
 
             amplitude,
             frequency,
+            octaves,
 
             humidity,
             temperature,

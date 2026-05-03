@@ -18,9 +18,11 @@ pub struct BiomeDefinition {
 
     pub surface_voxels: Vec<String>,
     pub subsurface_voxels: Vec<String>,
+    pub underground_voxels: Vec<String>,
 
     pub amplitude: f64,
     pub frequency: f64,
+    pub octaves: u32,
 
     pub temperature: f64,
     pub humidity: f64,
