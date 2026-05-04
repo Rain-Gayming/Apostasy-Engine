@@ -1,20 +1,16 @@
 # Class
-name: Plains
+name: Forest
 namespace: Apostasy
 class: Biome
 #Generation
-amplitude: 5.0
-frequency: 0.015
-octaves: 4
-tree_density: 0.05
-boulder_density: 0.0
+amplitude: 6.5
+frequency: 0.03
+octaves: 6
+tree_density: 12.0
+boulder_density: 0.05
 #Generation Location
-#
-
-humidity: 0.6
-temperature: 0.3
-# humidity: 0.6
-# temperature: 0.4
+humidity: 0.65
+temperature: 0.35
 # Voxels
 voxel:
   surface:

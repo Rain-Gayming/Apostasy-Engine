@@ -149,6 +149,37 @@ fn set_voxel_global(
     let index = flatten(lx as u32, ly as u32, lz as u32, 32);
     voxels[index] = voxel_id;
 }
+fn set_voxel_global_non_floating(
+    voxels: &mut [u16],
+    global_x: i32,
+    global_y: i32,
+    global_z: i32,
+    chunk_world_x: i32,
+    chunk_world_y: i32,
+    chunk_world_z: i32,
+    voxel_id: u16,
+) {
+    let lx = global_x - chunk_world_x;
+    let mut ly = global_y - chunk_world_y;
+    let lz = global_z - chunk_world_z;
+
+    if !(0..32).contains(&lx) || !(0..32).contains(&ly) || !(0..32).contains(&lz) {
+        return;
+    }
+
+    // walk down the array until you hit a solid block
+    while ly > 0 && voxels[(lx + ly * 32 + lz * 32 * 32) as usize] == 0 {
+        ly -= 1;
+    }
+
+    // bail if reaching the bottom of a chunk
+    if voxels[(lx + ly * 32 + lz * 32 * 32) as usize] == 0 {
+        return;
+    }
+
+    let index = flatten(lx as u32, ly as u32, lz as u32, 32);
+    voxels[index] = voxel_id;
+}
 
 fn set_voxel_global_if_empty(
     voxels: &mut [u16],
@@ -320,11 +351,17 @@ fn place_boulder_global(
     for dz in -radius..=radius {
         for dx in -radius..=radius {
             for dy in 0..=radius {
+                let dy = if voxels[(dx + (dy - 1) + 32 + dz + 32 + 32) as usize] == 0 {
+                    dy - 1
+                } else {
+                    dy
+                };
+
                 let dist_sq = dx * dx + dy * dy + dz * dz;
                 if dist_sq > radius * radius {
                     continue;
                 }
-                set_voxel_global(
+                set_voxel_global_non_floating(
                     voxels,
                     center_x + dx,
                     center_y + dy,

@@ -126,7 +126,7 @@ impl ChunkNeighbours {
 }
 
 pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
-    const MAX_MESH_JOBS_PER_FRAME: usize = 2;
+    const MAX_MESH_JOBS_PER_FRAME: usize = 6;
 
     let registry = Arc::new(
         world

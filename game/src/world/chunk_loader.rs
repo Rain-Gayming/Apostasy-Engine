@@ -272,7 +272,7 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
     Ok(())
 }
 
-const MAX_CHUNKS_PER_FRAME: usize = 2;
+const MAX_CHUNKS_PER_FRAME: usize = 6;
 const MAX_GEN_JOBS_PER_FRAME: usize = 10;
 #[fixed_update]
 pub fn receive_chunks(world: &mut World, _delta: f32) -> Result<()> {

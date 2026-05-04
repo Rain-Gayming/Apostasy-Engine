@@ -9,8 +9,11 @@ octaves: 6
 tree_density: 1.0
 boulder_density: 4.0
 #Generation Location
+# humidity: 0.6
+# temperature: 0.3
+
 humidity: 0.6
-temperature: 0.3
+temperature: 0.4
 # Voxels
 voxel:
   surface:
