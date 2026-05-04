@@ -6,6 +6,7 @@ class: Biome
 amplitude: 80.0
 frequency: 0.005
 octaves: 6
+tree_density: 0.02
 #Generation Location
 humidity: 0.6
 temperature: 0.3

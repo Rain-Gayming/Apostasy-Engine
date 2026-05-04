@@ -4,8 +4,7 @@ use apostasy_core::{
     utils::flatten::flatten,
     voxels::{
         biome::{
-            BiomeRegistry, ClimateCache, NOISE, sample_biome_weights,
-            sample_biome_weights_at_climate,
+            BiomeRegistry, ClimateCache, NOISE, sample_biome_weights_at_climate,
         },
         chunk::GeneratedChunkData,
         voxel::{VoxelId, VoxelRegistry},
@@ -42,6 +41,7 @@ fn smooth_weight(w: f64) -> f64 {
 fn apply_height_curve(val: f64) -> f64 {
     if val > 0.0 { val.powf(1.5) } else { val }
 }
+
 
 fn lod_octaves(biome_octaves: u32, lod: u8) -> u32 {
     match lod {
@@ -134,6 +134,17 @@ pub fn generate_chunk_data(
                 .get(biome.underground_voxels.first().unwrap())
                 .expect("subsurface voxel not found");
 
+            let tree_trunk_voxel = *registry
+                .name_to_id
+                .get("Apostasy:Voxel:Stone")
+                .unwrap_or(&underground_voxel);
+            let tree_leaf_voxel = *registry
+                .name_to_id
+                .get("Apostasy:Voxel:Dirt")
+                .unwrap_or(&subsurface_voxel);
+
+            let local_surface_y = surface_y - world_y as i32;
+
             for y in 0..32usize {
                 let wy = world_y as i32 + y as i32;
                 let depth = surface_y - wy;
@@ -149,6 +160,16 @@ pub fn generate_chunk_data(
                 };
 
                 voxels[flatten(x as u32, y as u32, z as u32, 32)] = id;
+            }
+
+            if lod == 1 && biome.tree_density > 0.0 {
+                let local_x = x as i32;
+                let local_z = z as i32;
+                let world_col_x = position.x * 32 + local_x;
+                let world_col_z = position.z * 32 + local_z;
+
+             
+                
             }
         }
     }

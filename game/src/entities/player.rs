@@ -1,7 +1,7 @@
 use apostasy_core::{
     Component,
     anyhow::Result,
-    cgmath::{Vector3, Zero},
+    cgmath::Vector3,
     egui, fixed_update,
     items::container::Container,
     objects::{
@@ -161,22 +161,25 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
         .unwrap()
         .0
         .clone();
-    let mut new_pos = Vector3::zero();
+    let mut new_pos = None;
 
     if let Ok(hit) = voxel_raycast_camera(world, 4.0) {
-        new_pos = Vector3::new(
+        new_pos = Some(Vector3::new(
             hit.voxel_pos.x as f32 + 0.5,
             hit.voxel_pos.y as f32 + 0.5,
             hit.voxel_pos.z as f32 + 0.5,
-        );
+        ));
     }
 
     let outline_transform = world
         .get_object_mut(outline)
         .unwrap()
         .get_component_mut::<Transform>()?;
-    outline_transform.local_position = new_pos;
-    outline_transform.global_position = new_pos;
+
+    if let Some(pos) = new_pos {
+        outline_transform.local_position = pos;
+        outline_transform.global_position = pos;
+    }
 
     {
         let player_id = world

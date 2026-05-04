@@ -29,6 +29,7 @@ pub struct BiomeDefinition {
     pub amplitude: f64,
     pub frequency: f64,
     pub octaves: u32,
+    pub tree_density: f64,
 
     pub temperature: f64,
     pub humidity: f64,

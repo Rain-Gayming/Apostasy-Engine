@@ -161,8 +161,7 @@ impl Core {
                         .get_objects_with_tag_with_ids::<NeedsRemeshing>()
                         .is_empty()
                     {
-                        dispatch_remesh_jobs(&mut world)
-                            .expect("Failed to dispatch remesh jobs");
+                        dispatch_remesh_jobs(&mut world).expect("Failed to dispatch remesh jobs");
                     }
 
                     if let Ok(command_pool) = renderer.get_command_pool() {
