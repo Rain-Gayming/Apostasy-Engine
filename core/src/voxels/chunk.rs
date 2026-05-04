@@ -76,10 +76,47 @@ pub struct GeneratedChunkData {
     pub biome: u16,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct MeshVertex {
+    pub data_lo: u32,
+    pub data_hi: u32,
+}
+
+impl MeshVertex {
+    pub fn pack(
+        x: u8,
+        y: u8,
+        z: u8,
+        face: u8,
+        u: u8,
+        v: u8,
+        texture_id: u16,
+        quad_w: u8,
+        quad_h: u8,
+    ) -> Self {
+        let data_lo: u32 = (x as u32)
+            | ((y as u32) << 6)
+            | ((z as u32) << 12)
+            | ((face as u32) << 18)
+            | ((u as u32) << 21)
+            | ((v as u32) << 27);
+        let data_hi: u32 = (texture_id as u32) | ((quad_w as u32) << 16) | ((quad_h as u32) << 24);
+        Self { data_lo, data_hi }
+    }
+}
+
+pub struct GeneratedMeshData {
+    pub position: Vector3<i32>,
+    pub vertices: Vec<MeshVertex>,
+    pub indices: Vec<u32>,
+}
+
 #[derive(Resource, Clone)]
 pub struct ChunkGenQueue {
     pub sender: Sender<GeneratedChunkData>,
     pub receiver: Receiver<GeneratedChunkData>,
+    pub mesh_sender: Sender<GeneratedMeshData>,
+    pub mesh_receiver: Receiver<GeneratedMeshData>,
     pub pool: Arc<Mutex<ThreadPool>>,
     pub mesh_pool: Arc<Mutex<ThreadPool>>,
     pub in_flight: HashSet<Vector3<i32>>,
@@ -88,12 +125,15 @@ pub struct ChunkGenQueue {
 impl Default for ChunkGenQueue {
     fn default() -> Self {
         let (sender, receiver) = unbounded();
+        let (mesh_sender, mesh_receiver) = unbounded();
         let total = num_cpus::get();
         let gen_threads = (total / 2).max(1);
         let mesh_threads = (total - gen_threads).max(1);
         Self {
             sender,
             receiver,
+            mesh_sender,
+            mesh_receiver,
             pool: Arc::new(Mutex::new(
                 rayon::ThreadPoolBuilder::new()
                     .num_threads(gen_threads)

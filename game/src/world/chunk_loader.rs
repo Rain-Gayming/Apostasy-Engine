@@ -23,6 +23,7 @@ pub struct ChunkLoader {
     pub last_chunk_position: Vector3<i32>,
     pub load_radius: i32,
     pub chunk_lod_distances: Vec<u32>,
+    pub frame_counter: u32,
 }
 
 impl Default for ChunkLoader {
@@ -31,6 +32,7 @@ impl Default for ChunkLoader {
             last_chunk_position: Vector3::new(i32::MAX, i32::MAX, i32::MAX),
             load_radius: 8,
             chunk_lod_distances: vec![8, 12, 14, 16],
+            frame_counter: 0,
         }
     }
 }
@@ -88,21 +90,30 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
 
     let player_forward_chunk = player_transform.global_rotation * FORWARD;
 
-    let (last_chunk_pos, load_radius, lod_distances) = {
-        let loader = world.get_resource::<ChunkLoader>()?;
+    let vel = player_velocity.linear_velocity;
+
+    let (last_chunk_pos, load_radius, lod_distances, frame_counter) = {
+        let mut loader = world.get_resource_mut::<ChunkLoader>()?;
+        loader.frame_counter += 1;
         (
             loader.last_chunk_position,
             loader.load_radius,
             loader.chunk_lod_distances.clone(),
+            loader.frame_counter,
         )
     };
+
+    // Only dispatch every 10 frames to reduce load, unless initial load
+    let is_initial_load = last_chunk_pos == Vector3::new(i32::MAX, i32::MAX, i32::MAX);
+    if !is_initial_load && frame_counter % 10 != 0 {
+        return Ok(());
+    }
 
     if last_chunk_pos == player_chunk_pos {
         return Ok(());
     }
 
     let delta = player_chunk_pos - last_chunk_pos;
-    let vel = player_velocity.linear_velocity;
     let vx = vel.x.signum() as i32;
     let vz = vel.z.signum() as i32;
     let moving_toward =
@@ -178,6 +189,12 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
         };
         score(a.0).cmp(&score(b.0))
     });
+
+    // For initial load, dispatch all candidates, otherwise limit per frame
+    let is_initial_load = last_chunk_pos == Vector3::new(i32::MAX, i32::MAX, i32::MAX);
+    if !is_initial_load {
+        candidates.truncate(MAX_GEN_JOBS_PER_FRAME);
+    }
 
     let registry = Arc::new(world.get_resource::<VoxelRegistry>()?.clone());
     let biome_registry = Arc::new(world.get_resource::<BiomeRegistry>()?.clone());
@@ -255,8 +272,8 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
     Ok(())
 }
 
-const MAX_CHUNKS_PER_FRAME: usize = 4;
-
+const MAX_CHUNKS_PER_FRAME: usize = 2;
+const MAX_GEN_JOBS_PER_FRAME: usize = 10;
 #[fixed_update]
 pub fn receive_chunks(world: &mut World, _delta: f32) -> Result<()> {
     let completed: Vec<GeneratedChunkData> = {

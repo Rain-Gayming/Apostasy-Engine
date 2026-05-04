@@ -37,7 +37,7 @@ use crate::ui::ui_context::EguiContext;
 use crate::voxels::VoxelTransform;
 use crate::voxels::meshes::NeedsRemeshing;
 use crate::voxels::meshes::VoxelChunkMesh;
-use crate::voxels::meshes::remesh_chunks;
+use crate::voxels::meshes::{dispatch_remesh_jobs, receive_meshes};
 use crate::voxels::texture_atlas::PendingAtlas;
 use crate::voxels::texture_atlas::VoxelTextureAtlas;
 use crate::voxels::texture_atlas::upload_atlas;
@@ -161,10 +161,13 @@ impl Core {
                         .get_objects_with_tag_with_ids::<NeedsRemeshing>()
                         .is_empty()
                     {
-                        if let Ok(command_pool) = renderer.get_command_pool() {
-                            remesh_chunks(&mut world, &context, command_pool)
-                                .expect("Failed to remesh chunks");
-                        }
+                        dispatch_remesh_jobs(&mut world)
+                            .expect("Failed to dispatch remesh jobs");
+                    }
+
+                    if let Ok(command_pool) = renderer.get_command_pool() {
+                        receive_meshes(&mut world, &context, command_pool)
+                            .expect("Failed to receive meshes");
                     }
                     renderer.begin_frame(push_constants.clone()).unwrap();
 
