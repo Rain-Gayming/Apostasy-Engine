@@ -19,8 +19,8 @@ impl Default for RenderingSettings {
             image_settings: ImageSettings::default(),
             debug_settings: DebugSettings::default(),
 
-            default_vertex_shader: "shader.vert.spv".to_string(),
-            default_fragment_shader: "shader.frag.spv".to_string(),
+            default_vertex_shader: "shader.vert".to_string(),
+            default_fragment_shader: "shader.frag".to_string(),
         }
     }
 }

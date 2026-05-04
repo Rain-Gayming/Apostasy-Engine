@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use apostasy_macros::{Component, Tag};
 use ash::vk::Buffer;
@@ -13,7 +15,7 @@ use crate::rendering::shared::vertex::VertexDefinition;
 use crate::rendering::vulkan::rendering_context::VulkanRenderingContext;
 use crate::utils::flatten::flatten;
 use crate::voxels::VoxelTransform;
-use crate::voxels::chunk::{Chunk, GeneratedMeshData, MeshVertex};
+use crate::voxels::chunk::{Chunk, ChunkGenQueue, GeneratedMeshData, MeshVertex};
 use crate::voxels::voxel::VoxelRegistry;
 
 #[repr(C)]
@@ -32,7 +34,9 @@ impl VoxelVertex {
         quad_w: u8,
         quad_h: u8,
     ) -> Self {
-        Self(MeshVertex::pack(x, y, z, face, u, v, texture_id, quad_w, quad_h))
+        Self(MeshVertex::pack(
+            x, y, z, face, u, v, texture_id, quad_w, quad_h,
+        ))
     }
 
     pub fn data_lo(&self) -> u32 {
@@ -154,14 +158,8 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
     needs_remesh.truncate(MAX_MESH_JOBS_PER_FRAME);
 
     // get the pools
-    let mesh_pool = world
-        .get_resource::<ChunkGenQueue>()?
-        .mesh_pool
-        .clone();
-    let mesh_sender = world
-        .get_resource::<ChunkGenQueue>()?
-        .mesh_sender
-        .clone();
+    let mesh_pool = world.get_resource::<ChunkGenQueue>()?.mesh_pool.clone();
+    let mesh_sender = world.get_resource::<ChunkGenQueue>()?.mesh_sender.clone();
 
     let pool = mesh_pool.lock().unwrap();
 
@@ -265,7 +263,11 @@ pub fn receive_meshes(
         }
 
         // Convert MeshVertex to VoxelVertex
-        let vertices: Vec<VoxelVertex> = mesh_data.vertices.into_iter().map(|mv| VoxelVertex(mv)).collect();
+        let vertices: Vec<VoxelVertex> = mesh_data
+            .vertices
+            .into_iter()
+            .map(|mv| VoxelVertex(mv))
+            .collect();
 
         if let Ok(mesh) = object.get_component::<VoxelChunkMesh>() {
             if mesh.vertex_buffer != vk::Buffer::null() {

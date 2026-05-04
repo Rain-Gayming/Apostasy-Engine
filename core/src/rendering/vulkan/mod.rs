@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
-use std::{fs, u64};
+use std::fs;
 
+use crate::assets::shader_loader::load_shader_bytes;
 use crate::rendering::shared::model::GpuMesh;
 use crate::rendering::shared::push_constants::{
     ModelPushConstants, PushConstants, VoxelPushConstants,
@@ -69,13 +70,11 @@ pub struct VulkanRenderer {
     context: Arc<VulkanRenderingContext>,
 }
 
-// TODO: replace with asset loader
-const SHADER_DIR: &str = "res/shaders/";
 fn load_shader_module(
     context: &Arc<VulkanRenderingContext>,
     path: &str,
 ) -> Result<ash::vk::ShaderModule> {
-    let code = fs::read(format!("{SHADER_DIR}{path}"))?;
+    let code = load_shader_bytes(path)?;
     Ok(context.create_shader_module(&code)?)
 }
 
@@ -88,15 +87,18 @@ impl RenderingAPI for VulkanRenderer {
         )?;
         swapchain.resize()?;
 
-        // TODO: Replace this with an asset loader
-        let vertex_shader =
-            load_shader_module(&rendering_info.context.clone().into(), "shader.vert.spv")?;
-        let fragment_shader =
-            load_shader_module(&rendering_info.context.clone().into(), "shader.frag.spv")?;
+        let vertex_shader = load_shader_module(
+            &rendering_info.context.clone().into(),
+            &rendering_info.settings.default_vertex_shader,
+        )?;
+        let fragment_shader = load_shader_module(
+            &rendering_info.context.clone().into(),
+            &rendering_info.settings.default_fragment_shader,
+        )?;
         let voxel_vertex_shader =
-            load_shader_module(&rendering_info.context.clone().into(), "voxel.vert.spv")?;
+            load_shader_module(&rendering_info.context.clone().into(), "voxel.vert")?;
         let voxel_fragment_shader =
-            load_shader_module(&rendering_info.context.clone().into(), "voxel.frag.spv")?;
+            load_shader_module(&rendering_info.context.clone().into(), "voxel.frag")?;
 
         unsafe {
             let context = rendering_info.context.clone();

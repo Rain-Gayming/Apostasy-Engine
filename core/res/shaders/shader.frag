@@ -11,4 +11,3 @@ void main() {
     vec3 color = vec3(0.8, 0.8, 0.8) * (0.3 + 0.7 * diff);
     outColor = vec4(color, 1.0);
 }
-

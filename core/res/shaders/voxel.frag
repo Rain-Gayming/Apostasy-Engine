@@ -11,7 +11,6 @@ layout(binding = 0) uniform sampler2D atlas;
 
 layout(location = 0) out vec4 outColor;
 
-
 void main() {
   float tile_size = 1.0 / float(fragAtlasTiles);
   uint tx = fragTexId % fragAtlasTiles;
@@ -23,27 +22,27 @@ void main() {
       );
 
   vec2 local_uv;
-  if (fragFace == 0u) {        // +X
+  if (fragFace == 0u) {
     local_uv = vec2(tiled_uv.y, 1.0 - tiled_uv.x);
-  } else if (fragFace == 1u) { // -X
+  } else if (fragFace == 1u) {
     local_uv = vec2(1.0 - tiled_uv.y, 1.0 - tiled_uv.x);
-  } else if (fragFace == 2u) { // +Y
+  } else if (fragFace == 2u) {
     local_uv = vec2(tiled_uv.x, tiled_uv.y);
-  } else if (fragFace == 3u) { // -Y
+  } else if (fragFace == 3u) {
     local_uv = vec2(tiled_uv.x, tiled_uv.y);
-  } else if (fragFace == 4u) { // +Z
+  } else if (fragFace == 4u) {
     local_uv = vec2(tiled_uv.y,  1.0 - tiled_uv.x);
-  } else {                     // -Z
+  } else {
     local_uv = vec2( tiled_uv.y,  1.0 - tiled_uv.x);
   }
 
   vec2 uv = vec2(float(tx), float(ty)) * tile_size + local_uv * tile_size;
 
   float shade = 1.0;
-  if (fragFace == 2u)                   shade = 1.0; // +Y top, full bright
-  if (fragFace == 0u || fragFace == 1u) shade = 0.8; // X sides
-  if (fragFace == 4u || fragFace == 5u) shade = 0.7; // Z sides
-  if (fragFace == 3u)                   shade = 0.4; // -Y bottom, darkest
+  if (fragFace == 2u)                   shade = 1.0;
+  if (fragFace == 0u || fragFace == 1u) shade = 0.8;
+  if (fragFace == 4u || fragFace == 5u) shade = 0.7;
+  if (fragFace == 3u)                   shade = 0.4;
 
   vec4 color = texture(atlas, uv);
   outColor = vec4(color.rgba);

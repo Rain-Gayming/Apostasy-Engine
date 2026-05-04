@@ -16,4 +16,3 @@ void main() {
     fragNormal = normalize(mat3(transpose(inverse(pc.model))) * inNormal);
     fragTexCoord = inTexCoord;
 }
-
