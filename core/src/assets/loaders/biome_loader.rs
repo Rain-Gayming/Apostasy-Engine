@@ -82,9 +82,8 @@ impl AssetLoader for BiomeLoader {
         let temperature = raw["temperature"]
             .as_f64()
             .ok_or_else(|| anyhow::anyhow!("Missing 'temperature'"))?;
-
         let tree_density = raw["tree_density"].as_f64().unwrap_or(0.0);
-
+        let boulder_density = raw["boulder_density"].as_f64().unwrap_or(0.0);
         let def = BiomeDefinition {
             name: name.clone(),
             namespace: namespace.clone(),
@@ -97,10 +96,11 @@ impl AssetLoader for BiomeLoader {
             amplitude,
             frequency,
             octaves,
-            tree_density,
 
             humidity,
             temperature,
+            tree_density,
+            boulder_density,
         };
 
         let mut registry = self.registry.write().unwrap();

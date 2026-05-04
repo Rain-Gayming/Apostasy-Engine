@@ -161,7 +161,7 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
         .unwrap()
         .0
         .clone();
-    let mut new_pos = None;
+    let new_pos;
 
     if let Ok(hit) = voxel_raycast_camera(world, 4.0) {
         new_pos = Some(Vector3::new(
@@ -169,6 +169,8 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
             hit.voxel_pos.y as f32 + 0.5,
             hit.voxel_pos.z as f32 + 0.5,
         ));
+    } else {
+        new_pos = Some(Vector3::new(0.0 + 0.5, -6000.0 + 0.5, 0.0 + 0.5));
     }
 
     let outline_transform = world

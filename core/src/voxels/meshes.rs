@@ -17,6 +17,7 @@ use crate::utils::flatten::flatten;
 use crate::voxels::VoxelTransform;
 use crate::voxels::chunk::{Chunk, ChunkGenQueue, GeneratedMeshData, MeshVertex};
 use crate::voxels::voxel::VoxelRegistry;
+use crate::voxels::voxel_components::is_transparent::IsTransparent;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -381,58 +382,67 @@ pub fn generate_mesh(
     let mut vertices: Vec<MeshVertex> = Vec::with_capacity(max_faces * 4);
     let mut indices: Vec<u32> = Vec::with_capacity(max_faces * 6);
 
-    // get if the neighbour of the current voxel is solid
+    let is_transparent_voxel = |id: u16| -> bool {
+        if id == 0 {
+            return true;
+        }
+        registry.defs[id as usize].has_component::<IsTransparent>()
+    };
+
+    // get if the neighbour of the current voxel is solid (and not transparent)
     let neighbour_solid = |face: usize, gx: usize, gy: usize, gz: usize| -> bool {
-        match face {
+        let neighbor_id = match face {
             0 => {
                 // +X
                 if gx + 1 < grid_size {
-                    grid[gz * grid_size * grid_size + gy * grid_size + gx + 1] != 0
+                    grid[gz * grid_size * grid_size + gy * grid_size + gx + 1]
                 } else {
-                    border_px[gz * grid_size + gy] != 0
+                    border_px[gz * grid_size + gy]
                 }
             }
             1 => {
                 // -X
                 if gx > 0 {
-                    grid[gz * grid_size * grid_size + gy * grid_size + gx - 1] != 0
+                    grid[gz * grid_size * grid_size + gy * grid_size + gx - 1]
                 } else {
-                    border_nx[gz * grid_size + gy] != 0
+                    border_nx[gz * grid_size + gy]
                 }
             }
             2 => {
                 // +Y
                 if gy + 1 < grid_size {
-                    grid[gz * grid_size * grid_size + (gy + 1) * grid_size + gx] != 0
+                    grid[gz * grid_size * grid_size + (gy + 1) * grid_size + gx]
                 } else {
-                    border_py[gz * grid_size + gx] != 0
+                    border_py[gz * grid_size + gx]
                 }
             }
             3 => {
                 // -Y
                 if gy > 0 {
-                    grid[gz * grid_size * grid_size + (gy - 1) * grid_size + gx] != 0
+                    grid[gz * grid_size * grid_size + (gy - 1) * grid_size + gx]
                 } else {
-                    border_ny[gz * grid_size + gx] != 0
+                    border_ny[gz * grid_size + gx]
                 }
             }
             4 => {
                 // +Z
                 if gz + 1 < grid_size {
-                    grid[(gz + 1) * grid_size * grid_size + gy * grid_size + gx] != 0
+                    grid[(gz + 1) * grid_size * grid_size + gy * grid_size + gx]
                 } else {
-                    border_pz[gy * grid_size + gx] != 0
+                    border_pz[gy * grid_size + gx]
                 }
             }
             _ => {
                 // -Z
                 if gz > 0 {
-                    grid[(gz - 1) * grid_size * grid_size + gy * grid_size + gx] != 0
+                    grid[(gz - 1) * grid_size * grid_size + gy * grid_size + gx]
                 } else {
-                    border_nz[gy * grid_size + gx] != 0
+                    border_nz[gy * grid_size + gx]
                 }
             }
-        }
+        };
+
+        neighbor_id != 0 && !is_transparent_voxel(neighbor_id)
     };
 
     // for each voxel

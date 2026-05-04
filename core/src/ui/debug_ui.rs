@@ -1,5 +1,6 @@
 use anyhow::Result;
 use apostasy_macros::update;
+use cgmath::Vector3;
 
 use crate::{
     objects::{components::transform::Transform, systems::DeltaTime, tags::Player, world::World},
@@ -51,6 +52,21 @@ pub fn hud(world: &mut World) -> Result<()> {
                     .unwrap()
                     .global_position
             ));
+
+            let transform = world
+                .get_object_with_tag::<Player>()
+                .unwrap()
+                .get_component::<Transform>()
+                .unwrap()
+                .global_position;
+
+            let chunk_transform = Vector3::new(
+                (transform.x / 32.0).floor(),
+                (transform.y / 32.0).floor(),
+                (transform.z / 32.0).floor(),
+            );
+
+            ui.label(format!("Player chunk position: {:?}", chunk_transform));
         });
 
     Ok(())

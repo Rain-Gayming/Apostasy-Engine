@@ -45,5 +45,11 @@ void main() {
   if (fragFace == 3u)                   shade = 0.4;
 
   vec4 color = texture(atlas, uv);
+  
+  // Alpha testing: discard fragments with very low alpha
+  if (color.a < 0.5) {
+    discard;
+  }
+  
   outColor = vec4(color.rgba);
 }

@@ -11,6 +11,8 @@ use ash::vk;
 use ash::vk::ApplicationInfo;
 use ash::vk::AttachmentLoadOp;
 use ash::vk::AttachmentStoreOp;
+use ash::vk::BlendFactor;
+use ash::vk::BlendOp;
 use ash::vk::Buffer;
 use ash::vk::BufferCopy;
 use ash::vk::BufferCreateInfo;
@@ -438,7 +440,13 @@ impl VulkanRenderingContext {
                             &PipelineColorBlendStateCreateInfo::default().attachments(&[
                                 PipelineColorBlendAttachmentState::default()
                                     .color_write_mask(ColorComponentFlags::RGBA)
-                                    .blend_enable(false),
+                                    .blend_enable(true)
+                                    .src_color_blend_factor(BlendFactor::SRC_ALPHA)
+                                    .dst_color_blend_factor(BlendFactor::ONE_MINUS_SRC_ALPHA)
+                                    .color_blend_op(BlendOp::ADD)
+                                    .src_alpha_blend_factor(BlendFactor::ONE)
+                                    .dst_alpha_blend_factor(BlendFactor::ZERO)
+                                    .alpha_blend_op(BlendOp::ADD),
                             ]),
                         )
                         .dynamic_state(
