@@ -1,0 +1,11 @@
+/home/rain/files/projects/rust/apostasy-engine/game/target/release/deps/zvariant_derive-421af68add685a46.d: /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/lib.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/dict.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/signature.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/type.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/utils.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/value.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/../README.md
+
+/home/rain/files/projects/rust/apostasy-engine/game/target/release/deps/libzvariant_derive-421af68add685a46.so: /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/lib.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/dict.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/signature.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/type.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/utils.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/value.rs /home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/../README.md
+
+/home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/lib.rs:
+/home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/dict.rs:
+/home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/signature.rs:
+/home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/type.rs:
+/home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/utils.rs:
+/home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/value.rs:
+/home/rain/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zvariant_derive-5.10.1/src/../README.md:
