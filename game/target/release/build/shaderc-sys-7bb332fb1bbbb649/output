@@ -1,4 +1,0 @@
-cargo:warning=shaderc: searching for native shaderc libraries on system;  use '--features build-from-source' to force building from source code
-cargo:rustc-link-search=native=/usr/lib
-cargo:rustc-link-lib=dylib=shaderc_shared
-cargo:rustc-link-lib=dylib=stdc++
