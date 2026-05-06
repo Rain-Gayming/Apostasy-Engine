@@ -1,4 +1,8 @@
 use anyhow::{Context, Result};
+use naga::back::spv::{write_vec, Options as SpvOptions, PipelineOptions};
+use naga::front::glsl::{Frontend, Options as GlslOptions};
+use naga::valid::{Capabilities, ValidationFlags, Validator};
+use naga::{ResourceBinding, ShaderStage};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -12,6 +16,8 @@ pub fn load_shader_bytes(name: &str) -> Result<Vec<u8>> {
     let path = resolve_shader_path(name)
         .with_context(|| format!("Shader '{}' was not found in app or core shader directories", name))?;
 
+    eprintln!("Loading shader: {}", path.display());
+
     if path.extension().and_then(|e| e.to_str()) == Some("spv") {
         return fs::read(&path)
             .with_context(|| format!("Failed to read SPIR-V shader file {}", path.display()));
@@ -24,11 +30,10 @@ pub fn load_shader_bytes(name: &str) -> Result<Vec<u8>> {
 
 fn resolve_shader_path(name: &str) -> Option<PathBuf> {
     let requested = Path::new(name);
-    let stem = requested.file_stem()?.to_str()?;
     let shader_paths = if requested.extension().and_then(|e| e.to_str()) == Some("spv") {
-        vec![format!("{stem}.spv")]
+        vec![name.to_string()]
     } else {
-        vec![format!("{stem}.spv"), name.to_string()]
+        vec![format!("{}.spv", name), name.to_string()]
     };
 
     for dir in SHADER_DIRECTORIES {
@@ -44,21 +49,130 @@ fn resolve_shader_path(name: &str) -> Option<PathBuf> {
 }
 
 fn compile_shader(path: &Path, source: &str) -> Result<Vec<u8>> {
-    let mut compiler = shaderc::Compiler::new()
-        .context("Failed to create shader compiler")?;
-    let options = shaderc::CompileOptions::new()
-        .context("Failed to create shader compiler options")?;
-    let kind = shader_kind_from_path(path)?;
-    let output = compiler
-        .compile_into_spirv(source, kind, path.file_name().unwrap().to_str().unwrap(), "main", Some(&options))
-        .with_context(|| format!("Failed to compile shader {}", path.display()))?;
-    Ok(output.as_binary_u8().to_vec())
+    let stage = shader_kind_from_path(path)?;
+    let preprocessed_source = preprocess_shader_source(source);
+
+    let mut frontend = Frontend::default();
+    let options = GlslOptions::from(stage);
+    let mut module = frontend
+        .parse(&options, &preprocessed_source)
+        .with_context(|| format!("Failed to parse GLSL shader {}", path.display()))?;
+
+    apply_explicit_bindings(source, &mut module);
+
+    let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
+    let module_info = validator
+        .validate(&module)
+        .with_context(|| format!("Failed to validate shader module {}", path.display()))?;
+
+    let writer_options = SpvOptions::default();
+    let pipeline_options = PipelineOptions {
+        shader_stage: stage,
+        entry_point: "main".into(),
+    };
+
+    let words = write_vec(&module, &module_info, &writer_options, Some(&pipeline_options))
+        .with_context(|| format!("Failed to write SPIR-V for shader {}", path.display()))?;
+
+    Ok(words.iter().flat_map(|word| word.to_le_bytes()).collect::<Vec<u8>>())
 }
 
-fn shader_kind_from_path(path: &Path) -> Result<shaderc::ShaderKind> {
+fn preprocess_shader_source(source: &str) -> String {
+    let mut output = String::with_capacity(source.len());
+    let mut remainder = source;
+
+    while let Some(layout_start) = remainder.find("layout(") {
+        output.push_str(&remainder[..layout_start]);
+        let after_layout = &remainder[layout_start + "layout(".len()..];
+        if let Some(layout_end) = find_matching_paren(after_layout) {
+            let contents = &after_layout[..layout_end];
+            if contents.contains("binding") && !contents.contains("uniform") {
+                remainder = &after_layout[layout_end + 1..];
+                continue;
+            }
+            output.push_str("layout(");
+            output.push_str(contents);
+            output.push(')');
+            remainder = &after_layout[layout_end + 1..];
+        } else {
+            output.push_str(&remainder[layout_start..]);
+            remainder = "";
+        }
+    }
+
+    output.push_str(remainder);
+    // Remove "flat" qualifiers which naga doesn't support
+    let mut result = output.replace("flat ", "");
+
+    result
+}
+
+fn find_matching_paren(s: &str) -> Option<usize> {
+    let mut depth = 1;
+    for (idx, c) in s.chars().enumerate() {
+        match c {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(idx);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn apply_explicit_bindings(source: &str, module: &mut naga::Module) {
+    for line in source.lines() {
+        if let Some(binding) = parse_uniform_binding(line) {
+            if let Some(name) = parse_uniform_name(line) {
+                for (_, var) in module.global_variables.iter_mut() {
+                    if var.name.as_deref() == Some(name) {
+                        var.binding = Some(ResourceBinding { group: 0, binding });
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn parse_uniform_binding(line: &str) -> Option<u32> {
+    if !line.contains("layout") || !line.contains("uniform") {
+        return None;
+    }
+
+    let binding_start = line.find("binding")?;
+    let after_eq = line[binding_start..].find('=')? + binding_start + 1;
+    let after_eq = &line[after_eq..];
+    let end = after_eq.find(')').unwrap_or_else(|| after_eq.len());
+
+    after_eq[..end]
+        .trim()
+        .trim_end_matches(|c: char| c.is_whitespace())
+        .parse::<u32>()
+        .ok()
+}
+
+fn parse_uniform_name(line: &str) -> Option<&str> {
+    let uniform_idx = line.find("uniform")?;
+    let remainder = &line[uniform_idx + "uniform".len()..].trim_start();
+    let mut parts = remainder.split_whitespace();
+    let type_part = parts.next()?;
+    let name_part = parts.next()?;
+    if name_part.ends_with('{') || name_part.ends_with(';') {
+        Some(name_part.trim_end_matches(|c| c == '{' || c == ';'))
+    } else {
+        // For "type name;" 
+        Some(name_part)
+    }
+}
+
+fn shader_kind_from_path(path: &Path) -> Result<ShaderStage> {
     match path.extension().and_then(|e| e.to_str()) {
-        Some("vert") => Ok(shaderc::ShaderKind::Vertex),
-        Some("frag") => Ok(shaderc::ShaderKind::Fragment),
+        Some("vert") => Ok(ShaderStage::Vertex),
+        Some("frag") => Ok(ShaderStage::Fragment),
         Some(ext) => anyhow::bail!("Unsupported shader extension '{}', expected .vert or .frag", ext),
         None => anyhow::bail!("Shader path {} has no extension", path.display()),
     }
