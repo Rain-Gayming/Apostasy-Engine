@@ -188,7 +188,7 @@ impl VulkanSwapchain {
                 self.depth_format,
                 vk::ImageTiling::OPTIMAL,
                 vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL | vk::MemoryPropertyFlags::HOST_VISIBLE,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
             )?;
             self.depth_image = depth_image;
             self.depth_memory = depth_memory;
@@ -228,14 +228,21 @@ impl VulkanSwapchain {
         render_finished_semaphore: vk::Semaphore,
     ) -> Result<()> {
         let is_suboptimal = unsafe {
-            self.context.swapchain_extension.queue_present(
+            match self.context.swapchain_extension.queue_present(
                 self.context.queues[self.context.queue_families.present as usize],
                 &vk::PresentInfoKHR::default()
                     .wait_semaphores(&[render_finished_semaphore])
                     .swapchains(&[self.handle])
                     .image_indices(&[image_index]),
-            )
-        }?;
+            ) {
+                Ok(is_sub) => is_sub,
+                Err(e) => {
+                    eprintln!("Queue present failed: {}", e);
+                    self.is_dirty = true;
+                    return Err(anyhow::anyhow!("Queue present failed: {}", e));
+                }
+            }
+        };
 
         if is_suboptimal {
             self.is_dirty = true;

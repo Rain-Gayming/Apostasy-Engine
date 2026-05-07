@@ -910,14 +910,25 @@ impl VulkanRenderingContext {
         command_pool: CommandPool,
     ) {
         unsafe {
-            self.device.end_command_buffer(cmd_buf).unwrap();
+            if let Err(e) = self.device.end_command_buffer(cmd_buf) {
+                eprintln!("Failed to end command buffer: {}", e);
+                return;
+            }
 
             let buffer = &[cmd_buf];
             let submit_info = SubmitInfo::default().command_buffers(buffer);
-            self.device
-                .queue_submit(queue, &[submit_info], Fence::null())
-                .unwrap();
-            self.device.queue_wait_idle(queue).unwrap();
+            if let Err(e) = self.device.queue_submit(queue, &[submit_info], Fence::null()) {
+                eprintln!("Failed to submit queue: {}", e);
+                self.device.free_command_buffers(command_pool, &[cmd_buf]);
+                return;
+            }
+            
+            if let Err(e) = self.device.queue_wait_idle(queue) {
+                eprintln!("Failed to wait for queue idle: {}", e);
+                self.device.free_command_buffers(command_pool, &[cmd_buf]);
+                return;
+            }
+            
             self.device.free_command_buffers(command_pool, &[cmd_buf]);
         }
     }

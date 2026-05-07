@@ -119,12 +119,16 @@ impl Core {
                 }
                 WindowEvent::Resized(_) => {
                     if let Some(renderer) = &mut rendering_info.renderer {
-                        renderer.resize().unwrap();
+                        if let Err(e) = renderer.resize() {
+                            log_error!("Failed to resize renderer: {}", e);
+                        }
                     }
                 }
                 WindowEvent::ScaleFactorChanged { .. } => {
                     if let Some(renderer) = &mut rendering_info.renderer {
-                        renderer.resize().unwrap();
+                        if let Err(e) = renderer.resize() {
+                            log_error!("Failed to resize renderer: {}", e);
+                        }
                     }
                 }
                 WindowEvent::RedrawRequested => {
@@ -175,7 +179,12 @@ impl Core {
                         receive_meshes(&mut world, &context, command_pool)
                             .expect("Failed to receive meshes");
                     }
-                    renderer.begin_frame(push_constants.clone()).unwrap();
+                    
+                    // Begin frame - if device is lost, skip rendering this frame
+                    if let Err(e) = renderer.begin_frame(push_constants.clone()) {
+                        log_error!("Failed to begin frame: {}", e);
+                        return;
+                    }
 
                     renderer.begin_ui();
                     world.update();
@@ -230,21 +239,25 @@ impl Core {
 
                         for mesh in &model.meshes {
                             if model_renderer.is_wireframe {
-                                renderer
+                                if let Err(e) = renderer
                                     .wireframe_render(
                                         Box::new(mesh.clone()),
                                         push_constants.clone(),
                                         &frame_model_push,
                                     )
-                                    .unwrap();
+                                {
+                                    log_error!("Failed to render wireframe: {}", e);
+                                }
                             } else {
-                                renderer
+                                if let Err(e) = renderer
                                     .render(
                                         Box::new(mesh.clone()),
                                         push_constants.clone(),
                                         &frame_model_push,
                                     )
-                                    .unwrap();
+                                {
+                                    log_error!("Failed to render model: {}", e);
+                                }
                             }
                         }
                     }
@@ -278,20 +291,26 @@ impl Core {
                                 transform.position.z * 32,
                             ));
 
-                            renderer
+                            if let Err(e) = renderer
                                 .voxel_render(
                                     Box::new(voxel_mesh.clone()),
                                     &texture_atlas,
                                     &chunk_push,
                                     &voxel_chunk_push,
                                 )
-                                .unwrap();
+                            {
+                                log_error!("Failed to render voxel: {}", e);
+                            }
                         }
                     }
 
                     world.get_resource_mut::<ObjectsDrawing>().unwrap().0 = objects_dawn;
-                    renderer.end_ui().unwrap();
-                    renderer.end_frame().unwrap();
+                    if let Err(e) = renderer.end_ui() {
+                        log_error!("Failed to end UI: {}", e);
+                    }
+                    if let Err(e) = renderer.end_frame() {
+                        log_error!("Failed to end frame: {}", e);
+                    }
                     world.late_update();
                 }
 

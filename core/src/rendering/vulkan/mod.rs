@@ -275,23 +275,72 @@ impl RenderingAPI for VulkanRenderer {
 
     fn begin_frame(&mut self, _push_constants: PushConstants) -> Result<()> {
         let frame = &self.frames[self.current_frame];
+        
+        // Recreate swapchain if it was marked dirty
+        if self.swapchain.is_dirty {
+            if let Err(e) = self.swapchain.resize() {
+                eprintln!("Failed to recreate swapchain: {}", e);
+                return Err(anyhow::anyhow!("Failed to recreate swapchain: {}", e));
+            }
+        }
+        
         unsafe {
-            self.context
+            // Use a 5-second timeout instead of infinite to prevent device hangs
+            const FENCE_TIMEOUT_NS: u64 = 5_000_000_000; // 5 seconds in nanoseconds
+            
+            match self.context
                 .device
-                .wait_for_fences(&[frame.in_flight_fence], true, u64::MAX)?;
-            self.context.device.reset_fences(&[frame.in_flight_fence])?;
-            self.context
+                .wait_for_fences(&[frame.in_flight_fence], true, FENCE_TIMEOUT_NS) {
+                Ok(()) => {},
+                Err(e) => {
+                    eprintln!("Fence wait failed (likely device timeout): {}", e);
+                    // Reset the device state and try to recover
+                    let _ = self.context.device.device_wait_idle();
+                    return Err(anyhow::anyhow!("Device timeout during frame wait"));
+                }
+            }
+            
+            if let Err(e) = self.context.device.reset_fences(&[frame.in_flight_fence]) {
+                eprintln!("Failed to reset fences: {}", e);
+                return Err(anyhow::anyhow!("Failed to reset in-flight fence: {}", e));
+            }
+            
+            if let Err(e) = self.context
                 .device
-                .reset_command_buffer(frame.command_buffer, CommandBufferResetFlags::empty())?;
+                .reset_command_buffer(frame.command_buffer, CommandBufferResetFlags::empty()) {
+                eprintln!("Failed to reset command buffer: {}", e);
+                return Err(anyhow::anyhow!("Failed to reset command buffer: {}", e));
+            }
 
-            self.current_image_index = self
-                .swapchain
-                .acquire_next_image(frame.image_available_semaphore)?;
+            // Attempt to acquire next image; if device is lost, try to recover by recreating swapchain
+            match self.swapchain.acquire_next_image(frame.image_available_semaphore) {
+                Ok(index) => self.current_image_index = index,
+                Err(e) => {
+                    eprintln!("Failed to acquire next image: {}", e);
+                    // Try device wait idle first
+                    if let Err(idle_err) = self.context.device.device_wait_idle() {
+                        eprintln!("Device wait idle failed: {}", idle_err);
+                        return Err(anyhow::anyhow!("Device lost during acquire: {}", idle_err));
+                    }
+                    // Try to recover by recreating the swapchain
+                    if let Err(resize_err) = self.swapchain.resize() {
+                        eprintln!("Failed to recreate swapchain during recovery: {}", resize_err);
+                        return Err(anyhow::anyhow!("Failed to recover swapchain: {}", resize_err));
+                    }
+                    // After swapchain recreation, try acquiring again
+                    self.current_image_index = self
+                        .swapchain
+                        .acquire_next_image(frame.image_available_semaphore)?;
+                }
+            }
 
-            self.context.device.begin_command_buffer(
+            if let Err(e) = self.context.device.begin_command_buffer(
                 frame.command_buffer,
                 &ash::vk::CommandBufferBeginInfo::default(),
-            )?;
+            ) {
+                eprintln!("Failed to begin command buffer: {}", e);
+                return Err(anyhow::anyhow!("Failed to begin command buffer: {}", e));
+            }
 
             self.context.transition_image_layout(
                 frame.command_buffer,
@@ -355,11 +404,12 @@ impl RenderingAPI for VulkanRenderer {
                 vk::ImageAspectFlags::COLOR,
             );
 
-            self.context
-                .device
-                .end_command_buffer(frame.command_buffer)?;
+            if let Err(e) = self.context.device.end_command_buffer(frame.command_buffer) {
+                eprintln!("Failed to end command buffer: {}", e);
+                return Err(anyhow::anyhow!("Failed to end command buffer: {}", e));
+            }
 
-            self.context.device.queue_submit(
+            if let Err(e) = self.context.device.queue_submit(
                 self.context.queues[self.context.queue_families.graphics as usize],
                 &[ash::vk::SubmitInfo::default()
                     .wait_semaphores(&[frame.image_available_semaphore])
@@ -367,10 +417,19 @@ impl RenderingAPI for VulkanRenderer {
                     .command_buffers(&[frame.command_buffer])
                     .signal_semaphores(&[frame.render_finished_semaphore])],
                 frame.in_flight_fence,
-            )?;
+            ) {
+                eprintln!("Failed to submit command buffer: {}", e);
+                let _ = self.context.device.device_wait_idle();
+                return Err(anyhow::anyhow!("Failed to submit graphics queue: {}", e));
+            }
 
-            self.swapchain
-                .present_image(self.current_image_index, frame.render_finished_semaphore)?;
+            if let Err(e) = self.swapchain
+                .present_image(self.current_image_index, frame.render_finished_semaphore) {
+                eprintln!("Failed to present image: {}", e);
+                // Mark swapchain as dirty for recreation
+                self.swapchain.is_dirty = true;
+                return Err(anyhow::anyhow!("Failed to present image: {}", e));
+            }
         }
         Ok(())
     }
@@ -589,7 +648,9 @@ impl RenderingAPI for VulkanRenderer {
     fn update_command_buffer(&mut self) {}
 
     fn recreate_swapchain(&mut self) {
-        self.swapchain.resize().unwrap();
+        if let Err(e) = self.swapchain.resize() {
+            eprintln!("Failed to recreate swapchain: {}", e);
+        }
     }
 
     fn resize(&mut self) -> anyhow::Result<()> {
