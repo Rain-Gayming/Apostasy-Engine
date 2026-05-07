@@ -12,7 +12,7 @@ use apostasy_core::{
     physics::velocity::Velocity,
     voxels::{
         VoxelTransform, biome::BiomeRegistry, chunk::Chunk, meshes::NeedsRemeshing,
-        voxel::VoxelRegistry,
+        structure::StructureRegistry, voxel::VoxelRegistry,
     },
 };
 use apostasy_macros::{Resource, fixed_update, start};
@@ -33,7 +33,7 @@ impl Default for ChunkLoader {
     fn default() -> Self {
         Self {
             last_chunk_position: Vector3::new(i32::MAX, i32::MAX, i32::MAX),
-            load_radius: 32,
+            load_radius: 8,
             chunk_lod_distances: vec![8, 12, 14, 16],
             frame_counter: 0,
             seed: 1,
@@ -220,6 +220,7 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
 
     let registry = Arc::new(world.get_resource::<VoxelRegistry>()?.clone());
     let biome_registry = Arc::new(world.get_resource::<BiomeRegistry>()?.clone());
+    let structure_registry = Arc::new(world.get_resource::<StructureRegistry>()?.clone());
 
     let pool_arc = world.get_resource::<ChunkGenQueue>()?.pool.clone();
     let pool = pool_arc.lock().unwrap();
@@ -254,6 +255,7 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
         let sender = sender.clone();
         let reg = Arc::clone(&registry);
         let biome_reg = Arc::clone(&biome_registry);
+        let structure_reg = Arc::clone(&structure_registry);
 
         world
             .get_resource_mut::<ChunkGenQueue>()?
@@ -262,7 +264,7 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
 
         let seed = world.get_resource_mut::<ChunkLoader>()?.seed;
         pool.spawn(move || {
-            let data = generate_chunk_data(pos, &reg, &biome_reg, seed, lod);
+            let data = generate_chunk_data(pos, &reg, &biome_reg, &structure_reg, seed, lod);
             let _ = sender.send(data);
         });
 

@@ -6,12 +6,7 @@ class: Biome
 amplitude: 80.0
 frequency: 0.005
 octaves: 6
-tree_density: 1.0
-boulder_density: 4.0
 #Generation Location
-# humidity: 0.6
-# temperature: 0.3
-
 humidity: 0.6
 temperature: 0.4
 # Voxels
@@ -22,6 +17,29 @@ voxel:
     - "Apostasy:Voxel:Dirt"
   underground:
     - "Apostasy:Voxel:Dirt"
+# Structures (mountains have lots of boulders and fewer trees)
+structures:
+  - type: tree
+    density: 1.0
+    voxels:
+      trunk: "Apostasy:Voxel:Log"
+      canopy: "Apostasy:Voxel:Leaves"
+    parameters:
+      min_height: 6
+      max_height: 12
+      canopy_radius: 2
+  - type: boulder
+    density: 4.0
+    voxels:
+      boulder: "Apostasy:Voxel:Stone"
+    parameters:
+      min_radius: 2
+      max_radius: 4
+  - type: surface_pillar
+    density: 5.0
+    asset: "Apostasy:Structure:SurfaceMonolith"
+    parameters:
+      y_offset: 0
 # Weather and Seasons
 default_weather:
   - name: "Apostasy:Weather:Sunny"

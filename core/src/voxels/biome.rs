@@ -5,6 +5,11 @@ use hashbrown::HashMap;
 use noise::{NoiseFn, Perlin};
 
 pub type BiomeId = u16;
+
+/// A global registry of loaded biome definitions.
+///
+/// `defs` contains all available biomes, and the hash maps allow lookup by
+/// biome name or id.
 #[derive(Resource, Default, Clone, Debug)]
 pub struct BiomeRegistry {
     pub defs: Vec<BiomeDefinition>,
@@ -16,24 +21,54 @@ pub static NOISE: OnceLock<Perlin> = OnceLock::new();
 pub static TEMPERATURE_NOISE: OnceLock<Perlin> = OnceLock::new();
 pub static HUMIDITY_NOISE: OnceLock<Perlin> = OnceLock::new();
 
+/// A structure entry inside a biome definition.
+///
+/// This describes how a biome should spawn reusable structures or data-driven
+/// features during world generation.
+#[derive(Clone, Debug)]
+pub struct StructureDefinition {
+    /// Feature type, e.g. `tree`, `boulder`, or a custom asset-backed type.
+    pub structure_type: String,
+    /// Relative density across the feature grid.
+    pub density: f64,
+    /// Optional external structure asset name to instantiate.
+    pub asset: Option<String>,
+    /// Named voxel references used by the structure generator.
+    pub voxels: HashMap<String, String>,
+    /// Additional custom parameters for the generator or asset placement.
+    pub parameters: HashMap<String, serde_yaml::Value>,
+}
+
+/// A biome definition used during terrain generation.
+///
+/// This contains voxel rules, procedural noise properties, climate values, and
+/// any structures that should spawn inside the biome.
 #[derive(Clone, Debug)]
 pub struct BiomeDefinition {
     pub name: String,
     pub namespace: String,
     pub class: String,
 
+    /// Voxels used for the terrain surface.
     pub surface_voxels: Vec<String>,
+    /// Voxels used for the shallow subsurface layer.
     pub subsurface_voxels: Vec<String>,
+    /// Voxels used for deeper underground layers.
     pub underground_voxels: Vec<String>,
 
+    /// Height amplitude multiplier for this biome.
     pub amplitude: f64,
+    /// Noise frequency used to shape biome terrain.
     pub frequency: f64,
+    /// Number of noise octaves for terrain detail.
     pub octaves: u32,
 
+    /// Target biome temperature for climate sampling.
     pub temperature: f64,
+    /// Target biome humidity for climate sampling.
     pub humidity: f64,
-    pub tree_density: f64,
-    pub boulder_density: f64,
+    /// Structures or feature definitions that spawn in this biome.
+    pub structures: Vec<StructureDefinition>,
 }
 
 pub struct ClimateCache {

@@ -1,10 +1,11 @@
 use std::sync::{Arc, RwLock};
 
 use anyhow::{Error, Result};
+use hashbrown::HashMap;
 
 use crate::{
     assets::loader::AssetLoader,
-    voxels::biome::{BiomeDefinition, BiomeRegistry},
+    voxels::biome::{BiomeDefinition, BiomeRegistry, StructureDefinition},
 };
 
 pub struct BiomeLoader {
@@ -82,8 +83,54 @@ impl AssetLoader for BiomeLoader {
         let temperature = raw["temperature"]
             .as_f64()
             .ok_or_else(|| anyhow::anyhow!("Missing 'temperature'"))?;
-        let tree_density = raw["tree_density"].as_f64().unwrap_or(0.0);
-        let boulder_density = raw["boulder_density"].as_f64().unwrap_or(0.0);
+        
+        // Parse structures
+        let mut structures: Vec<StructureDefinition> = Vec::new();
+        if let Some(structures_seq) = raw["structures"].as_sequence() {
+            for struct_yaml in structures_seq {
+                let structure_type = struct_yaml["type"]
+                    .as_str()
+                    .ok_or_else(|| anyhow::anyhow!("Structure missing 'type'"))?
+                    .to_string();
+
+                let density = struct_yaml["density"]
+                    .as_f64()
+                    .ok_or_else(|| anyhow::anyhow!("Structure missing 'density'"))?;
+
+                let asset = struct_yaml["asset"]
+                    .as_str()
+                    .map(|s| s.to_string());
+
+                // Parse voxel mappings
+                let mut voxels: HashMap<String, String> = HashMap::new();
+                if let Some(voxels_map) = struct_yaml["voxels"].as_mapping() {
+                    for (key, value) in voxels_map {
+                        if let (Some(k), Some(v)) = (key.as_str(), value.as_str()) {
+                            voxels.insert(k.to_string(), v.to_string());
+                        }
+                    }
+                }
+
+                // Parse parameters (shape, size, etc.)
+                let mut parameters: HashMap<String, serde_yaml::Value> = HashMap::new();
+                if let Some(params_map) = struct_yaml["parameters"].as_mapping() {
+                    for (key, value) in params_map {
+                        if let Some(k) = key.as_str() {
+                            parameters.insert(k.to_string(), value.clone());
+                        }
+                    }
+                }
+
+                structures.push(StructureDefinition {
+                    structure_type,
+                    density,
+                    asset,
+                    voxels,
+                    parameters,
+                });
+            }
+        }
+        
         let def = BiomeDefinition {
             name: name.clone(),
             namespace: namespace.clone(),
@@ -99,8 +146,7 @@ impl AssetLoader for BiomeLoader {
 
             humidity,
             temperature,
-            tree_density,
-            boulder_density,
+            structures,
         };
 
         let mut registry = self.registry.write().unwrap();

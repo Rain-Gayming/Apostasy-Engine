@@ -4,10 +4,11 @@ use apostasy_core::{
     utils::flatten::flatten,
     voxels::{
         biome::{
-            BiomeRegistry, ClimateCache, HUMIDITY_NOISE, NOISE, TEMPERATURE_NOISE,
-            sample_biome_weights_at_climate,
+            BiomeRegistry, ClimateCache, StructureDefinition, HUMIDITY_NOISE, NOISE, 
+            TEMPERATURE_NOISE, sample_biome_weights_at_climate,
         },
         chunk::GeneratedChunkData,
+        structure::StructureRegistry,
         voxel::{VoxelId, VoxelRegistry},
     },
 };
@@ -163,22 +164,24 @@ fn set_voxel_global_non_floating(
     let mut ly = global_y - chunk_world_y;
     let lz = global_z - chunk_world_z;
 
+    // Must be within chunk bounds - don't try to place outside this chunk
     if !(0..32).contains(&lx) || !(0..32).contains(&ly) || !(0..32).contains(&lz) {
         return;
     }
 
-    // walk down the array until you hit a solid block
+    // walk down the array until you hit a solid block, but don't go below y=0
     while ly > 0 && voxels[(lx + ly * 32 + lz * 32 * 32) as usize] == 0 {
         ly -= 1;
     }
 
-    // bail if reaching the bottom of a chunk
-    if voxels[(lx + ly * 32 + lz * 32 * 32) as usize] == 0 {
-        return;
+    // Only place if we found ground within the chunk
+    if voxels[(lx + ly * 32 + lz * 32 * 32) as usize] != 0 {
+        let above_y = ly + 1;
+        if above_y < 32 {
+            let index = flatten(lx as u32, above_y as u32, lz as u32, 32);
+            voxels[index] = voxel_id;
+        }
     }
-
-    let index = flatten(lx as u32, ly as u32, lz as u32, 32);
-    voxels[index] = voxel_id;
 }
 
 fn set_voxel_global_if_empty(
@@ -205,7 +208,7 @@ fn set_voxel_global_if_empty(
     }
 }
 
-fn place_tree_global(
+fn place_tree_data_driven(
     voxels: &mut [u16],
     center_x: i32,
     base_y: i32,
@@ -213,13 +216,45 @@ fn place_tree_global(
     chunk_world_x: i32,
     chunk_world_y: i32,
     chunk_world_z: i32,
-    wood_id: u16,
-    leaf_id: u16,
+    structure: &StructureDefinition,
+    registry: &VoxelRegistry,
     seed: u32,
 ) {
-    let trunk_height = random_range(center_x, center_z, seed, 6, 10) as i32;
+    // Get voxel IDs from structure definition
+    let trunk_id = structure
+        .voxels
+        .get("trunk")
+        .and_then(|name| registry.name_to_id.get(name).copied());
+    let canopy_id = structure
+        .voxels
+        .get("canopy")
+        .and_then(|name| registry.name_to_id.get(name).copied());
+
+    let (trunk_id, canopy_id) = match (trunk_id, canopy_id) {
+        (Some(t), Some(c)) => (t, c),
+        _ => return,
+    };
+
+    // Get parameters from structure definition or use defaults
+    let min_height = structure
+        .parameters
+        .get("min_height")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(6) as i32;
+    let max_height = structure
+        .parameters
+        .get("max_height")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(10) as i32;
+    let canopy_radius_base = structure
+        .parameters
+        .get("canopy_radius")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(2) as i32;
+
+    let trunk_height = random_range(center_x, center_z, seed, min_height as u32, max_height as u32) as i32;
     let shape_seed = hash_column(center_x, center_z, seed.wrapping_add(1));
-    let canopy_radius = 2 + ((shape_seed & 1) as i32);
+    let canopy_radius = canopy_radius_base + ((shape_seed & 1) as i32);
     let max_y = 32;
 
     for level in 1..=trunk_height {
@@ -228,7 +263,7 @@ fn place_tree_global(
             break;
         }
 
-        set_voxel_global(
+        set_voxel_global_non_floating(
             voxels,
             center_x,
             y,
@@ -236,7 +271,7 @@ fn place_tree_global(
             chunk_world_x,
             chunk_world_y,
             chunk_world_z,
-            wood_id,
+            trunk_id,
         );
 
         if level > trunk_height / 2 && (shape_seed >> (level as u32)) & 1 == 1 {
@@ -260,7 +295,7 @@ fn place_tree_global(
                 chunk_world_x,
                 chunk_world_y,
                 chunk_world_z,
-                wood_id,
+                trunk_id,
             );
         }
     }
@@ -306,7 +341,7 @@ fn place_tree_global(
                     chunk_world_x,
                     chunk_world_y,
                     chunk_world_z,
-                    leaf_id,
+                    canopy_id,
                 );
             }
         }
@@ -328,13 +363,13 @@ fn place_tree_global(
                 chunk_world_x,
                 chunk_world_y,
                 chunk_world_z,
-                leaf_id,
+                canopy_id,
             );
         }
     }
 }
 
-fn place_boulder_global(
+fn place_boulder_data_driven(
     voxels: &mut [u16],
     center_x: i32,
     base_y: i32,
@@ -342,10 +377,32 @@ fn place_boulder_global(
     chunk_world_x: i32,
     chunk_world_y: i32,
     chunk_world_z: i32,
-    voxel_id: u16,
+    structure: &StructureDefinition,
+    registry: &VoxelRegistry,
     seed: u32,
 ) {
-    let radius = (random_range(center_x, center_z, seed, 1, 2) + 1) as i32;
+    let boulder_id = structure
+        .voxels
+        .get("boulder")
+        .and_then(|name| registry.name_to_id.get(name).copied());
+
+    let boulder_id = match boulder_id {
+        Some(id) => id,
+        None => return,
+    };
+
+    let min_radius = structure
+        .parameters
+        .get("min_radius")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(1) as i32;
+    let max_radius = structure
+        .parameters
+        .get("max_radius")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(2) as i32;
+
+    let radius = (random_range(center_x, center_z, seed, min_radius as u32, max_radius as u32) + 1) as i32;
     let center_y = base_y + 1;
 
     for dz in -radius..=radius {
@@ -369,10 +426,113 @@ fn place_boulder_global(
                     chunk_world_x,
                     chunk_world_y,
                     chunk_world_z,
-                    voxel_id,
+                    boulder_id,
                 );
             }
         }
+    }
+}
+
+fn place_structure_asset(
+    voxels: &mut [u16],
+    feature_x: i32,
+    feature_surface_y: i32,
+    feature_z: i32,
+    chunk_world_x: i32,
+    chunk_world_y: i32,
+    chunk_world_z: i32,
+    structure: &StructureDefinition,
+    registry: &VoxelRegistry,
+    structure_registry: &StructureRegistry,
+) {
+    let asset_name = match &structure.asset {
+        Some(name) => name,
+        None => return,
+    };
+
+    let asset_id = match structure_registry.name_to_id.get(asset_name) {
+        Some(id) => *id,
+        None => return,
+    };
+
+    let asset = &structure_registry.defs[asset_id as usize];
+    let y_offset = structure
+        .parameters
+        .get("y_offset")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0) as i32;
+
+    for block in asset.blocks.iter() {
+        if let Some(voxel_id) = registry.name_to_id.get(&block.voxel).copied() {
+            set_voxel_global(
+                voxels,
+                feature_x + block.position[0],
+                feature_surface_y + block.position[1] + y_offset,
+                feature_z + block.position[2],
+                chunk_world_x,
+                chunk_world_y,
+                chunk_world_z,
+                voxel_id,
+            );
+        }
+    }
+}
+
+fn place_structure_data_driven(
+    voxels: &mut [u16],
+    feature_x: i32,
+    feature_surface_y: i32,
+    feature_z: i32,
+    chunk_world_x: i32,
+    chunk_world_y: i32,
+    chunk_world_z: i32,
+    structure: &StructureDefinition,
+    registry: &VoxelRegistry,
+    structure_registry: &StructureRegistry,
+    seed: u32,
+) {
+    if structure.asset.is_some() {
+        place_structure_asset(
+            voxels,
+            feature_x,
+            feature_surface_y,
+            feature_z,
+            chunk_world_x,
+            chunk_world_y,
+            chunk_world_z,
+            structure,
+            registry,
+            structure_registry,
+        );
+        return;
+    }
+
+    match structure.structure_type.as_str() {
+        "tree" => place_tree_data_driven(
+            voxels,
+            feature_x,
+            feature_surface_y,
+            feature_z,
+            chunk_world_x,
+            chunk_world_y,
+            chunk_world_z,
+            structure,
+            registry,
+            seed,
+        ),
+        "boulder" => place_boulder_data_driven(
+            voxels,
+            feature_x,
+            feature_surface_y,
+            feature_z,
+            chunk_world_x,
+            chunk_world_y,
+            chunk_world_z,
+            structure,
+            registry,
+            seed,
+        ),
+        _ => {} // Unknown structure type, ignore
     }
 }
 
@@ -380,6 +540,7 @@ pub fn generate_chunk_data(
     position: Vector3<i32>,
     registry: &VoxelRegistry,
     biome_registry: &BiomeRegistry,
+    structure_registry: &StructureRegistry,
     seed: u32,
     lod: u8,
 ) -> GeneratedChunkData {
@@ -477,9 +638,6 @@ pub fn generate_chunk_data(
         }
     }
 
-    let tree_voxel_id = registry.name_to_id.get("Apostasy:Voxel:Log").copied();
-    let leaf_voxel_id = registry.name_to_id.get("Apostasy:Voxel:Leaves").copied();
-    let boulder_voxel_id = registry.name_to_id.get("Apostasy:Voxel:Stone").copied();
     let chunk_world_x = position.x * 32;
     let chunk_world_y = position.y * 32;
     let chunk_world_z = position.z * 32;
@@ -512,18 +670,16 @@ pub fn generate_chunk_data(
             );
             let biome = &biome_registry.defs[feature_biome_id as usize];
 
-            let tree_probability = (biome.tree_density / FEATURE_CELLS_PER_CHUNK).clamp(0.0, 1.0);
-            let boulder_probability =
-                (biome.boulder_density / FEATURE_CELLS_PER_CHUNK).clamp(0.0, 1.0);
+            // Iterate through all structures defined in the biome
+            for (structure_idx, structure) in biome.structures.iter().enumerate() {
+                let structure_probability = (structure.density / FEATURE_CELLS_PER_CHUNK).clamp(0.0, 1.0);
+                
+                // Use different bits of the hash for each structure type
+                let structure_hash = hash_column(feature_x, feature_z, seed.wrapping_add(1 + structure_idx as u32));
+                let structure_chance = ((structure_hash & 0xffff) as f64) / 65535.0;
 
-            let feature_hash = hash_column(feature_x, feature_z, seed.wrapping_add(1));
-            let tree_chance = ((feature_hash & 0xffff) as f64) / 65535.0;
-            let boulder_chance = (((feature_hash >> 16) & 0xffff) as f64) / 65535.0;
-
-            if tree_chance < tree_probability {
-                if let Some(tree_voxel_id) = tree_voxel_id {
-                    let leaves = leaf_voxel_id.unwrap_or(tree_voxel_id);
-                    place_tree_global(
+                if structure_chance < structure_probability {
+                    place_structure_data_driven(
                         &mut voxels,
                         feature_x,
                         feature_surface_y,
@@ -531,25 +687,10 @@ pub fn generate_chunk_data(
                         chunk_world_x,
                         chunk_world_y,
                         chunk_world_z,
-                        tree_voxel_id,
-                        leaves,
-                        seed.wrapping_add(2),
-                    );
-                }
-            }
-
-            if boulder_chance < boulder_probability {
-                if let Some(boulder_voxel_id) = boulder_voxel_id {
-                    place_boulder_global(
-                        &mut voxels,
-                        feature_x,
-                        feature_surface_y,
-                        feature_z,
-                        chunk_world_x,
-                        chunk_world_y,
-                        chunk_world_z,
-                        boulder_voxel_id,
-                        seed.wrapping_add(3),
+                        structure,
+                        registry,
+                        structure_registry,
+                        seed.wrapping_add(2 + structure_idx as u32),
                     );
                 }
             }

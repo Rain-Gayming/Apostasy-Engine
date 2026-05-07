@@ -4,6 +4,7 @@ use cgmath::{Vector3, Zero};
 pub mod biome;
 pub mod chunk;
 pub mod meshes;
+pub mod structure;
 pub mod texture_atlas;
 pub mod voxel;
 pub mod voxel_components;
