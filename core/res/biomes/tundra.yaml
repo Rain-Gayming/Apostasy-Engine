@@ -65,7 +65,5 @@ seasons:
         chance: 0.6
 # Graphics
 ambient_graphics:
-  water_color:
-    rgb: [200, 220, 240]
-  foliage_color:
-    rgb: [220, 220, 220]
+  water_color: [200, 220, 240]
+  foliage_color: [220, 220, 220]

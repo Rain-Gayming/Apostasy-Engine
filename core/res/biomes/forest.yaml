@@ -3,9 +3,9 @@ name: Forest
 namespace: Apostasy
 class: Biome
 #Generation
-amplitude: 6.5
-frequency: 0.03
-octaves: 6
+amplitude: 0.2
+frequency: 0.015
+octaves: 2
 #Generation Location
 humidity: 0.6
 temperature: 0.32

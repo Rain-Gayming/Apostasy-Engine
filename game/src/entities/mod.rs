@@ -1,7 +1,7 @@
 use apostasy_core::{
     Component,
     anyhow::Result,
-    cgmath::{InnerSpace, Vector3, Zero},
+    cgmath::{self, InnerSpace, Vector3, Zero},
     log,
     objects::{Object, components::transform::Transform, world::World},
     physics::{Gravity, collider::Collider, velocity::Velocity},
@@ -14,9 +14,9 @@ use apostasy_core::{
 
 use crate::entities::spawn_point::NeedsSpawnPoint;
 
+pub mod loading_gate;
 pub mod player;
 pub mod spawn_point;
-pub mod loading_gate;
 
 #[derive(Component, Debug, Clone)]
 pub struct PassiveAI {
@@ -64,7 +64,12 @@ pub fn entity_process(world: &mut World) -> Result<()> {
                 let object = world.get_object_mut(id).unwrap();
                 object.get_component_mut::<PassiveAI>()?.has_location = false;
             } else {
-                let dir = (location - global_position).normalize();
+                let diff = location - global_position;
+                let dir = if diff.magnitude2() > 0.0 {
+                    diff.normalize()
+                } else {
+                    cgmath::Vector3::unit_x()
+                };
                 let object = world.get_object_mut(id).unwrap();
                 object.get_component_mut::<Velocity>()?.linear_velocity.x = dir.x * 1.0;
                 object.get_component_mut::<Velocity>()?.linear_velocity.z = dir.z * 1.0;

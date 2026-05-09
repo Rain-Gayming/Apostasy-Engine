@@ -3,7 +3,7 @@ name: Swamp
 namespace: Apostasy
 class: Biome
 #Generation
-amplitude: 4.0
+amplitude: 1.0
 frequency: 0.018
 octaves: 5
 #Generation Location
@@ -65,7 +65,5 @@ seasons:
         chance: 0.4
 # Graphics
 ambient_graphics:
-  water_color:
-    rgb: [120, 170, 145]
-  foliage_color:
-    rgb: [145, 175, 135]
+  water_color: [38, 48, 39]
+  foliage_color: [44, 44, 22]

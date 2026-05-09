@@ -11,4 +11,4 @@ textures:
 components:
   IsSolid: true
   BreakTicks: 12
-  Drops: Apostasy:Item:Dirt
+  Drops: Apostasy:Item:Sand

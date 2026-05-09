@@ -3,11 +3,11 @@ name: Mountains
 namespace: Apostasy
 class: Biome
 #Generation
-amplitude: 120.0
-frequency: 0.004
+amplitude: 1200.0
+frequency: 0.00004
 octaves: 6
 #Generation Location
-humidity: 0.55
+humidity: 55.0
 temperature: 0.3
 # Voxels
 voxel:
@@ -35,11 +35,6 @@ structures:
     parameters:
       min_radius: 2
       max_radius: 4
-  - type: surface_pillar
-    density: 5.0
-    asset: "Apostasy:Structure:SurfaceMonolith"
-    parameters:
-      y_offset: 0
 # Weather and Seasons
 default_weather:
   - name: "Apostasy:Weather:Sunny"

@@ -3,12 +3,12 @@ name: Plains
 namespace: Apostasy
 class: Biome
 #Generation
-amplitude: 5.0
-frequency: 0.015
-octaves: 4
+amplitude: 0.3
+frequency: 0.001
+octaves: 2
 #Generation Location
-humidity: 0.6
-temperature: 0.31
+humidity: 0.4
+temperature: 0.4
 # Voxels
 voxel:
   surface:
@@ -28,11 +28,6 @@ structures:
       min_height: 5
       max_height: 8
       canopy_radius: 1
-  - type: surface_pillar
-    density: 0.1
-    asset: "Apostasy:Structure:SurfaceMonolith"
-    parameters:
-      y_offset: 0
 # Weather and Seasons
 default_weather:
   - name: "Apostasy:Weather:Sunny"
