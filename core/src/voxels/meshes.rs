@@ -882,7 +882,7 @@ fn sample_blended_tint(
     grid_size: usize,
     lod: usize,
 ) -> (u8, u8, u8) {
-    const RADIUS: i32 = 6;
+    const RADIUS: i32 = 16;
     let sigma = RADIUS as f32 / 2.0;
 
     let mut r_sum = 0f32;

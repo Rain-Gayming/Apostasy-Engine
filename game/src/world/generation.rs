@@ -244,6 +244,7 @@ fn set_voxel_global_non_floating(
     chunk_world_y: i32,
     chunk_world_z: i32,
     voxel_id: u16,
+    water_voxel: u16,
 ) {
     let lx = global_x - chunk_world_x;
     let mut ly = global_y - chunk_world_y;
@@ -253,11 +254,13 @@ fn set_voxel_global_non_floating(
         return;
     }
 
-    while ly > 0 && voxels[(lx + ly * 32 + lz * 32 * 32) as usize] == 0 {
+    // Skip over empty spaces and water voxels
+    while ly > 0 && (voxels[(lx + ly * 32 + lz * 32 * 32) as usize] == 0 || voxels[(lx + ly * 32 + lz * 32 * 32) as usize] == water_voxel) {
         ly -= 1;
     }
 
-    if voxels[(lx + ly * 32 + lz * 32 * 32) as usize] != 0 {
+    let current_voxel = voxels[(lx + ly * 32 + lz * 32 * 32) as usize];
+    if current_voxel != 0 && current_voxel != water_voxel {
         let above_y = ly + 1;
         if above_y < 32 {
             let index = flatten(lx as u32, above_y as u32, lz as u32, 32);
@@ -301,6 +304,7 @@ fn place_tree_data_driven(
     structure: &StructureDefinition,
     registry: &VoxelRegistry,
     seed: u32,
+    water_voxel: u16,
 ) {
     let trunk_id = structure
         .voxels
@@ -315,6 +319,11 @@ fn place_tree_data_driven(
         (Some(t), Some(c)) => (t, c),
         _ => return,
     };
+
+    // Don't spawn trees underwater (at or below sea level)
+    if base_y <= SEA_LEVEL {
+        return;
+    }
 
     let min_height = structure
         .parameters
@@ -459,6 +468,7 @@ fn place_boulder_data_driven(
     structure: &StructureDefinition,
     registry: &VoxelRegistry,
     seed: u32,
+    water_voxel: u16,
 ) {
     let boulder_id = structure
         .voxels
@@ -512,6 +522,7 @@ fn place_boulder_data_driven(
                     chunk_world_y,
                     chunk_world_z,
                     boulder_id,
+                    water_voxel,
                 );
             }
         }
@@ -529,6 +540,7 @@ fn place_structure_asset(
     structure: &StructureDefinition,
     registry: &VoxelRegistry,
     structure_registry: &StructureRegistry,
+    water_voxel: u16,
 ) {
     let asset_name = match &structure.asset {
         Some(name) => name,
@@ -558,6 +570,7 @@ fn place_structure_asset(
                 chunk_world_y,
                 chunk_world_z,
                 voxel_id,
+                water_voxel,
             );
         }
     }
@@ -575,6 +588,7 @@ fn place_structure_data_driven(
     registry: &VoxelRegistry,
     structure_registry: &StructureRegistry,
     seed: u32,
+    water_voxel: u16,
 ) {
     if structure.asset.is_some() {
         place_structure_asset(
@@ -588,6 +602,7 @@ fn place_structure_data_driven(
             structure,
             registry,
             structure_registry,
+            water_voxel,
         );
         return;
     }
@@ -604,6 +619,7 @@ fn place_structure_data_driven(
             structure,
             registry,
             seed,
+            water_voxel,
         ),
         "boulder" => place_boulder_data_driven(
             voxels,
@@ -616,6 +632,7 @@ fn place_structure_data_driven(
             structure,
             registry,
             seed,
+            water_voxel,
         ),
         _ => {}
     }
@@ -802,6 +819,7 @@ pub fn generate_chunk_data(
                         registry,
                         structure_registry,
                         seed.wrapping_add(2 + structure_idx as u32),
+                        water_voxel,
                     );
                 }
             }
