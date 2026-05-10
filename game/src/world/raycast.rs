@@ -14,7 +14,7 @@ use apostasy_core::{
     voxels::{
         VoxelTransform,
         chunk::{Chunk, VoxelBreakProgress},
-        meshes::NeedsRemeshing,
+        meshes::{NeedsRemeshing, VoxelBreakRemesh},
         voxel::{Voxel, VoxelRegistry},
         voxel_components::{break_ticks::BreakTicks, drops::Drops},
         voxel_raycast::RaycastHit,
@@ -174,7 +174,43 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
                     raycast_hit.local_pos.z as u32,
                     Voxel { id: 0 },
                 );
+                // Mark with priority tag for voxel-breaking updates
                 obj.add_tag(NeedsRemeshing);
+                obj.add_tag(VoxelBreakRemesh);
+            }
+
+            // Check if voxel is on chunk edge and mark neighbors for remeshing
+            let local_x = raycast_hit.local_pos.x;
+            let local_y = raycast_hit.local_pos.y;
+            let local_z = raycast_hit.local_pos.z;
+            let is_edge = (local_x == 0 || local_x == 31) || (local_y == 0 || local_y == 31) || (local_z == 0 || local_z == 31);
+
+            if is_edge {
+                let mut neighbor_offsets: Vec<Vector3<i32>> = Vec::new();
+                
+                // Add neighbor offsets based on which edges the voxel is on
+                if local_x == 0 { neighbor_offsets.push(Vector3::new(-1, 0, 0)); }
+                if local_x == 31 { neighbor_offsets.push(Vector3::new(1, 0, 0)); }
+                if local_y == 0 { neighbor_offsets.push(Vector3::new(0, -1, 0)); }
+                if local_y == 31 { neighbor_offsets.push(Vector3::new(0, 1, 0)); }
+                if local_z == 0 { neighbor_offsets.push(Vector3::new(0, 0, -1)); }
+                if local_z == 31 { neighbor_offsets.push(Vector3::new(0, 0, 1)); }
+
+                for offset in neighbor_offsets {
+                    let neighbor_pos = raycast_hit.chunk_pos + offset;
+                    // Find and mark neighbor chunks for remeshing
+                    for (id, obj) in world.get_objects_with_component_with_ids::<VoxelTransform>() {
+                        if let Ok(t) = obj.get_component::<VoxelTransform>() {
+                            if t.position == neighbor_pos {
+                                if let Some(obj) = world.get_object_mut(id) {
+                                    obj.add_tag(NeedsRemeshing);
+                                    obj.add_tag(VoxelBreakRemesh);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
 

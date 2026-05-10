@@ -135,6 +135,11 @@ impl WaterMesh {
 #[derive(Debug, Tag, Clone, Default)]
 pub struct NeedsRemeshing;
 
+/// Tag to mark chunks that need remeshing due to voxel breaking.
+/// These have priority over regular remesh jobs from chunk generation.
+#[derive(Debug, Tag, Clone, Default)]
+pub struct VoxelBreakRemesh;
+
 impl GpuMesh for VoxelChunkMesh {
     fn get_vertex_buffer(&self) -> Buffer {
         self.vertex_buffer
@@ -218,6 +223,13 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
         })
         .collect();
 
+    // Sort to prioritize voxel-break-initiated remeshes over chunk generation
+    needs_remesh.sort_by_key(|(id, _pos)| {
+        let obj = world.get_object(*id);
+        let has_priority = obj.map(|o| o.has_tag::<VoxelBreakRemesh>()).unwrap_or(false);
+        !has_priority
+    });
+
     needs_remesh.truncate(MAX_MESH_JOBS_PER_FRAME);
 
     // get the pools
@@ -280,6 +292,7 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
 
         if let Some(obj) = world.get_object_mut(id) {
             obj.remove_tag::<NeedsRemeshing>();
+            obj.remove_tag::<VoxelBreakRemesh>();
         }
     }
 
