@@ -79,7 +79,7 @@ pub fn structure_selection(world: &mut World) -> Result<()> {
             let raycast = voxel_raycast(world, &camera, 32.0, Direction::Forward);
 
             if let Ok(structure_selection) = world.get_resource_mut::<StructureSelection>() {
-                if let Ok(raycast) = raycast {
+                if let Some(raycast) = raycast {
                     structure_selection.start = raycast.voxel_pos;
                 }
             }
@@ -88,7 +88,7 @@ pub fn structure_selection(world: &mut World) -> Result<()> {
             let raycast = voxel_raycast(world, &camera, 32.0, Direction::Forward);
 
             if let Ok(structure_selection) = world.get_resource_mut::<StructureSelection>() {
-                if let Ok(raycast) = raycast {
+                if let Some(raycast) = raycast {
                     structure_selection.end = raycast.voxel_pos;
                 }
             }

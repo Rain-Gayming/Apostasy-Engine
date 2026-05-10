@@ -34,7 +34,7 @@ pub fn find_spawn_point(world: &mut World) -> Result<()> {
     };
 
     for id in object_ids {
-        if let Ok(hit) = voxel_raycast(world, &transform, 1500.0, Direction::Down) {
+        if let Some(hit) = voxel_raycast(world, &transform, 1500.0, Direction::Down) {
             let spawn = Vector3::new(
                 hit.voxel_pos.x as f32,
                 hit.voxel_pos.y as f32 + 5.0,

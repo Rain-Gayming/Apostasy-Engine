@@ -119,12 +119,7 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
         )
     };
 
-    // Only dispatch every 10 frames to reduce load, unless initial load
     let is_initial_load = last_chunk_pos == Vector3::new(i32::MAX, i32::MAX, i32::MAX);
-    if !is_initial_load && frame_counter % 10 != 0 {
-        return Ok(());
-    }
-
     if last_chunk_pos == player_chunk_pos {
         return Ok(());
     }
@@ -134,10 +129,6 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
     let vz = vel.z.signum() as i32;
     let moving_toward =
         (delta.x != 0 && delta.x.signum() == vx) || (delta.z != 0 && delta.z.signum() == vz);
-
-    if !moving_toward && last_chunk_pos != Vector3::new(i32::MAX, i32::MAX, i32::MAX) {
-        return Ok(());
-    }
 
     log!("Entered new chunk at {:?}", player_chunk_pos);
     world.get_resource_mut::<ChunkLoader>()?.last_chunk_position = player_chunk_pos;

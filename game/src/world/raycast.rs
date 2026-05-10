@@ -188,7 +188,7 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
             if is_edge {
                 let mut neighbor_offsets: Vec<Vector3<i32>> = Vec::new();
                 
-                // Add neighbor offsets based on which edges the voxel is on
+                // Add neighbor offsets based on which edges the voxel is onr
                 if local_x == 0 { neighbor_offsets.push(Vector3::new(-1, 0, 0)); }
                 if local_x == 31 { neighbor_offsets.push(Vector3::new(1, 0, 0)); }
                 if local_y == 0 { neighbor_offsets.push(Vector3::new(0, -1, 0)); }

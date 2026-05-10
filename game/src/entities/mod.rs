@@ -2,11 +2,9 @@ use apostasy_core::{
     Component,
     anyhow::Result,
     cgmath::{self, InnerSpace, Vector3, Zero},
-    log,
     objects::{Object, components::transform::Transform, world::World},
     physics::{Gravity, collider::Collider, velocity::Velocity},
     rand::{RngExt, rng},
-    rendering::components::model_renderer::ModelRenderer,
     serde_yaml::Value,
     start, update,
     voxels::voxel_raycast::{Direction, voxel_raycast},
@@ -94,7 +92,7 @@ pub fn entity_process(world: &mut World) -> Result<()> {
                 }
             };
 
-            if let Ok(hit) = voxel_raycast(world, &location_transform, 1000.0, Direction::Down) {
+            if let Some(hit) = voxel_raycast(world, &location_transform, 1000.0, Direction::Down) {
                 let object = world.get_object_mut(id).unwrap();
                 let passive_ai = object.get_component_mut::<PassiveAI>()?;
                 passive_ai.has_location = true;

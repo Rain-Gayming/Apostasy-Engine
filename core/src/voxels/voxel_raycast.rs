@@ -182,30 +182,26 @@ pub fn voxel_raycast_system(world: &mut World, set_to: Option<VoxelId>, range: f
     Ok(())
 }
 
-/// Raycast from a transform in a given direction, returns the hit
 pub fn voxel_raycast(
     world: &mut World,
     transform: &Transform,
     distance: f32,
     direction: Direction,
-) -> Result<RaycastHit> {
+) -> Option<RaycastHit> {
     let ray = get_camera_ray(transform, direction);
     let chunk_map = world.build_raw_chunk_lookup();
-    raycast_raw(&ray, distance, &chunk_map, None).ok_or_else(|| Error::msg("Hit nothing"))
+    raycast_raw(&ray, distance, &chunk_map, None)
 }
 
-/// Raycast from the camera forward, returns the hit
-pub fn voxel_raycast_camera(world: &mut World, range: f32) -> Result<RaycastHit> {
+pub fn voxel_raycast_camera(world: &mut World, range: f32) -> Option<RaycastHit> {
     let camera_obj = world
         .get_objects_with_component::<Camera>()
         .first()
-        .copied()
-        .ok_or_else(|| anyhow::anyhow!("No camera"))?;
-
-    let transform = camera_obj.get_component::<Transform>()?.clone();
+        .copied()?;
+    let transform = camera_obj.get_component::<Transform>().ok()?.clone();
     let ray = get_camera_ray(&transform, Direction::Forward);
     let chunk_map = world.build_raw_chunk_lookup();
-    raycast_raw(&ray, range, &chunk_map, None).ok_or_else(|| Error::msg("Hit nothing"))
+    raycast_raw(&ray, range, &chunk_map, None)
 }
 
 pub fn voxel_raycast_with_map(
@@ -214,7 +210,7 @@ pub fn voxel_raycast_with_map(
     distance: f32,
     direction: Direction,
     chunk_map: &HashMap<(i32, i32, i32), *const [VoxelId; 32 * 32 * 32]>,
-) -> Result<RaycastHit> {
+) -> Option<RaycastHit> {
     let ray = get_camera_ray(transform, direction);
-    raycast_raw(&ray, distance, chunk_map, None).ok_or_else(|| Error::msg("Hit nothing"))
+    raycast_raw(&ray, distance, chunk_map, None)
 }

@@ -186,7 +186,7 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
         .clone();
     let new_pos;
 
-    if let Ok(hit) = voxel_raycast_camera(world, 4.0) {
+    if let Some(hit) = voxel_raycast_camera(world, 4.0) {
         new_pos = Vector3::new(
             hit.voxel_pos.x as f32 + 0.5,
             hit.voxel_pos.y as f32 + 0.5,
@@ -254,23 +254,47 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
     };
 
     if let Some((selected_index, voxel_id)) = place_action {
-        voxel_raycast_system(world, Some(voxel_id as u16), 4.0)?;
+        if let Some(raycast) = voxel_raycast_camera(world, 4.0) {
+            let player_id = world
+                .get_objects_with_tag_with_ids::<Player>()
+                .first()
+                .unwrap()
+                .0
+                .clone();
 
-        let player_id = world
-            .get_objects_with_tag_with_ids::<Player>()
-            .first()
-            .unwrap()
-            .0
-            .clone();
+            let player = world.get_object(player_id).unwrap();
 
-        let player = world.get_object_mut(player_id).unwrap();
-        let inventory = player.get_component_mut::<Container>()?;
+            let transform = player.get_component::<Transform>()?;
+            let collider = player.get_component::<Collider>()?;
 
-        inventory.remove_item_index(selected_index as usize);
+            let min = Vector3::new(
+                (transform.global_position.x - collider.half_extents.x) as i32,
+                (transform.global_position.y - collider.half_extents.y) as i32,
+                (transform.global_position.z - collider.half_extents.z) as i32,
+            );
+            let max = Vector3::new(
+                (transform.global_position.x + collider.half_extents.x) as i32,
+                (transform.global_position.y + collider.half_extents.y) as i32,
+                (transform.global_position.z + collider.half_extents.z) as i32,
+            );
 
-        let player = world.get_object_mut(player_id).unwrap();
-        let player_data = player.get_component_mut::<PlayerData>()?;
-        player_data.current_build_ticks = 0;
+            if (min.x >= raycast.voxel_pos.x && max.x <= raycast.voxel_pos.x)
+                || (min.y >= raycast.voxel_pos.y && max.y <= raycast.voxel_pos.y)
+                || (min.z >= raycast.voxel_pos.z && max.z <= raycast.voxel_pos.z)
+            {
+                return Ok(());
+            }
+
+            voxel_raycast_system(world, Some(voxel_id as u16), 4.0)?;
+            let player = world.get_object_mut(player_id).unwrap();
+            let inventory = player.get_component_mut::<Container>()?;
+
+            inventory.remove_item_index(selected_index as usize);
+
+            let player = world.get_object_mut(player_id).unwrap();
+            let player_data = player.get_component_mut::<PlayerData>()?;
+            player_data.current_build_ticks = 0;
+        }
     }
 
     Ok(())
