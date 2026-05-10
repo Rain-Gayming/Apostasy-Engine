@@ -1,8 +1,11 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
+use apostasy_core::noise::Perlin;
+use apostasy_core::noise::core::perlin;
 use apostasy_core::objects::components::transform::FORWARD;
 use apostasy_core::rand::{RngExt, rng};
+use apostasy_core::voxels::biome::{CONTINENTAL_NOISE, HUMIDITY_NOISE, NOISE, TEMPERATURE_NOISE};
 use apostasy_core::voxels::chunk::{ChunkGenQueue, GeneratedChunkData};
 use apostasy_core::{
     anyhow::Result,
@@ -91,6 +94,11 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
 
         world.get_resource_mut::<ChunkLoader>()?.seed = seed;
         world.remove_resource::<GetNewSeed>();
+
+        *NOISE.write().unwrap() = Some(Perlin::new(seed));
+        *TEMPERATURE_NOISE.write().unwrap() = Some(Perlin::new(seed.wrapping_add(1)));
+        *HUMIDITY_NOISE.write().unwrap() = Some(Perlin::new(seed.wrapping_add(10)));
+        *CONTINENTAL_NOISE.write().unwrap() = Some(Perlin::new(seed.wrapping_add(2)));
         return Ok(());
     }
 

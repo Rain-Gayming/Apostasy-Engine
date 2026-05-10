@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{OnceLock, RwLock};
 
 use anyhow::{Error, Result};
 use apostasy_macros::Resource;
@@ -25,11 +25,10 @@ impl BiomeRegistry {
     }
 }
 
-pub static NOISE: OnceLock<Perlin> = OnceLock::new();
-pub static TEMPERATURE_NOISE: OnceLock<Perlin> = OnceLock::new();
-pub static HUMIDITY_NOISE: OnceLock<Perlin> = OnceLock::new();
-pub static CONTINENTAL_NOISE: OnceLock<Perlin> = OnceLock::new();
-
+pub static NOISE: RwLock<Option<Perlin>> = RwLock::new(None);
+pub static TEMPERATURE_NOISE: RwLock<Option<Perlin>> = RwLock::new(None);
+pub static HUMIDITY_NOISE: RwLock<Option<Perlin>> = RwLock::new(None);
+pub static CONTINENTAL_NOISE: RwLock<Option<Perlin>> = RwLock::new(None);
 /// A structure entry inside a biome definition.
 ///
 /// This describes how a biome should spawn reusable structures or data-driven
@@ -211,9 +210,9 @@ impl ClimateCache {
         let climate_scale = 8usize;
         let grid = (32 / climate_scale) + 1; // 5x5
 
-        let temp_noise = TEMPERATURE_NOISE.get_or_init(|| Perlin::new(seed));
-        let humid_noise = HUMIDITY_NOISE.get_or_init(|| Perlin::new(seed.wrapping_add(1)));
-        let continental_noise = CONTINENTAL_NOISE.get_or_init(|| Perlin::new(seed.wrapping_add(2)));
+        let temp_noise = TEMPERATURE_NOISE.read().unwrap().unwrap();
+        let humid_noise = HUMIDITY_NOISE.read().unwrap().unwrap();
+        let continental_noise = CONTINENTAL_NOISE.read().unwrap().unwrap();
 
         let mut temp = [[0.0f64; 5]; 5];
         let mut humid = [[0.0f64; 5]; 5];
@@ -373,8 +372,8 @@ pub fn sample_biome_weights(
     seed: u32,
     blend_distance: f64,
 ) -> Vec<(BiomeId, f64)> {
-    let temp_noise = TEMPERATURE_NOISE.get_or_init(|| Perlin::new(seed));
-    let humid_noise = HUMIDITY_NOISE.get_or_init(|| Perlin::new(seed.wrapping_add(1)));
+    let temp_noise = TEMPERATURE_NOISE.read().unwrap().unwrap();
+    let humid_noise = HUMIDITY_NOISE.read().unwrap().unwrap();
 
     let temperature = (temp_noise.get([world_x * 0.001, world_z * 0.001]) + 1.0) * 0.5;
     let humidity = (humid_noise.get([world_x * 0.001, world_z * 0.001]) + 1.0) * 0.5;

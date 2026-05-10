@@ -11,7 +11,7 @@ use apostasy_core::{
     voxels::{VoxelTransform, biome::BiomeRegistry, chunk::Chunk},
 };
 
-use crate::states::HasInitGeneration;
+use crate::{states::HasInitGeneration, world::chunk_loader::ChunkLoader};
 
 #[derive(Resource, Debug, Clone)]
 pub struct FpsTracker {
@@ -59,6 +59,8 @@ pub fn hud(world: &mut World) -> Result<()> {
     let chunks = world.get_objects_with_component::<Chunk>();
     let mut biome = "None".to_string();
     let registry = world.get_resource::<BiomeRegistry>()?;
+    let seed = world.get_resource::<ChunkLoader>()?.seed;
+
     for chunk in chunks {
         let position = chunk.get_component::<VoxelTransform>()?.position;
 
@@ -123,6 +125,8 @@ pub fn hud(world: &mut World) -> Result<()> {
                 ));
 
                 ui.label(format!("Biome: {}", biome));
+
+                ui.label(format!("Seed : {}", seed));
 
                 ui.separator();
                 ui.label(format!(

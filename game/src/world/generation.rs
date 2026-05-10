@@ -195,9 +195,9 @@ fn sample_height_and_biome(
     lod: u8,
     seed: u32,
 ) -> (i32, u16) {
-    let temp_noise = TEMPERATURE_NOISE.get_or_init(|| Perlin::new(seed));
-    let humid_noise = HUMIDITY_NOISE.get_or_init(|| Perlin::new(seed.wrapping_add(1)));
-    let continental_noise = CONTINENTAL_NOISE.get_or_init(|| Perlin::new(seed.wrapping_add(2)));
+    let temp_noise = TEMPERATURE_NOISE.read().unwrap().unwrap();
+    let humid_noise = HUMIDITY_NOISE.read().unwrap().unwrap();
+    let continental_noise = CONTINENTAL_NOISE.read().unwrap().unwrap();
 
     let temperature = (temp_noise.get([world_x * 0.001, world_z * 0.001]) + 1.0) * 0.5;
     let humidity = (humid_noise.get([world_x * 0.001, world_z * 0.001]) + 1.0) * 0.5;
@@ -705,7 +705,7 @@ pub fn generate_chunk_data(
     seed: u32,
     lod: u8,
 ) -> GeneratedChunkData {
-    let noise = NOISE.get_or_init(|| Perlin::new(seed));
+    let noise = NOISE.read().unwrap().unwrap();
 
     let cavern_noise = Perlin::new(seed.wrapping_add(10)); // Different seed for variety
     let tunnel_noise = Perlin::new(seed.wrapping_add(11));
@@ -716,7 +716,7 @@ pub fn generate_chunk_data(
 
     let climate = ClimateCache::new(world_x, world_z, seed);
 
-    let continental_noise = CONTINENTAL_NOISE.get_or_init(|| Perlin::new(seed.wrapping_add(2)));
+    let continental_noise = CONTINENTAL_NOISE.read().unwrap().unwrap();
 
     let mut heightmap = [0i32; 32 * 32];
     let mut column_biome = [0u16; 32 * 32];
@@ -739,7 +739,7 @@ pub fn generate_chunk_data(
 
             // Sample global noise layers once per column — shared across all
             // biome contributions so there are no seams between biome regions.
-            let layers = GlobalNoiseLayers::sample(noise, wx, wz);
+            let layers = GlobalNoiseLayers::sample(&noise, wx, wz);
 
             let mut weighted_base = 0.0f64;
             let mut weighted_global = 0.0f64;
@@ -752,7 +752,7 @@ pub fn generate_chunk_data(
 
                 // Base FBM shaped by this biome's own frequency / amplitude /
                 // height curve — the only part that varies per-biome.
-                weighted_base += compute_biome_base_detail(noise, wx, wz, biome, lod) * weight;
+                weighted_base += compute_biome_base_detail(&noise, wx, wz, biome, lod) * weight;
 
                 // Global ridge / peak / valley contributions, gated by the
                 // biome's shaping parameters so flat biomes stay flat.
@@ -858,7 +858,7 @@ pub fn generate_chunk_data(
             let (feature_surface_y, feature_biome_id) = sample_height_and_biome(
                 feature_x as f64,
                 feature_z as f64,
-                noise,
+                &noise,
                 biome_registry,
                 lod,
                 seed,
