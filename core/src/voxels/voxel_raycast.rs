@@ -1,7 +1,9 @@
-use crate::objects::components::transform::Transform;
 use crate::objects::world::World;
 use crate::rendering::components::camera::Camera;
-use crate::voxels::voxel::VoxelId;
+use crate::voxels::voxel::{VoxelId, VoxelRegistry};
+use crate::{
+    objects::components::transform::Transform, voxels::voxel_components::is_solid::IsSolid,
+};
 use anyhow::{Error, Result};
 use apostasy_macros::Resource;
 use cgmath::Vector3;
@@ -75,6 +77,7 @@ pub fn raycast_raw(
     max_distance: f32,
     chunk_map: &HashMap<(i32, i32, i32), *const [VoxelId; 32 * 32 * 32]>,
     set_to: Option<VoxelId>,
+    voxel_registry: &VoxelRegistry,
 ) -> Option<RaycastHit> {
     let mut voxel = Vector3::new(
         ray.origin.x.floor() as i32,
@@ -131,7 +134,12 @@ pub fn raycast_raw(
         // O(1) voxel sample with no bounds check
         let id = unsafe { World::get_voxel_raw(chunk_map, voxel.x, voxel.y, voxel.z) };
 
-        if id != 0 {
+        if id != 0
+            && voxel_registry
+                .get_def(id)
+                .unwrap()
+                .has_component::<IsSolid>()
+        {
             return Some(RaycastHit {
                 voxel_pos: voxel,
                 chunk_pos: Vector3::new(voxel.x >> 5, voxel.y >> 5, voxel.z >> 5),
@@ -175,7 +183,9 @@ pub fn voxel_raycast_system(world: &mut World, set_to: Option<VoxelId>, range: f
     let ray = get_camera_ray(&transform, Direction::Forward);
     let chunk_map = world.build_raw_chunk_lookup();
 
-    if let Some(hit) = raycast_raw(&ray, range, &chunk_map, set_to) {
+    let registry = world.get_resource::<VoxelRegistry>()?;
+
+    if let Some(hit) = raycast_raw(&ray, range, &chunk_map, set_to, &registry) {
         world.insert_resource(hit);
     }
 
@@ -190,7 +200,8 @@ pub fn voxel_raycast(
 ) -> Option<RaycastHit> {
     let ray = get_camera_ray(transform, direction);
     let chunk_map = world.build_raw_chunk_lookup();
-    raycast_raw(&ray, distance, &chunk_map, None)
+    let registry = world.get_resource::<VoxelRegistry>().unwrap();
+    raycast_raw(&ray, distance, &chunk_map, None, registry)
 }
 
 pub fn voxel_raycast_camera(world: &mut World, range: f32) -> Option<RaycastHit> {
@@ -201,16 +212,18 @@ pub fn voxel_raycast_camera(world: &mut World, range: f32) -> Option<RaycastHit>
     let transform = camera_obj.get_component::<Transform>().ok()?.clone();
     let ray = get_camera_ray(&transform, Direction::Forward);
     let chunk_map = world.build_raw_chunk_lookup();
-    raycast_raw(&ray, range, &chunk_map, None)
+    let registry = world.get_resource::<VoxelRegistry>().unwrap();
+    raycast_raw(&ray, range, &chunk_map, None, registry)
 }
 
 pub fn voxel_raycast_with_map(
-    _world: &mut World,
+    world: &mut World,
     transform: &Transform,
     distance: f32,
     direction: Direction,
     chunk_map: &HashMap<(i32, i32, i32), *const [VoxelId; 32 * 32 * 32]>,
 ) -> Option<RaycastHit> {
     let ray = get_camera_ray(transform, direction);
-    raycast_raw(&ray, distance, chunk_map, None)
+    let registry = world.get_resource::<VoxelRegistry>().unwrap();
+    raycast_raw(&ray, distance, chunk_map, None, registry)
 }

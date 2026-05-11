@@ -10,8 +10,6 @@ octaves: 5
 humidity: 0.75
 temperature: 0.8
 # Terrain shaping
-# Rolling-to-hilly tropical terrain — jungles grow on broken ground with
-# many streams. Moderate valley carving creates river channels.
 terrain_shaping:
   preset: rolling
   ridge_strength: 0.2
@@ -35,9 +33,9 @@ structures:
       trunk: "Apostasy:Voxel:Log"
       canopy: "Apostasy:Voxel:Leaves"
     parameters:
-      min_height: 8
-      max_height: 16
-      canopy_radius: 3
+      min_height: 16
+      max_height: 32
+      canopy_radius: 6
   - type: boulder
     density: 0.08
     voxels:
