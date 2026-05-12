@@ -19,7 +19,7 @@ voxel:
   surface:
     - "Apostasy:Voxel:Grass"
   subsurface:
-    - "Apostasy:Voxel:Dirt"
+    - "Apostasy:Voxel:FrostedDirt"
   underground:
     - "Apostasy:Voxel:Stone"
 # Structures

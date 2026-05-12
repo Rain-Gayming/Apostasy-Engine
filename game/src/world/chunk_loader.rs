@@ -11,7 +11,6 @@ use apostasy_core::{
     cgmath::Vector3,
     log,
     objects::{components::transform::Transform, scene::ObjectId, tags::Player, world::World},
-    physics::velocity::Velocity,
     voxels::{
         VoxelTransform, biome::BiomeRegistry, chunk::Chunk, meshes::NeedsRemeshing,
         structure::StructureRegistry, voxel::VoxelRegistry,
@@ -105,7 +104,6 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
 
     let player = world.get_object_with_tag::<Player>()?;
     let player_transform = player.get_component::<Transform>()?;
-    let player_velocity = player.get_component::<Velocity>()?;
 
     let player_chunk_pos = Vector3::new(
         (player_transform.global_position.x / 32.0).floor() as i32,
@@ -114,8 +112,6 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
     );
 
     let player_forward_chunk = player_transform.global_rotation * FORWARD;
-
-    let vel = player_velocity.linear_velocity;
 
     let (last_chunk_pos, load_radius, v_load_radius, lod_distances, _frame_counter) = {
         let loader = world.get_resource_mut::<ChunkLoader>()?;

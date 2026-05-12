@@ -324,6 +324,7 @@ impl World {
         wy: i32,
         wz: i32,
     ) -> VoxelId {
+        unsafe{
         let key = (wx >> 5, wy >> 5, wz >> 5);
         match map.get(&key) {
             Some(&ptr) => {
@@ -331,5 +332,6 @@ impl World {
             }
             None => 0,
         }
+    }
     }
 }

@@ -7,8 +7,8 @@ amplitude: 20.0
 frequency: 0.007
 octaves: 5
 # Generation Location
-humidity: 0.55
-temperature: 0.18
+humidity: 0.4
+temperature: 0.4
 # Terrain shaping
 terrain_shaping:
   preset: rolling
@@ -22,7 +22,7 @@ voxel:
   surface:
     - "Apostasy:Voxel:Snow"
   subsurface:
-    - "Apostasy:Voxel:Dirt"
+    - "Apostasy:Voxel:FrostedDirt"
   underground:
     - "Apostasy:Voxel:Stone"
 # Structures

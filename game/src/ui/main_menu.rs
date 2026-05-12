@@ -4,7 +4,6 @@ use apostasy_core::{
     egui, log,
     objects::world::World,
     rand::{RngExt, rng},
-    start,
     states::ShouldExit,
     ui::ui_context::EguiContext,
     update,
@@ -41,7 +40,7 @@ pub fn hud(world: &mut World) -> Result<()> {
         .fixed_pos(egui::pos2(0.0, 0.0))
         .order(egui::Order::Background)
         .show(&ctx, |ui| {
-            let screen = ui.ctx().screen_rect();
+            let screen = ui.ctx().viewport_rect();
 
             ui.painter().rect_filled(
                 screen,
@@ -153,7 +152,7 @@ pub fn hud(world: &mut World) -> Result<()> {
                 }
 
                 ui.add_space(6.0);
-                ui.button("Settings");
+                let _ = ui.button("Settings");
 
                 ui.add_space(6.0);
                 if ui.button("Quit Game").clicked() {

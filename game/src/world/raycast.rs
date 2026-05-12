@@ -304,8 +304,8 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
             obj.add_tag(NeedsRemeshing);
             break;
         }
-    }
-
+        
     world.remove_resource::<RaycastHit>();
+    }
     Ok(())
 }

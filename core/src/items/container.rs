@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use apostasy_macros::Component;
 use cgmath::Vector2;
 
-use crate::log;
 
 #[derive(Component, Clone, Debug)]
 pub struct Container {

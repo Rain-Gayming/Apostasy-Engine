@@ -74,7 +74,6 @@ pub fn hud(world: &mut World) -> Result<()> {
     }
     let dt = world.get_resource::<DeltaTime>()?;
     let fps = 1.0 / dt.0;
-    let fps = 1.0 / dt.0;
 
     if fps < 1.0 || fps > 5000.0 || !fps.is_finite() {
         return Ok(());

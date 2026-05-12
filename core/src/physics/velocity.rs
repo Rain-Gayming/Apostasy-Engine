@@ -1,11 +1,10 @@
 use anyhow::Result;
-use apostasy_macros::{Component, fixed_update, update};
+use apostasy_macros::{Component,  update};
 use cgmath::{Vector3, Zero};
 
 use crate::{
     log,
     objects::{components::transform::Transform, systems::DeltaTime, tags::Player, world::World},
-    physics::collider::Collider,
 };
 
 #[derive(Component, Clone, Debug)]

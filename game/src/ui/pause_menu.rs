@@ -76,7 +76,7 @@ pub fn hud(world: &mut World) -> Result<()> {
                 }
 
                 ui.add_space(6.0);
-                ui.button("Settings");
+                let _ = ui.button("Settings");
 
                 ui.add_space(6.0);
                 if ui.button("Quit Game").clicked() {
