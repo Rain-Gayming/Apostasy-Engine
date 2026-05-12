@@ -1,25 +1,14 @@
 use apostasy_core::{
-    Component,
-    anyhow::Result,
-    cgmath::{Vector3, Zero},
-    egui, fixed_update,
-    items::container::Container,
-    objects::{
+    Component, anyhow::Result, cgmath::{Vector3, Zero}, egui, fixed_update, items::{ItemRegistry, container::Container, voxel_component::Voxel}, log_warn, objects::{
         Object, components::transform::Transform, resources::input_manager::InputManager,
         tags::Player, world::World,
-    },
-    physics::{Gravity, collider::Collider, velocity::Velocity},
-    rendering::components::{
+    }, physics::{Gravity, collider::Collider, velocity::Velocity}, rendering::components::{
         camera::{ActiveCamera, Camera, GameCamera},
         model_renderer::ModelRenderer,
-    },
-    serde_yaml, start,
-    ui::ui_context::EguiContext,
-    update,
-    voxels::{
+    }, serde_yaml, start, ui::ui_context::EguiContext, update, voxels::{
         voxel::VoxelRegistry,
         voxel_raycast::{voxel_raycast_camera, voxel_raycast_system},
-    },
+    }
 };
 
 use crate::{
@@ -83,7 +72,7 @@ pub fn player_init(world: &mut World) -> Result<()> {
     model_renderer.is_wireframe = true;
 
     let voxel_outline = Object::new()
-        .add_component(Transform{
+        .add_component(Transform {
             local_scale: Vector3::new(0.85, 0.85, 0.85),
             ..Default::default()
         })
@@ -177,6 +166,7 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
     }
     let inputs = world.get_resource::<InputManager>()?;
     let voxel_registry = world.get_resource::<VoxelRegistry>()?.clone();
+    let item_registry = world.get_resource::<ItemRegistry>()?.clone();
     let to_break = inputs.is_mousebind_active("Break");
     let to_place = inputs.is_mousebind_active("Place");
     let can_build;
@@ -235,14 +225,19 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
     let place_action: Option<(u64, u64)> = if to_place && can_build {
         let player = world.get_object_mut(player_id).unwrap();
         let inventory = player.get_component_mut::<Container>()?;
-
         if let Some(item) = inventory.items.get(inventory.selected_item as usize) {
             if item.amount > 0 {
-                let voxel = item.item.split(":").collect::<Vec<_>>();
-                let voxel_key = format!("{}:Voxel:{}", voxel[0], voxel[2]);
+                let item = item_registry.get_def(&item.item).unwrap();
+                if item.has_component::<Voxel>() {
+                    let voxel = item.get_component::<Voxel>().unwrap();
+                    let voxel_key = voxel.name.clone();
 
-                if let Some(voxel_id) = voxel_registry.name_to_id.get(&voxel_key) {
-                    Some((inventory.selected_item as u64, voxel_id.clone() as u64))
+                    if let Some(voxel_id) = voxel_registry.name_to_id.get(&voxel_key) {
+                        Some((inventory.selected_item as u64, voxel_id.clone() as u64))
+                    } else {
+                        log_warn!("Voxel with the name: {} does not exist in the registry", voxel_key);
+                        None
+                    }
                 } else {
                     None
                 }

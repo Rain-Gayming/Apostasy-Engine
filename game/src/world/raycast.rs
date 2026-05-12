@@ -133,7 +133,7 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
                     } else {
                         log_error!(
                             "Drops expected for voxel: {}:{}:{} but there is no item registered as {}",
-                            def.name,
+                            def.namespace,
                             def.class,
                             def.name,
                             drops.0
@@ -142,7 +142,7 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
                 } else {
                     log_error!(
                         "Drops expected for voxel: {}:{}:{} but there is no registered ItemRegistry",
-                        def.name,
+                        def.namespace,
                         def.class,
                         def.name
                     );

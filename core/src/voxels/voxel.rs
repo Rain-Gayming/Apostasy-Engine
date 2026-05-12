@@ -128,8 +128,8 @@ impl VoxelRegistry {
             components: vec![],
             textures: VoxelTextures::all(0),
         });
-        name_to_id.insert("Apostasy:Air".to_string(), 0);
-        id_to_name.insert(0, "Apostasy:Air".to_string());
+        name_to_id.insert("Apostasy:Voxel:Air".to_string(), 0);
+        id_to_name.insert(0, "Apostasy:Voxel:Air".to_string());
 
         Self {
             defs,

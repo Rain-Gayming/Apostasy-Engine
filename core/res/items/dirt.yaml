@@ -2,4 +2,4 @@ name: Dirt
 namespace: Apostasy
 class: Item
 components:
-  Voxel: Dirt
+  Voxel: "Apostasy:Voxel:Dirt"

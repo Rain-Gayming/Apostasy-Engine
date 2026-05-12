@@ -324,14 +324,14 @@ impl World {
         wy: i32,
         wz: i32,
     ) -> VoxelId {
-        unsafe{
-        let key = (wx >> 5, wy >> 5, wz >> 5);
-        match map.get(&key) {
-            Some(&ptr) => {
-                *(*ptr).get_unchecked(((wx & 31) + (wy & 31) * 32 + (wz & 31) * 1024) as usize)
+        unsafe {
+            let key = (wx >> 5, wy >> 5, wz >> 5);
+            match map.get(&key) {
+                Some(&ptr) => {
+                    *(*ptr).get_unchecked(((wx & 31) + (wy & 31) * 32 + (wz & 31) * 1024) as usize)
+                }
+                None => 0,
             }
-            None => 0,
         }
-    }
     }
 }

@@ -33,7 +33,7 @@ impl AssetLoader for ItemLoader {
             let registry = self.registry.read().unwrap();
 
             for reg in registry.defs.iter() {
-                if reg.name == name && reg.namespace == namespace {
+                if reg.1.name == name && reg.1.namespace == namespace {
                     let msg = format!(
                         "Item with the name: {} exists in name space {} already",
                         name.to_string(),
@@ -72,7 +72,7 @@ impl AssetLoader for ItemLoader {
         let mut registry = self.registry.write().unwrap();
 
         for reg in registry.defs.iter() {
-            if reg.name == name && reg.namespace == namespace {
+            if reg.1.name == name && reg.1.namespace == namespace {
                 let msg = format!(
                     "Item with the name: {} exists in name space {} already",
                     name.to_string(),
@@ -85,7 +85,7 @@ impl AssetLoader for ItemLoader {
 
         let id = registry.defs.len() as ItemId;
         let full_name = format!("{}:Item:{}", namespace, name);
-        registry.defs.push(def);
+        registry.defs.insert(full_name.clone(), def);
         registry.name_to_id.insert(full_name.clone(), id);
         registry.id_to_name.insert(id, full_name);
 
