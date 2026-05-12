@@ -10,10 +10,6 @@ octaves: 5
 humidity: 0.15
 temperature: 0.1
 # Terrain shaping
-# Broad, smooth ice sheets with gentle undulation from buried bedrock.
-# No ridges or peaks — ice smooths everything. Slight valley_strength
-# creates crevasse-like depressions. High continental_scale; glaciers
-# push inland far from coastlines.
 terrain_shaping:
   preset: flat
   ridge_strength: 0.02

@@ -795,7 +795,7 @@ impl VulkanRenderingContext {
         fragment_shader: ShaderModule,
         image_extent: Extent2D,
         image_format: Format,
-        depth_format: Format,
+        _depth_format: Format,
         pipeline_layout: PipelineLayout,
         _pipeline_chache: PipelineCache,
     ) -> Result<Pipeline> {

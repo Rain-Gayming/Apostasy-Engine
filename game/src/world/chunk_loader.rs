@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc};
 
 use apostasy_core::noise::Perlin;
-use apostasy_core::noise::core::perlin;
 use apostasy_core::objects::components::transform::FORWARD;
 use apostasy_core::rand::{RngExt, rng};
 use apostasy_core::voxels::biome::{CONTINENTAL_NOISE, HUMIDITY_NOISE, NOISE, TEMPERATURE_NOISE};
@@ -27,6 +26,7 @@ use crate::world::{generation::generate_chunk_data, loading_state::LoadingState}
 pub struct ChunkLoader {
     pub last_chunk_position: Vector3<i32>,
     pub load_radius: i32,
+    pub v_load_radius: i32,
     pub chunk_lod_distances: Vec<u32>,
     pub frame_counter: u32,
     pub seed: u32,
@@ -37,7 +37,8 @@ impl Default for ChunkLoader {
         Self {
             last_chunk_position: Vector3::new(i32::MAX, i32::MAX, i32::MAX),
             load_radius: 8,
-            chunk_lod_distances: vec![8, 12, 14, 16],
+            v_load_radius: 16,
+            chunk_lod_distances: vec![8, 12, 14, 64],
             frame_counter: 0,
             seed: 1,
         }
@@ -116,12 +117,13 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
 
     let vel = player_velocity.linear_velocity;
 
-    let (last_chunk_pos, load_radius, lod_distances, frame_counter) = {
+    let (last_chunk_pos, load_radius, v_load_radius, lod_distances, _frame_counter) = {
         let loader = world.get_resource_mut::<ChunkLoader>()?;
         loader.frame_counter += 1;
         (
             loader.last_chunk_position,
             loader.load_radius,
+            loader.v_load_radius,   
             loader.chunk_lod_distances.clone(),
             loader.frame_counter,
         )
@@ -132,18 +134,13 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
         return Ok(());
     }
 
-    let delta = player_chunk_pos - last_chunk_pos;
-    let vx = vel.x.signum() as i32;
-    let vz = vel.z.signum() as i32;
-    let moving_toward =
-        (delta.x != 0 && delta.x.signum() == vx) || (delta.z != 0 && delta.z.signum() == vz);
-
+   
     log!("Entered new chunk at {:?}", player_chunk_pos);
     world.get_resource_mut::<ChunkLoader>()?.last_chunk_position = player_chunk_pos;
 
     // Initialize loading state on initial load
     if is_initial_load {
-        let loading_state = LoadingState::new(player_chunk_pos, load_radius);
+        let loading_state = LoadingState::new(player_chunk_pos, load_radius, v_load_radius);
         world.insert_resource(loading_state);
     }
 
@@ -181,7 +178,7 @@ pub fn dispatch_chunk_jobs(world: &mut World, _delta: f32) -> Result<()> {
     let mut candidates: Vec<(Vector3<i32>, usize)> = Vec::new();
 
     for x in (player_chunk_pos.x - load_radius)..=(player_chunk_pos.x + load_radius) {
-        for y in (player_chunk_pos.y - load_radius)..=(player_chunk_pos.y + load_radius) {
+        for y in (player_chunk_pos.y - v_load_radius)..=(player_chunk_pos.y + v_load_radius) {
             for z in (player_chunk_pos.z - load_radius)..=(player_chunk_pos.z + load_radius) {
                 let pos = Vector3::new(x, y, z);
                 let dx = (x - player_chunk_pos.x) as f32;
@@ -373,7 +370,7 @@ pub fn receive_chunks(world: &mut World, _delta: f32) -> Result<()> {
     // Update loading state with current chunk count
     {
         let chunk_count = world.get_objects_with_component::<Chunk>().len();
-        if let Ok(mut loading_state) = world.get_resource_mut::<LoadingState>() {
+        if let Ok(loading_state) = world.get_resource_mut::<LoadingState>() {
             if !loading_state.is_complete {
                 loading_state.chunks_loaded = chunk_count;
             }

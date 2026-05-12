@@ -13,10 +13,6 @@ humidity: 0.15
 temperature: 0.95
 
 # Terrain shaping
-# Deserts are mostly flat hardpan with occasional rocky outcrops and mesas.
-# Very low ridge and peak strength — just enough for subtle texture.
-# No valley carving (deserts erode flat, not downward).
-# Low continental_scale; deserts sit at stable inland elevations.
 terrain_shaping:
   ridge_strength:    0.05
   peak_strength:     0.08

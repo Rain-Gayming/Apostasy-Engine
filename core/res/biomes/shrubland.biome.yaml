@@ -10,8 +10,6 @@ octaves: 4
 humidity: 0.6
 temperature: 0.5
 # Terrain shaping
-# Gently undulating scrubby terrain — more textured than plains but no
-# real peaks. Low valley carving; dry streambeds rather than rivers.
 terrain_shaping:
   preset: rolling
   ridge_strength: 0.08

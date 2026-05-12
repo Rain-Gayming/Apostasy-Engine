@@ -4,7 +4,7 @@ use crate::voxels::voxel::{VoxelId, VoxelRegistry};
 use crate::{
     objects::components::transform::Transform, voxels::voxel_components::is_solid::IsSolid,
 };
-use anyhow::{Error, Result};
+use anyhow::Result;
 use apostasy_macros::Resource;
 use cgmath::Vector3;
 use hashbrown::HashMap;

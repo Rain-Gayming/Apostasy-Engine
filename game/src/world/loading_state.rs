@@ -22,10 +22,10 @@ pub struct LoadingState {
 }
 
 impl LoadingState {
-    pub fn new(player_chunk_pos: Vector3<i32>, load_radius: i32) -> Self {
+    pub fn new(player_chunk_pos: Vector3<i32>, load_radius: i32, v_load_radius: i32) -> Self {
         // Calculate total expected chunks: (2*radius + 1)^3
-        let diameter = 2 * load_radius + 1;
-        let total_chunks_expected = (diameter * diameter * diameter) as usize;
+        let diameter = 2 * load_radius + 1;        let v_diameter = 2 * v_load_radius + 1;
+        let total_chunks_expected = (diameter * v_diameter  * diameter) as usize;
 
         Self {
             is_complete: false,

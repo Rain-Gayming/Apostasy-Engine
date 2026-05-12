@@ -10,9 +10,6 @@ octaves: 4
 humidity: 0.7
 temperature: 0.38
 # Terrain shaping
-# Almost perfectly flat with tiny depressions that hold standing water.
-# valley_strength slightly higher than swamp to create more pooling pockets.
-# Very low continental_scale — bogs form in lowland basins.
 terrain_shaping:
   preset: flat
   valley_strength: 0.09

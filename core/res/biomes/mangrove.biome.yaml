@@ -10,9 +10,6 @@ octaves: 4
 humidity: 0.8
 temperature: 0.7
 # Terrain shaping
-# Essentially flat coastal mud. Very low amplitude reinforces how close
-# to sea level everything is. valley_strength creates tidal channels.
-# Lowest continental_scale of any biome — mangroves hug the coast.
 terrain_shaping:
   preset: flat
   valley_strength: 0.12

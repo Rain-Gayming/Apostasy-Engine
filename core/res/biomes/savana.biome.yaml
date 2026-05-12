@@ -10,8 +10,6 @@ octaves: 4
 humidity: 0.3
 temperature: 0.65
 # Terrain shaping
-# Gently rolling open terrain — low ridge and peak strength keep it open.
-# Slightly higher continental_scale than plains; savannas sit inland.
 terrain_shaping:
   preset: rolling
   ridge_strength: 0.05

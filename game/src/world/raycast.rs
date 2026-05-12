@@ -277,34 +277,33 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
         target_local_pos.y * target_chunk_pos.y,
         target_local_pos.z * target_chunk_pos.z,
     );
-    let voxel = world
-        .get_voxel(world_pos.x, world_pos.y, world_pos.z)
-        .unwrap();
-    let target_voxel_solid = world
-        .get_resource::<VoxelRegistry>()
-        .unwrap()
-        .get_def(voxel)
-        .unwrap()
-        .has_component::<IsSolid>();
-    for id in chunks_to_update {
-        let obj = world.get_object_mut(id).unwrap();
-        if target_voxel_solid {
-            obj.get_component_mut::<Chunk>()?.set(
-                target_local_pos.x as u32,
-                target_local_pos.y as u32,
-                target_local_pos.z as u32,
-                Voxel { id: set_to },
-            );
-        } else {
-            obj.get_component_mut::<Chunk>()?.set_if_empty(
-                target_local_pos.x as u32,
-                target_local_pos.y as u32,
-                target_local_pos.z as u32,
-                Voxel { id: set_to },
-            );
+    if let Some(voxel) = world.get_voxel(world_pos.x, world_pos.y, world_pos.z) {
+        let target_voxel_solid = world
+            .get_resource::<VoxelRegistry>()
+            .unwrap()
+            .get_def(voxel)
+            .unwrap()
+            .has_component::<IsSolid>();
+        for id in chunks_to_update {
+            let obj = world.get_object_mut(id).unwrap();
+            if target_voxel_solid {
+                obj.get_component_mut::<Chunk>()?.set(
+                    target_local_pos.x as u32,
+                    target_local_pos.y as u32,
+                    target_local_pos.z as u32,
+                    Voxel { id: set_to },
+                );
+            } else {
+                obj.get_component_mut::<Chunk>()?.set_if_empty(
+                    target_local_pos.x as u32,
+                    target_local_pos.y as u32,
+                    target_local_pos.z as u32,
+                    Voxel { id: set_to },
+                );
+            }
+            obj.add_tag(NeedsRemeshing);
+            break;
         }
-        obj.add_tag(NeedsRemeshing);
-        break;
     }
 
     world.remove_resource::<RaycastHit>();

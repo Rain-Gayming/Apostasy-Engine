@@ -13,10 +13,6 @@ humidity: 0.35
 temperature: 0.2
 
 # Terrain shaping
-# Tundra is mostly flat, wind-scoured terrain with very low rolling hills.
-# Tiny ridge and peak strength add subtle texture without real topography.
-# Low height_curve keeps things linear — no sharp features.
-# Moderate continental_scale since tundra often sits at high latitudes inland.
 terrain_shaping:
   preset: flat
   ridge_strength: 0.04

@@ -1,4 +1,3 @@
-use std::fs;
 use std::sync::{Arc, Mutex};
 
 use crate::assets::shader_loader::load_shader_bytes;

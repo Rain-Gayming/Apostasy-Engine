@@ -10,8 +10,6 @@ octaves: 5
 humidity: 0.55
 temperature: 0.18
 # Terrain shaping
-# Gently rolling boreal terrain — glacially smoothed hills with shallow
-# valleys. No dramatic peaks; taiga sits on ancient worn-down shield rock.
 terrain_shaping:
   preset: rolling
   ridge_strength: 0.1

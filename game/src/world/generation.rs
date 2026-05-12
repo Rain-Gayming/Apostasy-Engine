@@ -1,12 +1,11 @@
 use apostasy_core::{
     cgmath::Vector3,
-    log,
     noise::{NoiseFn, Perlin},
     utils::flatten::flatten,
     voxels::{
         biome::{
             BiomeDefinition, BiomeRegistry, CONTINENTAL_NOISE, ClimateCache, HUMIDITY_NOISE, NOISE,
-            StructureDefinition, TEMPERATURE_NOISE, sample_biome_weights,
+            StructureDefinition, TEMPERATURE_NOISE, 
             sample_biome_weights_at_climate,
         },
         chunk::GeneratedChunkData,
@@ -193,7 +192,7 @@ fn sample_height_and_biome(
     noise: &Perlin,
     biome_registry: &BiomeRegistry,
     lod: u8,
-    seed: u32,
+    _seed: u32,
 ) -> (i32, u16) {
     let temp_noise = TEMPERATURE_NOISE.read().unwrap().unwrap();
     let humid_noise = HUMIDITY_NOISE.read().unwrap().unwrap();
@@ -363,7 +362,7 @@ fn place_tree_data_driven(
     structure: &StructureDefinition,
     registry: &VoxelRegistry,
     seed: u32,
-    water_voxel: u16,
+   _water_voxel: u16,
 ) {
     let trunk_id = structure
         .voxels
@@ -715,8 +714,6 @@ pub fn generate_chunk_data(
     let world_z = position.z as f64 * 32.0;
 
     let climate = ClimateCache::new(world_x, world_z, seed);
-
-    let continental_noise = CONTINENTAL_NOISE.read().unwrap().unwrap();
 
     let mut heightmap = [0i32; 32 * 32];
     let mut column_biome = [0u16; 32 * 32];

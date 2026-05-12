@@ -349,14 +349,10 @@ pub fn receive_meshes(
         if !mesh_data.opaque_vertices.is_empty() && !mesh_data.opaque_indices.is_empty() {
             if let Ok(mesh) = object.get_component::<VoxelChunkMesh>() {
                 if mesh.vertex_buffer != vk::Buffer::null() {
-                    unsafe {
+                    
                         buffer_graveyard.push((mesh.vertex_buffer, mesh.vertex_buffer_memory));
                         buffer_graveyard.push((mesh.index_buffer, mesh.index_buffer_memory));
-                        // ctx.device.destroy_buffer(mesh.vertex_buffer, None);
-                        // ctx.device.free_memory(mesh.vertex_buffer_memory, None);
-                        // ctx.device.destroy_buffer(mesh.index_buffer, None);
-                        // ctx.device.free_memory(mesh.index_buffer_memory, None);
-                    }
+                      
                 }
             }
 
@@ -895,7 +891,7 @@ fn sample_blended_tint(
     biome_registry: &BiomeRegistry,
     tint_type: TintType,
     grid_size: usize,
-    lod: usize,
+    _lod: usize,
 ) -> (u8, u8, u8) {
     const RADIUS: i32 = 16;
     let sigma = RADIUS as f32 / 2.0;

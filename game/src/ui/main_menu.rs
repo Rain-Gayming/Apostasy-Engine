@@ -163,16 +163,9 @@ pub fn hud(world: &mut World) -> Result<()> {
 
                 // version
                 ui.add_space(20.0);
-                let ver_font = egui::FontId::new(11.0, egui::FontFamily::Monospace);
                 ui.colored_label(egui::Color32::from_rgb(150, 150, 150), "v0.1.0 / Apostasy");
             });
         });
 
-    Ok(())
-}
-
-#[start]
-pub fn main_menu_start(world: &mut World) -> Result<()> {
-    // world.insert_resource(IsPaused);
     Ok(())
 }

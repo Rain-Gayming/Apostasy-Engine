@@ -83,7 +83,10 @@ pub fn player_init(world: &mut World) -> Result<()> {
     model_renderer.is_wireframe = true;
 
     let voxel_outline = Object::new()
-        .add_component(Transform::default())
+        .add_component(Transform{
+            local_scale: Vector3::new(0.85, 0.85, 0.85),
+            ..Default::default()
+        })
         .add_component(model_renderer)
         .add_tag(VoxelOutline);
 

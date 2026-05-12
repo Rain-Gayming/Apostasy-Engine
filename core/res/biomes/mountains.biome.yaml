@@ -3,12 +3,12 @@ name: Mountains
 namespace: Apostasy
 class: Biome
 # Generation
-amplitude: 80.0
+amplitude: 800.0
 frequency: 0.003
 octaves: 6
 # Generation Location
 humidity: 0.45
-temperature: 0.3
+temperature: 0.4
 # Terrain shaping
 terrain_shaping:
   preset: mountainous

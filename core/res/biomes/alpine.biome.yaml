@@ -13,13 +13,6 @@ humidity: 0.35
 temperature: 0.25
 
 # Terrain shaping
-# Alpine uses the full mountainous preset as a base, then pushed further:
-# ridge_strength at 1.0 for sharp exposed ridgelines and arêtes.
-# valley_strength at 0.8 carves deep glacial U-shaped valleys.
-# height_curve at 2.0 makes peaks very pronounced — low ground stays low,
-# high ground spikes dramatically.
-# The highest continental_scale of any biome — alpine terrain is always
-# well inland and elevated.
 terrain_shaping:
   preset: mountainous
   ridge_strength:    1.0

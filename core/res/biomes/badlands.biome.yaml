@@ -10,10 +10,6 @@ octaves: 6
 humidity: 0.5
 temperature: 0.7
 # Terrain shaping
-# Strong valley carving is the defining feature — badlands are created by
-# extreme erosion cutting deep gullies. Moderate peak_strength for mesa tops.
-# ridge_strength low; ridges erode away, leaving rounded buttes.
-# height_curve above 1.0 makes the high ground stay high and the valleys cut deep.
 terrain_shaping:
   ridge_strength: 0.1
   peak_strength: 0.4

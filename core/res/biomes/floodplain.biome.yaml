@@ -10,9 +10,6 @@ octaves: 4
 humidity: 0.65
 temperature: 0.62
 # Terrain shaping
-# Near-flat with strong valley carving — the defining feature of a floodplain
-# is the river channels that cut through it. Everything else is tabletop flat.
-# Very low continental_scale; floodplains sit at the bottom of watersheds.
 terrain_shaping:
   preset: flat
   ridge_strength: 0.01

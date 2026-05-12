@@ -1,4 +1,4 @@
-use std::sync::{OnceLock, RwLock};
+use std::sync::RwLock;
 
 use anyhow::{Error, Result};
 use apostasy_macros::Resource;
@@ -206,7 +206,7 @@ pub struct ClimateCache {
 }
 
 impl ClimateCache {
-    pub fn new(world_x: f64, world_z: f64, seed: u32) -> Self {
+    pub fn new(world_x: f64, world_z: f64, _seed: u32) -> Self {
         let climate_scale = 8usize;
         let grid = (32 / climate_scale) + 1; // 5x5
 
@@ -369,7 +369,7 @@ pub fn sample_biome_weights(
     world_x: f64,
     world_z: f64,
     registry: &BiomeRegistry,
-    seed: u32,
+    _seed: u32,
     blend_distance: f64,
 ) -> Vec<(BiomeId, f64)> {
     let temp_noise = TEMPERATURE_NOISE.read().unwrap().unwrap();

@@ -10,9 +10,6 @@ octaves: 5
 humidity: 0.45
 temperature: 0.6
 # Terrain shaping
-# Rocky hilly terrain — chaparral clings to steep slopes and canyon sides.
-# Moderate ridge and peak strength for rugged hills. Strong valley carving
-# creates the seasonal creek beds that dry out in summer.
 terrain_shaping:
   preset: rolling
   ridge_strength: 0.18

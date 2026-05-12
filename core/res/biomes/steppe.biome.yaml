@@ -10,8 +10,6 @@ octaves: 4
 humidity: 0.25
 temperature: 0.5
 # Terrain shaping
-# Very flat to gently rolling — steppes are ancient seabeds and worn plains.
-# Minimal ridge or peak. Low valley carving; rivers are rare and shallow.
 terrain_shaping:
   preset: flat
   ridge_strength: 0.03

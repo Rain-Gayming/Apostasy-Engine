@@ -1,18 +1,16 @@
 use apostasy_core::{
     anyhow::Result,
-    cgmath::Vector3,
     egui,
-    objects::{components::transform::Transform, tags::Player, world::World},
+    objects::{ tags::Player, world::World},
     start,
     ui::ui_context::EguiContext,
     update,
-    voxels::chunk::{self, Chunk},
+    voxels::chunk::{ Chunk},
 };
 
 use crate::{
     entities::loading_gate::LoadingGate,
     states::{HasInitGeneration, IsPaused},
-    world::loading_state::LoadingState,
 };
 #[update]
 pub fn hud(world: &mut World) -> Result<()> {
@@ -99,7 +97,6 @@ pub fn hud(world: &mut World) -> Result<()> {
 
                 // version
                 ui.add_space(20.0);
-                let ver_font = egui::FontId::new(11.0, egui::FontFamily::Monospace);
                 ui.colored_label(egui::Color32::from_rgb(150, 150, 150), "v0.1.0 / Apostasy");
             });
         });
