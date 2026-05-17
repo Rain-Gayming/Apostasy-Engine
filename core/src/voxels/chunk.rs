@@ -7,6 +7,7 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use hashbrown::HashMap;
 use rayon::ThreadPool;
 
+use crate::log;
 use crate::{
     utils::flatten::flatten,
     voxels::{
@@ -66,6 +67,10 @@ impl Chunk {
 
     pub fn set_lod(&mut self, lod: u8) {
         self.lod = lod;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.voxels.iter().all(|&v| v == 0)
     }
 
     pub fn has_visible_faces(&self, neighbours: &ChunkNeighbours) -> bool {

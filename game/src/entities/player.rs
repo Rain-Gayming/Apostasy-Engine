@@ -147,11 +147,11 @@ pub fn update(world: &mut World) -> Result<()> {
 
     let player = world.get_object_with_tag_mut::<Player>()?;
     let player_transform = player.get_component_mut::<Transform>()?;
-    player_transform.local_euler_angles.y -= mouse_delta.0 as f32 * 0.5;
+    player_transform.local_euler_angles.y -= mouse_delta.0 as f32;
 
     let camera = world.get_object_with_tag_mut::<GameCamera>()?;
     let cam_transform = camera.get_component_mut::<Transform>()?;
-    cam_transform.local_euler_angles.x -= mouse_delta.1 as f32 * 0.5;
+    cam_transform.local_euler_angles.x -= mouse_delta.1 as f32;
     cam_transform.local_euler_angles.x = cam_transform.local_euler_angles.x.clamp(-89.0, 89.0);
 
     let player = world.get_object_with_tag::<Player>()?;
@@ -189,25 +189,21 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
         .unwrap()
         .0
         .clone();
-    let new_pos;
 
-    if let Some(hit) = voxel_raycast_camera(world, 4.0) {
-        new_pos = Vector3::new(
-            hit.voxel_pos.x as f32 + 0.5,
-            hit.voxel_pos.y as f32 + 0.5,
-            hit.voxel_pos.z as f32 + 0.5,
-        );
-    } else {
-        new_pos = Vector3::new(0.0 + 0.5, -6000.0 + 0.5, 0.0 + 0.5);
-    }
-
+    // if let Some(hit) = voxel_raycast_camera(world, 4.0) {
+    //     new_pos = Vector3::new(
+    //         hit.voxel_pos.x as f32 + 0.5,
+    //         hit.voxel_pos.y as f32 + 0.5,
+    //         hit.voxel_pos.z as f32 + 0.5,
+    //     );
+    // } else {
+    //     new_pos = Vector3::new(0.0 + 0.5, -6000.0 + 0.5, 0.0 + 0.5);
+    // }
+    //
     let outline_transform = world
         .get_object_mut(outline)
         .unwrap()
         .get_component_mut::<Transform>()?;
-    outline_transform.local_position = new_pos;
-    outline_transform.global_position = new_pos;
-
     {
         let player_id = world
             .get_objects_with_tag_with_ids::<Player>()

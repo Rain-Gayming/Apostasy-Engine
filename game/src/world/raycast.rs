@@ -301,11 +301,12 @@ pub fn check_voxel_raycast(world: &mut World, _delta: f32) -> Result<()> {
                     Voxel { id: set_to },
                 );
             }
+
             obj.add_tag(NeedsRemeshing);
             break;
         }
-        
-    world.remove_resource::<RaycastHit>();
+
+        world.remove_resource::<RaycastHit>();
     }
     Ok(())
 }

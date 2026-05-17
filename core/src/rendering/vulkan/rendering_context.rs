@@ -538,7 +538,7 @@ impl VulkanRenderingContext {
                                 .cull_mode(CullModeFlags::BACK)
                                 .front_face(FrontFace::COUNTER_CLOCKWISE)
                                 .depth_bias_enable(false)
-                                .line_width(1.0),
+                                .line_width(2.5),
                         )
                         .multisample_state(
                             &PipelineMultisampleStateCreateInfo::default()

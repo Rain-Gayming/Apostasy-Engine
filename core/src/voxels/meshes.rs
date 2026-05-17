@@ -18,6 +18,7 @@ use crate::utils::flatten::flatten;
 use crate::voxels::VoxelTransform;
 use crate::voxels::biome::BiomeRegistry;
 use crate::voxels::chunk::{Chunk, ChunkGenQueue, GeneratedMeshData, MeshJobFn};
+use crate::voxels::chunk_loader::ChunkLoadBounds;
 use crate::voxels::voxel::VoxelRegistry;
 use crate::voxels::voxel_components::is_transparent::IsTransparent;
 use crate::voxels::voxel_components::tints::{HasTint, TintType};
@@ -186,7 +187,6 @@ impl ChunkNeighbours {
         }
     }
 }
-
 pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
     const MAX_MESH_JOBS_PER_FRAME: usize = 6;
 
@@ -203,7 +203,6 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
             .clone(),
     );
 
-    // map of position to object id for all chunk objects
     let chunk_positions: HashMap<(i32, i32, i32), ObjectId> = world
         .get_objects_with_component_with_ids::<VoxelTransform>()
         .into_iter()
@@ -214,7 +213,6 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
         })
         .collect();
 
-    // collect all chunks that need remeshing
     let mut needs_remesh: Vec<(ObjectId, Vector3<i32>)> = world
         .get_objects_with_tag_with_ids::<NeedsRemeshing>()
         .into_iter()
@@ -228,13 +226,20 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
         })
         .collect();
 
-    // voxel break remeshes go first
     needs_remesh.sort_by_key(|(id, _)| {
         !world
             .get_object(*id)
             .is_some_and(|o| o.has_tag::<VoxelBreakRemesh>())
     });
-    needs_remesh.truncate(MAX_MESH_JOBS_PER_FRAME);
+
+    let (load_radius, v_load_radius, player_pos) = {
+        let loader = world.get_resource::<ChunkLoadBounds>()?;
+        (
+            loader.load_radius,
+            loader.v_load_radius,
+            loader.player_chunk_pos,
+        )
+    };
 
     let mesh_job_sender = world
         .get_resource::<ChunkGenQueue>()?
@@ -252,7 +257,7 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
         pos: Vector3<i32>,
     }
 
-    let mut jobs: Vec<Job> = Vec::with_capacity(needs_remesh.len());
+    let mut ready: Vec<Job> = Vec::new();
 
     for (id, pos) in needs_remesh {
         let Some(&chunk_id) = chunk_positions.get(&(pos.x, pos.y, pos.z)) else {
@@ -282,7 +287,27 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
             nz: clone_neighbour(Vector3::new(0, 0, -1)),
         };
 
-        // skip chunks with no visible faces
+        let neighbour_ready = |offset: Vector3<i32>, neighbour: &Option<Chunk>| -> bool {
+            let neighbour_pos = pos + offset;
+            let dx = (neighbour_pos.x - player_pos.x).abs();
+            let dy = (neighbour_pos.y - player_pos.y).abs();
+            let dz = (neighbour_pos.z - player_pos.z).abs();
+            let in_radius = dx <= load_radius && dy <= v_load_radius && dz <= load_radius;
+            !in_radius || neighbour.is_some()
+        };
+
+        let all_neighbours_ready = neighbour_ready(Vector3::new(1, 0, 0), &neighbours.px)
+            && neighbour_ready(Vector3::new(-1, 0, 0), &neighbours.nx)
+            && neighbour_ready(Vector3::new(0, 1, 0), &neighbours.py)
+            && neighbour_ready(Vector3::new(0, -1, 0), &neighbours.ny)
+            && neighbour_ready(Vector3::new(0, 0, 1), &neighbours.pz)
+            && neighbour_ready(Vector3::new(0, 0, -1), &neighbours.nz);
+
+        if !all_neighbours_ready {
+            // leave NeedsRemeshing tag on, will retry next frame
+            continue;
+        }
+
         if !chunk.has_visible_faces(&neighbours) {
             if let Some(obj) = world.get_object_mut(id) {
                 obj.remove_tag::<NeedsRemeshing>();
@@ -291,7 +316,7 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
             continue;
         }
 
-        jobs.push(Job {
+        ready.push(Job {
             id,
             chunk,
             neighbours,
@@ -299,8 +324,11 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
         });
     }
 
-    // clear the remesh tags before dispatching
-    for job in &jobs {
+    // only truncate chunks that are actually ready, not-ready ones keep their tag
+    ready.truncate(MAX_MESH_JOBS_PER_FRAME);
+
+    // remove tags only for chunks we're actually going to mesh
+    for job in &ready {
         if let Some(obj) = world.get_object_mut(job.id) {
             obj.remove_tag::<NeedsRemeshing>();
             obj.remove_tag::<VoxelBreakRemesh>();
@@ -312,7 +340,7 @@ pub fn dispatch_remesh_jobs(world: &mut World) -> Result<()> {
         neighbours,
         pos,
         ..
-    } in jobs
+    } in ready
     {
         let registry = registry.clone();
         let biome_registry = biome_registry.clone();
@@ -717,7 +745,7 @@ pub fn generate_mesh(
     let t0 = Instant::now();
     let n_defs = registry.defs.len();
 
-    // transparent[id] — id 0 (air) is always transparent
+    // transparent[id] id 0 (air) is always transparent
     let transparent: Vec<bool> = (0..n_defs)
         .map(|i| i == 0 || registry.defs[i].has_component::<IsTransparent>())
         .collect();
@@ -725,7 +753,7 @@ pub fn generate_mesh(
     // look up the water id once
     let water_id: u16 = registry.get("Apostasy:Voxel:Water").unwrap_or(0);
 
-    // tint_type[id] — None if this voxel has no tint
+    // tint_type[id] - None if this voxel has no tint
     let tint_type: Vec<Option<TintType>> = (0..n_defs)
         .map(|i| {
             registry.defs[i]

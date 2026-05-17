@@ -3,16 +3,21 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use cgmath::{Vector3, Zero};
+
 use crate::{
     assets::{
         asset_manager::AssetManager,
-        loaders::{biome_loader::BiomeLoader, structure_loader::StructureLoader, voxel_loader::VoxelLoader},
+        loaders::{
+            biome_loader::BiomeLoader, structure_loader::StructureLoader, voxel_loader::VoxelLoader,
+        },
     },
     log,
     objects::world::World,
     voxels::{
         biome::BiomeRegistry,
         chunk::VoxelBreakProgress,
+        chunk_loader::{ChunkLoadBounds, ChunkPositionMap},
         structure::StructureRegistry,
         texture_atlas::{AtlasBuilder, PendingAtlas},
         voxel::VoxelRegistry,
@@ -21,6 +26,11 @@ use crate::{
 
 pub(crate) fn add_voxel_package(world: &mut World) {
     log!("Implimanting voxel package");
+    world.insert_resource(ChunkLoadBounds {
+        player_chunk_pos: Vector3::zero(),
+        v_load_radius: 0,
+        load_radius: 0,
+    });
 
     let voxel_registry = Arc::new(RwLock::new(VoxelRegistry::default()));
     let biome_registry = Arc::new(RwLock::new(BiomeRegistry::default()));
@@ -48,9 +58,7 @@ pub(crate) fn add_voxel_package(world: &mut World) {
             )))
             .unwrap();
 
-        asset_manager.load_directory(Path::new("res/"
-        ))
-        .unwrap();
+        asset_manager.load_directory(Path::new("res/")).unwrap();
     }
 
     let registry = Arc::try_unwrap(voxel_registry)
@@ -79,6 +87,7 @@ pub(crate) fn add_voxel_package(world: &mut World) {
     world.insert_resource(biome_registry);
     world.insert_resource(structure_registry);
     world.insert_resource(VoxelBreakProgress::default());
+    world.insert_resource(ChunkPositionMap::default());
     world.insert_resource(PendingAtlas {
         image: atlas_image,
         tiles: atlas_tiles,
