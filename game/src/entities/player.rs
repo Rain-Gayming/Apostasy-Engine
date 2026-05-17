@@ -187,17 +187,19 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
         .unwrap()
         .0;
 
-    // if let Some(hit) = voxel_raycast_camera(world, 4.0) {
-    //     new_pos = Vector3::new(
-    //         hit.voxel_pos.x as f32 + 0.5,
-    //         hit.voxel_pos.y as f32 + 0.5,
-    //         hit.voxel_pos.z as f32 + 0.5,
-    //     );
-    // } else {
-    //     new_pos = Vector3::new(0.0 + 0.5, -6000.0 + 0.5, 0.0 + 0.5);
-    // }
-    //
-    let _outline_transform = world
+    let new_pos;
+
+    if let Some(hit) = voxel_raycast_camera(world, 4.0) {
+        new_pos = Vector3::new(
+            hit.voxel_pos.x as f32 + 0.5,
+            hit.voxel_pos.y as f32 + 0.5,
+            hit.voxel_pos.z as f32 + 0.5,
+        );
+    } else {
+        new_pos = Vector3::new(0.0 + 0.5, -6000.0 + 0.5, 0.0 + 0.5);
+    }
+
+    let outline_transform = world
         .get_object_mut(outline)
         .unwrap()
         .get_component_mut::<Transform>()?;
@@ -214,6 +216,13 @@ pub fn block_updates(world: &mut World, _delta: f32) -> Result<()> {
 
         can_build = player_data.current_build_ticks >= player_data.build_delay;
     }
+
+    world
+        .get_object_mut(outline)
+        .unwrap()
+        .get_component_mut::<Transform>()
+        .unwrap()
+        .global_position = new_pos;
 
     if to_break {
         voxel_raycast_system(world, Some(0), 4.0)?;

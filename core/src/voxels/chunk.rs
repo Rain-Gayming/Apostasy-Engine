@@ -68,10 +68,6 @@ impl Chunk {
         self.lod = lod;
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.voxels.iter().all(|&v| v == 0)
-    }
-
     pub fn has_visible_faces(&self, neighbours: &ChunkNeighbours) -> bool {
         const SIZE: usize = 32;
         const AREA: usize = SIZE * SIZE;

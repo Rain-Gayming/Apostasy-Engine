@@ -41,6 +41,6 @@ void main() {
     color.rgb *= fragTint;
   }
 
-  float ao = mix(0.1, 1.0, pow(fragAO, 3.0));
+  float ao = mix(0.1, 1.0, pow(fragAO, 5.0));
   outColor = vec4(color.rgb * shade * ao, color.a);
 }

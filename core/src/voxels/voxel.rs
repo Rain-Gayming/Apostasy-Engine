@@ -95,7 +95,7 @@ impl VoxelDefinition {
             .iter()
             .find(|c| c.as_any().type_id() == TypeId::of::<T>())
             .and_then(|c| c.as_any().downcast_ref())
-            .ok_or(Error::msg("No Comopnent of type"))
+            .ok_or_else(|| Error::msg(format!("No Component of type: {}", T::name())))
     }
 }
 

@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Error, Result, anyhow};
 use slotmap::{DefaultKey, SlotMap};
 
 use crate::{
@@ -280,14 +280,14 @@ impl Scene {
         self.objects
             .values()
             .find(|object| object.has_tag::<T>())
-            .ok_or(anyhow!("No objects with the tag"))
+            .ok_or_else(|| Error::msg(format!("No objects of type: {}", T::name())))
     }
 
     pub fn get_object_with_tag_mut<T: Tag + 'static>(&mut self) -> Result<&mut Object> {
         self.objects
             .values_mut()
             .find(|object| object.has_tag::<T>())
-            .ok_or(anyhow!("No objects with the tag"))
+            .ok_or_else(|| Error::msg(format!("No objects of type: {}", T::name())))
     }
 
     pub fn get_objects_with_tag<T: Tag + 'static>(&self) -> Vec<&Object> {
